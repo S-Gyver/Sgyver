@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gyver Studio - Dashboard</title>
+    <!-- นำเข้า Bootstrap CSS และ Bootstrap Icons ให้เข้าธีมเดิม -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <!-- นำเข้าสไตล์ภายนอกแยกส่วน -->
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+    <!-- Navbar ส่วนหัวบนสุด -->
+    <nav class="navbar navbar-custom navbar-dark py-3">
+        <div class="container">
+            <a class="navbar-brand fw-bold fs-4" href="#">
+                <i class="bi bi-grid-1x2-fill text-info me-2"></i>Gyver Workspace
+            </a>
+            <div class="d-flex align-items-center gap-3">
+                <span class="text-muted small" id="current-time-display"></span>
+                <!-- 🎨 อัปเดตลิงก์ด่วนด้านบนให้ไปที่หน้า wheel_admin.html -->
+                <a href="wheel_admin.html" class="btn btn-sm btn-outline-light"><i class="bi bi-sliders me-1"></i>ระบบหลังบ้านวงล้อ</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-5 flex-grow-1">
+        
+        <!-- ส่วนต้อนรับด้านบนสุด -->
+        <div class="welcome-section p-4 p-md-5 mb-5 shadow-sm">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="display-5 fw-bold mb-2">สวัสดีครับ, <span class="text-gradient">Gyver Studio</span></h1>
+                    <p class="text-muted fs-5 m-0">ยินดีต้อนรับสู่แผงควบคุมรวมเครื่องมือ และฟังก์ชันอำนวยความสะดวกส่วนตัว</p>
+                </div>
+                <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                    <div class="text-white-50 small">จำนวนฟังก์ชันที่เปิดใช้งาน</div>
+                    <div class="fs-2 fw-bold text-info">2 / 5 <span class="fs-6 text-muted">เมนูหลัก</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- หมวดหมู่ที่ 1: ระบบห้องเรียนอัจฉริยะ -->
+        <div class="mb-4">
+            <h4 class="menu-category-title mb-3">Gyver Education (ระบบห้องเรียน)</h4>
+            <div class="row g-4">
+                
+                <!-- 🎯 คอลัมน์ที่ 1: กลุ่มระบบ Gyver Wheel -->
+                <div class="col-md-4 d-flex flex-column gap-3">
+                    
+                    <!-- หน้าจอแสดงผลวงล้อ (Live) -->
+                    <a href="wheel.html" class="card menu-card p-3 shadow-sm flex-grow-1 d-flex flex-row align-items-center gap-3" onclick="countClick('wheel')">
+                        <div class="menu-icon-wrapper bg-gradient-pink text-white m-0" style="width: 50px; height: 50px; font-size: 1.4rem;">
+                            <i class="bi bi-disc-fill"></i>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold mb-1">Gyver Wheel (Live)</h5>
+                            <p class="text-muted small m-0" style="font-size: 0.8rem;">หน้าจอหลักสุ่มรายชื่อ (สำหรับขึ้นโปรเจคเตอร์)</p>
+                        </div>
+                    </a>
+
+                    <!-- แผงควบคุมหลังบ้าน (Admin) -->
+                    <!-- 🎨 อัปเดตลิงก์เป้าหมายของการ์ดเป็น wheel_admin.html -->
+                    <a href="wheel_admin.html" class="card menu-card p-3 shadow-sm flex-grow-1 d-flex flex-row align-items-center gap-3" onclick="countClick('admin')">
+                        <div class="menu-icon-wrapper bg-gradient-blue text-white m-0" style="width: 50px; height: 50px; font-size: 1.4rem;">
+                            <i class="bi bi-sliders"></i>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold mb-1">Wheel Admin Panel</h5>
+                            <p class="text-muted small m-0" style="font-size: 0.8rem;">รีโมทสลับห้อง จัดการรายชื่อ และอัปเดตโจทย์คำถาม</p>
+                        </div>
+                    </a>
+
+                </div>
+
+                <!-- คอลัมน์ที่ 2: ระบบข้อสอบเดี่ยว -->
+                <div class="col-md-4">
+                    <div class="card menu-card disabled-card p-4 shadow-sm">
+                        <span class="badge-coming-soon">ไอเดียถัดไป 🚀</span>
+                        <div class="menu-icon-wrapper bg-gradient-orange text-white">
+                            <i class="bi bi-journal-check"></i>
+                        </div>
+                        <h4 class="fw-bold mb-2 text-muted">Online Quiz System</h4>
+                        <p class="text-muted small mb-0">ระบบเปิดให้นักเรียนล็อกอินเข้ามาทำข้อสอบตามชุดวิชาแยกเดี่ยว แล้วส่งแต้มดิบเข้าฐานข้อมูลสรุปคะแนนอัตโนมัติ</p>
+                    </div>
+                </div>
+
+                <!-- คอลัมน์ที่ 3: สื่อการสอนเดี่ยว -->
+                <div class="col-md-4">
+                    <div class="card menu-card disabled-card p-4 shadow-sm">
+                        <span class="badge-coming-soon">ไอเดียถัดไป 🚀</span>
+                        <div class="menu-icon-wrapper bg-gradient-green text-white">
+                            <i class="bi bi-easel2-fill"></i>
+                        </div>
+                        <h4 class="fw-bold mb-2 text-muted">E-Learning & Tools</h4>
+                        <p class="text-muted small mb-0">คลังเก็บบทเรียน คอร์สสอน สื่อมัลติมีเดีย หรือเครื่องมือช่วยสอนเปิดคำนวณสูตรต่าง ๆ ในห้องเรียน</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- หมวดหมู่ที่ 2: เครื่องมือจัดการทั่วไป -->
+        <div class="mt-5">
+            <h4 class="menu-category-title mb-3">Gyver Business Tools (เครื่องมือเชิงธุรกิจ)</h4>
+            <div class="row g-4">
+                
+                <!-- คอลัมน์ที่ 1: ระบบทำใบเสนอราคาเดี่ยว -->
+                <div class="col-md-4">
+                    <div class="card menu-card disabled-card p-4 shadow-sm">
+                        <span class="badge-coming-soon">ไอเดียถัดไป 🚀</span>
+                        <div class="menu-icon-wrapper bg-gradient-purple text-white">
+                            <i class="bi bi-file-earmark-spreadsheet-fill"></i>
+                        </div>
+                        <h4 class="fw-bold mb-2 text-muted">Quotation Creator</h4>
+                        <p class="text-muted small mb-0">ฟังก์ชันออกเอกสารใบเสนอราคา ใบเสร็จ คำนวณภาษี เปอร์เซ็นต์ พร้อมปุ่มกดดาวน์โหลดไฟล์เป็น PDF ไปใช้งาน</p>
+                    </div>
+                </div>
+
+                <!-- คอลัมน์ที่ 2: ระบบคลังสต็อกเดี่ยว -->
+                <div class="col-md-4">
+                    <div class="card menu-card disabled-card p-4 shadow-sm">
+                        <span class="badge-coming-soon">ไอเดียถัดไป 🚀</span>
+                        <div class="menu-icon-wrapper bg-gradient-purple text-white" style="background: linear-gradient(135deg, #74b9ff, #5f27cd) !important;">
+                            <i class="bi bi-box-seam-fill"></i>
+                        </div>
+                        <h4 class="fw-bold mb-2 text-muted">Inventory Tools</h4>
+                        <p class="text-muted small mb-0">ระบบคลังข้อมูล คำนวณวัสดุ ตรวจเช็คราคาสต็อก หรือเครื่องมือช่วยคำนวณเชิงธุรกิจส่วนตัวสำหรับงาน Gyver Shop</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ส่วนท้ายหน้าเว็บ -->
+    <footer class="py-4 navbar-custom text-center text-muted small mt-auto">
+        <div class="container border-top border-secondary pt-3 d-flex flex-column flex-md-row justify-content-between align-items-center gap-2">
+            <div>&copy; 2026 Gyver Home & Gyver Shop. All Rights Reserved.</div>
+            <div class="small text-white-50" id="click-stats-text">สถิติกดใช้งาน: วงล้อ (0) | แอดมิน (0)</div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="index.js"></script>
+</body>
+</html>

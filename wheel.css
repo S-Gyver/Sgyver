@@ -1,0 +1,364 @@
+/* การตั้งค่าโครงสร้างวงล้อเล็กหน้าบ้าน */
+#wheel-container { 
+    position: relative; 
+    width: 360px; 
+    height: 360px; 
+    margin: 0 auto; 
+}
+
+/* วงล้อตัวใหญ่ใน Popup */
+#wheel-container-large {
+    position: relative;
+    width: 600px;
+    height: 600px;
+    margin: 0 auto;
+}
+
+#canvas, #canvas-large { 
+    width: 100%; 
+    height: 100%; 
+    border-radius: 50%; 
+    border: 6px solid #222; 
+    box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+}
+
+/* ======================================================== */
+/*  เพิ่มสไตล์: สั่งให้วงล้อเล็กหมุนเอื่อย ๆ เบา ๆ ตลอดเวลาขณะแสตนด์บาย */
+/* ======================================================== */
+.idle-spinning {
+    animation: rotateIdle 25s linear infinite; /* 25 วินาทีต่อรอบ หมุนนุ่มๆ สบายตา */
+}
+
+@keyframes rotateIdle {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* หัวลูกศรชี้ไดนามิก */
+.dynamic-pointer {
+    position: absolute;
+    top: -15px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 99;
+    filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.4));
+    --pointer-color: #dc3545;
+}
+.dynamic-pointer::after {
+    content: "";
+    display: block;
+    width: 0;
+    height: 0;
+    border-left: 20px solid transparent;
+    border-right: 20px solid transparent;
+    border-top: 32px solid var(--pointer-color) !important;
+    transition: border-top-color 0.12s ease-out;
+}
+
+#wheel-container-large .dynamic-pointer {
+    top: -22px;
+}
+#wheel-container-large .dynamic-pointer::after {
+    border-left: 28px solid transparent;
+    border-right: 28px solid transparent;
+    border-top: 46px solid var(--pointer-color) !important;
+}
+
+/* ======================================================== */
+/* แก้ไขสไตล์: บอลลูนคำพูดระดับ XL - ใหญ่สะใจ เต็มตา แน่นบอร์ด */
+/* ======================================================== */
+.podium-bubble {
+    position: absolute;
+    color: white;
+    padding: 12px 24px;      
+    border-radius: 18px;     
+    font-weight: 800;        
+    font-size: 1.5rem;       
+    z-index: 100;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.podium-bubble.show-active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* หางลูกศร */
+.podium-bubble::after {
+    content: "";
+    position: absolute;
+    border-style: solid;
+    display: block;
+    width: 0;
+    height: 0;
+}
+
+/* 🥈 อันดับ 2 (บล็อกแรก): ไปทางซ้าย + ชี้เฉียงลงขวาเข้าหารูป */
+.podium-block:nth-child(1) .podium-bubble {
+    background: linear-gradient(135deg, #54a0ff, #5f27cd);
+    box-shadow: 0 8px 20px rgba(95, 39, 205, 0.5);
+    top: -85px;     
+    right: 35px; 
+    transform: scale(0.8);
+    transform-origin: bottom right;
+}
+.podium-block:nth-child(1) .podium-bubble.show-active {
+    transform: scale(1);
+}
+.podium-block:nth-child(1) .podium-bubble::after {
+    border-width: 16px 14px 0 0; 
+    border-color: #5f27cd transparent transparent transparent;
+    bottom: -14px;
+    right: 24px;
+}
+
+/* 🥇 อันดับ 1 (บล็อกสองกลาง): อยู่ตรงกลาง + ชี้ตรงลงมาเป๊ะๆ */
+.podium-block:nth-child(2) .podium-bubble {
+    background: linear-gradient(135deg, #ff9f43, #ff6b6b);
+    box-shadow: 0 8px 20px rgba(255, 107, 107, 0.5);
+    top: -95px;     
+    left: 50%;
+    transform: translateX(-50%) scale(0.8);
+}
+.podium-block:nth-child(2) .podium-bubble.show-active {
+    transform: translateX(-50%) scale(1);
+}
+.podium-block:nth-child(2) .podium-bubble::after {
+    border-width: 10px 10px 0 10px; 
+    border-color: #ff6b6b transparent transparent transparent;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+/* 🥉 อันดับ 3 (บล็อกสาม): ไปทางขวา + ชี้เฉียงลงซ้ายเข้าหารูป */
+.podium-block:nth-child(3) .podium-bubble {
+    background: linear-gradient(135deg, #1dd1a1, #10ac84);
+    box-shadow: 0 8px 20px rgba(16, 172, 132, 0.5);
+    top: -85px;     
+    left: 35px; 
+    transform: scale(0.8);
+    transform-origin: bottom left;
+}
+.podium-block:nth-child(3) .podium-bubble.show-active {
+    transform: scale(1);
+}
+.podium-block:nth-child(3) .podium-bubble::after {
+    border-width: 16px 0 0 14px; 
+    border-color: #10ac84 transparent transparent transparent;
+    bottom: -14px;
+    left: 24px;
+}
+
+/* ขยายขนาด Emoji */
+.bubble-emoji {
+    display: inline-block;
+    font-size: 2rem;        
+    vertical-align: middle; 
+    margin-right: 6px;
+    animation: shakeEmoji 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes shakeEmoji {
+    0% { transform: rotate(-10deg) scale(0.9); }
+    100% { transform: rotate(10deg) scale(1.1); }
+}
+
+/* อนิเมชันลอยเบาๆ ประคองแท่น */
+.animate-float {
+    animation-duration: 2.5s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+.podium-block:nth-child(1) .animate-float { 
+    animation-name: floatEffectSide;
+    animation-delay: 0.2s; 
+}
+.podium-block:nth-child(2) .animate-float { 
+    animation-name: floatEffectCenter;
+    animation-delay: 0s; 
+}
+.podium-block:nth-child(3) .animate-float { 
+    animation-name: floatEffectSide;
+    animation-delay: 0.4s; 
+}
+
+@keyframes floatEffectSide {
+    0% { transform: translateY(0px); }
+    100% { transform: translateY(-4px); }
+}
+
+@keyframes floatEffectCenter {
+    0% { transform: translateX(-50%) translateY(0px); }
+    100% { transform: translateX(-50%) translateY(-4px); }
+}
+
+/* การตกแต่งธีมป๊อปอัปวงล้อ */
+.custom-dark-modal {
+    background-color: #161824 !important;
+    border: 2px solid #32374a !important;
+    box-shadow: 0 0 40px rgba(234, 184, 56, 0.25) !important;
+}
+
+.animate-pulse {
+    animation: pulse 1s infinite alternate;
+}
+.winner-animation { 
+    animation: pulse 0.8s infinite alternate; 
+}
+@keyframes pulse { 
+    from { transform: scale(1); } 
+    to { transform: scale(1.06); } 
+}
+
+/* ส่วน Layout สำหรับวางโพเดียมขนานกับตารางคะแนน */
+.score-zone-container { 
+    display: table; 
+    width: 100%; 
+    background: #ffffff; 
+}
+.score-zone-cell { 
+    display: table-cell; 
+    vertical-align: top; 
+}
+
+/* สไตล์แท่นโพเดียม */
+.podium-container { 
+    display: flex; 
+    align-items: flex-end; 
+    justify-content: center; 
+    height: 260px; 
+    background: #fff; 
+    padding: 15px; 
+    border-radius: 15px; 
+    border: 1px dashed #ccc; 
+    width: 420px; 
+    margin-right: 20px; 
+}
+.podium-block { 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: flex-end; 
+    width: 110px; 
+    margin: 0 8px; 
+    text-align: center; 
+    position: relative; 
+}
+.podium-avatar { 
+    width: 85px; 
+    height: 85px; 
+    border-radius: 12px; 
+    border: 3px solid #fff; 
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15); 
+    object-fit: cover; 
+    background: #e9ecef; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    font-size: 2.2rem; 
+    color: #6c757d; 
+    margin-bottom: 6px; 
+}
+.podium-name { 
+    font-size: 1rem; 
+    font-weight: bold; 
+    max-width: 110px; 
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+    margin-bottom: 3px; 
+    color: #333; 
+}
+.podium-step { 
+    width: 100%; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    font-size: 1.8rem; 
+    font-weight: bold; 
+    color: white; 
+    border-radius: 6px 6px 0 0; 
+    box-shadow: inset 0 4px 6px rgba(255,255,255,0.2); 
+}
+.step-1 { height: 105px; background: linear-gradient(135deg, #ff9f43, #ff6b6b); }
+.step-2 { height: 75px; background: linear-gradient(135deg, #54a0ff, #5f27cd); }
+.step-3 { height: 50px; background: linear-gradient(135deg, #1dd1a1, #10ac84); }
+
+/* สไตล์ตารางฝั่งขวา */
+.narrow-table { 
+    width: auto !important; 
+    min-width: 280px; 
+}
+.narrow-table th, .narrow-table td { 
+    white-space: nowrap !important; 
+    padding: 8px 12px !important; 
+}
+.table-avatar { 
+    width: 32px; 
+    height: 32px; 
+    border-radius: 6px; 
+    object-fit: cover; 
+    margin-right: 8px; 
+    border: 1px solid #ddd; 
+    background: #eee; 
+    display: inline-flex; 
+    align-items: center; 
+    justify-content: center; 
+    font-size: 0.9rem; 
+    vertical-align: middle; 
+}
+/* แอนิเมชันสำหรับ Emoji กำลังคิด */
+.emoji-thinking {
+    display: inline-block;
+    font-size: 2.5rem;
+    animation: thinkingBounce 1s ease-in-out infinite alternate;
+}
+@keyframes thinkingBounce {
+    0% { transform: translateY(0) scale(1); }
+    100% { transform: translateY(-6px) scale(1.05); }
+}
+
+/* แอนิเมชันสำหรับ Emoji ดีใจ (เด้งฉลอง) */
+.emoji-victory {
+    display: inline-block;
+    font-size: 3rem;
+    animation: victoryPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) infinite alternate;
+}
+@keyframes victoryPop {
+    0% { transform: scale(0.9) rotate(-5deg); }
+    100% { transform: scale(1.2) rotate(5deg); }
+}
+
+/* ขยายร่างอนิเมชันสำหรับโหมดป๊อปอัปผลลัพธ์ยักษ์ */
+.emoji-thinking {
+    animation: floatEffectSide 1s ease-in-out infinite alternate;
+}
+
+@keyframes shakeEmoji {
+    0% { transform: rotate(-12deg) scale(0.95); }
+    100% { transform: rotate(12deg) scale(1.15); }
+}
+
+/* ล้างข้อจำกัดสไตล์เดิมของกล่องคำถามเพื่อปล่อยให้ขยายตาม Grid XL */
+#quiz-content {
+    width: 100% !important;
+}
+
+/* คลาสย่อขนาดพิเศษปุ่มลบชื่อมุมขวาล่าง */
+.btn-xs {
+    padding: 2px 6px !important;
+    font-size: 0.78rem !important;
+    border-radius: 4px !important;
+}
+/* ช่วยจัดโครงสร้างการ์ดแนวนอนในโหมดซ้อนชั้นให้อ่านง่ายขึ้น */
+.menu-card.d-flex.flex-row {
+    min-height: 85px; /* กำหนดความสูงขั้นต่ำเพื่อให้ขนาดทั้ง 2 ใบรวมกันพอดีกับการ์ดใหญ่ */
+}
+.menu-card.d-flex.flex-row .menu-icon-wrapper {
+    flex-shrink: 0; /* ป้องกันไม่ให้ไอคอนวงกลมโดนบีบรูปทรง */
+}

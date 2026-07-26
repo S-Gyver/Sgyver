@@ -1,0 +1,153 @@
+body { 
+    background-color: #1e1e2f; 
+    color: #f8f9fa; 
+}
+.card-custom { 
+    background-color: #27293d; 
+    border: none; 
+    border-radius: 12px; 
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2); 
+}
+.nav-link-custom { 
+    color: #a9afbb; 
+    border-radius: 8px !important; 
+    font-weight: bold; 
+    padding: 10px 20px; 
+    transition: all 0.3s; 
+}
+.nav-link-custom.active { 
+    background-color: #e14eca !important; 
+    color: white !important; 
+    box-shadow: 0 4px 10px rgba(225, 78, 202, 0.4); 
+}
+.admin-avatar { 
+    width: 45px; 
+    height: 45px; 
+    object-fit: cover; 
+    border-radius: 8px; 
+    border: 2px solid #344675; 
+    background: #344675; 
+}
+.list-item-custom { 
+    background-color: #1d1e2f !important; 
+    border: 1px solid #2b354f !important; 
+    color: white !important; 
+    transition: background 0.2s; 
+}
+.list-item-custom:hover { 
+    background-color: #222437 !important; 
+}
+.badge-stat { 
+    font-size: 0.85rem; 
+    padding: 6px 10px; 
+    border-radius: 6px; 
+}
+
+/* สไตล์กล่องสีและปุ่มสั่งการไลฟ์มอนิเตอร์ */
+.btn-pink-gradient { 
+    background: linear-gradient(135deg, #f368e0, #e14eca); 
+    color: white; 
+    border: none; 
+    font-weight: bold; 
+    transition: all 0.2s; 
+    border-radius: 8px; 
+}
+.btn-pink-gradient:hover { 
+    background: linear-gradient(135deg, #ff7676, #f368e0); 
+    color: white; 
+    transform: translateY(-1px); 
+    box-shadow: 0 4px 12px rgba(225, 78, 202, 0.4); 
+}
+.btn-pink-gradient:disabled { 
+    background: #555 !important; 
+    color: #aaa; 
+    transform: none; 
+    box-shadow: none; 
+}
+
+.box-pink-display { 
+    background-color: #b862cd; 
+    color: #1e1e2f; 
+    font-weight: bold; 
+    border-radius: 8px; 
+    padding: 10px; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    min-height: 48px; 
+    text-align: center; 
+    border-left: 4px solid #3498db; 
+}
+.box-question-display { 
+    background-color: #ca76df; 
+    color: #1e1e2f; 
+    font-weight: bold; 
+    border-radius: 8px; 
+    padding: 15px; 
+    min-height: 55px; 
+    border-left: 4px solid #3498db; 
+    font-size: 1.1rem; 
+    white-space: pre-wrap;
+}
+
+/* ปุ่มตัวเลือกจำลองและสถานะไฮไลต์ข้อที่เลือกส่งข้ามจอ */
+.btn-choice-admin { 
+    background-color: #ca76df; 
+    color: #1e1e2f; 
+    font-weight: bold; 
+    border-radius: 8px; 
+    padding: 10px 15px; 
+    border: none; 
+    border-left: 4px solid #3498db; 
+    text-align: left; 
+    width: 100%; 
+    transition: all 0.2s; 
+    white-space: pre-wrap; /* รองรับการขึ้นบรรทัดใหม่ในชอยส์แอดมิน */
+    font-family: 'Courier New', monospace; /* เปลี่ยนเป็นฟอนต์โค้ด */
+}
+.btn-choice-admin.active-selected { 
+    background-color: #00d2d3 !important; 
+    color: white !important; 
+    border-left: 4px solid #ff9ff3; 
+    box-shadow: 0 0 10px rgba(0, 210, 211, 0.6); 
+}
+
+.display-label { 
+    font-size: 0.8rem; 
+    color: #a9afbb; 
+    margin-bottom: 4px; 
+    font-weight: 500; 
+}
+.avatar-preview-box { 
+    width: 55px; 
+    height: 55px; 
+    border-radius: 8px; 
+    object-fit: cover; 
+    background: #344675; 
+    border: 2px solid #b862cd; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    font-size: 1.5rem; 
+    color: white; 
+}
+
+.box-question-display pre {
+    background-color: #1d1e2f;
+    color: #00d2d3;
+    padding: 10px;
+    border-radius: 6px;
+    margin-top: 8px;
+    margin-bottom: 0;
+    font-family: monospace;
+    white-space: pre-wrap;
+}
+
+/* ให้รายการตัวเลือกด้านล่างของคลังข้อสอบเว้นบรรทัดโค้ดได้ */
+.quiz-choice-preview-box {
+    white-space: pre-wrap;
+    font-family: 'Courier New', monospace;
+    background: rgba(0,0,0,0.2);
+    padding: 4px 8px;
+    border-radius: 4px;
+}

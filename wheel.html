@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gyver Wheel - เกมวงล้อสุ่ม</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- 🎨 แก้ไขจุดนำเข้าสไตล์ใหม่เป็น wheel.css -->
+    <link rel="stylesheet" href="wheel.css">
+</head>
+<body class="bg-light py-4">
+    <div class="container-fluid px-4 text-center">
+        <h1 class="mb-2 fw-bold text-primary">Gyver Wheel Lucky Draw</h1>
+        
+        <div class="d-flex justify-content-center gap-2 mb-4">
+            <span id="current-game-class" class="badge bg-dark border border-secondary text-info fs-5 px-3 py-2 shadow-sm rounded-pill">
+                <i class="bi bi-door-open-fill me-1"></i> ห้องเรียน: -
+            </span>
+            <span id="current-game-subject" class="badge bg-dark border border-secondary text-warning fs-5 px-3 py-2 shadow-sm rounded-pill">
+                <i class="bi bi-book-half me-1"></i> วิชา: -
+            </span>
+        </div>
+        
+        <div class="row mt-4">
+            <!-- ฝั่งซ้าย: วงล้อเล็กประจำหน้าบ้าน -->
+            <div class="col-xl-4 border-end mb-4" id="original-wheel-zone">
+                <div id="wheel-container" class="mb-4">
+                    <div id="pointer" class="dynamic-pointer"></div>
+                    <canvas id="canvas" width="360" height="360"></canvas>
+                </div>
+                <button id="spin-btn" class="btn btn-lg btn-success px-5 shadow mb-3 fs-4 fw-bold">
+                    <i class="bi bi-play-circle-fill me-2"></i>หมุนวงล้อสุ่มชื่อ
+                </button>
+            </div>
+
+            <!-- ฝั่งขวา: โซนทำเนียบแชมป์และตารางคะแนนปัจจุบัน -->
+            <div class="col-xl-8 text-start">
+                <div class="score-zone-container">
+                    
+                    <!-- โซนฝั่งซ้ายของบอร์ด: ทำเนียบแชมป์ -->
+                    <div class="score-zone-cell" style="width: 440px;">
+                        <h3 class="fw-bold mb-3 text-center"><i class="bi bi-trophy-fill text-warning me-2"></i>ทำเนียบแชมป์</h3>
+                        
+                        <div class="podium-container shadow-sm position-relative">
+                            <!-- แท่นอันดับ 2 -->
+                            <div class="podium-block position-relative">
+                                <div id="p2-bubble" class="podium-bubble shadow-sm animate-float">💬 อ่อนหัด!</div>
+                                <div id="p2-avatar" class="podium-avatar"><i class="bi bi-person-fill"></i></div>
+                                <div id="p2-name" class="podium-name">-</div>
+                                <div class="podium-step step-2">2</div>
+                            </div>
+                            <!-- แท่นอันดับ 1 -->
+                            <div class="podium-block position-relative">
+                                <div id="p1-bubble" class="podium-bubble shadow-sm animate-float">💬 แน่จริงก็มาดิ!</div>
+                                <div id="p1-avatar" class="podium-avatar"><i class="bi bi-person-fill"></i></div>
+                                <div id="p1-name" class="podium-name">-</div>
+                                <div class="podium-step step-1">1</div>
+                            </div>
+                            <!-- แท่นอันดับ 3 -->
+                            <div class="podium-block position-relative">
+                                <div id="p3-bubble" class="podium-bubble shadow-sm animate-float">💬 ตามมาห่างๆ</div>
+                                <div id="p3-avatar" class="podium-avatar"><i class="bi bi-person-fill"></i></div>
+                                <div id="p3-name" class="podium-name">-</div>
+                                <div class="podium-step step-3">3</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- โซนฝั่งขวาของบอร์ด: ตารางคะแนนปัจจุบัน -->
+                    <div class="score-zone-cell">
+                        <h3 class="fw-bold mb-3 text-center">ตารางคะแนนปัจจุบัน</h3>
+                        <div class="table-responsive bg-white rounded shadow-sm border narrow-table">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th class="text-center">อันดับ</th>
+                                        <th class="text-start">ชื่อผู้เล่น</th>
+                                        <th class="text-center">ถูกสุ่ม (รอบ)</th>
+                                        <th class="text-center">คะแนน</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="leaderboard-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Popup วงล้อขนาดใหญ่กลางจอ -->
+    <div class="modal fade" id="wheelModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 660px;">
+            <div class="modal-content shadow-lg border-0 custom-dark-modal">
+                <div class="modal-header border-0 py-3 text-center d-block">
+                    <h3 class="modal-title fw-bold m-0 text-warning animate-pulse">
+                        <i class="bi bi-disc-fill spinning-icon me-2"></i>กำลังหมุนลุ้นผู้โชคดี...
+                    </h3>
+                </div>
+                <div class="modal-body text-center py-4 d-flex justify-content-center align-items-center position-relative" style="min-height: 640px;">
+                    <div id="wheel-container-large">
+                        <div id="pointer-large" class="dynamic-pointer"></div>
+                        <canvas id="canvas-large" width="600" height="600"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Popup หลังสุ่มเสร็จ -->
+    <div class="modal fade" id="winnerModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl">
+            <div class="modal-content shadow-lg border-0">
+                <div class="modal-header bg-primary text-white text-center d-block position-relative py-3">
+                    <h2 class="modal-title fw-bold m-0 fs-2"><i class="bi bi-sparkles me-2"></i>ผู้โชคดีได้แก่...</h2>
+                    <button type="button" class="btn-close btn-close-white position-absolute end-0 top-50 translate-middle-y me-3" onclick="closeWithoutAction()"></button>
+                </div>
+                
+                <div class="modal-body p-4 pb-3">
+                    <div class="row align-items-stretch g-4">
+                        
+                        <!-- ฝั่งซ้าย -->
+                        <div class="col-md-5 text-center border-end border-light-subtle d-flex flex-column justify-content-center py-2">
+                            <div id="modal-winner-img-zone" class="mb-2"></div>
+                            <h1 id="modal-winner-name" class="text-danger fw-bold winner-animation my-2 display-4"></h1>
+                            <div id="modal-winner-emoji-zone" class="mt-3 p-3 rounded bg-light border-0 shadow-sm w-100 mx-auto" style="max-width: 380px;"></div>
+                        </div>
+
+                        <!-- ฝั่งขวา -->
+                        <div class="col-md-7 d-flex flex-column justify-content-center">
+                            <div id="modal-quiz-zone">
+                                <button id="show-quiz-btn" class="btn btn-warning btn-lg w-100 fw-bold shadow-sm mb-3 py-3 fs-3">
+                                    <i class="bi bi-question-circle-fill me-2"></i>กดเพื่อแสดงคำถามและตัวเลือก
+                                </button>
+                                <div id="quiz-content" class="d-none text-start bg-light p-4 rounded border">
+                                    <p id="question-text" class="fw-bold fs-3 text-dark mb-4"></p>
+                                    <div id="options-container" class="d-grid gap-3 mb-4"></div>
+                                    <button id="user-confirm-btn" class="btn btn-primary w-100 fw-bold mb-2 py-3 fs-4 d-none" onclick="submitUserAnswer()">
+                                        <i class="bi bi-check-circle-fill me-2"></i>ยืนยันคำตอบ
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- แถวล่างสุด -->
+                    <div id="post-spin-actions" class="d-none border-top pt-3 mt-4">
+                        <div class="d-flex justify-content-between align-items-center w-100 px-2">
+                            <div class="d-flex gap-2">
+                                <button id="keep-name-btn" class="btn btn-success px-4 fw-bold shadow-sm">
+                                    <i class="bi bi-check-lg me-1"></i>เก็บชื่อไว้สุ่มต่อ
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary px-3" onclick="closeWithoutAction()">
+                                    <i class="bi bi-arrow-right-short"></i>ข้ามรอบนี้
+                                </button>
+                            </div>
+                            <div>
+                                <button id="remove-name-btn" class="btn btn-xs btn-outline-danger px-2 py-1 small" style="font-size: 0.75rem;">
+                                    <i class="bi bi-trash3 me-1"></i>ลบชื่อนี้ออก (กดยาก)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ปุ่มข้ามสแตนด์บาย -->
+                    <div id="skip-zone" class="text-center mt-3 pt-1 border-top">
+                        <button type="button" class="btn btn-link text-secondary text-decoration-none small" onclick="closeWithoutAction()">
+                            <i class="bi bi-skip-forward-fill me-1"></i>ยังไม่พร้อม (ข้าม)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- 🎨 แก้ไขจุดนำเข้าสคริปต์ใหม่เป็น wheel.js -->
+    <script src="wheel.js"></script>
+</body>
+</html>
