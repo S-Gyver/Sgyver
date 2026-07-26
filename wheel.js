@@ -11,6 +11,18 @@ let gameStates = {};
 let realtimeChannel = null;
 let idleAnimationId = null;
 
+// 🔊 1. ประกาศตัวแปรระบบเสียง Audio Web API (ใช้ลิงก์เสียงออนไลน์สาธารณะที่โหลดเร็วและเสถียร)
+const soundTick = new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-84.wav');
+const soundQuizOpen = new Audio('https://assets.mixkit.co/active_storage/sfx/2019/2019-84.wav');
+const soundCorrect = new Audio('https://assets.mixkit.co/active_storage/sfx/1435/1435-84.wav');
+const soundWrong = new Audio('https://assets.mixkit.co/active_storage/sfx/253/253-84.wav');
+
+// ตั้งค่าความดังเบา (0.0 ถึง 1.0)
+soundTick.volume = 0.4;
+soundQuizOpen.volume = 0.7;
+soundCorrect.volume = 0.8;
+soundWrong.volume = 0.6;
+
 const mockingEmojis = ["🤣", "🤪", "🤫", "😝", "🤡", "💩", "😎", "🤷‍♂️", "👑", "🥱", "😏"];
 const phrasesRank1 = ["แน่จริงก็ทำแต้มให้ชนะสิ!", "หนาวจังเลยบนนี้ 👑", "ตามมาให้ทันนะน้องๆ", "อันดับหนึ่งมันนอนมาว่ะ", "มองลงไปไม่เจอใครเลย 🥱"];
 const phrasesRank2 = ["เกือบได้ที่ 1 ละตัวเรา", "แค้นนี้ต้องชำระ!", "จี้ตูดอยู่นนะบอกเลย", "อ่อนหัดไปนะที่ 3", "แต้มเดียวก็เสียวได้ 😏"];
@@ -145,6 +157,9 @@ function startCloudWheelSpin() {
     const baseAngle = startAngle; 
     const additionalSpinAngle = 65 + (Math.random() * 25) + (Math.random() * 2 * Math.PI); 
 
+    // ตัวแปรสำหรับคอยนับความถี่เสียงติ๊กตามการเคลื่อนตัวของวงล้อ
+    let lastPlayerIndex = -1;
+
     function animateWheel(timestamp) {
         if (!startTime) startTime = timestamp;
         const elapsed = timestamp - startTime;
@@ -152,13 +167,21 @@ function startCloudWheelSpin() {
         startAngle = baseAngle + ((1 - Math.pow(1 - progress, 5)) * additionalSpinAngle);
         drawAllWheels(); 
 
+        // 🔊 2. ค้นหาผู้เล่นที่อยู่ตรงหัวลูกศรขณะหมุนปัจจุบันเพื่อยิงเสียงติ๊ก
+        const arc = Math.PI * 2 / players.length;
+        const checkIndex = Math.floor(((Math.PI * 1.5 - ((startAngle % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) / arc) % players.length;
+        
+        if (checkIndex !== lastPlayerIndex && progress < 0.95) {
+            lastPlayerIndex = checkIndex;
+            // สั่งเล่นเสียงขัดจังหวะตัวเดิมทันทีเพื่อให้เสียงดังรัวๆ ได้อย่างเป็นธรรมชาติ
+            soundTick.currentTime = 0;
+            soundTick.play().catch(e => console.log("Audio play blocked by browser"));
+        }
+
         if (progress < 1) {
             animationFrameId = requestAnimationFrame(animateWheel);
         } else {
-            const arc = Math.PI * 2 / players.length;
-            const index = Math.floor(((Math.PI * 1.5 - ((startAngle % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) / arc) % players.length;
-            
-            const targetPlayer = players[index];
+            const targetPlayer = players[checkIndex];
             currentWinner = targetPlayer.name;
 
             players = players.map(p => p.name === currentWinner ? {...p, spunCount: (p.spunCount || 0) + 1} : p);
@@ -177,6 +200,11 @@ function startCloudWheelSpin() {
 
                 winnerModal.show();
                 triggerFireworks();
+                
+                // เล่นเสียงปรบมือยินดีสั้นๆ ตอนได้ชื่อ
+                soundCorrect.currentTime = 0;
+                soundCorrect.play().catch(e => {});
+
                 document.getElementById('spin-btn').disabled = false;
             }, 1000); 
         }
@@ -208,6 +236,10 @@ async function renderActiveQuizUI() {
         }
     }
 
+    // 🔊 3. เล่นเสียงเปิดตัวโจทย์คำถาม
+    soundQuizOpen.currentTime = 0;
+    soundQuizOpen.play().catch(e => {});
+
     updateCloudState('current_step', 'quiz_visible');
     document.getElementById('show-quiz-btn')?.classList.add('d-none');
     document.getElementById('quiz-content')?.classList.remove('d-none');
@@ -235,7 +267,6 @@ async function selectChoice(index) {
     await updateCloudState('selected_choice_idx', index);
     highlightSelection(index);
     
-    // 🌟 ส่งสัญญาณ Broadcast สวนกลับไปหาหน้าจอ Admin ให้เปลี่ยนปุ่มไฮไลต์ตามด้วย
     if (realtimeChannel) {
         realtimeChannel.send({ type: 'broadcast', event: 'admin_sync_choice', payload: { index: index } });
     }
@@ -271,11 +302,19 @@ async function submitUserAnswer() {
         const emojiZone = document.getElementById('modal-winner-emoji-zone');
 
         if (userSelectedIdx === currentQuestion.correct) {
+            // 🔊 4. เล่นเสียงความสำเร็จเมื่อตอบถูก
+            soundCorrect.currentTime = 0;
+            soundCorrect.play().catch(e => {});
+
             if(options[userSelectedIdx]) options[userSelectedIdx].className = "btn btn-success text-start p-3 fw-bold fs-4 text-white shadow d-flex align-items-center";
             players = players.map(p => p.name === currentWinner ? {...p, score: p.score + 1} : p);
             triggerFireworks();
             if(emojiZone) emojiZone.innerHTML = `<div style="font-size: 5rem; animation: pulse 0.5s infinite alternate;">${winEmojis[Math.floor(Math.random() * winEmojis.length)]}</div><div class="fw-bold text-success text-center mt-2 fs-3">${winPhrases[Math.floor(Math.random() * winPhrases.length)]}</div>`;
         } else {
+            // 🔊 5. เล่นเสียงเฟลเอฟเฟกต์เมื่อตอบผิด
+            soundWrong.currentTime = 0;
+            soundWrong.play().catch(e => {});
+
             if(options[userSelectedIdx]) options[userSelectedIdx].className = "btn btn-danger text-start p-3 fw-bold fs-4 text-white shadow d-flex align-items-center";
             if(options[currentQuestion.correct]) options[currentQuestion.correct].className = "btn btn-success text-start p-3 fw-bold fs-4 text-white shadow d-flex align-items-center";
             if(emojiZone) emojiZone.innerHTML = `<div style="font-size: 5rem; animation: shakeEmoji 0.3s infinite alternate;">${loseEmojis[Math.floor(Math.random() * loseEmojis.length)]}</div><div class="fw-bold text-danger text-center mt-2 fs-3">${losePhrases[Math.floor(Math.random() * losePhrases.length)]}</div>`;
@@ -338,7 +377,6 @@ function initSupabaseRealtime() {
         }
     })
     .on('broadcast', { event: 'select_choice' }, (payload) => { 
-        // 🌟 แก้ไขจุดสำคัญ: บังคับเปลี่ยนตัวแปรของหน้า Wheel และเปลี่ยนสไตล์คลาส CSS เป็นสีน้ำเงินตามที่แอดมินส่งสัญญาณมา
         userSelectedIdx = payload.index;
         highlightSelection(payload.index); 
     })
