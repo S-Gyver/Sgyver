@@ -11,6 +11,15 @@ function showAlert(message, type = 'danger') {
     alertBox.classList.remove('d-none');
 }
 
+// 🔒 ระบบจดจำการล็อกอินถาวร: ถ้าตรวจพบเซสชันเดิมอยู่แล้ว ให้ผ่านเข้าสู่ระบบโดยตรง
+async function checkExistingSession() {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (session) {
+        window.location.href = 'index.html';
+    }
+}
+checkExistingSession();
+
 // 🔐 1. ระบบจัดการการเข้าสู่ระบบ (Login)
 document.getElementById('form-login').addEventListener('submit', async function(e) {
     e.preventDefault();
@@ -19,10 +28,10 @@ document.getElementById('form-login').addEventListener('submit', async function(
     const btnSubmit = document.getElementById('btn-login-submit');
 
     btnSubmit.disabled = true;
-    btnSubmit.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>กำลังตรวจสอบ...`;
+    btnSubmit.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>กำลังตรวจสอบสิทธิ์...`;
     alertBox.classList.add('d-none');
 
-    // เรียกใช้ระบบล็อกอินของ Supabase Auth
+    // เรียกใช้ระบบล็อกอินของ Supabase Auth (ตัว SDK จะเก็บบันทึก Session ให้อัตโนมัติบนเบราว์เซอร์)
     const { data, error } = await supabaseClient.auth.signInWithPassword({
         email: email,
         password: password,
@@ -34,9 +43,14 @@ document.getElementById('form-login').addEventListener('submit', async function(
         btnSubmit.innerHTML = `<i class="bi bi-box-arrow-in-right me-2"></i>ลงชื่อเข้าใช้งาน`;
     } else {
         showAlert('🎉 ล็อกอินสำเร็จ! กำลังนำคุณเข้าสู่ระบบ...', 'success');
-        // เซ็ตค่า Session ส่งผ่านไปยังทุกเมนูย่อย
-        sessionStorage.setItem('gyver_authenticated', 'true');
         
+        // 🌟 เงื่อนไขพิเศษ: หากใช้บัญชีนี้ ให้ผูกสิทธิ์ Metadata Role เป็น 'admin' บนระบบ Supabase ทันที
+        if (email === 's.gyver36@gmail.com') {
+            await supabaseClient.auth.updateUser({
+                data: { role: 'admin' }
+            });
+        }
+
         setTimeout(() => {
             const redirectUrl = sessionStorage.getItem('gyver_redirect_target') || 'index.html';
             sessionStorage.removeItem('gyver_redirect_target');
@@ -65,6 +79,9 @@ document.getElementById('form-register').addEventListener('submit', async functi
     const { data, error } = await supabaseClient.auth.signUp({
         email: email,
         password: password,
+        options: {
+            data: { role: 'user' } // สมาชิกทั่วไปสมัครใหม่จะได้สิทธิ์เป็น user
+        }
     });
 
     if (error) {
@@ -72,12 +89,10 @@ document.getElementById('form-register').addEventListener('submit', async functi
         btnSubmit.disabled = false;
         btnSubmit.innerHTML = `<i class="bi bi-person-plus me-2"></i>ยืนยันการสมัครสมาชิก`;
     } else {
-        // เช็กว่า Supabase ตั้งค่าต้องยืนยันตัวตนในอีเมลก่อนไหม
         if (data.user && data.session === null) {
             showAlert('✉️ สมัครสมาชิกเรียบร้อย! กรุณาเช็กกล่องข้อความในอีเมลของคุณเพื่อกดยืนยันตัวตนก่อนล็อกอินครับ', 'warning');
         } else {
-            showAlert('🎉 สมัครสมาชิกและล็อกอินให้สำเร็จเรียบร้อย!', 'success');
-            sessionStorage.setItem('gyver_authenticated', 'true');
+            showAlert('🎉 สมัครสมาชิกและล็อกอินสำเร็จเรียบร้อย!', 'success');
             setTimeout(() => { window.location.href = 'index.html'; }, 1500);
         }
         document.getElementById('form-register').reset();

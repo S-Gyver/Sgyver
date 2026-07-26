@@ -10,12 +10,21 @@
     <!-- นำเข้าสไตล์ภายนอกแยกส่วน -->
     <link rel="stylesheet" href="index.css">
     
+    <!-- 🔒 ด่านตรวจเช็กสิทธิ์ระดับคลาวด์สากล: เช็ก Session จริงจาก Supabase ก่อนเรนเดอร์เนื้อหา -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // 🔒 ด่านตรวจเช็กสิทธิ์ระดับสากล: หากยังไม่ได้ล็อกอิน ให้ดีดไปหน้า login.html ทันที
-        if (sessionStorage.getItem('gyver_authenticated') !== 'true') {
-            sessionStorage.setItem('gyver_redirect_target', window.location.pathname.split('/').pop());
-            window.location.href = 'login.html';
+        const SUPABASE_URL = 'https://igiihteeeprpcxxlldkd.supabase.co'; 
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnaWlodGVlZXBycGN4eGxsZGtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5ODkwNzksImV4cCI6MjEwMDU2NTA3OX0.fr8_ZAYKQ3D-JgEtAWGJnNvKjoUmYxs1T7tjzzsEltw';       
+        const clientCheck = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        async function enforceAuthentication() {
+            const { data: { session } } = await clientCheck.auth.getSession();
+            if (!session) {
+                sessionStorage.setItem('gyver_redirect_target', window.location.pathname.split('/').pop());
+                window.location.href = 'login.html';
+            }
         }
+        enforceAuthentication();
     </script>
 </head>
 <body>
@@ -27,10 +36,9 @@
                 <i class="bi bi-grid-1x2-fill text-info me-2"></i>Gyver Workspace
             </a>
             <div class="d-flex align-items-center gap-3">
-                <!-- เปลี่ยนคลาสสีของวันที่และเวลาเป็น text-white เพื่อให้มองเห็นชัดเจน -->
                 <span class="text-white small" id="current-time-display"></span>
                 
-                <!-- ผูกฟังก์ชัน logoutMainSystem() ให้ปุ่มออกจากระบบทำงานได้จริง -->
+                <!-- ผูกฟังก์ชัน logoutMainSystem() ให้ทำงานได้จริงผ่านระบบคลาวด์ -->
                 <button onclick="logoutMainSystem()" class="btn btn-sm btn-outline-danger">
                     <i class="bi bi-box-arrow-right me-1"></i>ออกจากระบบ
                 </button>
@@ -38,7 +46,6 @@
         </div>
     </nav>
 
-    <!-- 🎨 ลบกล่อง welcome-section ออกทั้งหมดแล้วเพื่อให้กระชับสายตา -->
     <div class="container my-5 flex-grow-1">
 
         <!-- หมวดหมู่ที่ 1: ระบบห้องเรียนอัจฉริยะ -->
@@ -46,11 +53,9 @@
             <h4 class="menu-category-title mb-3">Gyver Education (ระบบห้องเรียน)</h4>
             <div class="row g-4">
                 
-                <!-- คอลัมน์ที่ 1: กลุ่มระบบ Gyver Wheel -->
+                <!-- หน้าจอแสดงผลวงล้อ (Live) -->
                 <div class="col-md-4 d-flex flex-column gap-3">
-                    
-                    <!-- หน้าจอแสดงผลวงล้อ (Live) -->
-                    <a href="wheel.html" class="card menu-card p-3 shadow-sm flex-grow-1 d-flex flex-row align-items-center gap-3" onclick="countClick('wheel')">
+                    <a href="wheel.html" class="card menu-card p-3 shadow-sm flex-grow-1 d-flex flex-row align-items-center gap-3">
                         <div class="menu-icon-wrapper bg-gradient-pink text-white m-0" style="width: 50px; height: 50px; font-size: 1.4rem;">
                             <i class="bi bi-disc-fill"></i>
                         </div>
@@ -61,7 +66,7 @@
                     </a>
 
                     <!-- แผงควบคุมหลังบ้าน (Admin) -->
-                    <a href="wheel_admin.html" class="card menu-card p-3 shadow-sm flex-grow-1 d-flex flex-row align-items-center gap-3" onclick="countClick('admin')">
+                    <a href="wheel_admin.html" class="card menu-card p-3 shadow-sm flex-grow-1 d-flex flex-row align-items-center gap-3">
                         <div class="menu-icon-wrapper bg-gradient-blue text-white m-0" style="width: 50px; height: 50px; font-size: 1.4rem;">
                             <i class="bi bi-sliders"></i>
                         </div>
@@ -70,10 +75,9 @@
                             <p class="text-muted small m-0" style="font-size: 0.8rem;">รีโมทสลับห้อง จัดการรายชื่อ และอัปเดตโจทย์คำถาม</p>
                         </div>
                     </a>
-
                 </div>
 
-                <!-- คอลัมน์ที่ 2: ระบบข้อสอบเดี่ยว -->
+                <!-- ระบบข้อสอบเดี่ยว -->
                 <div class="col-md-4">
                     <div class="card menu-card disabled-card p-4 shadow-sm">
                         <span class="badge-coming-soon">ไอเดียถัดไป 🚀</span>
@@ -85,7 +89,7 @@
                     </div>
                 </div>
 
-                <!-- คอลัมน์ที่ 3: สื่อการสอนเดี่ยว -->
+                <!-- สื่อการสอนเดี่ยว -->
                 <div class="col-md-4">
                     <div class="card menu-card disabled-card p-4 shadow-sm">
                         <span class="badge-coming-soon">ไอเดียถัดไป 🚀</span>
@@ -105,7 +109,7 @@
             <h4 class="menu-category-title mb-3">Gyver Business Tools (เครื่องมือเชิงธุรกิจ)</h4>
             <div class="row g-4">
                 
-                <!-- คอลัมน์ที่ 1: ระบบทำใบเสนอราคาเดี่ยว -->
+                <!-- ระบบทำใบเสนอราคาเดี่ยว -->
                 <div class="col-md-4">
                     <div class="card menu-card disabled-card p-4 shadow-sm">
                         <span class="badge-coming-soon">ไอเดียถัดไป 🚀</span>
@@ -117,7 +121,7 @@
                     </div>
                 </div>
 
-                <!-- คอลัมน์ที่ 2: ระบบคลังสต็อกเดี่ยว -->
+                <!-- ระบบคลังสต็อกเดี่ยว -->
                 <div class="col-md-4">
                     <div class="card menu-card disabled-card p-4 shadow-sm">
                         <span class="badge-coming-soon">ไอเดียถัดไป 🚀</span>
@@ -138,7 +142,6 @@
     <footer class="py-4 navbar-custom text-center text-muted small mt-auto">
         <div class="container border-top border-secondary pt-3 d-flex flex-column flex-md-row justify-content-between align-items-center gap-2">
             <div>&copy; 2026 Gyver Home & Gyver Shop. All Rights Reserved.</div>
-            <div class="small text-white-50" id="click-stats-text">สถิติกดใช้งาน: วงล้อ (0) | แอดมิน (0)</div>
         </div>
     </footer>
 

@@ -6,8 +6,23 @@
     <title>Gyver Wheel - เกมวงล้อสุ่ม</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <!-- 🔒 ด่านตรวจเช็กสิทธิ์ระดับคลาวด์สากล: เช็ก Session จริงจาก Supabase ก่อนเรนเดอร์เนื้อหาหน้าจอแสดงผล -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- 🎨 แก้ไขจุดนำเข้าสไตล์ใหม่เป็น wheel.css -->
+    <script>
+        const SUPABASE_URL = 'https://igiihteeeprpcxxlldkd.supabase.co'; 
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnaWlodGVlZXBycGN4eGxsZGtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5ODkwNzksImV4cCI6MjEwMDU2NTA3OX0.fr8_ZAYKQ3D-JgEtAWGJnNvKjoUmYxs1T7tjzzsEltw';       
+        const clientCheck = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        async function enforceAuthentication() {
+            const { data: { session } } = await clientCheck.auth.getSession();
+            if (!session) {
+                sessionStorage.setItem('gyver_redirect_target', window.location.pathname.split('/').pop());
+                window.location.href = 'login.html';
+            }
+        }
+        enforceAuthentication();
+    </script>
     <link rel="stylesheet" href="wheel.css">
 </head>
 <body class="bg-light py-4">
@@ -179,7 +194,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <!-- 🎨 แก้ไขจุดนำเข้าสคริปต์ใหม่เป็น wheel.js -->
     <script src="wheel.js"></script>
 </body>
 </html>

@@ -1,12 +1,6 @@
-// ตั้งค่าการเชื่อมต่อ Supabase โปรเจกต์สิงคโปร์ของคุณ
-const SUPABASE_URL = 'https://igiihteeeprpcxxlldkd.supabase.co'; 
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnaWlodGVlZXBycGN4eGxsZGtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5ODkwNzksImV4cCI6MjEwMDU2NTA3OX0.fr8_ZAYKQ3D-JgEtAWGJnNvKjoUmYxs1T7tjzzsEltw';       
+// 🛠️ ลบการประกาศ SUPABASE_URL และ SUPABASE_KEY ซ้ำซ้อนออกแล้ว (ใช้ร่วมกับตัวบนสุดของ HTML)
+// โดยสร้างอินสแตนซ์ client ขึ้นใหม่สำหรับทำงานในไฟล์นี้โดยไม่ให้ชื่อตัวแปรชนกัน
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-if (sessionStorage.getItem('gyver_authenticated') !== 'true') {
-    sessionStorage.setItem('gyver_redirect_target', window.location.pathname.split('/').pop());
-    window.location.href = 'login.html';
-}
 
 let classRooms = {}; 
 let currentClassKey = ""; 
@@ -19,28 +13,24 @@ let realtimeChannel = null;
 // ฟังก์ชันเริ่มต้นโหลดข้อมูลจาก Supabase
 async function loadData() {
     try {
-        // 1. ดึงข้อมูลห้องเรียนทั้งหมด
         const { data: classesData } = await supabaseClient.from('class_rooms').select('*');
         classRooms = {};
         if (classesData && classesData.length > 0) {
             classesData.forEach(c => { classRooms[c.class_key] = c.players; });
         }
 
-        // 2. ดึงข้อมูลวิชาทั้งหมด
         const { data: subjectsData } = await supabaseClient.from('quiz_subjects').select('*');
         quizSubjects = {};
         if (subjectsData && subjectsData.length > 0) {
             subjectsData.forEach(s => { quizSubjects[s.subject_key] = s.questions; });
         }
 
-        // 3. ดึงสถานะเกมควบคุม Realtime
         const { data: statesData } = await supabaseClient.from('game_state').select('*');
         gameStates = {};
         if (statesData) {
             statesData.forEach(s => { gameStates[s.key] = s.value; });
         }
 
-        // ตรวจสอบห้องและวิชาตั้งค่าเริ่มต้น
         currentClassKey = gameStates['current_class_key'] || Object.keys(classRooms)[0] || "";
         currentQuizSubjectKey = gameStates['current_quiz_subject_key'] || Object.keys(quizSubjects)[0] || "";
 
@@ -57,8 +47,6 @@ async function loadData() {
         renderPlayers();
         renderQuizzes();
         syncLiveMonitorUI();
-        
-        // 💡 เรียกเปิดแท็บล่าสุดที่เปิดค้างไว้ก่อนหน้านี้
         restoreActiveTab();
 
     } catch (err) {
@@ -66,7 +54,6 @@ async function loadData() {
     }
 }
 
-// 💡 ระบบบันทึกและจำสถานะแท็บล่าสุดลงเครื่องเครื่อง
 function initTabTracker() {
     const tabTriggerList = document.querySelectorAll('#pills-tab button[data-bs-toggle="pill"]');
     tabTriggerList.forEach(tabEl => {
@@ -88,7 +75,6 @@ function restoreActiveTab() {
     }
 }
 
-// ฟังก์ชันอัปเดตค่าไปยัง Supabase game_state
 async function updateGameState(key, value) {
     gameStates[key] = value;
     await supabaseClient.from('game_state').upsert({ key: key, value: String(value), updated_at: new Date() });
@@ -141,7 +127,6 @@ function changeQuizSubject(val) { syncSubjectFromMonitor(val); }
 async function createNewClassRoom() {
     const room = document.getElementById('new-room-name').value.trim();
     if(!room) return alert('กรอกชื่อห้องเรียนด้วยครับ!');
-    
     if(classRooms[room]) return alert('ห้องนี้มีอยู่ในระบบแล้วครับ!');
 
     await supabaseClient.from('class_rooms').insert({ class_key: room, players: [] });
@@ -158,7 +143,6 @@ async function deleteCurrentClassRoom() {
     await syncClassFromMonitor(nextKey);
 }
 
-// 💡 ฟังก์ชันแยกสลับการทำงานระหว่างสร้างใหม่และแก้ไขรายวิชา
 async function handleQuizSubjectSubmit() {
     const name = document.getElementById('quiz-sub-name').value.trim();
     const content = document.getElementById('quiz-sub-content').value.trim();
@@ -170,23 +154,17 @@ async function handleQuizSubjectSubmit() {
     const combinedKey = `${name} - ${content} - ${room}`;
 
     if (oldKey === "") {
-        // โหมดสร้างวิชาใหม่ปกติ
         if(quizSubjects[combinedKey]) return alert('วิชานี้มีในระบบอยู่แล้วครับ!');
         await supabaseClient.from('quiz_subjects').insert({ subject_key: combinedKey, questions: [] });
         await syncSubjectFromMonitor(combinedKey);
     } else {
-        // โหมดบันทึกแก้ไขวิชาเดิม (คัดลอกโจทย์เดิมไปด้วย แล้วค่อยลบตัวเก่าทิ้ง)
         if(oldKey !== combinedKey && quizSubjects[combinedKey]) return alert('ชื่อรายวิชาใหม่นี้ไปซ้ำกับวิชาอื่นที่มีอยู่แล้วครับ!');
         
         const currentQuestionsArray = quizSubjects[oldKey] || [];
-        // สร้างหรือเซฟทับตัวใหม่
         await supabaseClient.from('quiz_subjects').upsert({ subject_key: combinedKey, questions: currentQuestionsArray });
-        
-        // ถ้าคีย์เปลี่ยนจริงให้ลบของเก่าทิ้ง
         if (oldKey !== combinedKey) {
             await supabaseClient.from('quiz_subjects').delete().eq('subject_key', oldKey);
         }
-        
         await syncSubjectFromMonitor(combinedKey);
     }
 
@@ -194,7 +172,6 @@ async function handleQuizSubjectSubmit() {
     loadData();
 }
 
-// 💡 สั่งดึงข้อมูลคีย์หลักขึ้นฟอร์มเพื่อเข้าสู่โหมดแก้ไข
 function startEditQuizSubject() {
     if (!currentQuizSubjectKey) return;
     const parts = currentQuizSubjectKey.split(' - ');
@@ -210,7 +187,6 @@ function startEditQuizSubject() {
     document.getElementById('quiz-sub-cancel-btn').classList.remove('d-none');
 }
 
-// 💡 ยกเลิกสเตตัสการแก้ไขวิชากลับเป็นปกติ
 function cancelEditQuizSubject() {
     document.getElementById('edit-subject-old-key').value = "";
     document.getElementById('quiz-sub-name').value = "";
@@ -235,7 +211,6 @@ async function saveQuizData() {
     await supabaseClient.from('quiz_subjects').upsert({ subject_key: currentQuizSubjectKey, questions: questions });
 }
 
-// การควบคุมเกมสั่งงานข้ามจอด้วย Supabase Realtime Broadcast
 async function triggerRemoteAction(eventName) {
     await updateGameState(`remote_${eventName}_trigger`, Date.now().toString());
     if(realtimeChannel) {
@@ -370,15 +345,75 @@ function resetQuizMonitorFields(text) {
     }
 }
 
+function startEditPlayer(index) {
+    const players = getActivePlayers();
+    const target = players[index];
+    if (!target) return;
+
+    document.getElementById('edit-player-index').value = index;
+    document.getElementById('player-name').value = target.name;
+    document.getElementById('delete-current-image-flag').value = "false"; 
+    
+    document.getElementById('player-form-title').innerHTML = `<i class="bi bi-pencil-square me-2"></i>กำลังแก้ไขข้อมูล: ${target.name}`;
+    document.getElementById('player-submit-btn').innerText = "บันทึกข้อมูล";
+    document.getElementById('player-img-label').innerText = "เปลี่ยนรูปโปรไฟล์ใหม่ (ปล่อยว่างถ้าไม่เปลี่ยน)";
+    document.getElementById('player-cancel-edit-btn').classList.remove('d-none');
+
+    const previewZone = document.getElementById('edit-preview-zone');
+    const deleteImgBtn = document.getElementById('player-delete-img-btn');
+    
+    if (target.image) {
+        if(previewZone) {
+            previewZone.innerHTML = `<img src="${target.image}" style="width:38px; height:38px; object-fit:cover; border-radius:6px; border:1px solid #b862cd;">`;
+            previewZone.classList.remove('d-none');
+        }
+        if(deleteImgBtn) deleteImgBtn.classList.remove('d-none');
+    } else {
+        if(previewZone) previewZone.classList.add('d-none');
+        if(deleteImgBtn) deleteImgBtn.classList.add('d-none');
+    }
+    
+    document.getElementById('player-form').scrollIntoView({ behavior: 'smooth' });
+}
+
+function markDeleteImage() {
+    if(confirm("ต้องการนำรูปภาพโปรไฟล์เดิมออกใช่หรือไม่?")) {
+        document.getElementById('delete-current-image-flag').value = "true";
+        document.getElementById('edit-preview-zone').classList.add('d-none');
+        document.getElementById('player-delete-img-btn').classList.add('d-none');
+        document.getElementById('player-img-label').innerText = "รูปภาพเดิมจะถูกลบออก (เลือกไฟล์ใหม่ได้หากต้องการสลับรูป)";
+    }
+}
+
+function cancelEditPlayer() {
+    document.getElementById('edit-player-index').value = "";
+    document.getElementById('delete-current-image-flag').value = "false";
+    document.getElementById('player-name').value = "";
+    document.getElementById('player-img').value = "";
+    document.getElementById('player-form-title').innerHTML = `<i class="bi bi-person-plus-fill me-2"></i>เพิ่มผู้ร่วมสนุกใหม่`;
+    document.getElementById('player-submit-btn').innerText = "เพิ่มชื่อ";
+    document.getElementById('player-submit-btn').disabled = false;
+    document.getElementById('player-img-label').innerText = "รูปโปรไฟล์ (ถ้ามี)";
+    document.getElementById('player-cancel-edit-btn').classList.add('d-none');
+    
+    const previewZone = document.getElementById('edit-preview-zone');
+    const deleteImgBtn = document.getElementById('player-delete-img-btn');
+    if(previewZone) previewZone.classList.add('d-none');
+    if(deleteImgBtn) deleteImgBtn.classList.add('d-none');
+}
+
 document.getElementById('player-form').addEventListener('submit', async function(e) {
     e.preventDefault();
     const nameInput = document.getElementById('player-name');
     const fileInput = document.getElementById('player-img');
     const editIndexInput = document.getElementById('edit-player-index');
+    const deleteFlagInput = document.getElementById('delete-current-image-flag');
+    const btnSubmit = document.getElementById('player-submit-btn');
     
     const name = nameInput.value.trim();
     const players = getActivePlayers();
     const editIndex = editIndexInput.value;
+    const shouldDeleteImage = deleteFlagInput.value === "true";
 
     if (editIndex === "") {
         if(players.some(p => p.name === name)) return alert('ชื่อนี้ซ้ำกันในห้องนี้แล้วครับ!');
@@ -387,59 +422,74 @@ document.getElementById('player-form').addEventListener('submit', async function
         if(players.some((p, i) => p.name === name && i !== idx)) return alert('ชื่อนี้ไปซ้ำกับนักเรียนคนอื่นในห้องครับ!');
     }
     
-    if (fileInput.files && fileInput.files[0]) {
-        const reader = new FileReader();
-        reader.onload = async function(event) {
-            if (editIndex === "") {
-                players.push({ name: name, score: 0, spunCount: 0, image: event.target.result });
-            } else {
-                const idx = parseInt(editIndex);
-                players[idx].name = name;
-                players[idx].image = event.target.result;
-            }
-            await saveAndReset(players);
-        };
-        reader.readAsDataURL(fileInput.files[0]);
-    } else {
-        if (editIndex === "") {
-            players.push({ name: name, score: 0, spunCount: 0, image: null });
-        } else {
-            const idx = parseInt(editIndex);
-            players[idx].name = name;
+    btnSubmit.disabled = true;
+    btnSubmit.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>กำลังประมวลผล...`;
+
+    let imageUrl = null;
+    let oldImageToClean = null; 
+
+    if (editIndex !== "") {
+        const currentTmpPlayer = players[parseInt(editIndex)];
+        imageUrl = currentTmpPlayer.image;
+        if (shouldDeleteImage) {
+            oldImageToClean = currentTmpPlayer.image;
+            imageUrl = null; 
         }
-        await saveAndReset(players);
     }
-    
-    async function saveAndReset(updatedArray) { 
-        await saveActivePlayers(updatedArray); 
-        cancelEditPlayer(); 
-        loadData(); 
+
+    if (fileInput.files && fileInput.files[0]) {
+        const file = fileInput.files[0];
+        const fileExt = file.name.split('.').pop().toLowerCase();
+        const safeRoomName = currentClassKey.replace(/[^a-zA-Z0-9]/g, '_');
+        const fileName = `${safeRoomName}_${Date.now()}.${fileExt}`;
+
+        const { data: uploadData, error: uploadError } = await supabaseClient.storage
+            .from('avatars')
+            .upload(fileName, file, {
+                cacheControl: '3600',
+                upsert: true
+            });
+
+        if (uploadError) {
+            alert(`❌ อัปโหลดรูปภาพล้มเหลว: ${uploadError.message}`);
+            btnSubmit.disabled = false;
+            btnSubmit.innerText = editIndex === "" ? "เพิ่มชื่อ" : "บันทึกข้อมูล";
+            return;
+        }
+
+        const { data: publicUrlData } = supabaseClient.storage
+            .from('avatars')
+            .getPublicUrl(fileName);
+
+        if (editIndex !== "" && players[parseInt(editIndex)].image) {
+            oldImageToClean = players[parseInt(editIndex)].image;
+        }
+
+        imageUrl = publicUrlData.publicUrl;
     }
+
+    if (oldImageToClean) {
+        try {
+            const urlParts = oldImageToClean.split('/');
+            const targetFileName = urlParts[urlParts.length - 1];
+            await supabaseClient.storage.from('avatars').remove([targetFileName]);
+        } catch(err) {
+            console.error(err);
+        }
+    }
+
+    if (editIndex === "") {
+        players.push({ name: name, score: 0, spunCount: 0, image: imageUrl });
+    } else {
+        const idx = parseInt(editIndex);
+        players[idx].name = name;
+        players[idx].image = imageUrl;
+    }
+
+    await saveActivePlayers(players); 
+    cancelEditPlayer(); 
+    loadData(); 
 });
-
-function startEditPlayer(index) {
-    const players = getActivePlayers();
-    const target = players[index];
-    if (!target) return;
-
-    document.getElementById('edit-player-index').value = index;
-    document.getElementById('player-name').value = target.name;
-    document.getElementById('player-form-title').innerHTML = `<i class="bi bi-pencil-square me-2"></i>กำลังแก้ไขข้อมูล: ${target.name}`;
-    document.getElementById('player-submit-btn').innerText = "บันทึกข้อมูล";
-    document.getElementById('player-img-label').innerText = "เปลี่ยนรูปโปรไฟล์ใหม่ (ปล่อยว่างถ้าไม่เปลี่ยน)";
-    document.getElementById('player-cancel-edit-btn').classList.remove('d-none');
-    document.getElementById('player-form').scrollIntoView({ behavior: 'smooth' });
-}
-
-function cancelEditPlayer() {
-    document.getElementById('edit-player-index').value = "";
-    document.getElementById('player-name').value = "";
-    document.getElementById('player-img').value = "";
-    document.getElementById('player-form-title').innerHTML = `<i class="bi bi-person-plus-fill me-2"></i>เพิ่มผู้ร่วมสนุกใหม่`;
-    document.getElementById('player-submit-btn').innerText = "เพิ่มชื่อ";
-    document.getElementById('player-img-label').innerText = "รูปโปรไฟล์ (ถ้ามี)";
-    document.getElementById('player-cancel-edit-btn').classList.add('d-none');
-}
 
 function renderPlayers() {
     const players = getActivePlayers();
@@ -487,6 +537,17 @@ async function adjustStat(index, key, amount) {
 async function deletePlayer(index) {
     let players = getActivePlayers();
     if(!confirm('ยืนยันที่จะลบผู้เล่นคนนี้ออกจากระบบใช่ไหม?')) return;
+    
+    if (players[index].image) {
+        try {
+            const urlParts = players[index].image.split('/');
+            const targetFileName = urlParts[urlParts.length - 1];
+            await supabaseClient.storage.from('avatars').remove([targetFileName]);
+        } catch(e) {
+            console.error(e);
+        }
+    }
+
     if(players[index].name === gameStates['current_winner_name']) {
         await updateGameState('current_winner_name', '');
         await updateGameState('current_active_quiz', 'null');
@@ -506,7 +567,6 @@ async function resetAllScores() {
     loadData();
 }
 
-// จัดการฟอร์มบันทึก / แก้ไขคำถามเข้าคลัง
 document.getElementById('quiz-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const q = document.getElementById('quiz-q').value.trim();
@@ -532,7 +592,6 @@ document.getElementById('quiz-form').addEventListener('submit', async (e) => {
     loadData();
 });
 
-// ฟังก์ชันเริ่มกระบวนการแก้ไขคำถาม
 function startEditQuiz(index) {
     const target = questions[index];
     if (!target) return;
@@ -553,7 +612,6 @@ function startEditQuiz(index) {
     document.getElementById('quiz-form').scrollIntoView({ behavior: 'smooth' });
 }
 
-// ฟังก์ชันยกเลิกการแก้ไขคำถาม
 function cancelEditQuiz() {
     document.getElementById('edit-quiz-index').value = "";
     document.getElementById('quiz-form').reset();
@@ -564,7 +622,6 @@ function cancelEditQuiz() {
     document.getElementById('quiz-cancel-edit-btn').classList.add('d-none');
 }
 
-// แสดงรายการคำถามพร้อมเพิ่มปุ่มแก้ไขสีส้มประกบคู่กับปุ่มลบ
 function renderQuizzes() {
     document.getElementById('q-count').innerText = questions.length;
     const list = document.getElementById('quiz-list');
@@ -598,23 +655,20 @@ function renderQuizzes() {
 
 async function deleteQuiz(index) {
     if(!confirm('ต้องการลบคำถามข้อนี้ใช่หรือไม่?')) return;
-    
     const editIndex = document.getElementById('edit-quiz-index').value;
     if (editIndex !== "" && parseInt(editIndex) === index) {
         cancelEditQuiz();
     }
-    
     questions.splice(index, 1);
     await saveQuizData();
     loadData();
 }
 
-function logout() { 
-    sessionStorage.removeItem('gyver_authenticated'); 
+async function logout() { 
+    await supabaseClient.auth.signOut();
     window.location.href = 'login.html'; 
 }
 
-// เปิดระบบเชื่อมต่อ Supabase Realtime Listeners
 function initSupabaseRealtime() {
     supabaseClient.channel('admin_state_sync')
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'game_state' }, (payload) => {
@@ -634,7 +688,5 @@ function initSupabaseRealtime() {
 window.onload = () => {
     loadData();
     initSupabaseRealtime();
-    
-    // เปิดระบบคอยดักจับความเคลื่อนไหวเวลากดเปลี่ยนหน้าแท็บ
     initTabTracker(); 
 };

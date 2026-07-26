@@ -7,9 +7,29 @@
     <!-- นำเข้า Bootstrap CSS และ Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <!-- นำเข้า Supabase JS SDK -->
+    
+    <!-- 🔒 ด่านตรวจเช็กสิทธิ์ระดับคลาวด์: ตรวจว่าล็อกอินและสิทธิ์ของ metadata role ต้องเป็น 'admin' เท่านั้น -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- 🎨 นำเข้าไฟล์สไตล์ภายนอกหลังเปลี่ยนชื่อ -->
+    <script>
+        const SUPABASE_URL = 'https://igiihteeeprpcxxlldkd.supabase.co'; 
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnaWlodGVlZXBycGN4eGxsZGtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5ODkwNzksImV4cCI6MjEwMDU2NTA3OX0.fr8_ZAYKQ3D-JgEtAWGJnNvKjoUmYxs1T7tjzzsEltw';       
+        const clientCheck = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        async function enforceAdminRole() {
+            const { data: { session } } = await clientCheck.auth.getSession();
+            if (!session) {
+                sessionStorage.setItem('gyver_redirect_target', window.location.pathname.split('/').pop());
+                window.location.href = 'login.html';
+            } else {
+                const userRole = session.user.user_metadata?.role;
+                if (userRole !== 'admin') {
+                    alert('🚨 ขออภัยครับ บัญชีของคุณไม่มีสิทธิ์เข้าใช้งานหน้ารีโมทควบคุมแอดมินระบบ!');
+                    window.location.href = 'index.html';
+                }
+            }
+        }
+        enforceAdminRole();
+    </script>
     <link rel="stylesheet" href="wheel_admin.css">
 </head>
 <body class="py-4">
@@ -52,7 +72,6 @@
                         </div>
                     </div>
                     
-                    <!-- ส่วนเลือกห้องเรียนและวิชาด่วนสำหรับเริ่มเกม -->
                     <div class="p-3 mb-4 rounded border border-secondary" style="background-color: #1d1e2f;">
                         <div class="row g-3 align-items-center">
                             <div class="col-md-auto">
@@ -60,12 +79,10 @@
                             </div>
                             <div class="col-md-4">
                                 <select id="monitor-class-select" class="form-select bg-dark text-white border-info fw-bold form-select-sm" onchange="syncClassFromMonitor(this.value)">
-                                    <!-- โหลดไดนามิกจาก Supabase -->
                                 </select>
                             </div>
                             <div class="col-md-5">
                                 <select id="monitor-subject-select" class="form-select bg-dark text-white border-success fw-bold form-select-sm" onchange="syncSubjectFromMonitor(this.value)">
-                                    <!-- โหลดไดนามิกจาก Supabase -->
                                 </select>
                             </div>
                         </div>
@@ -132,15 +149,12 @@
                         <div class="col-md-4">
                             <label class="form-label text-info fw-bold small m-0 mb-1"><i class="bi bi-book-half me-1"></i>วิชา / ห้องเรียนที่กำลังสอน</label>
                             <select id="current-class-select" class="form-select bg-dark text-white border-info fw-bold" onchange="changeClassRoom(this.value)">
-                                <!-- โหลดไดนามิกจาก Supabase -->
                             </select>
                         </div>
-                        
                         <div class="col-md-6">
                             <label class="form-label text-white-50 small m-0 mb-1">ชั้น / ห้องเรียนใหม่</label>
-                            <input type="text" id="new-room-name" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="พิมพ์ชื่อห้องใหม่ เช่น ม.4/1 หรือ Python-4/1">
+                            <input type="text" id="new-room-name" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="พิมพ์ชื่อห้องใหม่ เช่น ม.4/1">
                         </div>
-                        
                         <div class="col-md-2 d-flex gap-1 justify-content-end">
                             <button class="btn btn-info text-white fw-bold btn-sm flex-grow-1" type="button" onclick="createNewClassRoom()">
                                 <i class="bi bi-folder-plus me-1"></i>เพิ่มห้อง
@@ -156,17 +170,24 @@
                     <h4 class="text-info fw-bold mb-3" id="player-form-title"><i class="bi bi-person-plus-fill me-2"></i>เพิ่มผู้ร่วมสนุกใหม่</h4>
                     <form id="player-form">
                         <input type="hidden" id="edit-player-index" value="">
+                        <input type="hidden" id="delete-current-image-flag" value="false">
                         
                         <div class="row g-3 align-items-end">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label class="form-label text-white-50 small">ชื่อผู้เล่น / นักเรียน</label>
                                 <input type="text" id="player-name" class="form-control bg-dark text-white border-secondary" placeholder="พิมพ์ชื่อเล่นหรือเลขที่..." required>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label text-white-50 small" id="player-img-label">รูปโปรไฟล์ (ถ้ามี)</label>
-                                <input type="file" id="player-img" class="form-control bg-dark text-white border-secondary form-control-sm" accept="image/*">
+                                <div class="d-flex gap-2 align-items-center">
+                                    <div id="edit-preview-zone" class="d-none"></div>
+                                    <input type="file" id="player-img" class="form-control bg-dark text-white border-secondary form-control-sm" accept="image/*">
+                                    <button type="button" id="player-delete-img-btn" class="btn btn-sm btn-danger d-none" onclick="markDeleteImage()">
+                                        <i class="bi bi-image-alt"></i> ลบรูป
+                                    </button>
+                                </div>
                             </div>
-                            <div class="col-md-2 d-flex gap-2">
+                            <div class="col-md-4 d-flex gap-2">
                                 <button class="btn btn-info w-100 fw-bold text-white shadow" type="submit" id="player-submit-btn">เพิ่มชื่อ</button>
                                 <button class="btn btn-secondary fw-bold text-white shadow d-none" type="button" id="player-cancel-edit-btn" onclick="cancelEditPlayer()">ยกเลิก</button>
                             </div>
@@ -184,17 +205,13 @@
 
             <!-- แท็บที่ 3: คลังคำถามคำตอบ -->
             <div class="tab-pane fade" id="pills-quiz" role="tabpanel">
-                
-                <!-- ฟอร์มจัดการรายวิชา -->
                 <div class="card card-custom p-3 mb-4 border border-success shadow-sm">
                     <div class="row align-items-end g-2">
                         <div class="col-md-4">
                             <label class="form-label text-success fw-bold small m-0 mb-1"><i class="bi bi-tags-fill me-1"></i>ชุดวิชาคำถามที่ต้องการจัดการ</label>
                             <select id="current-quiz-subject-select" class="form-select bg-dark text-white border-success fw-bold" onchange="changeQuizSubject(this.value)">
-                                <!-- โหลดไดนามิกจาก Supabase -->
                             </select>
                         </div>
-                        
                         <div class="col-md-5">
                             <div class="row g-2">
                                 <input type="hidden" id="edit-subject-old-key" value="">
@@ -212,7 +229,6 @@
                                 </div>
                             </div>
                         </div>
-                        
                         <div class="col-md-3 d-flex gap-1 justify-content-end">
                             <button id="quiz-sub-submit-btn" class="btn btn-success text-white fw-bold btn-sm flex-grow-1" type="button" onclick="handleQuizSubjectSubmit()">
                                 <i class="bi bi-plus-square me-1"></i>เพิ่มรายวิชา
@@ -236,7 +252,7 @@
                         <input type="hidden" id="edit-quiz-index" value="">
                         
                         <div class="mb-3">
-                            <label class="form-label text-white-50 small">โจทย์คำถามหลัก (ขึ้นบรรทัดใหม่เพื่อพิมพ์โค้ดโปรแกรมได้เลย)</label>
+                            <label class="form-label text-white-50 small">โจทย์คำถามหลัก</label>
                             <textarea id="quiz-q" class="form-control bg-dark text-white border-secondary" rows="4" placeholder="พิมพ์คำถามที่ต้องการถาม..." required></textarea>
                         </div>
                         <div class="row g-3 mb-3">
@@ -266,7 +282,6 @@
                                 <option value="3">ตัวเลือกที่ 4</option>
                             </select>
                         </div>
-                        
                         <div class="d-flex gap-2">
                             <button type="submit" id="quiz-submit-btn" class="btn btn-success w-100 fw-bold shadow"><i class="bi bi-floppy-fill me-2"></i>บันทึกคำถามเข้าคลังของวิชานี้</button>
                             <button type="button" id="quiz-cancel-edit-btn" class="btn btn-secondary fw-bold text-white shadow d-none" onclick="cancelEditQuiz()">ยกเลิก</button>
@@ -282,7 +297,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- 🎨 อัปเดตสคริปต์ควบคุมหลักเป็น wheel_admin.js -->
     <script src="wheel_admin.js"></script>
 </body>
 </html>

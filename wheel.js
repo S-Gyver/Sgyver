@@ -1,12 +1,5 @@
-// ตั้งค่าการเชื่อมต่อ Supabase โปรเจกต์ของคุณ (เติม Client ครบถ้วน)
-const SUPABASE_URL = 'https://igiihteeeprpcxxlldkd.supabase.co'; 
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnaWlodGVlZXBycGN4eGxsZGtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5ODkwNzksImV4cCI6MjEwMDU2NTA3OX0.fr8_ZAYKQ3D-JgEtAWGJnNvKjoUmYxs1T7tjzzsEltw';       
+// 🛠️ ลบการประกาศ SUPABASE_URL และ SUPABASE_KEY ซ้ำซ้อนออกแล้ว (ใช้ร่วมกับตัวบนสุดของ HTML)
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-if (sessionStorage.getItem('gyver_authenticated') !== 'true') {
-    sessionStorage.setItem('gyver_redirect_target', window.location.pathname.split('/').pop());
-    window.location.href = 'login.html';
-}
 
 let players = [];
 let questions = [];
@@ -16,7 +9,7 @@ let startAngle = 0;
 let userSelectedIdx = null;
 let gameStates = {};
 let realtimeChannel = null;
-let idleAnimationId = null; // ตัวแปรคุมลูปสแตนด์บายของแท้
+let idleAnimationId = null;
 
 const mockingEmojis = ["🤣", "🤪", "🤫", "😝", "🤡", "💩", "😎", "🤷‍♂️", "👑", "🥱", "😏"];
 const phrasesRank1 = ["แน่จริงก็ทำแต้มให้ชนะสิ!", "หนาวจังเลยบนนี้ 👑", "ตามมาให้ทันนะน้องๆ", "อันดับหนึ่งมันนอนมาว่ะ", "มองลงไปไม่เจอใครเลย 🥱"];
@@ -57,7 +50,6 @@ function triggerFireworks() {
     fire(0.25, { spread: 26, startVelocity: 55 }); fire(0.2, { spread: 60 }); fire(0.35, { spread: 100, decay: 0.91 }); fire(0.1, { spread: 120, startVelocity: 25 });
 }
 
-// โหลดฐานข้อมูลหลักจาก Supabase Cloud
 async function initData() {
     const { data: statesData } = await supabaseClient.from('game_state').select('*');
     gameStates = {};
@@ -78,8 +70,6 @@ async function initData() {
     updateSessionBadges(currentClassKey, currentQuizSubjectKey);
     drawAllWheels();
     updateLeaderboard();
-    
-    // 💡 เริ่มรันระบบหมุนเอื่อยพร้อมอัปเดตสีตัวชี้แบบ Realtime ทันที
     startIdleSpinning();
 }
 
@@ -90,7 +80,6 @@ function updateSessionBadges(cls, sub) {
     if(subjectEl) subjectEl.innerHTML = `<i class="bi bi-book-half me-1"></i> วิชา: ${sub || '-'}`;
 }
 
-// ลูปสุ่มข้อความบัฟหน้าโพเดียม
 function startMockingRoutine(rankNum, phraseList) {
     function showBubble() {
         const bubble = document.getElementById(`p${rankNum}-bubble`);
@@ -112,7 +101,6 @@ function startMockingRoutine(rankNum, phraseList) {
     setTimeout(showBubble, Math.floor(Math.random() * 4000) + 1000);
 }
 
-// ฟังก์ชันแกนกลางสำหรับบันทึกสเตทเข้าคลาวด์ Supabase
 async function updateCloudState(key, value) {
     gameStates[key] = value;
     await supabaseClient.from('game_state').upsert({ key: key, value: String(value), updated_at: new Date() });
@@ -136,13 +124,10 @@ async function selectRandomQuestion() {
     }
 }
 
-// ฟังก์ชันสั่งการหมุนสดผ่าน Supabase
 function startCloudWheelSpin() {
     if (players.length === 0) return;
     
-    // 💡 หยุดระบบหมุนเอื่อยสแตนด์บายชั่วคราวก่อนกดสุ่มจริงความเร็วสูง
     stopIdleSpinning();
-    
     document.getElementById('spin-btn').disabled = true;
     ['quiz-content', 'post-spin-actions'].forEach(id => document.getElementById(id)?.classList.add('d-none'));
     document.getElementById('show-quiz-btn')?.classList.remove('d-none');
@@ -260,7 +245,6 @@ async function submitUserAnswer() {
     await supabaseClient.from('class_rooms').update({ players: players }).eq('class_key', currentClassKey);
     updateLeaderboard();
     document.getElementById('post-spin-actions')?.classList.remove('d-none');
-    
     if(realtimeChannel) realtimeChannel.send({ type: 'broadcast', event: 'student_answered' });
 }
 
@@ -282,8 +266,6 @@ async function closeWithoutAction() {
     await clearLiveStorage(); 
     winnerModal.hide(); 
     resetTurn();
-    
-    // 💡 เปิดให้วงล้อสแตนด์บายทำงานต่อหลังปิดหน้าต่าง
     startIdleSpinning();
 }
 
@@ -300,7 +282,6 @@ async function deleteCurrentWinner() {
 
 function resetTurn() { if (animationFrameId) cancelAnimationFrame(animationFrameId); initData(); }
 
-// เชื่อมต่อ Supabase Realtime Channels (แก้เติม Client ครบถ้วน)
 function initSupabaseRealtime() {
     realtimeChannel = supabaseClient.channel('game_broadcast_room');
 
@@ -324,7 +305,6 @@ function initSupabaseRealtime() {
     .subscribe();
 }
 
-// 💡 ฟังก์ชันควบคุมลูปสแตนด์บายวาดมุมและเปลี่ยนสีเข็มชี้เรียบลื่นแบบเรียลไทม์
 function startIdleSpinning() {
     if (players.length === 0) return;
     function loop() {
@@ -349,25 +329,38 @@ document.getElementById('show-quiz-btn')?.addEventListener('click', () => { real
 document.getElementById('keep-name-btn')?.addEventListener('click', async () => { await clearLiveStorage(); winnerModal.hide(); resetTurn(); });
 document.getElementById('remove-name-btn')?.addEventListener('click', deleteCurrentWinner);
 
-// ดึงตัวแปรโครงสร้างวงล้อเดิม
 function drawAllWheels() { if(players.length>0) { renderSingleWheel(canvas, ctx, 14, 25); renderSingleWheel(canvasLarge, ctxLarge, 20, 45); updatePointerColors(); } }
 function renderSingleWheel(tc,tx,fs,to) { const sz=tc.width, cx=sz/2, r=cx-10, arc=Math.PI*2/players.length; tx.clearRect(0,0,sz,sz); players.forEach((p,i)=>{ const a=startAngle+i*arc; tx.save(); tx.beginPath(); tx.moveTo(cx,cx); tx.arc(cx,cx,r,a,a+arc); const g=tx.createRadialGradient(cx,cx,10,cx,cx,r); const hue=(i*360/players.length); g.addColorStop(0,'#1a1c29'); g.addColorStop(0.6,`hsl(${hue},85%,50%)`); g.addColorStop(1,`hsl(${hue},90%,35%)`); tx.fillStyle=g; tx.fill(); tx.restore(); tx.save(); tx.fillStyle='#fff'; tx.font=`bold ${fs}px sans-serif`; tx.translate(cx,cx); tx.rotate(a+arc/2); tx.textAlign='right'; tx.fillText(p.name,cx-to,fs/3); tx.restore(); }); }
 
-// 💡 แก้ไขให้เปลี่ยนสีทั้งตัวชี้วงเล็กและวงใหญ่ใน Popup พร้อมกัน
 function updatePointerColors() { 
     if(players.length===0) return; 
     const arc=Math.PI*2/players.length, cIdx=Math.floor((Math.PI*1.5-((startAngle%(Math.PI*2)+Math.PI*2)%(Math.PI*2))+Math.PI*2)%(Math.PI*2)/arc)%players.length; 
     const targetColor = `hsl(${(cIdx*360/players.length)},75%,60%)`;
-    
     const pointerSmall = document.getElementById('pointer');
     if (pointerSmall) pointerSmall.style.setProperty('--pointer-color', targetColor);
-    
     const pointerLarge = document.getElementById('pointer-large');
     if (pointerLarge) pointerLarge.style.setProperty('--pointer-color', targetColor);
 }
 
 function updateLeaderboard() { const sorted=[...players].sort((a,b)=>b.score-a.score); updatePodiumDisplay(sorted); document.getElementById('leaderboard-body').innerHTML=sorted.map((p,idx)=>`<tr><td class="fw-bold text-center">${idx===0?'🥇':idx===1?'🥈':idx===2?'🥉':idx+1}</td><td>${p.image?`<img src="${p.image}" class="table-avatar">` : '<div class="table-avatar"><i class="bi bi-person"></i></div>'}<strong>${p.name}</strong></td><td class="text-center">${p.spunCount||0} ครั้ง</td><td class="text-center fw-bold text-success">${p.score}</td></tr>`).join(''); }
-function updatePodiumDisplay(sorted) { for(let i=1;i<=3;i++) { const p=sorted[i-1], av=document.getElementById(`p${i}-avatar`), nm=document.getElementById(`p${i}-name`), bb=document.getElementById(`p${i}-bubble`); if(p) { if(nm)nm.innerText=p.name; if(bb)bb.setAttribute('data-active','true'); av.innerHTML=p.image?`<img src="${p.image}" style="width:100%; height:100%; object-fit:cover; border-radius:9px;">` : `<i class="bi bi-person-fill text-secondary"></i>`; } else { if(nm)nm.innerText="-"; if(bb){bb.setAttribute('data-active','false'); bb.classList.remove('show-active');} av.innerHTML=`<i class="bi bi-person-fill text-muted"></i>`; } } }
+
+function updatePodiumDisplay(sorted) { 
+    for(let i=1; i<=3; i++) { 
+        const p = sorted[i-1]; 
+        const av = document.getElementById(`p${i}-avatar`); 
+        const nm = document.getElementById(`p${i}-name`); 
+        const bb = document.getElementById(`p${i}-bubble`); 
+        if(p && p.score > 0) { 
+            if(nm) nm.innerText = p.name; 
+            if(bb) bb.setAttribute('data-active', 'true'); 
+            av.innerHTML = p.image ? `<img src="${p.image}" style="width:100%; height:100%; object-fit:cover; border-radius:9px;">` : `<i class="bi bi-person-fill text-secondary"></i>`; 
+        } else { 
+            if(nm) nm.innerText = "-"; 
+            if(bb) { bb.setAttribute('data-active', 'false'); bb.classList.remove('show-active'); } 
+            av.innerHTML = `<i class="bi bi-person-fill text-muted"></i>`; 
+        } 
+    } 
+}
 
 window.onload = async () => {
     await initData();
