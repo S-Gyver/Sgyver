@@ -25,6 +25,12 @@ function showClickStats() {
     }
 }
 
+// 🚪 ฟังก์ชันล็อกเอาต์ออกจากระบบส่วนกลาง
+function logoutMainSystem() {
+    sessionStorage.removeItem('gyver_authenticated');
+    window.location.href = 'login.html';
+}
+
 window.onload = () => {
     updateTime();
     // สั่งรีเฟรชเวลาทุกๆ 1 นาทีให้เป็นปัจจุบันเสมอ
