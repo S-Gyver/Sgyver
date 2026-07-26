@@ -25,7 +25,7 @@ function showClickStats() {
     }
 }
 
-// 🚪 ฟังก์ชันล็อกเอาต์ออกจากระบบส่วนกลาง
+// 🚪 ฟังก์ชันล็อกเอาต์ออกจากระบบส่วนกลางและดีดกลับหน้า Login
 function logoutMainSystem() {
     sessionStorage.removeItem('gyver_authenticated');
     window.location.href = 'login.html';
