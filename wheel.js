@@ -1,4 +1,4 @@
-// 🛠️ ลบการประกาศ SUPABASE_URL และ SUPABASE_KEY ซ้ำซ้อนออกแล้ว (ใช้ร่วมกับตัวบนสุดของ HTML)
+// 🛠️ ใช้งานร่วมกับตัวแปร SUPABASE_URL และ SUPABASE_KEY บนหัว HTML ของคุณ
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let players = [];
@@ -71,6 +71,12 @@ async function initData() {
     drawAllWheels();
     updateLeaderboard();
     startIdleSpinning();
+
+    const syncChoice = (gameStates['selected_choice_idx'] && gameStates['selected_choice_idx'] !== 'null') ? parseInt(gameStates['selected_choice_idx']) : null;
+    if (syncChoice !== null && gameStates['quiz_submitted'] !== 'true') {
+        userSelectedIdx = syncChoice;
+        highlightSelection(syncChoice);
+    }
 }
 
 function updateSessionBadges(cls, sub) {
@@ -178,8 +184,30 @@ function startCloudWheelSpin() {
     animationFrameId = requestAnimationFrame(animateWheel);
 }
 
-function renderActiveQuizUI() {
-    if (!currentQuestion) return;
+async function renderActiveQuizUI() {
+    if (!currentQuestion) {
+        const { data: activeQuizState } = await supabaseClient.from('game_state').select('*').eq('key', 'current_active_quiz').single();
+        if (activeQuizState && activeQuizState.value && activeQuizState.value !== 'null') {
+            currentQuestion = JSON.parse(activeQuizState.value);
+        }
+    }
+
+    if (!currentQuestion) {
+        if (questions && questions.length > 0) {
+            const rawQuestion = questions[Math.floor(Math.random() * questions.length)];
+            const mappedChoices = rawQuestion.choices.map((choice, index) => ({ text: choice, isCorrect: index === rawQuestion.correct }));
+            for (let i = mappedChoices.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [mappedChoices[i], mappedChoices[j]] = [mappedChoices[j], mappedChoices[i]];
+            }
+            currentQuestion = { q: rawQuestion.q, choices: mappedChoices.map(c => c.text), correct: mappedChoices.findIndex(c => c.isCorrect) };
+            await updateCloudState('current_active_quiz', JSON.stringify(currentQuestion));
+        } else {
+            alert('🚨 ไม่พบคำถามในคลัง! กรุณาเพิ่มโจทย์คำถามในห้องเรียนก่อนครับ');
+            return;
+        }
+    }
+
     updateCloudState('current_step', 'quiz_visible');
     document.getElementById('show-quiz-btn')?.classList.add('d-none');
     document.getElementById('quiz-content')?.classList.remove('d-none');
@@ -206,6 +234,11 @@ async function selectChoice(index) {
     userSelectedIdx = index;
     await updateCloudState('selected_choice_idx', index);
     highlightSelection(index);
+    
+    // 🌟 ส่งสัญญาณ Broadcast สวนกลับไปหาหน้าจอ Admin ให้เปลี่ยนปุ่มไฮไลต์ตามด้วย
+    if (realtimeChannel) {
+        realtimeChannel.send({ type: 'broadcast', event: 'admin_sync_choice', payload: { index: index } });
+    }
 }
 
 function highlightSelection(selectedIndex) {
@@ -217,6 +250,14 @@ function highlightSelection(selectedIndex) {
 }
 
 async function submitUserAnswer() {
+    if (userSelectedIdx === null) {
+        const { data: syncChoiceState } = await supabaseClient.from('game_state').select('*').eq('key', 'selected_choice_idx').single();
+        if (syncChoiceState && syncChoiceState.value && syncChoiceState.value !== 'null') {
+            userSelectedIdx = parseInt(syncChoiceState.value);
+            highlightSelection(userSelectedIdx);
+        }
+    }
+
     if(userSelectedIdx === null) return alert('กรุณาเลือกคำตอบก่อนครับ!');
     await updateCloudState('quiz_submitted', 'true');
     await updateCloudState('current_step', 'answered');
@@ -230,12 +271,12 @@ async function submitUserAnswer() {
         const emojiZone = document.getElementById('modal-winner-emoji-zone');
 
         if (userSelectedIdx === currentQuestion.correct) {
-            options[userSelectedIdx].className = "btn btn-success text-start p-3 fw-bold fs-4 text-white shadow d-flex align-items-center";
+            if(options[userSelectedIdx]) options[userSelectedIdx].className = "btn btn-success text-start p-3 fw-bold fs-4 text-white shadow d-flex align-items-center";
             players = players.map(p => p.name === currentWinner ? {...p, score: p.score + 1} : p);
             triggerFireworks();
             if(emojiZone) emojiZone.innerHTML = `<div style="font-size: 5rem; animation: pulse 0.5s infinite alternate;">${winEmojis[Math.floor(Math.random() * winEmojis.length)]}</div><div class="fw-bold text-success text-center mt-2 fs-3">${winPhrases[Math.floor(Math.random() * winPhrases.length)]}</div>`;
         } else {
-            options[userSelectedIdx].className = "btn btn-danger text-start p-3 fw-bold fs-4 text-white shadow d-flex align-items-center";
+            if(options[userSelectedIdx]) options[userSelectedIdx].className = "btn btn-danger text-start p-3 fw-bold fs-4 text-white shadow d-flex align-items-center";
             if(options[currentQuestion.correct]) options[currentQuestion.correct].className = "btn btn-success text-start p-3 fw-bold fs-4 text-white shadow d-flex align-items-center";
             if(emojiZone) emojiZone.innerHTML = `<div style="font-size: 5rem; animation: shakeEmoji 0.3s infinite alternate;">${loseEmojis[Math.floor(Math.random() * loseEmojis.length)]}</div><div class="fw-bold text-danger text-center mt-2 fs-3">${losePhrases[Math.floor(Math.random() * losePhrases.length)]}</div>`;
         }
@@ -287,11 +328,20 @@ function initSupabaseRealtime() {
 
     realtimeChannel
     .on('broadcast', { event: 'spin' }, () => { selectRandomQuestion(); startCloudWheelSpin(); })
-    .on('broadcast', { event: 'quiz' }, () => {
-        const activeQuiz = gameStates['current_active_quiz'] && gameStates['current_active_quiz'] !== 'null' ? JSON.parse(gameStates['current_active_quiz']) : null;
-        if(activeQuiz) { currentQuestion = activeQuiz; renderActiveQuizUI(); }
+    .on('broadcast', { event: 'quiz' }, async () => {
+        const { data: activeQuizState } = await supabaseClient.from('game_state').select('*').eq('key', 'current_active_quiz').single();
+        if (activeQuizState && activeQuizState.value && activeQuizState.value !== 'null') {
+            currentQuestion = JSON.parse(activeQuizState.value);
+        }
+        if (currentQuestion) {
+            renderActiveQuizUI();
+        }
     })
-    .on('broadcast', { event: 'select_choice' }, (payload) => { selectChoice(payload.index); })
+    .on('broadcast', { event: 'select_choice' }, (payload) => { 
+        // 🌟 แก้ไขจุดสำคัญ: บังคับเปลี่ยนตัวแปรของหน้า Wheel และเปลี่ยนสไตล์คลาส CSS เป็นสีน้ำเงินตามที่แอดมินส่งสัญญาณมา
+        userSelectedIdx = payload.index;
+        highlightSelection(payload.index); 
+    })
     .on('broadcast', { event: 'confirm' }, () => { submitUserAnswer(); })
     .on('broadcast', { event: 'skip' }, () => { closeWithoutAction(); })
     .on('broadcast', { event: 'reset' }, () => { closeWithoutAction(); })

@@ -1,5 +1,4 @@
-// 🛠️ ลบการประกาศ SUPABASE_URL และ SUPABASE_KEY ซ้ำซ้อนออกแล้ว (ใช้ร่วมกับตัวบนสุดของ HTML)
-// โดยสร้างอินสแตนซ์ client ขึ้นใหม่สำหรับทำงานในไฟล์นี้โดยไม่ให้ชื่อตัวแปรชนกัน
+// 🛠️ ใช้งานร่วมกับตัวแปร SUPABASE_URL และ SUPABASE_KEY บนหัว HTML ของคุณ
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let classRooms = {}; 
@@ -211,10 +210,10 @@ async function saveQuizData() {
     await supabaseClient.from('quiz_subjects').upsert({ subject_key: currentQuizSubjectKey, questions: questions });
 }
 
-async function triggerRemoteAction(eventName) {
+async function triggerRemoteAction(eventName, payload = {}) {
     await updateGameState(`remote_${eventName}_trigger`, Date.now().toString());
     if(realtimeChannel) {
-        realtimeChannel.send({ type: 'broadcast', event: eventName, payload: { timestamp: Date.now() } });
+        realtimeChannel.send({ type: 'broadcast', event: eventName, payload: payload });
     }
 }
 
@@ -233,9 +232,34 @@ document.getElementById('remote-spin-btn').addEventListener('click', async funct
     triggerRemoteAction('spin');
 });
 
-document.getElementById('remote-quiz-btn').addEventListener('click', function() {
-    if(questions.length === 0) return alert('คลังคำถามวิชานี้ว่างอยู่ครับ!');
+document.getElementById('remote-quiz-btn').addEventListener('click', async function() {
+    if (questions.length === 0) return alert('คลังคำถามวิชานี้ว่างอยู่ครับ!');
+    
+    highlightAdminChoice(null);
+    document.getElementById('remote-confirm-btn').disabled = true;
+
+    const rawQuestion = questions[Math.floor(Math.random() * questions.length)];
+    const mappedChoices = rawQuestion.choices.map((choice, index) => ({ text: choice, isCorrect: index === rawQuestion.correct }));
+    
+    for (let i = mappedChoices.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [mappedChoices[i], mappedChoices[j]] = [mappedChoices[j], mappedChoices[i]];
+    }
+    
+    const quizPayload = { 
+        q: rawQuestion.q, 
+        choices: mappedChoices.map(c => c.text), 
+        correct: mappedChoices.findIndex(c => c.isCorrect) 
+    };
+
+    await updateGameState('current_active_quiz', JSON.stringify(quizPayload));
+    await updateGameState('selected_choice_idx', 'null');
+    await updateGameState('quiz_submitted', 'false');
+    await updateGameState('current_step', 'quiz_visible');
+
     triggerRemoteAction('quiz');
+    
+    setTimeout(() => { loadData(); }, 100);
 });
 
 function remoteConfirmAnswer() { triggerRemoteAction('confirm'); }
@@ -245,29 +269,43 @@ function remoteResetWindow() { if(confirm('ต้องการบังคั�
 async function remoteSelectChoice(index) {
     if(gameStates['quiz_submitted'] === 'true') return;
     await updateGameState('selected_choice_idx', index);
-    if(realtimeChannel) realtimeChannel.send({ type: 'broadcast', event: 'select_choice', payload: { index: index } });
+    triggerRemoteAction('select_choice', { index: index });
     highlightAdminChoice(index);
 }
 
+// 🌟 ปรับปรุง: ระบบไฮไลต์คำตอบเฉลยเป็นกรอบสีทองตั้งแต่เริ่ม พร้อมทำสีเขียวเมื่อกดยืนยันสำเร็จ
 function highlightAdminChoice(selectedIndex) {
     const activeQuiz = gameStates['current_active_quiz'] && gameStates['current_active_quiz'] !== 'null' ? JSON.parse(gameStates['current_active_quiz']) : null;
     const correctIdx = activeQuiz ? activeQuiz.correct : null;
+    const isSubmitted = gameStates['quiz_submitted'] === 'true';
 
     for(let i = 0; i <= 3; i++) {
         const btn = document.getElementById(`admin-choice-${i}`);
         if(btn) {
+            // คืนค่ารูปแบบสไตล์เริ่มต้นก่อน
             btn.className = "btn-choice-admin";
             btn.style.border = "none";
             btn.style.borderLeft = "4px solid #3498db";
 
-            if(i === selectedIndex) btn.classList.add('active-selected');
-            if(activeQuiz && i === correctIdx) {
+            // 1. ไฮไลต์ปุ่มที่ถูกเลือก (สีฟ้า)
+            if(selectedIndex !== null && i === selectedIndex) {
+                btn.classList.add('active-selected');
+            }
+
+            // 2. แอบใส่กรอบทองเฉลยให้แอดมินเห็นตั้งแต่เริ่ม (หากยังไม่ได้กดยืนยันคำตอบ)
+            if(activeQuiz && i === correctIdx && !isSubmitted) {
+                btn.style.border = "2px dashed #f1c40f"; // ทำเส้นกรอบทองกระพริบตาแอดมิน
+                btn.style.borderLeft = "6px solid #f1c40f";
+            }
+
+            // 3. เมื่อระบบกดยืนยันส่งแต้มคะแนนเรียบร้อยแล้ว ให้เปลี่ยนชอยส์ข้อถูกเป็นสีเขียวทางการ
+            if(activeQuiz && i === correctIdx && isSubmitted) {
                 btn.style.border = "3px solid #2ecc71";
                 btn.style.borderLeft = "6px solid #2ecc71";
             }
         }
     }
-    document.getElementById('remote-confirm-btn').disabled = (selectedIndex === null);
+    document.getElementById('remote-confirm-btn').disabled = (selectedIndex === null || isSubmitted);
 }
 
 function formatAdminQuizPreview(text) {
@@ -277,7 +315,7 @@ function formatAdminQuizPreview(text) {
 
 function syncLiveMonitorUI() {
     const currentWinnerName = gameStates['current_winner_name'] || "";
-    const selectedChoice = gameStates['selected_choice_idx'] !== 'null' ? parseInt(gameStates['selected_choice_idx']) : null;
+    const selectedChoice = (gameStates['selected_choice_idx'] && gameStates['selected_choice_idx'] !== 'null') ? parseInt(gameStates['selected_choice_idx']) : null;
     const isSubmitted = gameStates['quiz_submitted'] === 'true';
     const currentStep = gameStates['current_step'] || 'ready';
     
@@ -321,7 +359,10 @@ function syncLiveMonitorUI() {
     if(activeQuiz) {
         document.getElementById('live-quiz-text').innerHTML = formatAdminQuizPreview(activeQuiz.q);
         activeQuiz.choices.forEach((choice, idx) => {
-            document.getElementById(`admin-choice-${idx}`).innerText = `${idx + 1}. ${choice}`;
+            const btn = document.getElementById(`admin-choice-${idx}`);
+            // 🌟 เพิ่มข้อความกำกับท้ายชอยส์ข้อที่เป็นเฉลยคำตอบที่ถูกต้องให้เห็นเด่นชัด
+            const hintText = (idx === activeQuiz.correct) ? "  " : "";
+            if(btn) btn.innerText = `${idx + 1}. ${choice}${hintText}`;
         });
         highlightAdminChoice(selectedChoice);
     } else {
@@ -680,7 +721,11 @@ function initSupabaseRealtime() {
     .subscribe();
 
     realtimeChannel = supabaseClient.channel('game_broadcast_room');
-    realtimeChannel.on('broadcast', { event: 'student_answered' }, () => {
+    
+    realtimeChannel.on('broadcast', { event: 'admin_sync_choice' }, (payload) => {
+        highlightAdminChoice(payload.index);
+    })
+    .on('broadcast', { event: 'student_answered' }, () => {
         loadData();
     }).subscribe();
 }
