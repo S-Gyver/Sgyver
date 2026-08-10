@@ -362,3 +362,135 @@
 .menu-card.d-flex.flex-row .menu-icon-wrapper {
     flex-shrink: 0; /* ป้องกันไม่ให้ไอคอนวงกลมโดนบีบรูปทรง */
 }
+
+/* ======================================================== */
+/* 🤍 ปรับเปลี่ยนธีมหลักเป็น มินิมอล โมเดิร์น (Minimal Light Mode) */
+/* ======================================================== */
+body {
+    background-color: #f6f8fb !important; /* สีเทาอมฟ้าอ่อนๆ สบายตามาก */
+    color: #2d3748 !important; /* ตัวอักษรสีเทาเข้ม อ่านง่ายไม่ทื่อ */
+    font-family: 'Kanit', 'Segoe UI', sans-serif !important;
+}
+
+/* หัวข้อหลักด้านบน */
+h1.text-primary {
+    color: #1a202c !important; /* สีดำกราไฟต์หรูๆ */
+    font-weight: 800 !important;
+    letter-spacing: 0.5px;
+}
+
+/* ป้ายบอกห้องเรียนและวิชา */
+#current-game-class, #current-game-subject {
+    background: #ffffff !important;
+    color: #4a5568 !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* ======================================================== */
+/* 📦 ปรับปรุงตู้คอนเทนเนอร์ฝั่งขวา (ทำเนียบแชมป์ + ตารางคะแนน) */
+/* ======================================================== */
+.score-zone-container {
+    background: #ffffff !important; /* พื้นหลังขาวสะอาด */
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 24px !important; /* โค้งมนละมุนขึ้น */
+    padding: 30px !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05) !important;
+}
+
+.score-zone-cell h3 {
+    color: #1a202c !important;
+    font-weight: 700 !important;
+    font-size: 1.35rem;
+    border-bottom: 2px solid #edf2f7;
+    padding-bottom: 12px;
+    margin-bottom: 24px !important;
+}
+
+/* โซนโพเดียมทำเนียบแชมป์ */
+.podium-container {
+    background: #f7fafc !important; /* พื้นหลังแท่นสลัวลงไปนิดนึงให้ดูมีมิติ */
+    border: 1px solid #edf2f7 !important; /* เอาเส้นประออกถาวร */
+    border-radius: 20px !important;
+    box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.02) !important;
+}
+
+.podium-name {
+    color: #4a5568 !important;
+    font-weight: 600 !important;
+}
+
+.podium-avatar {
+    border: 4px solid #ffffff !important; /* กรอบขาวหนาๆ สไตล์โพลารอยด์ */
+    background: #edf2f7 !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+    border-radius: 18px !important; /* โค้งมนเข้ากับรูปภาพรูปโปรไฟล์ */
+}
+
+/* ======================================================== */
+/* 📊 ปรับแต่งตารางคะแนนฝั่งขวา (Leaderboard) */
+/* ======================================================== */
+.narrow-table {
+    background: #ffffff !important;
+    border: 1px solid #edf2f7 !important;
+    border-radius: 16px !important;
+    overflow: hidden;
+}
+
+.table {
+    --bs-table-bg: #ffffff !important;
+    color: #2d3748 !important;
+}
+
+/* หัวข้อตารางคะแนน */
+.table-dark {
+    --bs-table-bg: #f7fafc !important; /* หัวตารางเปลี่ยนเป็นสีเทาอ่อนหรูๆ */
+}
+.table-dark th {
+    color: #718096 !important;
+    font-weight: 600 !important;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #edf2f7 !important;
+}
+
+.table-hover tbody tr:hover {
+    background-color: #f7fafc !important; /* ไฮไลต์แถวตอนเมาส์ชี้เบาๆ */
+}
+
+.table td {
+    border-bottom: 1px solid #edf2f7 !important;
+    color: #2d3748 !important;
+    padding: 12px 16px !important;
+}
+
+.table-avatar {
+    border: 2px solid #e2e8f0 !important;
+    border-radius: 8px !important;
+}
+
+/* ======================================================== */
+/* 🕹️ ปรับแต่งปุ่มหมุนวงล้อสุ่มชื่อ (Spin Button) */
+/* ======================================================== */
+#spin-btn {
+    background: #1a202c !important; /* สีดำสไตล์มินิมอล มินิใจ */
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 14px !important;
+    padding: 14px 45px !important;
+    font-weight: 600 !important;
+    font-size: 1.15rem !important;
+    box-shadow: 0 4px 14px 0 rgba(26, 32, 44, 0.2) !important;
+    transition: all 0.2s ease-in-out !important;
+}
+
+#spin-btn:hover {
+    background: #2d3748 !important; /* สว่างขึ้นนิดนึงเวลาเมาส์ชี้ */
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px 0 rgba(26, 32, 44, 0.3) !important;
+}
+
+#spin-btn:active {
+    transform: translateY(0);
+}
