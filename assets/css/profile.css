@@ -1,0 +1,24 @@
+/* profile.css */
+
+.sidebar-menu .nav-link {
+    color: #4a5568;
+    font-weight: 500;
+    padding: 12px 18px;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+}
+
+.sidebar-menu .nav-link:hover {
+    background-color: #f1f5f9;
+    color: #0d6efd;
+}
+
+.sidebar-menu .nav-link.active {
+    background-color: #0d6efd !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.25);
+}
+
+.border-dashed {
+    border-style: dashed !important;
+}

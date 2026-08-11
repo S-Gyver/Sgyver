@@ -1,0 +1,43 @@
+body {
+    background-color: #1e1e2f;
+    color: #f8f9fa;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.auth-card {
+    background-color: #27293d;
+    border: 1px solid #344675;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+.nav-pills .nav-link {
+    color: #a9afbb;
+    font-weight: bold;
+    border-radius: 8px;
+}
+.nav-pills .nav-link.active {
+    background-color: #e14eca !important;
+    color: white !important;
+    box-shadow: 0 4px 10px rgba(225, 78, 202, 0.4);
+}
+.form-control {
+    background-color: #1d1e2f !important;
+    border: 1px solid #344675 !important;
+    color: white !important;
+}
+.form-control:focus {
+    border-color: #e14eca !important;
+    box-shadow: 0 0 8px rgba(225, 78, 202, 0.5) !important;
+}
+.form-floating label {
+    color: #a9afbb;
+}
+.form-floating > .form-control:focus ~ label,
+.form-floating > .form-control:not(:placeholder-shown) ~ label {
+    color: #e14eca !important;
+}

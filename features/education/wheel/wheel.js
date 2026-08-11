@@ -1,6 +1,4 @@
-// 🛠️ ใช้งานร่วมกับตัวแปร SUPABASE_URL และ SUPABASE_KEY บนหัว HTML ของคุณ
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
+// ดึง instance window.supabaseClient จากไฟล์ assets/js/supabaseClient.js
 let players = [];
 let questions = [];
 let currentWinner = "";
@@ -10,39 +8,30 @@ let userSelectedIdx = null;
 let gameStates = {};
 let realtimeChannel = null;
 let idleAnimationId = null;
+let currentUserId = null; // 🔑 ตัวแปรเก็บ user_id ของผู้ใช้ปัจจุบัน
 
-/// 🔊 1. ประกาศตัวแปรระบบเสียง เรียกจากโฟลเดอร์ในเครื่อง (ปรับเป็น .mp3 เรียบร้อย)
-const soundTick = new Audio('sounds/spinning-wheel.mp3');
-const soundQuizOpen = new Audio('sounds/wuued-luuen.mp3'); 
-const soundCorrect = new Audio('sounds/fireworks.mp3');
-const soundWrong = new Audio('sounds/wrong.mp3');
+/// 🔊 ปรับปรุง Path อ้างอิงไฟล์เสียงถอยกลับไปที่ assets/sounds/
+const soundTick = new Audio('../../../assets/sounds/spinning-wheel.mp3');
+const soundQuizOpen = new Audio('../../../assets/sounds/wuued-luuen.mp3'); 
+const soundCorrect = new Audio('../../../assets/sounds/fireworks.mp3');
+const soundWrong = new Audio('../../../assets/sounds/wrong.mp3');
 
-// ตั้งค่าระดับความดัง (0.0 ถึง 1.0) 
 soundTick.volume = 0.4;
 soundQuizOpen.volume = 0.5;
 soundCorrect.volume = 0.4;
 soundWrong.volume = 0.6;
 
-// 🔒 ระบบสร้างสิทธิ์ให้เบราว์เซอร์อนุมัติการเล่นเสียง (Audio Autoplay Unlocker)
 function unlockAudioContext() {
     const unlockSignals = ['click', 'touchstart', 'keydown'];
-    
-    
     const doUnlock = () => {
-        // สั่งให้เสียงทำงานเงียบๆ 1 ครั้ง เพื่อทลายกำแพงระบบความปลอดภัยของเบราว์เซอร์
         soundTick.play().then(() => {
             soundTick.pause();
             soundTick.currentTime = 0;
         }).catch(e => console.log("Audio contexts pending..."));
-
-        // เมื่อปลดล็อกสำเร็จแล้ว ให้ลบ Event Listener ทิ้งทันที ไม่ให้รันซ้ำซ้อน
         unlockSignals.forEach(signal => window.removeEventListener(signal, doUnlock));
     };
-
     unlockSignals.forEach(signal => window.addEventListener(signal, doUnlock));
 }
-
-// เรียกใช้งานระบบปลดล็อกทันทีที่สคริปต์ทำงาน
 unlockAudioContext();
 
 const mockingEmojis = ["🤣", "🤪", "🤫", "😝", "🤡", "💩", "😎", "🤷‍♂️", "👑", "🥱", "😏"];
@@ -56,12 +45,19 @@ const loseEmojis = ["🤣", "🤡", "😜", "🤫", "💩", "🤦‍♂️", "�
 const losePhrases = ["อ่อนหัดไปนะน้องชาย", "ดวงดีแต่ไร้สมอง 🤪", "ตอบอะไรเนี่ยยยย!", "เข้าคลังคำถามด่วนเลย", "มั่วจัด มั่วจนต้องร้องขอชีวิต"];
 
 const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
+const ctx = canvas ? canvas.getContext('2d') : null;
 const canvasLarge = document.getElementById('canvas-large');
-const ctxLarge = canvasLarge.getContext('2d');
+const ctxLarge = canvasLarge ? canvasLarge.getContext('2d') : null;
 
-const wheelModal = new bootstrap.Modal(document.getElementById('wheelModal'));
-const winnerModal = new bootstrap.Modal(document.getElementById('winnerModal'));
+let wheelModal = null;
+let winnerModal = null;
+
+const wheelModalEl = document.getElementById('wheelModal');
+if (wheelModalEl) wheelModal = new bootstrap.Modal(wheelModalEl);
+
+const winnerModalEl = document.getElementById('winnerModal');
+if (winnerModalEl) winnerModal = new bootstrap.Modal(winnerModalEl);
+
 let animationFrameId = null;
 
 function formatQuestionText(rawText) {
@@ -79,13 +75,32 @@ function formatChoiceText(choiceText, label) {
 }
 
 function triggerFireworks() {
-    const count = 200;
-    const fire = (ratio, opts) => confetti(Object.assign({}, { origin: { y: 0.6 } }, opts, { particleCount: Math.floor(count * ratio) }));
-    fire(0.25, { spread: 26, startVelocity: 55 }); fire(0.2, { spread: 60 }); fire(0.35, { spread: 100, decay: 0.91 }); fire(0.1, { spread: 120, startVelocity: 25 });
+    if (typeof confetti !== 'undefined') {
+        const count = 200;
+        const fire = (ratio, opts) => confetti(Object.assign({}, { origin: { y: 0.6 } }, opts, { particleCount: Math.floor(count * ratio) }));
+        fire(0.25, { spread: 26, startVelocity: 55 }); fire(0.2, { spread: 60 }); fire(0.35, { spread: 100, decay: 0.91 }); fire(0.1, { spread: 120, startVelocity: 25 });
+    }
+}
+
+// 🔑 ฟังก์ชันดึง User ID ที่ล็อกอินอยู่
+async function getCurrentUser() {
+    const { data: { session } } = await window.supabaseClient.auth.getSession();
+    if (session && session.user) {
+        currentUserId = session.user.id;
+    }
+    return currentUserId;
 }
 
 async function initData() {
-    const { data: statesData } = await supabaseClient.from('game_state').select('*');
+    await getCurrentUser();
+    if (!currentUserId) return;
+
+    // 🔒 กรองเฉพาะ game_state ของผู้ใช้ปัจจุบัน
+    const { data: statesData } = await window.supabaseClient
+        .from('game_state')
+        .select('*')
+        .eq('user_id', currentUserId);
+
     gameStates = {};
     if (statesData) statesData.forEach(s => { gameStates[s.key] = s.value; });
 
@@ -93,11 +108,23 @@ async function initData() {
     const currentQuizSubjectKey = gameStates['current_quiz_subject_key'] || "";
 
     if (currentClassKey) {
-        const { data: cData } = await supabaseClient.from('class_rooms').select('players').eq('class_key', currentClassKey).single();
+        // 🔒 กรองเฉพาะ class_rooms ของผู้ใช้ปัจจุบัน
+        const { data: cData } = await window.supabaseClient
+            .from('class_rooms')
+            .select('players')
+            .eq('class_key', currentClassKey)
+            .eq('user_id', currentUserId)
+            .maybeSingle();
         players = cData ? cData.players : [];
     }
     if (currentQuizSubjectKey) {
-        const { data: sData } = await supabaseClient.from('quiz_subjects').select('questions').eq('subject_key', currentQuizSubjectKey).single();
+        // 🔒 กรองเฉพาะ quiz_subjects ของผู้ใช้ปัจจุบัน
+        const { data: sData } = await window.supabaseClient
+            .from('quiz_subjects')
+            .select('questions')
+            .eq('subject_key', currentQuizSubjectKey)
+            .eq('user_id', currentUserId)
+            .maybeSingle();
         questions = sData ? sData.questions : [];
     }
 
@@ -141,9 +168,18 @@ function startMockingRoutine(rankNum, phraseList) {
     setTimeout(showBubble, Math.floor(Math.random() * 4000) + 1000);
 }
 
+// 🔒 แนบ user_id ตอนบันทึก game_state
 async function updateCloudState(key, value) {
+    if (!currentUserId) await getCurrentUser();
     gameStates[key] = value;
-    await supabaseClient.from('game_state').upsert({ key: key, value: String(value), updated_at: new Date() });
+    await window.supabaseClient
+        .from('game_state')
+        .upsert({ 
+            key: key, 
+            value: String(value), 
+            user_id: currentUserId,
+            updated_at: new Date() 
+        }, { onConflict: 'key,user_id' });
 }
 
 async function selectRandomQuestion() {
@@ -160,18 +196,22 @@ async function selectRandomQuestion() {
         await updateCloudState('current_active_quiz', JSON.stringify(currentQuestion));
     } else {
         currentQuestion = null;
-        await supabaseClient.from('game_state').delete().eq('key', 'current_active_quiz');
+        if (currentUserId) {
+            await window.supabaseClient.from('game_state').delete().eq('key', 'current_active_quiz').eq('user_id', currentUserId);
+        }
     }
 }
 
-
-
 async function renderActiveQuizUI() {
-    // 🌟 แก้ไข: ล้างคำถามเก่าในหน่วยความจำทิ้งก่อน เพื่อบังคับให้สุ่มข้อใหม่ทุกครั้งที่มีการกดปุ่ม
     currentQuestion = null;
 
-    if (!currentQuestion) {
-        const { data: activeQuizState } = await supabaseClient.from('game_state').select('*').eq('key', 'current_active_quiz').single();
+    if (!currentQuestion && currentUserId) {
+        const { data: activeQuizState } = await window.supabaseClient
+            .from('game_state')
+            .select('*')
+            .eq('key', 'current_active_quiz')
+            .eq('user_id', currentUserId)
+            .maybeSingle();
         if (activeQuizState && activeQuizState.value && activeQuizState.value !== 'null') {
             currentQuestion = JSON.parse(activeQuizState.value);
         }
@@ -193,7 +233,6 @@ async function renderActiveQuizUI() {
         }
     }
 
-    // 🔊 3. เล่นเสียงเปิดตัวโจทย์คำถาม
     soundQuizOpen.currentTime = 0;
     soundQuizOpen.play().catch(e => { });
 
@@ -238,8 +277,13 @@ function highlightSelection(selectedIndex) {
 }
 
 async function submitUserAnswer() {
-    if (userSelectedIdx === null) {
-        const { data: syncChoiceState } = await supabaseClient.from('game_state').select('*').eq('key', 'selected_choice_idx').single();
+    if (userSelectedIdx === null && currentUserId) {
+        const { data: syncChoiceState } = await window.supabaseClient
+            .from('game_state')
+            .select('*')
+            .eq('key', 'selected_choice_idx')
+            .eq('user_id', currentUserId)
+            .maybeSingle();
         if (syncChoiceState && syncChoiceState.value && syncChoiceState.value !== 'null') {
             userSelectedIdx = parseInt(syncChoiceState.value);
             highlightSelection(userSelectedIdx);
@@ -259,7 +303,6 @@ async function submitUserAnswer() {
         const emojiZone = document.getElementById('modal-winner-emoji-zone');
 
         if (userSelectedIdx === currentQuestion.correct) {
-            // 🔊 4. เล่นเสียงความสำเร็จเมื่อตอบถูก
             soundCorrect.currentTime = 0;
             soundCorrect.play().catch(e => { });
 
@@ -268,7 +311,6 @@ async function submitUserAnswer() {
             triggerFireworks();
             if (emojiZone) emojiZone.innerHTML = `<div style="font-size: 5rem; animation: pulse 0.5s infinite alternate;">${winEmojis[Math.floor(Math.random() * winEmojis.length)]}</div><div class="fw-bold text-success text-center mt-2 fs-3">${winPhrases[Math.floor(Math.random() * winPhrases.length)]}</div>`;
         } else {
-            // 🔊 5. เล่นเสียงเฟลเอฟเฟกต์เมื่อตอบผิด
             soundWrong.currentTime = 0;
             soundWrong.play().catch(e => { });
 
@@ -279,7 +321,15 @@ async function submitUserAnswer() {
     }
 
     const currentClassKey = gameStates['current_class_key'];
-    await supabaseClient.from('class_rooms').update({ players: players }).eq('class_key', currentClassKey);
+    if (currentClassKey && currentUserId) {
+        // 🔒 บันทึกรายชื่อนักเรียนเฉพาะห้องของผู้ใช้ปัจจุบัน
+        await window.supabaseClient
+            .from('class_rooms')
+            .update({ players: players })
+            .eq('class_key', currentClassKey)
+            .eq('user_id', currentUserId);
+    }
+
     updateLeaderboard();
     document.getElementById('post-spin-actions')?.classList.remove('d-none');
     if (realtimeChannel) realtimeChannel.send({ type: 'broadcast', event: 'student_answered' });
@@ -292,17 +342,21 @@ async function clearLiveStorage() {
     await updateCloudState('quiz_submitted', 'false');
     await updateCloudState('current_step', 'ready');
     userSelectedIdx = null;
-    currentQuestion = null; // 🌟 เพิ่มบรรทัดนี้เพื่อล้างตัวแปรค้างคาในหน่วยความจำ
+    currentQuestion = null;
 }
 
 async function closeWithoutAction() {
-    if (currentWinner) {
+    if (currentWinner && currentUserId) {
         players = players.map(p => p.name === currentWinner ? { ...p, spunCount: Math.max(0, (p.spunCount || 1) - 1) } : p);
         const currentClassKey = gameStates['current_class_key'];
-        await supabaseClient.from('class_rooms').update({ players: players }).eq('class_key', currentClassKey);
+        await window.supabaseClient
+            .from('class_rooms')
+            .update({ players: players })
+            .eq('class_key', currentClassKey)
+            .eq('user_id', currentUserId);
     }
     await clearLiveStorage();
-    winnerModal.hide();
+    if (winnerModal) winnerModal.hide();
     resetTurn();
     startIdleSpinning();
 }
@@ -311,9 +365,15 @@ async function deleteCurrentWinner() {
     if (!currentWinner || !confirm(`🚨 คุณแน่ใจจริงๆ ใช่ไหมที่จะลบ "${currentWinner}" ออกถาวร?`)) return;
     players = players.filter(p => p.name !== currentWinner);
     const currentClassKey = gameStates['current_class_key'];
-    await supabaseClient.from('class_rooms').update({ players: players }).eq('class_key', currentClassKey);
+    if (currentUserId) {
+        await window.supabaseClient
+            .from('class_rooms')
+            .update({ players: players })
+            .eq('class_key', currentClassKey)
+            .eq('user_id', currentUserId);
+    }
     await clearLiveStorage();
-    winnerModal.hide();
+    if (winnerModal) winnerModal.hide();
     resetTurn();
     startIdleSpinning();
 }
@@ -321,14 +381,21 @@ async function deleteCurrentWinner() {
 function resetTurn() { if (animationFrameId) cancelAnimationFrame(animationFrameId); initData(); }
 
 function initSupabaseRealtime() {
-    realtimeChannel = supabaseClient.channel('game_broadcast_room');
+    realtimeChannel = window.supabaseClient.channel('game_broadcast_room');
 
     realtimeChannel
         .on('broadcast', { event: 'spin' }, () => { selectRandomQuestion(); startCloudWheelSpin(); })
         .on('broadcast', { event: 'quiz' }, async () => {
-            const { data: activeQuizState } = await supabaseClient.from('game_state').select('*').eq('key', 'current_active_quiz').single();
-            if (activeQuizState && activeQuizState.value && activeQuizState.value !== 'null') {
-                currentQuestion = JSON.parse(activeQuizState.value);
+            if (currentUserId) {
+                const { data: activeQuizState } = await window.supabaseClient
+                    .from('game_state')
+                    .select('*')
+                    .eq('key', 'current_active_quiz')
+                    .eq('user_id', currentUserId)
+                    .maybeSingle();
+                if (activeQuizState && activeQuizState.value && activeQuizState.value !== 'null') {
+                    currentQuestion = JSON.parse(activeQuizState.value);
+                }
             }
             if (currentQuestion) {
                 renderActiveQuizUI();
@@ -345,7 +412,7 @@ function initSupabaseRealtime() {
         .on('broadcast', { event: 'subject_changed' }, () => { resetTurn(); })
         .subscribe();
 
-    supabaseClient.channel('public_state_sync')
+    window.supabaseClient.channel('public_state_sync')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'game_state' }, () => { initData(); })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'class_rooms' }, () => { initData(); })
         .subscribe();
@@ -370,12 +437,19 @@ function stopIdleSpinning() {
     }
 }
 
-document.getElementById('spin-btn').addEventListener('click', () => { realtimeChannel.send({ type: 'broadcast', event: 'spin' }); startCloudWheelSpin(); });
+document.getElementById('spin-btn')?.addEventListener('click', () => { realtimeChannel.send({ type: 'broadcast', event: 'spin' }); startCloudWheelSpin(); });
 document.getElementById('show-quiz-btn')?.addEventListener('click', () => { realtimeChannel.send({ type: 'broadcast', event: 'quiz' }); renderActiveQuizUI(); });
-document.getElementById('keep-name-btn')?.addEventListener('click', async () => { await clearLiveStorage(); winnerModal.hide(); resetTurn(); });
+document.getElementById('keep-name-btn')?.addEventListener('click', async () => { await clearLiveStorage(); if (winnerModal) winnerModal.hide(); resetTurn(); });
 document.getElementById('remove-name-btn')?.addEventListener('click', deleteCurrentWinner);
 
-function drawAllWheels() { if (players.length > 0) { renderSingleWheel(canvas, ctx, 14, 25); renderSingleWheel(canvasLarge, ctxLarge, 20, 45); updatePointerColors(); } }
+function drawAllWheels() { 
+    if (players.length > 0) { 
+        if (canvas && ctx) renderSingleWheel(canvas, ctx, 14, 25); 
+        if (canvasLarge && ctxLarge) renderSingleWheel(canvasLarge, ctxLarge, 20, 45); 
+        updatePointerColors(); 
+    } 
+}
+
 function renderSingleWheel(tc, tx, fs, to) { const sz = tc.width, cx = sz / 2, r = cx - 10, arc = Math.PI * 2 / players.length; tx.clearRect(0, 0, sz, sz); players.forEach((p, i) => { const a = startAngle + i * arc; tx.save(); tx.beginPath(); tx.moveTo(cx, cx); tx.arc(cx, cx, r, a, a + arc); const g = tx.createRadialGradient(cx, cx, 10, cx, cx, r); const hue = (i * 360 / players.length); g.addColorStop(0, '#1a1c29'); g.addColorStop(0.6, `hsl(${hue},85%,50%)`); g.addColorStop(1, `hsl(${hue},90%,35%)`); tx.fillStyle = g; tx.fill(); tx.restore(); tx.save(); tx.fillStyle = '#fff'; tx.font = `bold ${fs}px sans-serif`; tx.translate(cx, cx); tx.rotate(a + arc / 2); tx.textAlign = 'right'; tx.fillText(p.name, cx - to, fs / 3); tx.restore(); }); }
 
 function updatePointerColors() {
@@ -388,7 +462,7 @@ function updatePointerColors() {
     if (pointerLarge) pointerLarge.style.setProperty('--pointer-color', targetColor);
 }
 
-function updateLeaderboard() { const sorted = [...players].sort((a, b) => b.score - a.score); updatePodiumDisplay(sorted); document.getElementById('leaderboard-body').innerHTML = sorted.map((p, idx) => `<tr><td class="fw-bold text-center">${idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}</td><td>${p.image ? `<img src="${p.image}" class="table-avatar">` : '<div class="table-avatar"><i class="bi bi-person"></i></div>'}<strong>${p.name}</strong></td><td class="text-center">${p.spunCount || 0} ครั้ง</td><td class="text-center fw-bold text-success">${p.score}</td></tr>`).join(''); }
+function updateLeaderboard() { const sorted = [...players].sort((a, b) => b.score - a.score); updatePodiumDisplay(sorted); const leaderboardBody = document.getElementById('leaderboard-body'); if (leaderboardBody) leaderboardBody.innerHTML = sorted.map((p, idx) => `<tr><td class="fw-bold text-center">${idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}</td><td>${p.image ? `<img src="${p.image}" class="table-avatar">` : '<div class="table-avatar"><i class="bi bi-person"></i></div>'}<strong>${p.name}</strong></td><td class="text-center">${p.spunCount || 0} ครั้ง</td><td class="text-center fw-bold text-success">${p.score}</td></tr>`).join(''); }
 
 function updatePodiumDisplay(sorted) {
     for (let i = 1; i <= 3; i++) {
@@ -399,11 +473,11 @@ function updatePodiumDisplay(sorted) {
         if (p && p.score > 0) {
             if (nm) nm.innerText = p.name;
             if (bb) bb.setAttribute('data-active', 'true');
-            av.innerHTML = p.image ? `<img src="${p.image}" style="width:100%; height:100%; object-fit:cover; border-radius:9px;">` : `<i class="bi bi-person-fill text-secondary"></i>`;
+            if (av) av.innerHTML = p.image ? `<img src="${p.image}" style="width:100%; height:100%; object-fit:cover; border-radius:9px;">` : `<i class="bi bi-person-fill text-secondary"></i>`;
         } else {
             if (nm) nm.innerText = "-";
             if (bb) { bb.setAttribute('data-active', 'false'); bb.classList.remove('show-active'); }
-            av.innerHTML = `<i class="bi bi-person-fill text-muted"></i>`;
+            if (av) av.innerHTML = `<i class="bi bi-person-fill text-muted"></i>`;
         }
     }
 }
@@ -414,22 +488,24 @@ window.onload = async () => {
     startMockingRoutine(1, phrasesRank1);
     startMockingRoutine(2, phrasesRank2);
     startMockingRoutine(3, phrasesRank3);
-};function startCloudWheelSpin() {
+};
+
+function startCloudWheelSpin() {
     if (players.length === 0) return;
 
     stopIdleSpinning();
-    document.getElementById('spin-btn').disabled = true;
+    const spinBtn = document.getElementById('spin-btn');
+    if (spinBtn) spinBtn.disabled = true;
     ['quiz-content', 'post-spin-actions'].forEach(id => document.getElementById(id)?.classList.add('d-none'));
     document.getElementById('show-quiz-btn')?.classList.remove('d-none');
     document.getElementById('skip-zone')?.classList.remove('d-none');
 
-    wheelModal.show();
+    if (wheelModal) wheelModal.show();
     let startTime = null;
     const duration = 15000;
     const baseAngle = startAngle;
     const additionalSpinAngle = 65 + (Math.random() * 25) + (Math.random() * 2 * Math.PI);
 
-    // ตัวแปรสำหรับคอยนับความถี่เสียงติ๊กตามการเคลื่อนตัวของวงล้อ
     let lastPlayerIndex = -1;
 
     function animateWheel(timestamp) {
@@ -439,13 +515,11 @@ window.onload = async () => {
         startAngle = baseAngle + ((1 - Math.pow(1 - progress, 6)) * additionalSpinAngle);
         drawAllWheels();
 
-        // 🔊 2. ค้นหาผู้เล่นที่อยู่ตรงหัวลูกศรขณะหมุนปัจจุบันเพื่อยิงเสียงติ๊ก
         const arc = Math.PI * 2 / players.length;
         const checkIndex = Math.floor(((Math.PI * 1.5 - ((startAngle % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) / arc) % players.length;
 
         if (checkIndex !== lastPlayerIndex && progress < 0.95) {
             lastPlayerIndex = checkIndex;
-            // สั่งเล่นเสียงขัดจังหวะตัวเดิมทันทีเพื่อให้เสียงดังรัวๆ ได้อย่างเป็นธรรมชาติ
             soundTick.currentTime = 0;
             soundTick.play().catch(e => console.log("Audio play blocked by browser"));
         }
@@ -459,25 +533,32 @@ window.onload = async () => {
             players = players.map(p => p.name === currentWinner ? { ...p, spunCount: (p.spunCount || 0) + 1 } : p);
 
             setTimeout(async () => {
-                wheelModal.hide();
+                if (wheelModal) wheelModal.hide();
                 const imgZone = document.getElementById('modal-winner-img-zone');
-                imgZone.innerHTML = targetPlayer.image ? `<img src="${targetPlayer.image}" class="rounded-circle shadow" style="width:160px; height:160px; object-fit:cover; border:5px solid #fff;">` : `<div class="bg-secondary text-white rounded-circle d-inline-flex align-items-center justify-content-center shadow" style="width:160px; height:160px; font-size:4.5rem;"><i class="bi bi-person-fill"></i></div>`;
-                document.getElementById('modal-winner-name').innerText = currentWinner;
-                document.getElementById('modal-winner-emoji-zone').innerHTML = `<div class="emoji-thinking" style="font-size: 4.5rem;">🤔💭</div><div class="fw-bold text-primary text-center mt-2 fs-4 animate-pulse">กำลังคิดหาคำตอบ...</div>`;
+                if (imgZone) imgZone.innerHTML = targetPlayer.image ? `<img src="${targetPlayer.image}" class="rounded-circle shadow" style="width:160px; height:160px; object-fit:cover; border:5px solid #fff;">` : `<div class="bg-secondary text-white rounded-circle d-inline-flex align-items-center justify-content-center shadow" style="width:160px; height:160px; font-size:4.5rem;"><i class="bi bi-person-fill"></i></div>`;
+                const winnerNameEl = document.getElementById('modal-winner-name');
+                if (winnerNameEl) winnerNameEl.innerText = currentWinner;
+                const winnerEmojiEl = document.getElementById('modal-winner-emoji-zone');
+                if (winnerEmojiEl) winnerEmojiEl.innerHTML = `<div class="emoji-thinking" style="font-size: 4.5rem;">🤔💭</div><div class="fw-bold text-primary text-center mt-2 fs-4 animate-pulse">กำลังคิดหาคำตอบ...</div>`;
 
                 const currentClassKey = gameStates['current_class_key'];
-                await supabaseClient.from('class_rooms').update({ players: players }).eq('class_key', currentClassKey);
+                if (currentClassKey && currentUserId) {
+                    await window.supabaseClient
+                        .from('class_rooms')
+                        .update({ players: players })
+                        .eq('class_key', currentClassKey)
+                        .eq('user_id', currentUserId);
+                }
                 await updateCloudState('current_winner_name', currentWinner);
                 await updateCloudState('current_step', 'winner_selected');
 
-                winnerModal.show();
+                if (winnerModal) winnerModal.show();
                 triggerFireworks();
 
-                // เล่นเสียงปรบมือยินดีสั้นๆ ตอนได้ชื่อ
                 soundCorrect.currentTime = 0;
                 soundCorrect.play().catch(e => { });
 
-                document.getElementById('spin-btn').disabled = false;
+                if (spinBtn) spinBtn.disabled = false;
             }, 1000);
         }
     }

@@ -1,6 +1,4 @@
-// 🛠️ ใช้งานร่วมกับตัวแปร SUPABASE_URL และ SUPABASE_KEY บนหัว HTML ของคุณ
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
+// ดึง instance window.supabaseClient จากไฟล์ assets/js/supabaseClient.js
 let classRooms = {}; 
 let currentClassKey = ""; 
 let quizSubjects = {};
@@ -8,23 +6,49 @@ let currentQuizSubjectKey = "";
 let questions = [];
 let gameStates = {};
 let realtimeChannel = null;
+let currentUserId = null; // 🔑 ตัวแปรเก็บ user_id
 
-// ฟังก์ชันเริ่มต้นโหลดข้อมูลจาก Supabase
+async function getCurrentUser() {
+    const { data: { session } } = await window.supabaseClient.auth.getSession();
+    if (session && session.user) {
+        currentUserId = session.user.id;
+    }
+    return currentUserId;
+}
+
 async function loadData() {
     try {
-        const { data: classesData } = await supabaseClient.from('class_rooms').select('*');
+        await getCurrentUser();
+        if (!currentUserId) return;
+
+        // 🔒 กรองดึงเฉพาะ class_rooms ของผู้ใช้ปัจจุบัน
+        const { data: classesData } = await window.supabaseClient
+            .from('class_rooms')
+            .select('*')
+            .eq('user_id', currentUserId);
+
         classRooms = {};
         if (classesData && classesData.length > 0) {
             classesData.forEach(c => { classRooms[c.class_key] = c.players; });
         }
 
-        const { data: subjectsData } = await supabaseClient.from('quiz_subjects').select('*');
+        // 🔒 กรองดึงเฉพาะ quiz_subjects ของผู้ใช้ปัจจุบัน
+        const { data: subjectsData } = await window.supabaseClient
+            .from('quiz_subjects')
+            .select('*')
+            .eq('user_id', currentUserId);
+
         quizSubjects = {};
         if (subjectsData && subjectsData.length > 0) {
             subjectsData.forEach(s => { quizSubjects[s.subject_key] = s.questions; });
         }
 
-        const { data: statesData } = await supabaseClient.from('game_state').select('*');
+        // 🔒 กรองดึงเฉพาะ game_state ของผู้ใช้ปัจจุบัน
+        const { data: statesData } = await window.supabaseClient
+            .from('game_state')
+            .select('*')
+            .eq('user_id', currentUserId);
+
         gameStates = {};
         if (statesData) {
             statesData.forEach(s => { gameStates[s.key] = s.value; });
@@ -74,18 +98,35 @@ function restoreActiveTab() {
     }
 }
 
+// 🔒 แนบ user_id ตอนอัปเดต game_state
 async function updateGameState(key, value) {
+    if (!currentUserId) await getCurrentUser();
     gameStates[key] = value;
-    await supabaseClient.from('game_state').upsert({ key: key, value: String(value), updated_at: new Date() });
+    await window.supabaseClient
+        .from('game_state')
+        .upsert({ 
+            key: key, 
+            value: String(value), 
+            user_id: currentUserId,
+            updated_at: new Date() 
+        }, { onConflict: 'key,user_id' });
 }
 
 function getActivePlayers() {
     return classRooms[currentClassKey] || [];
 }
 
+// 🔒 แนบ user_id ตอนบันทึกนักเรียนลงห้องเรียน
 async function saveActivePlayers(playersArray) {
+    if (!currentUserId) await getCurrentUser();
     classRooms[currentClassKey] = playersArray;
-    await supabaseClient.from('class_rooms').upsert({ class_key: currentClassKey, players: playersArray });
+    await window.supabaseClient
+        .from('class_rooms')
+        .upsert({ 
+            class_key: currentClassKey, 
+            players: playersArray,
+            user_id: currentUserId
+        }, { onConflict: 'class_key,user_id' });
 }
 
 function renderAllSelects() {
@@ -97,16 +138,17 @@ function renderAllSelects() {
     const mSub = document.getElementById('monitor-subject-select');
     const cSub = document.getElementById('current-quiz-subject-select');
 
-    const classOptions = keys.map(k => `<option value="${k}" ${k === currentClassKey ? 'selected' : ''}>🏫 ห้อง: ${k}</option>`).join('');
-    const subOptions = quizKeys.map(k => `<option value="${k}" ${k === currentQuizSubjectKey ? 'selected' : ''}>📚 วิชา: ${k}</option>`).join('');
+    const classOptions = keys.length > 0 ? keys.map(k => `<option value="${k}" ${k === currentClassKey ? 'selected' : ''}>🏫 ห้อง: ${k}</option>`).join('') : '<option value="">ยังไม่มีห้องเรียน</option>';
+    const subOptions = quizKeys.length > 0 ? quizKeys.map(k => `<option value="${k}" ${k === currentQuizSubjectKey ? 'selected' : ''}>📚 วิชา: ${k}</option>`).join('') : '<option value="">ยังไม่มีวิชา</option>';
 
     if(mClass) mClass.innerHTML = classOptions;
-    if(cClass) cClass.innerHTML = keys.map(k => `<option value="${k}" ${k === currentClassKey ? 'selected' : ''}>${k}</option>`).join('');
+    if(cClass) cClass.innerHTML = keys.length > 0 ? keys.map(k => `<option value="${k}" ${k === currentClassKey ? 'selected' : ''}>${k}</option>`).join('') : '<option value="">ยังไม่มีห้องเรียน</option>';
     if(mSub) mSub.innerHTML = subOptions;
-    if(cSub) cSub.innerHTML = quizKeys.map(k => `<option value="${k}" ${k === currentQuizSubjectKey ? 'selected' : ''}>${k}</option>`).join('');
+    if(cSub) cSub.innerHTML = quizKeys.length > 0 ? quizKeys.map(k => `<option value="${k}" ${k === currentQuizSubjectKey ? 'selected' : ''}>${k}</option>`).join('') : '<option value="">ยังไม่มีวิชา</option>';
 }
 
 async function syncClassFromMonitor(selectedKey) {
+    if (!selectedKey) return;
     currentClassKey = selectedKey;
     await updateGameState('current_class_key', selectedKey);
     if(realtimeChannel) realtimeChannel.send({ type: 'broadcast', event: 'class_changed', payload: { key: selectedKey } });
@@ -114,6 +156,7 @@ async function syncClassFromMonitor(selectedKey) {
 }
 
 async function syncSubjectFromMonitor(selectedKey) {
+    if (!selectedKey) return;
     currentQuizSubjectKey = selectedKey;
     await updateGameState('current_quiz_subject_key', selectedKey);
     if(realtimeChannel) realtimeChannel.send({ type: 'broadcast', event: 'subject_changed', payload: { key: selectedKey } });
@@ -123,25 +166,44 @@ async function syncSubjectFromMonitor(selectedKey) {
 function changeClassRoom(val) { syncClassFromMonitor(val); }
 function changeQuizSubject(val) { syncSubjectFromMonitor(val); }
 
+// 🔒 แนบ user_id ตอนสร้างห้องเรียนใหม่
 async function createNewClassRoom() {
     const room = document.getElementById('new-room-name').value.trim();
     if(!room) return alert('กรอกชื่อห้องเรียนด้วยครับ!');
     if(classRooms[room]) return alert('ห้องนี้มีอยู่ในระบบแล้วครับ!');
 
-    await supabaseClient.from('class_rooms').insert({ class_key: room, players: [] });
+    if (!currentUserId) await getCurrentUser();
+
+    await window.supabaseClient
+        .from('class_rooms')
+        .insert({ 
+            class_key: room, 
+            players: [],
+            user_id: currentUserId 
+        });
+
     await syncClassFromMonitor(room);
     document.getElementById('new-room-name').value = '';
 }
 
+// 🔒 ลบเฉพาะห้องของผู้ใช้ปัจจุบัน
 async function deleteCurrentClassRoom() {
     if(Object.keys(classRooms).length <= 1) return alert('ต้องมีห้องเรียนเหลืออยู่อย่างน้อย 1 ห้องครับ');
     if(!confirm(`⚠️ คุณแน่ใจใช่ไหมที่จะลบห้อง "${currentClassKey}" และรายชื่อทั้งหมดถาวร?`)) return;
 
-    await supabaseClient.from('class_rooms').delete().eq('class_key', currentClassKey);
+    if (!currentUserId) await getCurrentUser();
+
+    await window.supabaseClient
+        .from('class_rooms')
+        .delete()
+        .eq('class_key', currentClassKey)
+        .eq('user_id', currentUserId);
+
     const nextKey = Object.keys(classRooms).filter(k => k !== currentClassKey)[0];
     await syncClassFromMonitor(nextKey);
 }
 
+// 🔒 แนบ user_id ตอนบันทึก/แก้ไขชุดวิชา
 async function handleQuizSubjectSubmit() {
     const name = document.getElementById('quiz-sub-name').value.trim();
     const content = document.getElementById('quiz-sub-content').value.trim();
@@ -152,17 +214,36 @@ async function handleQuizSubjectSubmit() {
     if(!name || !content || !room) return alert('กรอกข้อมูลรายวิชาให้ครบถ้วนก่อนครับ!');
     const combinedKey = `${name} - ${content} - ${room}`;
 
+    if (!currentUserId) await getCurrentUser();
+
     if (oldKey === "") {
         if(quizSubjects[combinedKey]) return alert('วิชานี้มีในระบบอยู่แล้วครับ!');
-        await supabaseClient.from('quiz_subjects').insert({ subject_key: combinedKey, questions: [] });
+        await window.supabaseClient
+            .from('quiz_subjects')
+            .insert({ 
+                subject_key: combinedKey, 
+                questions: [],
+                user_id: currentUserId 
+            });
         await syncSubjectFromMonitor(combinedKey);
     } else {
         if(oldKey !== combinedKey && quizSubjects[combinedKey]) return alert('ชื่อรายวิชาใหม่นี้ไปซ้ำกับวิชาอื่นที่มีอยู่แล้วครับ!');
         
         const currentQuestionsArray = quizSubjects[oldKey] || [];
-        await supabaseClient.from('quiz_subjects').upsert({ subject_key: combinedKey, questions: currentQuestionsArray });
+        await window.supabaseClient
+            .from('quiz_subjects')
+            .upsert({ 
+                subject_key: combinedKey, 
+                questions: currentQuestionsArray,
+                user_id: currentUserId 
+            }, { onConflict: 'subject_key,user_id' });
+
         if (oldKey !== combinedKey) {
-            await supabaseClient.from('quiz_subjects').delete().eq('subject_key', oldKey);
+            await window.supabaseClient
+                .from('quiz_subjects')
+                .delete()
+                .eq('subject_key', oldKey)
+                .eq('user_id', currentUserId);
         }
         await syncSubjectFromMonitor(combinedKey);
     }
@@ -197,17 +278,33 @@ function cancelEditQuizSubject() {
     document.getElementById('quiz-sub-cancel-btn').classList.add('d-none');
 }
 
+// 🔒 ลบวิชาเฉพาะของผู้ใช้ปัจจุบัน
 async function deleteCurrentQuizSubject() {
     if(Object.keys(quizSubjects).length <= 1) return alert('ต้องมีวิชาเหลืออยู่อย่างน้อย 1 วิชาครับ');
     if(!confirm(`⚠️ แน่ใจใช่ไหมที่จะลบวิชา "${currentQuizSubjectKey}" และโจทย์ทั้งหมดถาวร?`)) return;
 
-    await supabaseClient.from('quiz_subjects').delete().eq('subject_key', currentQuizSubjectKey);
+    if (!currentUserId) await getCurrentUser();
+
+    await window.supabaseClient
+        .from('quiz_subjects')
+        .delete()
+        .eq('subject_key', currentQuizSubjectKey)
+        .eq('user_id', currentUserId);
+
     const nextKey = Object.keys(quizSubjects).filter(k => k !== currentQuizSubjectKey)[0];
     await syncSubjectFromMonitor(nextKey);
 }
 
+// 🔒 แนบ user_id ตอนเซฟคำถาม
 async function saveQuizData() {
-    await supabaseClient.from('quiz_subjects').upsert({ subject_key: currentQuizSubjectKey, questions: questions });
+    if (!currentUserId) await getCurrentUser();
+    await window.supabaseClient
+        .from('quiz_subjects')
+        .upsert({ 
+            subject_key: currentQuizSubjectKey, 
+            questions: questions,
+            user_id: currentUserId 
+        }, { onConflict: 'subject_key,user_id' });
 }
 
 async function triggerRemoteAction(eventName, payload = {}) {
@@ -217,7 +314,7 @@ async function triggerRemoteAction(eventName, payload = {}) {
     }
 }
 
-document.getElementById('remote-spin-btn').addEventListener('click', async function() {
+document.getElementById('remote-spin-btn')?.addEventListener('click', async function() {
     if (getActivePlayers().length === 0) return alert('ห้องนี้ยังไม่มีรายชื่อนักเรียนครับ!');
     document.getElementById('remote-status-text').innerText = "กำลังส่งคำสั่งหมุน...";
     document.getElementById('remote-status-text').className = "badge bg-warning text-dark px-3 py-2 fw-bold";
@@ -232,7 +329,7 @@ document.getElementById('remote-spin-btn').addEventListener('click', async funct
     triggerRemoteAction('spin');
 });
 
-document.getElementById('remote-quiz-btn').addEventListener('click', async function() {
+document.getElementById('remote-quiz-btn')?.addEventListener('click', async function() {
     if (questions.length === 0) return alert('คลังคำถามวิชานี้ว่างอยู่ครับ!');
     
     highlightAdminChoice(null);
@@ -273,7 +370,6 @@ async function remoteSelectChoice(index) {
     highlightAdminChoice(index);
 }
 
-// 🌟 ปรับปรุง: ระบบไฮไลต์คำตอบเฉลยเป็นกรอบสีทองตั้งแต่เริ่ม พร้อมทำสีเขียวเมื่อกดยืนยันสำเร็จ
 function highlightAdminChoice(selectedIndex) {
     const activeQuiz = gameStates['current_active_quiz'] && gameStates['current_active_quiz'] !== 'null' ? JSON.parse(gameStates['current_active_quiz']) : null;
     const correctIdx = activeQuiz ? activeQuiz.correct : null;
@@ -282,30 +378,27 @@ function highlightAdminChoice(selectedIndex) {
     for(let i = 0; i <= 3; i++) {
         const btn = document.getElementById(`admin-choice-${i}`);
         if(btn) {
-            // คืนค่ารูปแบบสไตล์เริ่มต้นก่อน
             btn.className = "btn-choice-admin";
             btn.style.border = "none";
             btn.style.borderLeft = "4px solid #3498db";
 
-            // 1. ไฮไลต์ปุ่มที่ถูกเลือก (สีฟ้า)
             if(selectedIndex !== null && i === selectedIndex) {
                 btn.classList.add('active-selected');
             }
 
-            // 2. แอบใส่กรอบทองเฉลยให้แอดมินเห็นตั้งแต่เริ่ม (หากยังไม่ได้กดยืนยันคำตอบ)
             if(activeQuiz && i === correctIdx && !isSubmitted) {
-                btn.style.border = "2px dashed #f1c40f"; // ทำเส้นกรอบทองกระพริบตาแอดมิน
+                btn.style.border = "2px dashed #f1c40f";
                 btn.style.borderLeft = "6px solid #f1c40f";
             }
 
-            // 3. เมื่อระบบกดยืนยันส่งแต้มคะแนนเรียบร้อยแล้ว ให้เปลี่ยนชอยส์ข้อถูกเป็นสีเขียวทางการ
             if(activeQuiz && i === correctIdx && isSubmitted) {
                 btn.style.border = "3px solid #2ecc71";
                 btn.style.borderLeft = "6px solid #2ecc71";
             }
         }
     }
-    document.getElementById('remote-confirm-btn').disabled = (selectedIndex === null || isSubmitted);
+    const confirmBtn = document.getElementById('remote-confirm-btn');
+    if (confirmBtn) confirmBtn.disabled = (selectedIndex === null || isSubmitted);
 }
 
 function formatAdminQuizPreview(text) {
@@ -337,7 +430,7 @@ function syncLiveMonitorUI() {
     if(statusBadge && stepsConfig[currentStep]) {
         statusBadge.innerText = stepsConfig[currentStep].text;
         statusBadge.className = `badge ${stepsConfig[currentStep].class} px-3 py-2 fw-bold`;
-        spinBtn.disabled = stepsConfig[currentStep].spinDisable;
+        if (spinBtn) spinBtn.disabled = stepsConfig[currentStep].spinDisable;
     }
 
     if(currentWinnerName) {
@@ -360,7 +453,6 @@ function syncLiveMonitorUI() {
         document.getElementById('live-quiz-text').innerHTML = formatAdminQuizPreview(activeQuiz.q);
         activeQuiz.choices.forEach((choice, idx) => {
             const btn = document.getElementById(`admin-choice-${idx}`);
-            // 🌟 เพิ่มข้อความกำกับท้ายชอยส์ข้อที่เป็นเฉลยคำตอบที่ถูกต้องให้เห็นเด่นชัด
             const hintText = (idx === activeQuiz.correct) ? "  " : "";
             if(btn) btn.innerText = `${idx + 1}. ${choice}${hintText}`;
         });
@@ -370,7 +462,10 @@ function syncLiveMonitorUI() {
         resetQuizMonitorFields(questions.length > 0 ? "คำถามในชุดวิชานี้พร้อมแล้ว กดปุ่ม 'สุ่มคำถาม' ได้เลย! 🚀" : "ไม่มีคำถามสำหรับรอบนี้ (ชุดวิชานี้คลังว่าง)");
     }
 
-    if(isSubmitted) document.getElementById('remote-confirm-btn').disabled = true;
+    if(isSubmitted) {
+        const confirmBtn = document.getElementById('remote-confirm-btn');
+        if (confirmBtn) confirmBtn.disabled = true;
+    }
 }
 
 function resetQuizMonitorFields(text) {
@@ -443,7 +538,7 @@ function cancelEditPlayer() {
     if(deleteImgBtn) deleteImgBtn.classList.add('d-none');
 }
 
-document.getElementById('player-form').addEventListener('submit', async function(e) {
+document.getElementById('player-form')?.addEventListener('submit', async function(e) {
     e.preventDefault();
     const nameInput = document.getElementById('player-name');
     const fileInput = document.getElementById('player-img');
@@ -484,7 +579,7 @@ document.getElementById('player-form').addEventListener('submit', async function
         const safeRoomName = currentClassKey.replace(/[^a-zA-Z0-9]/g, '_');
         const fileName = `${safeRoomName}_${Date.now()}.${fileExt}`;
 
-        const { data: uploadData, error: uploadError } = await supabaseClient.storage
+        const { data: uploadData, error: uploadError } = await window.supabaseClient.storage
             .from('avatars')
             .upload(fileName, file, {
                 cacheControl: '3600',
@@ -498,7 +593,7 @@ document.getElementById('player-form').addEventListener('submit', async function
             return;
         }
 
-        const { data: publicUrlData } = supabaseClient.storage
+        const { data: publicUrlData } = window.supabaseClient.storage
             .from('avatars')
             .getPublicUrl(fileName);
 
@@ -513,7 +608,7 @@ document.getElementById('player-form').addEventListener('submit', async function
         try {
             const urlParts = oldImageToClean.split('/');
             const targetFileName = urlParts[urlParts.length - 1];
-            await supabaseClient.storage.from('avatars').remove([targetFileName]);
+            await window.supabaseClient.storage.from('avatars').remove([targetFileName]);
         } catch(err) {
             console.error(err);
         }
@@ -534,7 +629,9 @@ document.getElementById('player-form').addEventListener('submit', async function
 
 function renderPlayers() {
     const players = getActivePlayers();
-    document.getElementById('player-count').innerText = players.length;
+    const countEl = document.getElementById('player-count');
+    if (countEl) countEl.innerText = players.length;
+    
     const list = document.getElementById('player-list');
     if(!list) return;
     if(players.length === 0) {
@@ -583,7 +680,7 @@ async function deletePlayer(index) {
         try {
             const urlParts = players[index].image.split('/');
             const targetFileName = urlParts[urlParts.length - 1];
-            await supabaseClient.storage.from('avatars').remove([targetFileName]);
+            await window.supabaseClient.storage.from('avatars').remove([targetFileName]);
         } catch(e) {
             console.error(e);
         }
@@ -608,7 +705,7 @@ async function resetAllScores() {
     loadData();
 }
 
-document.getElementById('quiz-form').addEventListener('submit', async (e) => {
+document.getElementById('quiz-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const q = document.getElementById('quiz-q').value.trim();
     const choices = [
@@ -664,7 +761,9 @@ function cancelEditQuiz() {
 }
 
 function renderQuizzes() {
-    document.getElementById('q-count').innerText = questions.length;
+    const countEl = document.getElementById('q-count');
+    if (countEl) countEl.innerText = questions.length;
+
     const list = document.getElementById('quiz-list');
     if(!list) return;
     if(questions.length === 0) {
@@ -706,21 +805,23 @@ async function deleteQuiz(index) {
 }
 
 async function logout() { 
-    await supabaseClient.auth.signOut();
-    window.location.href = 'login.html'; 
+    await window.supabaseClient.auth.signOut();
+    window.location.href = '../../../index.html'; 
 }
 
 function initSupabaseRealtime() {
-    supabaseClient.channel('admin_state_sync')
+    window.supabaseClient.channel('admin_state_sync')
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'game_state' }, (payload) => {
-        gameStates[payload.new.key] = payload.new.value;
-        if(payload.new.key === 'current_class_key') currentClassKey = payload.new.value;
-        if(payload.new.key === 'current_quiz_subject_key') currentQuizSubjectKey = payload.new.value;
-        loadData();
+        if (currentUserId && payload.new.user_id === currentUserId) {
+            gameStates[payload.new.key] = payload.new.value;
+            if(payload.new.key === 'current_class_key') currentClassKey = payload.new.value;
+            if(payload.new.key === 'current_quiz_subject_key') currentQuizSubjectKey = payload.new.value;
+            loadData();
+        }
     })
     .subscribe();
 
-    realtimeChannel = supabaseClient.channel('game_broadcast_room');
+    realtimeChannel = window.supabaseClient.channel('game_broadcast_room');
     
     realtimeChannel.on('broadcast', { event: 'admin_sync_choice' }, (payload) => {
         highlightAdminChoice(payload.index);

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>อัปเกรดระดับสิทธิ์ - Gyver Workspace</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/index.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../assets/js/supabaseClient.js"></script>
+</head>
+<body class="bg-light min-vh-100 d-flex flex-column">
+
+    <!-- Navbar -->
+    <nav class="navbar py-3 bg-white border-bottom sticky-top">
+        <div class="container">
+            <a class="navbar-brand fw-bold fs-4 text-dark d-flex align-items-center gap-2" href="../index.html">
+                <div class="bg-primary text-white rounded-3 p-1 px-2 fs-5">
+                    <i class="bi bi-grid-1x2-fill"></i>
+                </div>
+                Gyver Workspace
+            </a>
+            <a href="../index.html" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-bold">
+                <i class="bi bi-arrow-left me-1"></i>กลับหน้าหลัก
+            </a>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container my-auto py-5">
+        <div class="text-center mb-5">
+            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-3 py-1 fw-bold mb-2">
+                <i class="bi bi-rocket-takeoff me-1"></i>LEVEL UP YOUR WORKSPACE
+            </span>
+            <h2 class="fw-bold text-dark">เลือกแพ็กเกจระดับสิทธิ์การใช้งาน</h2>
+            <p class="text-muted">ขยับสิทธิ์การใช้งานเพื่อปลดล็อกฟังก์ชันห้องเรียนออนไลน์และเครื่องมือธุรกิจใน Gyver Workspace</p>
+        </div>
+
+        <div class="row g-4 justify-content-center">
+            
+            <!-- Lv.1 Standard -->
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm rounded-4 p-4 text-center">
+                    <div class="mb-3">
+                        <span class="badge bg-success-subtle text-success px-3 py-1 rounded-pill fw-bold">ระดับสิทธิ์ปัจจุบัน</span>
+                    </div>
+                    <h3 class="fw-bold text-dark">Lv.1 Standard</h3>
+                    <p class="text-muted small">สำหรับนักเรียน / ผู้ใช้งานทั่วไป</p>
+                    <hr>
+                    <ul class="list-unstyled text-start my-4 d-flex flex-column gap-2 small">
+                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>เปิดให้ใช้ Gyver Education (ระบบห้องเรียนอัจฉริยะ) บางเมนู</li>
+                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>ใช้งาน Quick Tools ได้ทั้งหมด</li>
+                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>เข้าร่วมหมุนวงล้อสุ่มคะแนนสด (Live)</li>
+                    </ul>
+                    <button class="btn btn-outline-secondary w-100 fw-bold rounded-3 mt-auto" disabled>สิทธิ์ปัจจุบันของคุณ</button>
+                </div>
+            </div>
+
+            <!-- Lv.2 Pro -->
+            <div class="col-md-4">
+                <div class="card h-100 border-info border-2 shadow-sm rounded-4 p-4 text-center">
+                    <div class="mb-3">
+                        <span class="badge bg-info-subtle text-info border border-info-subtle px-3 py-1 rounded-pill fw-bold">ขยับสิทธิ์ขึ้น</span>
+                    </div>
+                    <h3 class="fw-bold text-dark">Lv.2 Pro</h3>
+                    <p class="text-muted small">สำหรับผู้ใช้งานระดับโปร</p>
+                    <hr>
+                    <ul class="list-unstyled text-start my-4 d-flex flex-column gap-2 small">
+                        <li><i class="bi bi-check-circle-fill text-info me-2"></i>เปิดให้ใช้ Gyver Education (ระบบห้องเรียนอัจฉริยะ) มากขึ้น</li>
+                        <li><i class="bi bi-check-circle-fill text-info me-2"></i>สิทธิ์ทุกอย่างของ Lv.1</li>
+                        <li><i class="bi bi-check-circle-fill text-info me-2"></i>เข้าถึงฟีเจอร์คำนวณและวิเคราะห์ข้อมูลเสริม</li>
+                    </ul>
+                    <button class="btn btn-info text-white w-100 fw-bold rounded-3 mt-auto py-2 shadow-sm" onclick="alert('กรุณาติดต่อผู้ดูแลระบบเพื่อขออนุมัติสิทธิ์ Lv.2 ครับ')">
+                        <i class="bi bi-key-fill me-1"></i>ขออนุมัติสิทธิ์ Lv.2
+                    </button>
+                </div>
+            </div>
+
+            <!-- Lv.3 Administrator -->
+            <div class="col-md-4">
+                <div class="card h-100 border-primary border-2 shadow-lg rounded-4 p-4 text-center position-relative">
+                    <span class="position-absolute top-0 start-50 translate-middle badge bg-primary px-3 py-2 rounded-pill fw-bold">แนะนำสำหรับครูผู้สอน</span>
+                    <div class="mb-3 mt-2">
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-1 rounded-pill fw-bold">Lv.3 Teacher</span>
+                    </div>
+                    <h3 class="fw-bold text-dark">Lv.3 Administrator</h3>
+                    <p class="text-muted small">จัดการห้องเรียนและสร้างชุดข้อมูลเองได้</p>
+                    <hr>
+                    <ul class="list-unstyled text-start my-4 d-flex flex-column gap-2 small">
+                        <li><i class="bi bi-check-circle-fill text-primary me-2"></i>เปิดให้ใช้ Gyver Education (ระบบห้องเรียนอัจฉริยะ) ทั้งหมด</li>
+                        <li><i class="bi bi-check-circle-fill text-primary me-2"></i>ปลดล็อกเข้าใช้งานฟังก์ชันทั้งหมดในระบบ</li>
+                        <li><i class="bi bi-check-circle-fill text-primary me-2"></i>สร้างห้องเรียน / จัดการรายชื่อนักเรียน</li>
+                        <li><i class="bi bi-check-circle-fill text-primary me-2"></i>เข้าถึงระบบ Gyver Business Tools</li>
+                    </ul>
+                    <button class="btn btn-primary w-100 fw-bold rounded-3 mt-auto py-2 shadow-sm" onclick="alert('กรุณาติดต่อผู้ดูแลระบบเพื่อขออนุมัติสิทธิ์ Lv.3 ครับ')">
+                        <i class="bi bi-key-fill me-1"></i>ขออนุมัติสิทธิ์ Lv.3
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        async function checkAuth() {
+            if (!window.supabaseClient) return;
+            const { data: { session } } = await window.supabaseClient.auth.getSession();
+            if (!session) {
+                window.location.href = '../index.html';
+            }
+        }
+        window.onload = checkAuth;
+    </script>
+</body>
+</html>

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gyver Studio - Admin Control Center</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../assets/js/supabaseClient.js"></script>
+    <script src="../assets/js/authGuard.js"></script>
+    <script>
+        // บังคับเช็กสิทธิ์ Admin ถ้าไม่ใช่จะเด้งออกทันที
+        enforceAdminRole();
+    </script>
+</head>
+
+<body class="bg-dark text-white py-4">
+
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3 border-secondary">
+            <div>
+                <h2 class="fw-bold m-0 text-info"><i class="bi bi-shield-lock-fill me-2"></i>Admin Management Console
+                </h2>
+                <p class="text-muted small m-0">ระบบจัดการสมาชิกและปรับเปลี่ยนระดับสิทธิ์ (Roles & Permissions)</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="../index.html" class="btn btn-outline-light btn-sm">
+                    <i class="bi bi-house-door me-1"></i>ไปหน้า User
+                </a>
+                <button onclick="logoutAdmin()" class="btn btn-outline-danger btn-sm"><i
+                        class="bi bi-box-arrow-right me-1"></i>ออกจากระบบ</button>
+            </div>
+        </div>
+
+        <!-- แท็บการทำงานส่วน Admin -->
+        <div class="row g-4">
+
+            <!-- 1. ทางไปหน้าจัดการระบบเดิมที่มีอยู่ -->
+            <div class="col-md-4">
+                <div class="card bg-secondary text-white p-3 h-100">
+                    <h5 class="fw-bold"><i class="bi bi-sliders me-2"></i> Wheel System Admin</h5>
+                    <p class="small text-white-50">ควบคุมวงล้อสุ่ม จัดการรายชื่อนักเรียน และคลังคำถาม</p>
+                    <a href="../features/education/wheel/wheel_admin.html"
+                        class="btn btn-info mt-auto fw-bold">เปิดหน้าควบคุมวงล้อ</a>
+                </div>
+            </div>
+
+            <!-- 2. ตารางจัดการ Users & Roles (อนาคตเชื่อมกับ Supabase Admin API) -->
+            <div class="col-md-8">
+                <div class="card bg-dark border border-secondary text-white p-3">
+                    <h5 class="fw-bold mb-3"><i class="bi bi-people-fill me-2"></i> รายชื่อผู้ใช้งานในระบบ</h5>
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Email</th>
+                                    <th>Role / สิทธิ์</th>
+                                    <th>การจัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="user-list-body">
+                                <tr>
+                                    <td>s.gyver36@gmail.com</td>
+                                    <td><span class="badge bg-danger">Admin</span></td>
+                                    <td><button class="btn btn-xs btn-outline-warning disabled">เจ้าของระบบ</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>user1@example.com</td>
+                                    <td><span class="badge bg-info">User (Lv.1)</span></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-success">เลื่อนเป็น Admin</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        async function logoutAdmin() {
+            if (window.supabaseClient) {
+                await window.supabaseClient.auth.signOut();
+            }
+            window.location.href = '../auth/login.html';
+        }
+    </script>
+</body>
+
+</html>

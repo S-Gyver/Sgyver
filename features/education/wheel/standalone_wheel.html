@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gyver Wheel - Instant Lucky Draw</title>
+    
+    <!-- Bootstrap 5, Icons & Kanit Font -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* 🤍 ธีม Minimal Light Mode */
+        body {
+            background-color: #f6f8fb !important;
+            color: #2d3748 !important;
+            font-family: 'Kanit', sans-serif !important;
+            min-height: 100vh;
+        }
+
+        /* โครงสร้างคอนเทนเนอร์วงล้อ */
+        #wheel-container { 
+            position: relative; 
+            width: 100%;
+            max-width: 460px;
+            aspect-ratio: 1 / 1;
+            margin: 0 auto; 
+        }
+
+        #wheel-canvas { 
+            width: 100%; 
+            height: 100%; 
+            border-radius: 50%; 
+            border: 6px solid #222; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+        }
+
+        /* หัวลูกศรชี้ไดนามิก */
+        .dynamic-pointer {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 99;
+            filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.4));
+            --pointer-color: #dc3545;
+        }
+        .dynamic-pointer::after {
+            content: "";
+            display: block;
+            width: 0;
+            height: 0;
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-top: 32px solid var(--pointer-color) !important;
+            transition: border-top-color 0.12s ease-out;
+        }
+
+        /* ปุ่มหมุนวงล้อ */
+        #spin-btn {
+            background: #1a202c !important;
+            color: #ffffff !important;
+            border: none !important;
+            border-radius: 14px !important;
+            padding: 14px 45px !important;
+            font-weight: 600 !important;
+            font-size: 1.25rem !important;
+            box-shadow: 0 4px 14px 0 rgba(26, 32, 44, 0.2) !important;
+            transition: all 0.2s ease-in-out !important;
+        }
+
+        #spin-btn:hover {
+            background: #2d3748 !important;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px 0 rgba(26, 32, 44, 0.3) !important;
+        }
+
+        #spin-btn:active {
+            transform: translateY(0);
+        }
+
+        /* ตู้คอนเทนเนอร์ฝั่งขวา */
+        .card-custom {
+            background: #ffffff !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 20px !important;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05) !important;
+        }
+
+        .input-box {
+            background-color: #f7fafc !important;
+            border: 1px solid #e2e8f0 !important;
+            color: #2d3748 !important;
+            border-radius: 12px;
+            padding: 15px;
+            font-size: 1.05rem;
+            resize: none;
+        }
+
+        .input-box:focus {
+            background-color: #ffffff !important;
+            border-color: #3182ce !important;
+            box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.15) !important;
+        }
+    </style>
+</head>
+<body class="d-flex flex-column py-4">
+
+    <!-- Header -->
+    <div class="container mb-3">
+        <div class="d-flex justify-content-between align-items-center border-bottom pb-3">
+            <h1 class="fw-bold text-dark m-0 fs-2 d-flex align-items-center gap-2">
+                <i class="bi bi-disc-fill text-primary"></i> Gyver Wheel Lucky Draw (Instant)
+            </h1>
+            <a href="../../../index.html" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                <i class="bi bi-house-door me-1"></i>กลับหน้าหลัก
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container my-auto">
+        <div class="row g-4 align-items-center">
+            
+            <!-- ฝั่งซ้าย: แสดงวงล้อ -->
+            <div class="col-lg-7 text-center">
+                <div id="wheel-container" class="mb-4">
+                    <div id="pointer" class="dynamic-pointer"></div>
+                    <canvas id="wheel-canvas" width="460" height="460"></canvas>
+                </div>
+
+                <button id="spin-btn" class="btn shadow mb-3 fs-4 fw-bold">
+                    <i class="bi bi-play-circle-fill me-2"></i>หมุนวงล้อสุ่มชื่อ
+                </button>
+            </div>
+
+            <!-- ฝั่งขวา: ช่องใส่ข้อมูล Textarea -->
+            <div class="col-lg-5">
+                <div class="card card-custom p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <label for="items-input" class="form-label fw-bold text-dark fs-5 m-0">
+                            <i class="bi bi-list-stars text-primary me-2"></i>รายชื่อที่ต้องการสุ่ม
+                        </label>
+                        <span class="badge bg-dark text-white rounded-pill px-3 py-2" id="item-count-badge">0 รายการ</span>
+                    </div>
+                    <p class="text-muted small mb-2">พิมพ์รายชื่อลงในช่องด้านล่าง (1 รายชื่อต่อ 1 บรรทัด)</p>
+
+                    <!-- 🌟 ปุ่มทางลัดสร้างเลขที่อัตโนมัติ -->
+                    <div class="mb-2 text-end">
+                        <button class="btn btn-sm btn-primary fw-bold rounded-pill px-3" onclick="openNumberGenModal()">
+                            <i class="bi bi-hash me-1"></i>สร้างเลขที่นักเรียนอัตโนมัติ
+                        </button>
+                    </div>
+
+                    <textarea id="items-input" class="form-control input-box mb-3" rows="10" placeholder="พิมพ์ชื่อตรงนี้...&#10;สมชาย&#10;สมหญิง&#10;อนันต์">
+ปุ่น
+หนูดี
+ชมพู่
+ปริ้น
+โอ๊ค
+
+</textarea>
+
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-secondary w-100 fw-bold rounded-3" onclick="shuffleItems()">
+                            <i class="bi bi-shuffle me-1"></i>สลับชื่อ
+                        </button>
+                        <button class="btn btn-outline-danger w-100 fw-bold rounded-3" onclick="clearItems()">
+                            <i class="bi bi-trash3 me-1"></i>ล้างทั้งหมด
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- 🔢 Modal สำหรับตั้งค่าสร้างเลขที่อัตโนมัติ -->
+    <div class="modal fade" id="numberGenModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content shadow-lg border-0 rounded-4">
+                <div class="modal-header bg-primary text-white py-3">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-hash me-1"></i>สร้างเลขที่อัตโนมัติ</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-secondary">เลขที่เริ่มต้น</label>
+                        <input type="number" id="gen-start-num" class="form-control" value="1" min="1">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-secondary">จำนวนนักเรียนทั้งหมด (คน)</label>
+                        <input type="number" id="gen-total-num" class="form-control" value="25" min="1" max="100">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold text-secondary">รูปแบบคำนำหน้า</label>
+                        <select id="gen-prefix-type" class="form-select">
+                            <option value="เลขที่ ">เลขที่ X (เช่น เลขที่ 1)</option>
+                            <option value="">มีเฉพาะตัวเลข (เช่น 1)</option>
+                            <option value="คนที่ ">คนที่ X (เช่น คนที่ 1)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-3 pt-0">
+                    <button type="button" class="btn btn-primary w-100 fw-bold rounded-3 py-2" onclick="generateStudentNumbers()">
+                        <i class="bi bi-check-circle-fill me-1"></i>สร้างรายการทันที
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Popup ผู้โชคดี -->
+    <div class="modal fade" id="winnerModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow-lg border-0 rounded-4">
+                <div class="modal-header bg-primary text-white text-center d-block position-relative py-3">
+                    <h3 class="modal-title fw-bold m-0 fs-3"><i class="bi bi-sparkles me-2"></i>ผู้โชคดีได้แก่...</h3>
+                </div>
+                <div class="modal-body text-center py-5">
+                    <h1 id="winner-name-display" class="display-3 text-danger fw-bold my-2"></h1>
+                </div>
+                <div class="modal-footer justify-content-center gap-2 border-0 pt-0 pb-4">
+                    <button type="button" class="btn btn-success btn-lg px-4 fw-bold rounded-3" data-bs-dismiss="modal">
+                        <i class="bi bi-check-lg me-1"></i>เก็บชื่อไว้สุ่มต่อ
+                    </button>
+                    <button type="button" class="btn btn-outline-danger btn-lg px-4 fw-bold rounded-3" onclick="removeCurrentWinner()">
+                        <i class="bi bi-trash3-fill me-1"></i>ลบชื่อนี้ออก
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        const canvas = document.getElementById('wheel-canvas');
+        const ctx = canvas.getContext('2d');
+        const itemsInput = document.getElementById('items-input');
+        const spinBtn = document.getElementById('spin-btn');
+        const winnerModal = new bootstrap.Modal(document.getElementById('winnerModal'));
+        const numberGenModal = new bootstrap.Modal(document.getElementById('numberGenModal'));
+        const winnerDisplay = document.getElementById('winner-name-display');
+        const itemCountBadge = document.getElementById('item-count-badge');
+        const pointer = document.getElementById('pointer');
+
+        let items = [];
+        let startAngle = 0;
+        let isSpinning = false;
+        let currentWinnerIndex = -1;
+
+        function getItemsFromInput() {
+            const rawText = itemsInput.value;
+            items = rawText.split('\n').map(item => item.trim()).filter(item => item.length > 0);
+            itemCountBadge.innerText = `${items.length} รายการ`;
+            drawWheel();
+        }
+
+        // 🔢 เปิด Modal ตั้งค่าสร้างเลขที่
+        function openNumberGenModal() {
+            numberGenModal.show();
+        }
+
+        // 🔢 ฟังก์ชันเจนชุดตัวเลขลงใน Textarea
+        function generateStudentNumbers() {
+            const startNum = parseInt(document.getElementById('gen-start-num').value) || 1;
+            const totalNum = parseInt(document.getElementById('gen-total-num').value) || 10;
+            const prefix = document.getElementById('gen-prefix-type').value;
+
+            let generatedList = [];
+            for (let i = 0; i < totalNum; i++) {
+                generatedList.push(`${prefix}${startNum + i}`);
+            }
+
+            // นำชุดตัวเลขที่สร้างเสร็จแล้วใส่กลับเข้าไปใน Textarea
+            itemsInput.value = generatedList.join('\n');
+            getItemsFromInput();
+            numberGenModal.hide();
+        }
+
+        // วาดวงล้อแบบ 3D Radial Gradient
+        function drawWheel() {
+            const sz = canvas.width;
+            const cx = sz / 2;
+            const r = cx - 10;
+            ctx.clearRect(0, 0, sz, sz);
+
+            if (items.length === 0) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(cx, cx, r, 0, Math.PI * 2);
+                ctx.fillStyle = '#edf2f7';
+                ctx.fill();
+                ctx.fillStyle = '#718096';
+                ctx.font = 'bold 20px Kanit';
+                ctx.textAlign = 'center';
+                ctx.fillText('กรุณากรอกรายชื่อขวามือ', cx, cx);
+                ctx.restore();
+                return;
+            }
+
+            const arc = (Math.PI * 2) / items.length;
+
+            items.forEach((p, i) => {
+                const a = startAngle + i * arc;
+                
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(cx, cx);
+                ctx.arc(cx, cx, r, a, a + arc);
+                
+                const g = ctx.createRadialGradient(cx, cx, 10, cx, cx, r);
+                const hue = (i * 360) / items.length;
+                g.addColorStop(0, '#1a1c29');
+                g.addColorStop(0.6, `hsl(${hue},85%,50%)`);
+                g.addColorStop(1, `hsl(${hue},90%,35%)`);
+                ctx.fillStyle = g;
+                ctx.fill();
+                ctx.restore();
+
+                ctx.save();
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 18px Kanit';
+                ctx.translate(cx, cx);
+                ctx.rotate(a + arc / 2);
+                ctx.textAlign = 'right';
+                ctx.fillText(p, cx - 25, 6);
+                ctx.restore();
+            });
+
+            updatePointerColor();
+        }
+
+        function updatePointerColor() {
+            if (items.length === 0 || !pointer) return;
+            const arc = (Math.PI * 2) / items.length;
+            const cIdx = Math.floor((Math.PI * 1.5 - ((startAngle % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) / arc) % items.length;
+            const targetColor = `hsl(${(cIdx * 360 / items.length)},75%,60%)`;
+            pointer.style.setProperty('--pointer-color', targetColor);
+        }
+
+        function spinWheel() {
+            if (isSpinning || items.length === 0) return;
+
+            isSpinning = true;
+            spinBtn.disabled = true;
+
+            let startTime = null;
+            const duration = 6000;
+            const baseAngle = startAngle;
+            const additionalSpin = 35 + Math.random() * 20 + Math.random() * Math.PI * 2;
+
+            function animate(timestamp) {
+                if (!startTime) startTime = timestamp;
+                const elapsed = timestamp - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+
+                startAngle = baseAngle + ((1 - Math.pow(1 - progress, 5)) * additionalSpin);
+                drawWheel();
+
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                } else {
+                    isSpinning = false;
+                    spinBtn.disabled = false;
+
+                    const arc = (Math.PI * 2) / items.length;
+                    currentWinnerIndex = Math.floor(((Math.PI * 1.5 - ((startAngle % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) / arc) % items.length;
+
+                    winnerDisplay.innerText = items[currentWinnerIndex];
+                    winnerModal.show();
+
+                    confetti({ particleCount: 180, spread: 90, origin: { y: 0.6 } });
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        function removeCurrentWinner() {
+            if (currentWinnerIndex !== -1 && items[currentWinnerIndex]) {
+                items.splice(currentWinnerIndex, 1);
+                itemsInput.value = items.join('\n');
+                getItemsFromInput();
+                winnerModal.hide();
+                currentWinnerIndex = -1;
+            }
+        }
+
+        function shuffleItems() {
+            getItemsFromInput();
+            for (let i = items.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [items[i], items[j]] = [items[j], items[i]];
+            }
+            itemsInput.value = items.join('\n');
+            drawWheel();
+        }
+
+        function clearItems() {
+            itemsInput.value = '';
+            getItemsFromInput();
+        }
+
+        itemsInput.addEventListener('input', getItemsFromInput);
+        spinBtn.addEventListener('click', spinWheel);
+
+        getItemsFromInput();
+    </script>
+</body>
+</html>
