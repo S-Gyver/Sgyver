@@ -254,10 +254,10 @@
                         <div class="tab-pane fade show active" id="panel-login">
                             <form id="form-popup-login">
                                 <div class="mb-3">
-                                    <label class="form-label small fw-bold text-secondary">อีเมลผู้ใช้งาน
-                                        (Email)</label>
-                                    <input type="email" id="popup-login-email" class="form-control"
-                                        placeholder="name@example.com" required>
+                                    <label class="form-label small fw-bold text-secondary">ชื่อผู้ใช้งาน หรือ อีเมล
+                                        (Username / Email)</label>
+                                    <input type="text" id="popup-login-email" class="form-control"
+                                        placeholder="พิมพ์ชื่อผู้ใช้ หรือ name@example.com" required>
                                 </div>
                                 <div class="mb-4">
                                     <label class="form-label small fw-bold text-secondary">รหัสผ่าน</label>
@@ -272,46 +272,60 @@
                         </div>
 
                         <!-- 2. ฟอร์มสมัครสมาชิก (Register) -->
-<div class="tab-pane fade" id="panel-register">
-    <form id="form-popup-register">
-        <!-- 1. Username -->
-        <div class="mb-3">
-            <label class="form-label small fw-bold text-secondary">1. ชื่อผู้ใช้งาน (Username) <span class="text-danger">*</span></label>
-            <input type="text" id="popup-reg-username" class="form-control" placeholder="เช่น gyver_dev" required>
-        </div>
-        
-        <!-- 2. Email -->
-        <div class="mb-3">
-            <label class="form-label small fw-bold text-secondary">2. อีเมล (E-mail) <span class="text-danger">*</span></label>
-            <input type="email" id="popup-reg-email" class="form-control" placeholder="name@example.com" required>
-        </div>
+                        <div class="tab-pane fade" id="panel-register">
+                            <form id="form-popup-register">
+                                <!-- 1. Username -->
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-secondary">1. ชื่อผู้ใช้งาน (Username)
+                                        <span class="text-danger">*</span></label>
+                                    <input type="text" id="popup-reg-username" class="form-control"
+                                        placeholder="เช่น gyver_dev" required>
+                                </div>
 
-        <!-- 3. Password -->
-        <div class="mb-3">
-            <label class="form-label small fw-bold text-secondary">3. รหัสผ่าน (Password) <span class="text-danger">*</span></label>
-            <input type="password" id="popup-reg-pass" class="form-control" placeholder="•••••••• (ขั้นต่ำ 6 ตัว)" minlength="6" required>
-        </div>
+                                <!-- 2. Email -->
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-secondary">2. อีเมล (E-mail) <span
+                                            class="text-danger">*</span></label>
+                                    <input type="email" id="popup-reg-email" class="form-control"
+                                        placeholder="name@example.com" required>
+                                </div>
 
-        <!-- 4. Confirm Password (เพิ่มใหม่) -->
-        <div class="mb-3">
-            <label class="form-label small fw-bold text-secondary">4. ยืนยันรหัสผ่านอีกครั้ง <span class="text-danger">*</span></label>
-            <input type="password" id="popup-reg-pass-confirm" class="form-control" placeholder="••••••••" minlength="6" required>
-        </div>
+                                <!-- 3. Password -->
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-secondary">3. รหัสผ่าน (Password) <span
+                                            class="text-danger">*</span></label>
+                                    <input type="password" id="popup-reg-pass" class="form-control"
+                                        placeholder="•••••••• (ขั้นต่ำ 6 ตัว)" minlength="6" required>
+                                </div>
 
-        <!-- 5. Avatar Upload -->
-        <div class="mb-4">
-            <label class="form-label small fw-bold text-secondary">5. แทรกรูปโปรไฟล์ <span class="text-muted fw-normal">(เลือกหรือไม่เลือกก็ได้)</span></label>
-            <div class="d-flex align-items-center gap-3">
-                <input type="file" id="popup-reg-avatar-file" class="form-control" accept="image/*" onchange="previewAvatar(event)">
-                <img id="avatar-preview" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" class="rounded-circle border" style="width: 45px; height: 45px; object-fit: cover;" alt="Preview">
-            </div>
-        </div>
+                                <!-- 4. Confirm Password (เพิ่มใหม่) -->
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-secondary">4. ยืนยันรหัสผ่านอีกครั้ง
+                                        <span class="text-danger">*</span></label>
+                                    <input type="password" id="popup-reg-pass-confirm" class="form-control"
+                                        placeholder="••••••••" minlength="6" required>
+                                </div>
 
-        <button type="submit" class="btn btn-success w-100 py-2 fw-bold shadow-sm rounded-3" id="btn-popup-reg">
-            <i class="bi bi-person-plus me-1"></i>ยืนยันการสมัครสมาชิก
-        </button>
-    </form>
-</div>
+                                <!-- 5. Avatar Upload -->
+                                <div class="mb-4">
+                                    <label class="form-label small fw-bold text-secondary">5. แทรกรูปโปรไฟล์ <span
+                                            class="text-muted fw-normal">(เลือกหรือไม่เลือกก็ได้)</span></label>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <input type="file" id="popup-reg-avatar-file" class="form-control"
+                                            accept="image/*" onchange="previewAvatar(event)">
+                                        <img id="avatar-preview"
+                                            src="https://cdn-icons-png.flaticon.com/512/149/149071.png"
+                                            class="rounded-circle border"
+                                            style="width: 45px; height: 45px; object-fit: cover;" alt="Preview">
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn btn-success w-100 py-2 fw-bold shadow-sm rounded-3"
+                                    id="btn-popup-reg">
+                                    <i class="bi bi-person-plus me-1"></i>ยืนยันการสมัครสมาชิก
+                                </button>
+                            </form>
+                        </div>
                     </div>
 
                 </div>

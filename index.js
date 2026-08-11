@@ -140,47 +140,81 @@ async function checkUserLevel() {
     }
 }
 
+// index.js (อัปเดตฟอร์ม Login ให้รองรับ Username หรือ Email)
+
 function setupPopupAuthListeners() {
     const authModalEl = document.getElementById('authModal');
     if (authModalEl) {
         authModalInstance = bootstrap.Modal.getOrCreateInstance(authModalEl);
     }
 
-    // 1. ฟอร์มเข้าสู่ระบบ (Login)
+    // 1. ฟอร์มเข้าสู่ระบบ (Login ด้วย Username หรือ Email)
     const loginForm = document.getElementById('form-popup-login');
     if (loginForm) {
         loginForm.addEventListener('submit', async function(e) {
             e.preventDefault();
-            const email = document.getElementById('popup-login-email').value.trim();
+            const inputIdentifier = document.getElementById('popup-login-email').value.trim(); // รับค่าได้ทั้ง Username หรือ Email
             const password = document.getElementById('popup-login-pass').value;
             const btnSubmit = document.getElementById('btn-popup-login');
 
             btnSubmit.disabled = true;
             btnSubmit.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span>กำลังตรวจสอบ...`;
 
-            const { data, error } = await window.supabaseClient.auth.signInWithPassword({
-                email: email,
-                password: password,
-            });
+            try {
+                let targetEmail = inputIdentifier;
 
-            if (error) {
-                showPopupAlert(`❌ เข้าสู่ระบบไม่สำเร็จ: ${error.message}`);
-                btnSubmit.disabled = false;
-                btnSubmit.innerHTML = `<i class="bi bi-box-arrow-in-right me-1"></i>ลงชื่อเข้าใช้งาน`;
-            } else {
-                showPopupAlert('🎉 ล็อกอินสำเร็จ!', 'success');
-                setTimeout(() => {
-                    if (authModalInstance) authModalInstance.hide();
+                // 🔍 ตรวจสอบว่าสิ่งที่พิมพ์มาเป็น Username หรือ Email (ไม่มี @ แปลว่าเป็น Username)
+                if (!inputIdentifier.includes('@')) {
+                    btnSubmit.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span>ค้นหา Username...`;
+                    
+                    // ดึงข้อมูลจาก Supabase Auth RPC หรือค้นหาอีเมลสอดคล้อง (ใช้กรณีเก็บ Username ใน user_metadata)
+                    // Note: Supabase ไม่มี API ค้นหา email จาก user_metadata ฝั่ง Client ตรงๆ เพื่อความปลอดภัย 
+                    // ดังนั้นเราจะใช้วิธีค้นหาจาก RPC หรือเทคนิค Query RPC function
+                    
+                    const { data: foundEmail, error: rpcError } = await window.supabaseClient.rpc('get_email_by_username', {
+                        p_username: inputIdentifier
+                    });
+
+                    if (rpcError || !foundEmail) {
+                        showPopupAlert('❌ ไม่พบชื่อผู้ใช้งาน (Username) นี้ในระบบ');
+                        btnSubmit.disabled = false;
+                        btnSubmit.innerHTML = `<i class="bi bi-box-arrow-in-right me-1"></i>ลงชื่อเข้าใช้งาน`;
+                        return;
+                    }
+
+                    targetEmail = foundEmail; // ใช้อีเมลที่หาเจอไปล็อกอิน
+                }
+
+                // สั่ง Log In ด้วย Email และ Password
+                const { data, error } = await window.supabaseClient.auth.signInWithPassword({
+                    email: targetEmail,
+                    password: password,
+                });
+
+                if (error) {
+                    showPopupAlert(`❌ เข้าสู่ระบบไม่สำเร็จ: ${error.message}`);
                     btnSubmit.disabled = false;
                     btnSubmit.innerHTML = `<i class="bi bi-box-arrow-in-right me-1"></i>ลงชื่อเข้าใช้งาน`;
-                    loginForm.reset();
-                    checkUserLevel();
-                }, 800);
+                } else {
+                    showPopupAlert('🎉 ล็อกอินสำเร็จ!', 'success');
+                    setTimeout(() => {
+                        if (authModalInstance) authModalInstance.hide();
+                        btnSubmit.disabled = false;
+                        btnSubmit.innerHTML = `<i class="bi bi-box-arrow-in-right me-1"></i>ลงชื่อเข้าใช้งาน`;
+                        loginForm.reset();
+                        checkUserLevel();
+                    }, 800);
+                }
+
+            } catch (err) {
+                showPopupAlert(`❌ เกิดข้อผิดพลาด: ${err.message}`);
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = `<i class="bi bi-box-arrow-in-right me-1"></i>ลงชื่อเข้าใช้งาน`;
             }
         });
     }
 
-    // 2. ฟอร์มสมัครสมาชิก (Register)
+    // 2. ฟอร์มสมัครสมาชิก (Register) - โค้ดเดิมคงไว้
     const regForm = document.getElementById('form-popup-register');
     if (regForm) {
         regForm.addEventListener('submit', async function(e) {
@@ -191,7 +225,6 @@ function setupPopupAuthListeners() {
             const passwordConfirm = document.getElementById('popup-reg-pass-confirm').value;
             const btnSubmit = document.getElementById('btn-popup-reg');
 
-            // 🛑 เช็กรหัสผ่านทั้งสองช่องว่าตรงกันหรือไม่
             if (password !== passwordConfirm) {
                 return showPopupAlert('❌ รหัสผ่านและช่องยืนยันรหัสผ่านไม่ตรงกัน');
             }
@@ -200,7 +233,6 @@ function setupPopupAuthListeners() {
             btnSubmit.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span>กำลังสมัครสมาชิก...`;
 
             try {
-                // 1. อัปโหลดรูปโปรไฟล์ (ถ้ามี) ขึ้น Storage
                 let avatarPublicUrl = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
                 if (selectedRegFile) {
                     btnSubmit.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span>กำลังอัปโหลดรูปโปรไฟล์...`;
@@ -209,7 +241,6 @@ function setupPopupAuthListeners() {
 
                 btnSubmit.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span>กำลังบันทึกบัญชีผู้ใช้...`;
 
-                // 2. สมัครสมาชิกพร้อมเก็บ Public URL
                 const { data, error } = await window.supabaseClient.auth.signUp({
                     email: email,
                     password: password,
