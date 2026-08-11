@@ -273,7 +273,7 @@ function setupPopupAuthListeners() {
                     btnSubmit.innerHTML = `<i class="bi bi-person-plus me-1"></i>ยืนยันการสมัครสมาชิก`;
                 }
             } catch (err) {
-                showPopupAlert(`❌ เกิดข้อผิดพลาดในการสมัครสมาชิก: ${err.message}`);
+                showPopupAlert(`❌ เกิดข้อผิดพลาดในการสมัครสมาชิกห: ${err.message}`);
                 btnSubmit.disabled = false;
                 btnSubmit.innerHTML = `<i class="bi bi-person-plus me-1"></i>ยืนยันการสมัครสมาชิก`;
             }
