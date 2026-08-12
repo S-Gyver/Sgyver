@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gyver Code Race - Python Edition</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- 🐍 ดึง Pyodide สำหรับรัน Python บน Browser -->
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
+
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: 'Kanit', sans-serif;
+            min-height: 100vh;
+        }
+
+        .status-bar {
+            background-color: #1e293b;
+            border-bottom: 2px solid #334155;
+            padding: 12px 20px;
+        }
+
+        .gold-badge {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #fff;
+            font-size: 1.2rem;
+            font-weight: bold;
+            padding: 6px 16px;
+            border-radius: 20px;
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+        }
+
+        /* Editor Zone */
+        .code-editor {
+            background-color: #090d16;
+            color: #38bdf8;
+            font-family: 'Courier New', Courier, monospace;
+            border: 2px solid #334155;
+            border-radius: 12px;
+            padding: 15px;
+            font-size: 1.1rem;
+            resize: none;
+            width: 100%;
+        }
+
+        .code-editor:focus {
+            outline: none;
+            border-color: #38bdf8;
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.2);
+        }
+
+        /* Terminal Output Box */
+        .terminal-box {
+            background-color: #050811;
+            color: #a7f3d0;
+            font-family: 'Courier New', Courier, monospace;
+            border-radius: 12px;
+            height: 100%;
+            min-height: 250px;
+            border: 2px solid #334155;
+            padding: 15px;
+            white-space: pre-wrap;
+            overflow-y: auto;
+        }
+
+        .error-text {
+            color: #f87171 !important;
+            font-weight: bold;
+        }
+
+        /* Pop-up คำถามบังจอ */
+        .quiz-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(8px);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .quiz-card {
+            background: #1e293b;
+            border: 3px solid #ef4444;
+            border-radius: 24px;
+            max-width: 550px;
+            width: 90%;
+            padding: 30px;
+            box-shadow: 0 0 40px rgba(239, 68, 68, 0.4);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Status Bar -->
+    <div class="status-bar d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-3">
+            <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Somchai" style="width: 45px; height: 45px; border-radius: 50%; border: 2px solid #38bdf8;">
+            <div>
+                <h5 class="fw-bold m-0 text-white">นาย สมชาย (ม.4/1)</h5>
+                <small class="text-info"><i class="bi bi-flag-fill me-1"></i>ความคืบหน้า: <span id="my-progress">0%</span></small>
+            </div>
+        </div>
+
+        <div class="d-flex align-items-center gap-3">
+            <div id="pyodide-status" class="badge bg-secondary px-3 py-2">
+                <span class="spinner-border spinner-border-sm me-1"></span>กำลังโหลด Python Engine...
+            </div>
+            <div class="gold-badge">
+                <i class="bi bi-coin me-1"></i><span id="gold-count">0</span> Gold
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Workspace -->
+    <div class="container-fluid p-3 p-md-4">
+        <div class="row g-3">
+            
+            <!-- ฝั่งซ้าย: โจทย์ + Editor -->
+            <div class="col-lg-7 d-flex flex-column gap-3">
+                <div class="bg-slate-800 p-3 rounded-3 border border-slate-700" style="background-color: #1e293b;">
+                    <h5 class="fw-bold text-warning mb-2"><i class="bi bi-filetype-py me-2"></i>โจทย์การแข่งขัน: เครื่องคิดเลขคำนวณบวกลบคูณหาร</h5>
+                    <p class="text-slate-300 small mb-1">จงเขียนโปรแกรมรับค่าตัวเลข 2 ตัว จากนั้นแสดงผลลัพธ์การ <b>บวก, ลบ, คูณ, และ หาร</b> ตามลำดับ</p>
+                    <div class="bg-dark p-2 rounded small text-info font-monospace">
+                        ตัวอย่าง Input:<br>
+                        10<br>
+                        2<br><br>
+                        ตัวอย่าง Output ที่ถูกต้อง:<br>
+                        ผลบวก: 12<br>
+                        ผลลัพธ์การคูณ: 20
+                    </div>
+                </div>
+
+                <div class="flex-grow-1 position-relative">
+                    <label class="form-label text-info fw-bold small"><i class="bi bi-keyboard me-1"></i>เขียนโค้ด Python ที่นี่:</label>
+                    <textarea id="code-editor" class="code-editor" rows="11" placeholder="พิมพ์โค้ด Python ที่นี่...">num1 = int(input("รับค่าตัวแรก: "))
+num2 = int(input("รับค่าตัวที่สอง: "))
+
+print("ผลบวก:", num1 + num2)
+print("ผลคูณ:", num1 * num2)
+</textarea>
+                    
+                    <div class="d-flex gap-2 justify-content-end mt-2">
+                        <button id="run-btn" class="btn btn-primary fw-bold px-4" onclick="runPythonCode()" disabled>
+                            <i class="bi bi-play-fill me-1"></i>ทดสอบรันโค้ด
+                        </button>
+                        <button id="submit-btn" class="btn btn-success fw-bold px-4" onclick="checkAnswer()" disabled>
+                            <i class="bi bi-send-check-fill me-1"></i>ส่งงานตรวจ Test Case
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ฝั่งขวา: Terminal Output + Error Checker -->
+            <div class="col-lg-5">
+                <label class="form-label text-success fw-bold small"><i class="bi bi-terminal me-1"></i>หน้าจอผลลัพธ์ (Terminal Console):</label>
+                <div id="terminal-output" class="terminal-box">กดปุ่ม "ทดสอบรันโค้ด" เพื่อดูผลลัพธ์...</div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- POP-UP คำถามบังจอ (Python Quiz) -->
+    <div id="quiz-popup" class="quiz-overlay d-none">
+        <div class="quiz-card text-center">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <span class="badge bg-danger px-3 py-2 fw-bold"><i class="bi bi-exclamation-triangle-fill me-1"></i>คำถาม Python ก่อกวนบังจอ!</span>
+                <div class="star-rating" id="question-stars">★★★☆☆</div>
+            </div>
+
+            <h4 class="fw-bold text-white mb-3" id="question-text">หากต้องการรับค่าตัวเลขจำนวนเต็มจากผู้ใช้ ต้องใช้คำสั่งใด?</h4>
+            <p class="text-muted small mb-4">ตอบถูกได้ <b class="text-warning">3 Gold</b> | ตอบผิดโดน <b class="text-danger">ถอยหลัง 6%</b></p>
+
+            <div class="d-grid gap-2 mb-3">
+                <button class="btn btn-outline-light text-start py-2 px-3 fw-bold" onclick="answerQuestion(false)">1. input(int())</button>
+                <button class="btn btn-outline-light text-start py-2 px-3 fw-bold" onclick="answerQuestion(true)">2. int(input())</button>
+                <button class="btn btn-outline-light text-start py-2 px-3 fw-bold" onclick="answerQuestion(false)">3. parse_int(input())</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let pyodide = null;
+        let currentGold = 0;
+        let myProgress = 0;
+
+        // โหลด Pyodide Engine สำหรับรัน Python บน Browser
+        async function loadPyodideEngine() {
+            const statusBadge = document.getElementById('pyodide-status');
+            try {
+                pyodide = await loadPyodide();
+                statusBadge.className = "badge bg-success px-3 py-2";
+                statusBadge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>Python พร้อมใช้งาน';
+                document.getElementById('run-btn').disabled = false;
+                document.getElementById('submit-btn').disabled = false;
+            } catch (err) {
+                statusBadge.className = "badge bg-danger px-3 py-2";
+                statusBadge.innerText = "โหลด Python ไม่สำเร็จ";
+            }
+        }
+        loadPyodideEngine();
+
+        // ฟังก์ชันรันโค้ด Python สดๆ บน Browser และตรวจจับ Error
+        async function runPythonCode() {
+            const code = document.getElementById('code-editor').value;
+            const terminal = document.getElementById('terminal-output');
+            terminal.innerText = "กำลังรันโค้ด...\n";
+
+            try {
+                // Redirect stdout ของ Python ให้มาแสดงใน Terminal Box
+                pyodide.runPython(`
+                    import sys
+                    import io
+                    sys.stdout = io.StringIO()
+                `);
+
+                // จำลองการป้อนค่า input() แบบอัตโนมัติ (เช่น ใส่เลข 10 และ 2)
+                pyodide.runPython(`
+                    import builtins
+                    inputs = iter(["10", "2"])
+                    builtins.input = lambda prompt="": next(inputs)
+                `);
+
+                // รันโค้ดของนักเรียน
+                await pyodide.runPythonAsync(code);
+
+                // ดึงผลลัพธ์ stdout ออกมาแสดง
+                const stdout = pyodide.runPython("sys.stdout.getvalue()");
+                terminal.className = "terminal-box";
+                terminal.innerText = stdout || "รันสำเร็จ (ไม่มีการพิมพ์ข้อความผ่าน print)";
+
+            } catch (err) {
+                // แสดงสถานะ Error ชัดเจนเป็นสีแดง
+                terminal.className = "terminal-box error-text";
+                terminal.innerText = `❌ ตรวจพบ Error ในโค้ดของคุณ:\n\n${err.message}`;
+            }
+        }
+
+        // ตรวจสอบความถูกต้องของโจทย์ (Auto Grader Test Cases)
+        async function checkAnswer() {
+            const code = document.getElementById('code-editor').value;
+            const terminal = document.getElementById('terminal-output');
+            
+            try {
+                pyodide.runPython(`
+                    import sys, io, builtins
+                    sys.stdout = io.StringIO()
+                    inputs = iter(["20", "5"])
+                    builtins.input = lambda prompt="": next(inputs)
+                `);
+
+                await pyodide.runPythonAsync(code);
+                const stdout = pyodide.runPython("sys.stdout.getvalue()");
+
+                // เช็กเงื่อนไขว่า Output มีคำว่า 25 (ผลบวก) และ 100 (ผลคูณ) หรือไม่
+                if (stdout.includes("25") && stdout.includes("100")) {
+                    myProgress = 100;
+                    document.getElementById('my-progress').innerText = "100%";
+                    terminal.className = "terminal-box";
+                    terminal.innerText = `🎉 ผ่าน Test Case ทั้งหมด!\n\n${stdout}`;
+                    alert("🚀 ยินดีด้วย! โค้ดของคุณถูกต้อง เข้าเส้นชัยเรียบร้อยแล้ว!");
+                } else {
+                    terminal.className = "terminal-box error-text";
+                    terminal.innerText = `⚠️ ผลลัพธ์ยังไม่ตรงตาม Test Case:\nExpected output สำหรับ input 20 กับ 5 ควรได้ผลรวม 25 และผลคูณ 100\n\nOutput จริงของคุณ:\n${stdout}`;
+                }
+            } catch (err) {
+                terminal.className = "terminal-box error-text";
+                terminal.innerText = `❌ รันไม่ผ่าน เนื่องจากมี Error ในโค้ด:\n\n${err.message}`;
+            }
+        }
+
+        // สุ่ม Pop-up คำถามบังจอหลังผ่านไป 6 วินาที
+        setTimeout(() => {
+            document.getElementById('quiz-popup').classList.remove('d-none');
+        }, 6000);
+
+        function answerQuestion(isCorrect) {
+            document.getElementById('quiz-popup').classList.add('d-none');
+            if (isCorrect) {
+                currentGold += 3;
+                alert("🎉 ตอบถูก! ได้รับ 3 Gold");
+            } else {
+                alert("❌ ตอบผิด!");
+            }
+            document.getElementById('gold-count').innerText = currentGold;
+        }
+    </script>
+</body>
+</html>
