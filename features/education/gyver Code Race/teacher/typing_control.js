@@ -26,10 +26,14 @@ function setupQRCode(code) {
     if (qrBox) {
         qrBox.innerHTML = "";
         
-        // 🔗 ปรับ URL ให้ตรงกับไฟล์ student_lobby.html พร้อมส่งทั้ง room และ classKey
-        const origin = window.location.origin;
-        const joinUrl = `${origin}/features/education/gyver%20Code%20Race/student/student_lobby.html?room=${code}&classKey=${encodeURIComponent(classKey)}`;
+        // 🔗 คำนวณ Path ให้รองรับทั้ง Local Server และ GitHub Pages
+        const pathname = window.location.pathname;
+        // ดึง Path โฟลเดอร์หลักก่อนถึง student/student_lobby.html
+        const basePath = pathname.substring(0, pathname.indexOf('/teacher/'));
+        const joinUrl = `${window.location.origin}${basePath}/student/student_lobby.html?room=${code}&classKey=${encodeURIComponent(classKey)}`;
         
+        console.log("🔗 Generated Student Join URL:", joinUrl);
+
         try {
             if (typeof QRCode !== 'undefined') {
                 new QRCode(qrBox, { 
@@ -42,7 +46,7 @@ function setupQRCode(code) {
                 });
             }
         } catch (e) {
-            console.error("QR Code Error:", e);
+            console.error("QR Code Generation Error:", e);
         }
     }
 }
