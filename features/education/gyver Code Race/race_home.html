@@ -1,96 +1,90 @@
 <!DOCTYPE html>
 <html lang="th">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gyver Code Race - Home Hub</title>
-    
+    <title>Gyver Code Race - Select Role & Join</title>
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@600;700&family=Kanit:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@600;700;800&family=Kanit:wght@400;600;700;800&display=swap" rel="stylesheet">
 
-    <!-- HTML5 QR Code Scanner Library -->
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../../../assets/js/supabaseClient.js"></script>
 
+    <!-- Custom CSS -->
     <link rel="stylesheet" href="teacher/teacher_lobby.css">
-    <style>
-        #qr-reader {
-            width: 100%;
-            border-radius: 12px;
-            overflow: hidden;
-            border: 2px solid #38bdf8;
-        }
-        #qr-reader video {
-            object-fit: cover;
-            border-radius: 10px;
-        }
-    </style>
+    <link rel="stylesheet" href="race_home.css">
 </head>
-<body class="cyber-body py-4">
 
-    <div class="container" style="max-width: 1000px;">
+<body class="cyber-body d-flex align-items-center min-vh-100 py-4">
+
+    <div class="container text-center" style="max-width: 900px;">
         
-        <!-- Header Top Navbar -->
-        <div class="d-flex justify-content-between align-items-center mb-4 border-bottom border-secondary pb-3">
-            <div class="d-flex align-items-center gap-3">
-                <div class="header-icon-box bg-primary text-white">
-                    <i class="bi bi-flag-fill fs-3"></i>
-                </div>
-                <div>
-                    <h3 class="fw-bold text-white m-0 font-mono">Gyver Code Race</h3>
-                </div>
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-flag-fill text-primary fs-3"></i>
+                <h3 class="fw-extrabold text-white font-mono m-0">Gyver Code Race</h3>
             </div>
-            <a href="../../index.html" class="btn btn-outline-light btn-sm rounded-pill px-3 font-mono">
+            <a href="../../../index.html" class="btn btn-outline-light btn-sm font-mono rounded-pill px-3">
                 <i class="bi bi-house-door-fill me-1"></i>กลับหน้าหลัก Workspace
             </a>
         </div>
 
-        <!-- Banner Title -->
-        <div class="text-center my-4">
-            <span class="badge bg-primary px-3 py-2 rounded-pill font-mono mb-2"><i class="bi bi-broadcast me-1"></i>Live Coding & Typing Arena</span>
-            <h1 class="fw-extrabold text-white display-5 font-mono">ประลองความเร็วและการเขียนโค้ด Realtime</h1>
-            <p class="text-subtle">ระบบการแข่งขันพิมพ์โค้ดและแก้โจทย์การเขียนโปรแกรมในห้องเรียน สนุก ตื่นเต้น พร้อมระบบการ์ดก่อกวนแบบ e-Sports</p>
+        <div class="mb-4">
+            <span class="badge bg-primary font-mono px-3 py-1 fs-6 mb-2">
+                <i class="bi bi-broadcast me-1"></i>Live Coding & Typing Arena
+            </span>
+            <h1 class="fw-extrabold text-white font-mono display-5 mb-2">ประลองความเร็วและการเขียนโค้ด Realtime</h1>
+            <p class="text-subtle font-mono small">ระบบการแข่งขันพิมพ์โค้ดและแก้โจทย์การเขียนโปรแกรมในห้องเรียน สนุก ตื่นเต้น พร้อมระบบการ์ดก่อกวนแบบ e-Sports</p>
         </div>
 
-        <!-- Choice Split Cards -->
-        <div class="row g-4 mb-5">
+        <!-- Role Select Cards -->
+        <div class="row g-4 justify-content-center">
             
-            <!-- 👈 ฝั่งซ้าย: สำหรับคุณครู -->
+            <!-- 👨‍🏫 1. สำหรับคุณครู -->
             <div class="col-md-6">
-                <div class="cyber-card p-4 text-center h-100 d-flex flex-column justify-content-between border-warning">
+                <div class="role-card teacher-card h-100 d-flex flex-column justify-content-between text-center">
                     <div>
-                        <div class="game-icon bg-warning text-dark mx-auto mb-3" style="width: 70px; height: 70px; font-size: 2.2rem; border-radius: 20px;">
+                        <div class="icon-box bg-warning text-dark mx-auto rounded-circle d-flex align-items-center justify-content-center role-icon-wrapper mb-3">
                             <i class="bi bi-broadcast"></i>
                         </div>
                         <h3 class="fw-bold text-white font-mono mb-2">สำหรับคุณครู</h3>
-                        <p class="text-subtle small mb-4">สร้างห้องแข่งขัน (Lobby), เลือกโหมดแข่งเดี่ยว/กลุ่ม, ฉายขึ้นจอโปรเจกเตอร์ พร้อมส่องดูโค้ดนักเรียนแบบ Realtime</p>
+                        <p class="text-subtle font-mono small mb-4">
+                            สร้างห้องแข่งขัน (Lobby), เลือกโหมดแข่งเดี่ยว/กลุ่ม, ฉายขึ้นจอโปรเจกเตอร์ พร้อมส่องดูโค้ดนักเรียนแบบ Realtime
+                        </p>
                     </div>
-
-                    <a href="teacher/teacher_lobby.html" class="btn btn-warning btn-lg w-100 py-3 font-mono fw-bold shadow">
+                    <button class="btn btn-warning btn-lg font-mono fw-bold w-100 rounded-3 text-dark" onclick="goToTeacherLobby()">
                         <i class="bi bi-plus-circle-fill me-2"></i>สร้างห้องแข่งขัน (Create Lobby)
-                    </a>
+                    </button>
                 </div>
             </div>
 
-            <!-- 👉 ฝั่งขวา: สำหรับนักเรียน (เหลือเฉพาะ Join และ สแกน) -->
+            <!-- 🧑‍🎓 2. สำหรับนักเรียน -->
             <div class="col-md-6">
-                <div class="cyber-card p-4 text-center h-100 d-flex flex-column justify-content-between border-info">
+                <div class="role-card student-card h-100 d-flex flex-column justify-content-between text-center">
                     <div>
-                        <div class="game-icon bg-info text-white mx-auto mb-3" style="width: 70px; height: 70px; font-size: 2.2rem; border-radius: 20px;">
+                        <div class="icon-box bg-cyan text-dark mx-auto rounded-circle d-flex align-items-center justify-content-center role-icon-wrapper mb-3">
                             <i class="bi bi-controller"></i>
                         </div>
                         <h3 class="fw-bold text-white font-mono mb-2">สำหรับนักเรียน</h3>
-                        <p class="text-subtle small mb-4">เข้าร่วมห้องแข่งขันผ่านรหัสห้องเรียน หรือสแกน QR Code จากจอของคุณครู</p>
-                        
-                        <!-- ช่องกรอก Room Code + ปุ่ม Join -->
+                        <p class="text-subtle font-mono small mb-3">
+                            เข้าร่วมห้องแข่งขันผ่านรหัสห้องเรียน หรือสแกน QR Code จากจอของคุณครู
+                        </p>
+
+                        <!-- ช่องใส่เลขห้อง -->
                         <div class="input-group mb-3">
-                            <input type="text" id="student-room-input" class="form-control bg-dark text-white border-secondary text-center font-mono text-uppercase fw-bold fs-5" placeholder="กรอกรหัสห้อง เช่น RACE88">
-                            <button class="btn btn-info font-mono fw-bold px-4 fs-5" type="button" onclick="joinRoomByCode()">Join</button>
+                            <input type="text" id="home-room-code-input" class="form-control input-code-box" placeholder="กรอกรหัสห้อง" value="RACE85" style="text-transform: uppercase;">
+                            <button class="btn btn-info font-mono fw-bold text-dark px-4" type="button" onclick="joinRoomByCode()">
+                                Join
+                            </button>
                         </div>
                     </div>
 
-                    <!-- ปุ่มสแกน QR Code -->
-                    <button type="button" class="btn btn-outline-warning btn-lg w-100 py-3 font-mono fw-bold" onclick="openScannerModal()">
+                    <button class="btn btn-outline-warning font-mono fw-bold w-100 rounded-3" onclick="openCameraScanModal()">
                         <i class="bi bi-qr-code-scan me-2"></i>สแกน QR Code (เปิดกล้อง)
                     </button>
                 </div>
@@ -100,26 +94,79 @@
 
     </div>
 
-    <!-- Modal กล้องสแกน QR Code -->
-    <div class="modal fade" id="qrScannerModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <!-- Modal เปิดกล้องสแกน QR Code -->
+    <div class="modal fade" id="qrScanModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content bg-dark text-white border-info rounded-4">
+            <div class="modal-content bg-dark text-white border border-secondary font-mono">
                 <div class="modal-header border-secondary">
-                    <h5 class="modal-title font-mono text-info"><i class="bi bi-camera-fill me-2"></i>สแกน QR Code เข้าห้องเรียน</h5>
-                    <button type="button" class="btn-close btn-close-white" onclick="closeScannerModal()"></button>
+                    <h5 class="modal-title text-warning"><i class="bi bi-camera-fill me-2"></i>สแกน QR Code เข้าห้องแข่ง</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body text-center p-3">
-                    <div id="qr-reader" class="bg-black mb-3"></div>
-                    <p class="text-subtle font-mono small m-0" id="scan-status-text">กำลังเปิดกล้อง... หันกล้องไปที่ QR Code บนจอโปรเจกเตอร์</p>
-                </div>
-                <div class="modal-footer border-secondary">
-                    <button type="button" class="btn btn-secondary font-mono w-100" onclick="closeScannerModal()">ยกเลิก</button>
+                <div class="modal-body text-center p-4">
+                    <p class="text-subtle small mb-3">ส่องกล้องไปที่ QR Code บนจอโปรเจกเตอร์ของคุณครู</p>
+                    <div id="qr-reader-box" class="qr-scanner-box d-flex align-items-center justify-content-center">
+                        <span class="text-muted"><i class="bi bi-camera fs-1 d-block mb-2"></i>กำลังขอสิทธิ์เปิดใช้งานกล้อง...</span>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="race_home.js"></script>
+    <!-- สคริปต์สแกน QR Code และ ฟังก์ชันนำทาง -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script>
+        function goToTeacherLobby() {
+            window.location.href = 'teacher/teacher_lobby.html';
+        }
+
+        function joinRoomByCode() {
+            const inputEl = document.getElementById('home-room-code-input');
+            const roomCode = inputEl ? inputEl.value.trim().toUpperCase() : '';
+
+            if (!roomCode) {
+                alert("⚠️ กรุณากรอกรหัสห้อง (Room Code) ก่อนกด Join ครับ!");
+                return;
+            }
+
+            window.location.href = `student/student_lobby.html?room=${roomCode}`;
+        }
+
+        let html5QrCode = null;
+
+        function openCameraScanModal() {
+            const modalEl = document.getElementById('qrScanModal');
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+
+            modalEl.addEventListener('shown.bs.modal', startScanner, { once: true });
+            modalEl.addEventListener('hidden.bs.modal', stopScanner);
+        }
+
+        function startScanner() {
+            if (typeof Html5Qrcode !== 'undefined') {
+                html5QrCode = new Html5Qrcode("qr-reader-box");
+                html5QrCode.start(
+                    { facingMode: "environment" },
+                    { fps: 10, qrbox: { width: 220, height: 220 } },
+                    (decodedText) => {
+                        stopScanner();
+                        window.location.href = decodedText;
+                    },
+                    (errorMessage) => {}
+                ).catch(err => {
+                    document.getElementById('qr-reader-box').innerHTML = `<span class="text-danger p-3">❌ ไม่สามารถเปิดกล้องได้ (โปรดอนุญาตสิทธิ์กล้องในเบราว์เซอร์)</span>`;
+                });
+            }
+        }
+
+        function stopScanner() {
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    html5QrCode.clear();
+                }).catch(err => {});
+            }
+        }
+    </script>
 </body>
+
 </html>

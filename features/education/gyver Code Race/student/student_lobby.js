@@ -4,11 +4,20 @@ let hasSavedProfile = false;
 
 document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
-    const roomCode = (urlParams.get('room') || 'RACE88').toUpperCase();
+    // 1. ดึงรหัสห้องจาก URL (ถ้ามี)
+    let roomCode = (urlParams.get('room') || '').trim().toUpperCase();
     const isTeamMode = urlParams.get('type') === 'team';
 
+    // ถ้าใน URL มีเลขห้อง ให้เอาไปใส่ในช่องกรอก และโชว์บนหน้าจอ
+    const roomInputEl = document.getElementById('input-room-code') || document.getElementById('student-room-code');
+    if (roomInputEl && roomCode) {
+        roomInputEl.value = roomCode;
+    }
+
     const roomCodeEl = document.getElementById('lobby-room-code');
-    if (roomCodeEl) roomCodeEl.innerText = roomCode;
+    if (roomCodeEl) {
+        roomCodeEl.innerText = roomCode || 'RACE88';
+    }
 
     const teamZone = document.getElementById('team-input-zone');
     if (teamZone && !isTeamMode) {
@@ -23,6 +32,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnUpload && fileInput) {
         btnUpload.addEventListener('click', () => fileInput.click());
         fileInput.addEventListener('change', handleCustomAvatarUpload);
+    }
+
+    // ผูก Event ปุ่มกด Join
+    const joinForm = document.getElementById('student-join-form') || document.querySelector('form');
+    if (joinForm) {
+        joinForm.addEventListener('submit', handleStudentJoin);
     }
 
     loadSavedProfile();
@@ -60,15 +75,11 @@ function loadSavedProfile() {
             if (document.getElementById('student-nickname-th')) document.getElementById('student-nickname-th').value = profile.nicknameTh || '';
             if (document.getElementById('student-firstname-th')) document.getElementById('student-firstname-th').value = profile.firstnameTh || '';
             if (document.getElementById('student-lastname-th')) document.getElementById('student-lastname-th').value = profile.lastnameTh || '';
-            if (document.getElementById('student-nickname-en')) document.getElementById('student-nickname-en').value = profile.nicknameEn || '';
-            if (document.getElementById('student-firstname-en')) document.getElementById('student-firstname-en').value = profile.firstnameEn || '';
-            if (document.getElementById('student-lastname-en')) document.getElementById('student-lastname-en').value = profile.lastnameEn || '';
             if (document.getElementById('student-level')) document.getElementById('student-level').value = profile.studentLevel || 'ม.5';
             if (document.getElementById('student-room')) document.getElementById('student-room').value = profile.studentRoom || '10';
             if (document.getElementById('student-number')) document.getElementById('student-number').value = profile.studentNumber || '10';
 
             if (document.getElementById('saved-display-name-th')) document.getElementById('saved-display-name-th').innerText = `${profile.nicknameTh} (${profile.firstnameTh || ''} ${profile.lastnameTh || ''})`;
-            if (document.getElementById('saved-display-name-en')) document.getElementById('saved-display-name-en').innerText = `${profile.nicknameEn || ''} (${profile.firstnameEn || ''} ${profile.lastnameEn || ''})`;
             if (document.getElementById('saved-display-class')) document.getElementById('saved-display-class').innerText = profile.studentClass || 'ม.5/10';
             if (document.getElementById('saved-display-no')) document.getElementById('saved-display-no').innerText = profile.studentNumber || '10';
 
@@ -135,48 +146,31 @@ function handleCustomAvatarUpload(e) {
     reader.readAsDataURL(file);
 }
 
-function toggleNoTeam(isNoTeam) {
-    const teamInput = document.getElementById('student-team-num');
-    if (!teamInput) return;
-
-    if (isNoTeam) {
-        teamInput.value = 0;
-        teamInput.disabled = true;
-    } else {
-        teamInput.value = 1;
-        teamInput.disabled = false;
-    }
-}
-
+// 🚀 ฟังก์ชันหลักในการ Join ด้วยรหัสห้อง (Room Code)
 async function handleStudentJoin(e) {
     if (e) e.preventDefault();
 
     const btnSubmit = document.getElementById('btn-submit-join');
     if (btnSubmit) {
         btnSubmit.disabled = true;
-        btnSubmit.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>กำลังบันทึกข้อมูล...`;
+        btnSubmit.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>กำลังเข้าร่วมห้อง...`;
     }
 
     const urlParams = new URLSearchParams(window.location.search);
-    let roomCode = (urlParams.get('room') || 'RACE88').toUpperCase();
-
-    const roomInputEl = document.getElementById('input-room-code');
-    if (roomInputEl && roomInputEl.value.trim()) {
-        roomCode = roomInputEl.value.trim().toUpperCase();
-    }
+    
+    // ดึงรหัสห้องจากอินพุตถ้าพิมพ์มา หรือดึงจาก URL
+    let inputRoom = (document.getElementById('input-room-code')?.value || document.getElementById('student-room-code')?.value || urlParams.get('room') || 'RACE88').trim().toUpperCase();
 
     let nicknameTh = document.getElementById('student-nickname-th')?.value.trim();
-    let firstnameTh = document.getElementById('student-firstname-th')?.value.trim();
-    let lastnameTh = document.getElementById('student-lastname-th')?.value.trim();
-    let nicknameEn = document.getElementById('student-nickname-en')?.value.trim();
-    let firstnameEn = document.getElementById('student-firstname-en')?.value.trim();
-    let lastnameEn = document.getElementById('student-lastname-en')?.value.trim();
+    let firstnameTh = document.getElementById('student-firstname-th')?.value.trim() || '';
+    let lastnameTh = document.getElementById('student-lastname-th')?.value.trim() || '';
 
     let studentLevel = document.getElementById('student-level')?.value || 'ม.5'; 
     let studentRoom = document.getElementById('student-room')?.value || '10';   
     let studentNumber = document.getElementById('student-number')?.value.trim() || '10';
     let teamNum = document.getElementById('student-team-num')?.value || 0;
 
+    // ดึงโปรไฟล์เดิมถ้าระบบจำไว้แล้ว
     if (hasSavedProfile) {
         const savedData = localStorage.getItem('gyver_race_student_profile');
         if (savedData) {
@@ -185,9 +179,6 @@ async function handleStudentJoin(e) {
                 nicknameTh = p.nicknameTh || nicknameTh;
                 firstnameTh = p.firstnameTh || firstnameTh;
                 lastnameTh = p.lastnameTh || lastnameTh;
-                nicknameEn = p.nicknameEn || nicknameEn;
-                firstnameEn = p.firstnameEn || firstnameEn;
-                lastnameEn = p.lastnameEn || lastnameEn;
                 studentLevel = p.studentLevel || studentLevel;
                 studentRoom = p.studentRoom || studentRoom;
                 studentNumber = p.studentNumber || studentNumber;
@@ -196,12 +187,15 @@ async function handleStudentJoin(e) {
         }
     }
 
+    if (!inputRoom) {
+        alert("⚠️ กรุณากรอกรหัสห้อง (Room Code) ก่อนครับ!");
+        resetJoinBtn();
+        return;
+    }
+
     if (!nicknameTh) {
-        alert("กรุณากรอกชื่อเล่นนักเรียนก่อนครับ!");
-        if (btnSubmit) {
-            btnSubmit.disabled = false;
-            btnSubmit.innerHTML = `<i class="bi bi-play-circle-fill me-2"></i>พร้อมแล้ว! เข้าห้องแข่งขัน`;
-        }
+        alert("⚠️ กรุณากรอกชื่อเล่นนักเรียนก่อนครับ!");
+        resetJoinBtn();
         return;
     }
 
@@ -209,14 +203,31 @@ async function handleStudentJoin(e) {
     let classKey = `${cleanLevel}/${studentRoom}`; 
     let studentClassFormatted = `${studentLevel}/${studentRoom}`;
 
+    // 🔍 1. ตรวจเช็กว่ามีห้องนี้ใน Supabase หรือไม่
+    try {
+        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+            let { data: lobbyData } = await supabaseClient
+                .from('lobbies')
+                .select('*')
+                .eq('room_code', inputRoom)
+                .maybeSingle();
+
+            if (lobbyData && lobbyData.class_key) {
+                classKey = lobbyData.class_key;
+                const [lvl, rm] = classKey.split('/');
+                if (lvl && rm) studentClassFormatted = `ม.${lvl}/${rm}`;
+            }
+        }
+    } catch (err) {
+        console.warn("Lobbies fetch warning:", err);
+    }
+
+    // 💾 2. บันทึกโปรไฟล์ลง LocalStorage
     const profilePayload = {
         nicknameTh,
         firstnameTh,
         lastnameTh,
         fullnameTh: `${firstnameTh} ${lastnameTh}`,
-        nicknameEn,
-        firstnameEn,
-        lastnameEn,
         studentLevel,
         studentRoom,
         studentClass: studentClassFormatted,
@@ -225,6 +236,7 @@ async function handleStudentJoin(e) {
     };
     localStorage.setItem('gyver_race_student_profile', JSON.stringify(profilePayload));
 
+    // 💾 3. บันทึกนักเรียนลงตาราง class_rooms ใน Supabase DB
     try {
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
             const newPlayerData = {
@@ -232,9 +244,6 @@ async function handleStudentJoin(e) {
                 nickname_th: nicknameTh,
                 firstname_th: firstnameTh,
                 lastname_th: lastnameTh,
-                nickname_en: nicknameEn || '',
-                firstname_en: firstnameEn || '',
-                lastname_en: lastnameEn || '',
                 level: studentLevel,
                 room: studentRoom,
                 class_name: studentClassFormatted,
@@ -280,9 +289,17 @@ async function handleStudentJoin(e) {
             }
         }
     } catch (err) {
-        console.error("Supabase Save Error:", err);
+        console.error("Supabase Save Player Error:", err);
     }
 
-    // 🚀 ย้ายไปหน้ารอทันที
-    window.location.href = `student_waiting.html?room=${roomCode}&name=${encodeURIComponent(nicknameTh)}&class=${encodeURIComponent(studentClassFormatted)}&no=${studentNumber}&classKey=${encodeURIComponent(classKey)}&team=${teamNum}`;
+    // 🚀 4. นำทางไปหน้า student_waiting.html ทันที
+    window.location.href = `student_waiting.html?room=${inputRoom}&name=${encodeURIComponent(nicknameTh)}&class=${encodeURIComponent(studentClassFormatted)}&no=${studentNumber}&classKey=${encodeURIComponent(classKey)}&team=${teamNum}`;
+}
+
+function resetJoinBtn() {
+    const btnSubmit = document.getElementById('btn-submit-join');
+    if (btnSubmit) {
+        btnSubmit.disabled = false;
+        btnSubmit.innerHTML = `<i class="bi bi-play-circle-fill me-2"></i>พร้อมแล้ว! เข้าห้องแข่งขัน`;
+    }
 }
