@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gyver Code Race - Live Battle Spectator</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@600;700;800&family=Kanit:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../../../assets/js/supabaseClient.js"></script>
+
+    <link rel="stylesheet" href="teacher_lobby.css">
+    <style>
+        .progress-track-item {
+            background: #020617;
+            border: 1px solid #1e293b;
+            border-radius: 10px;
+            padding: 6px 12px;
+            margin-bottom: 6px;
+        }
+        .code-screen-box {
+            background: #030712;
+            border: 2px solid #38bdf8;
+            border-radius: 16px;
+            min-height: 280px;
+            font-family: 'Fira Code', monospace;
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.2);
+            transition: all 0.2s ease;
+        }
+        .code-screen-box.is-wrong-box {
+            border-color: #ef4444 !important;
+            box-shadow: 0 0 25px rgba(239, 68, 68, 0.5) !important;
+            background: #110507 !important;
+        }
+        .mini-student-card {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 8px;
+            width: 160px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .mini-student-card:hover {
+            border-color: #38bdf8;
+            transform: translateY(-3px);
+        }
+        .mini-student-card.active-slot1 {
+            border: 2px solid #f59e0b !important;
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+        }
+        .mini-student-card.active-slot2 {
+            border: 2px solid #38bdf8 !important;
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+        }
+        .code-display-area {
+            white-space: pre-wrap;
+            word-break: break-all;
+            font-size: 0.95rem;
+            color: #38bdf8;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body class="cyber-body py-2 px-3">
+
+    <div class="container-fluid p-0">
+        
+        <!-- Header Bar -->
+        <div class="cyber-card p-2 px-3 mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-3">
+                <span class="badge bg-danger text-white font-mono fs-5 fw-bold px-3 py-2 animate-pulse">
+                    <i class="bi bi-broadcast me-1"></i>LIVE RACE
+                </span>
+                <div>
+                    <h4 class="fw-extrabold text-white font-mono m-0">SPEED TYPING ARENA</h4>
+                    <small class="text-subtle font-mono">ROOM: <span id="live-room-code" class="text-warning fw-bold">----</span></small>
+                </div>
+            </div>
+
+            <div class="px-4 py-1 bg-dark rounded-3 border border-warning text-center">
+                <small class="text-subtle d-block font-mono" style="font-size: 0.65rem;">REMAINING TIME</small>
+                <span class="text-warning fw-extrabold fs-3 font-mono" id="live-timer">03:00</span>
+            </div>
+
+            <div class="d-flex align-items-center gap-2" id="top-3-leaderboard">
+                <div class="badge bg-dark border border-secondary font-mono p-2 text-start">
+                    <small class="text-warning d-block">🥇 1st: <span id="rank-1-name">-</span></small>
+                    <small class="text-cyan d-block">🥈 2nd: <span id="rank-2-name">-</span></small>
+                </div>
+            </div>
+        </div>
+
+        <!-- 🚀 1. หลอด Progress % -->
+        <div class="cyber-card p-3 mb-3">
+            <small class="text-warning font-mono fw-bold d-block mb-2">
+                <i class="bi bi-flag-fill me-1"></i>1. LIVE PROGRESS TRACK (0 - 100%)
+            </small>
+
+            <div id="progress-tracks-container" class="overflow-y-auto p-1" style="max-height: 180px;">
+                <div class="text-center text-subtle font-mono py-3">กำลังรอข้อมูลการพิมพ์จากผู้แข่งขัน...</div>
+            </div>
+        </div>
+
+        <!-- 📺 2. สตรีม 2 จอใหญ่ตรงกลาง -->
+        <div class="cyber-card p-3 mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <small class="text-cyan font-mono fw-bold">
+                    <i class="bi bi-display-fill me-1"></i>2. DUAL FOCUS ARENA (เลือกดูจอเด็กขยายใหญ่จากส่วนด้านล่าง)
+                </small>
+                <span class="badge bg-dark border border-secondary text-subtle font-mono">SPOTLIGHT 2 PLAYERS</span>
+            </div>
+
+            <div class="row g-3">
+                <!-- Slot 1 -->
+                <div class="col-lg-6">
+                    <div id="slot1-screen-box" class="code-screen-box p-3 d-flex flex-column justify-content-between">
+                        <div>
+                            <div class="d-flex justify-content-between align-items-center border-bottom border-secondary pb-2 mb-2">
+                                <span class="badge bg-warning text-dark font-mono fw-bold" id="slot1-player-name">FOCUS #1: กรุณาเลือกนักเรียน</span>
+                                <span class="badge bg-dark border border-info text-info font-mono" id="slot1-player-percent">0%</span>
+                            </div>
+                            <div class="code-display-area p-2" id="slot1-code-content">// หน้าจอซอร์สโค้ดที่นักเรียนกำลังพิมพ์...</div>
+                        </div>
+                        <small class="text-subtle font-mono text-end mt-2" style="font-size: 0.7rem;" id="slot1-wpm-text">WPM: 0 | Error: 0</small>
+                    </div>
+                </div>
+
+                <!-- Slot 2 -->
+                <div class="col-lg-6">
+                    <div id="slot2-screen-box" class="code-screen-box p-3 d-flex flex-column justify-content-between" style="border-color: #f59e0b;">
+                        <div>
+                            <div class="d-flex justify-content-between align-items-center border-bottom border-secondary pb-2 mb-2">
+                                <span class="badge bg-info text-dark font-mono fw-bold" id="slot2-player-name">FOCUS #2: กรุณาเลือกนักเรียน</span>
+                                <span class="badge bg-dark border border-warning text-warning font-mono" id="slot2-player-percent">0%</span>
+                            </div>
+                            <div class="code-display-area p-2 text-warning" id="slot2-code-content">// หน้าจอซอร์สโค้ดที่นักเรียนกำลังพิมพ์...</div>
+                        </div>
+                        <small class="text-subtle font-mono text-end mt-2" style="font-size: 0.7rem;" id="slot2-wpm-text">WPM: 0 | Error: 0</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 👥 3. การ์ดเด็กทุกคน -->
+        <div class="cyber-card p-3">
+            <small class="text-subtle font-mono fw-bold d-block mb-2">
+                <i class="bi bi-grid-3x3-gap-fill me-1"></i>3. ALL PLAYERS GRID (คลิกที่การ์ดเพื่อเลือกขึ้นจอใหญ่ Slot 1 หรือ Slot 2)
+            </small>
+
+            <div id="all-mini-cards-grid" class="d-flex flex-wrap gap-2 overflow-y-auto p-1" style="max-height: 200px;">
+                <div class="text-center text-subtle font-mono py-3 w-100">กำลังดึงรายชื่อผู้เข้าแข่งขัน...</div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="projector_live.js"></script>
+</body>
+</html>

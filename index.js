@@ -1,5 +1,3 @@
-// index.js
-
 let authModalInstance = null;
 let selectedRegFile = null;
 
@@ -70,6 +68,7 @@ async function checkUserLevel() {
         const badgeText = document.getElementById('level-badge-text');
         const welcomeDesc = document.getElementById('level-welcome-desc');
         const eduWheelCard = document.getElementById('education-wheel-card');
+        const eduRaceCard = document.getElementById('education-race-card');
 
         const navUserName = document.getElementById('nav-user-name');
         const navUserAvatar = document.getElementById('nav-user-avatar');
@@ -90,6 +89,7 @@ async function checkUserLevel() {
             if (badgeText) badgeText.innerText = 'Gyver Portal (Lv.1 Member)';
             if (welcomeDesc) welcomeDesc.innerText = `ยินดีต้อนรับคุณ ${displayName} ปลดล็อกสิทธิ์การใช้งานหมวดห้องเรียนอัจฉริยะเรียบร้อยแล้ว`;
 
+            // 1. การ์ด Gyver Wheel (Live) เมื่อเป็น Lv.1
             if (eduWheelCard) {
                 eduWheelCard.className = "action-card p-3 h-100";
                 eduWheelCard.innerHTML = `
@@ -108,6 +108,27 @@ async function checkUserLevel() {
                 `;
             }
 
+            // index.js (เฉพาะส่วนการ์ด eduRaceCard)
+
+// 2. การ์ด Gyver Code Race เมื่อเป็น Lv.1 (วิ่งไป race_home.html)
+if (eduRaceCard) {
+    eduRaceCard.className = "action-card p-3 h-100";
+    eduRaceCard.innerHTML = `
+        <a href="features/education/gyver%20Code%20Race/race_home.html" class="d-flex align-items-center gap-3 text-decoration-none text-dark h-100">
+            <div class="icon-box bg-danger bg-gradient text-white shadow-sm">
+                <i class="bi bi-controller"></i>
+            </div>
+            <div class="flex-grow-1">
+                <div class="d-flex align-items-center justify-content-between mb-1">
+                    <h6 class="fw-bold text-dark m-0 fs-5">Gyver Code Race</h6>
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 small">Lv.1 Member</span>
+                </div>
+                <p class="text-secondary small m-0">เกมแข่งพิมพ์โค้ดภาษา Python ออนไลน์ สนุกตื่นเต้นแบบ Realtime</p>
+            </div>
+        </a>
+    `;
+}
+
         } else {
             if (loginBtn) loginBtn.classList.remove('d-none');
             if (userProfileZone) {
@@ -118,6 +139,7 @@ async function checkUserLevel() {
             if (badgeText) badgeText.innerText = 'Gyver Portal (Lv.0 Visitor)';
             if (welcomeDesc) welcomeDesc.innerText = 'ยินดีต้อนรับผู้เยี่ยมชม สามารถใช้เครื่องมือด่วนได้ทันที หรือลงชื่อเข้าใช้งานเพื่อปลดล็อกฟังก์ชันห้องเรียนออนไลน์';
 
+            // 1. การ์ด Gyver Wheel (Live) เมื่อเป็น Lv.0
             if (eduWheelCard) {
                 eduWheelCard.className = "action-card disabled-card p-3 d-flex align-items-center gap-3 h-100";
                 eduWheelCard.innerHTML = `
@@ -133,6 +155,23 @@ async function checkUserLevel() {
                     </div>
                 `;
             }
+
+            // 2. การ์ด Gyver Code Race เมื่อเป็น Lv.0
+            if (eduRaceCard) {
+                eduRaceCard.className = "action-card disabled-card p-3 d-flex align-items-center gap-3 h-100";
+                eduRaceCard.innerHTML = `
+                    <div class="icon-box bg-secondary bg-gradient text-white">
+                        <i class="bi bi-lock-fill"></i>
+                    </div>
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <h6 class="fw-bold text-muted m-0">Gyver Code Race</h6>
+                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
+                        </div>
+                        <p class="text-muted small m-0">ล็อกอินด้วยบัญชีสมาชิกเพื่อใช้งานเกมแข่งพิมพ์โค้ดออนไลน์</p>
+                    </div>
+                `;
+            }
         }
 
     } catch (err) {
@@ -140,20 +179,18 @@ async function checkUserLevel() {
     }
 }
 
-// index.js (อัปเดตฟอร์ม Login ให้รองรับ Username หรือ Email)
-
 function setupPopupAuthListeners() {
     const authModalEl = document.getElementById('authModal');
     if (authModalEl) {
         authModalInstance = bootstrap.Modal.getOrCreateInstance(authModalEl);
     }
 
-    // 1. ฟอร์มเข้าสู่ระบบ (Login ด้วย Username หรือ Email)
+    // 1. ฟอร์มเข้าสู่ระบบ (Login)
     const loginForm = document.getElementById('form-popup-login');
     if (loginForm) {
         loginForm.addEventListener('submit', async function(e) {
             e.preventDefault();
-            const inputIdentifier = document.getElementById('popup-login-email').value.trim(); // รับค่าได้ทั้ง Username หรือ Email
+            const inputIdentifier = document.getElementById('popup-login-email').value.trim();
             const password = document.getElementById('popup-login-pass').value;
             const btnSubmit = document.getElementById('btn-popup-login');
 
@@ -163,13 +200,8 @@ function setupPopupAuthListeners() {
             try {
                 let targetEmail = inputIdentifier;
 
-                // 🔍 ตรวจสอบว่าสิ่งที่พิมพ์มาเป็น Username หรือ Email (ไม่มี @ แปลว่าเป็น Username)
                 if (!inputIdentifier.includes('@')) {
                     btnSubmit.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span>ค้นหา Username...`;
-                    
-                    // ดึงข้อมูลจาก Supabase Auth RPC หรือค้นหาอีเมลสอดคล้อง (ใช้กรณีเก็บ Username ใน user_metadata)
-                    // Note: Supabase ไม่มี API ค้นหา email จาก user_metadata ฝั่ง Client ตรงๆ เพื่อความปลอดภัย 
-                    // ดังนั้นเราจะใช้วิธีค้นหาจาก RPC หรือเทคนิค Query RPC function
                     
                     const { data: foundEmail, error: rpcError } = await window.supabaseClient.rpc('get_email_by_username', {
                         p_username: inputIdentifier
@@ -182,10 +214,9 @@ function setupPopupAuthListeners() {
                         return;
                     }
 
-                    targetEmail = foundEmail; // ใช้อีเมลที่หาเจอไปล็อกอิน
+                    targetEmail = foundEmail;
                 }
 
-                // สั่ง Log In ด้วย Email และ Password
                 const { data, error } = await window.supabaseClient.auth.signInWithPassword({
                     email: targetEmail,
                     password: password,
@@ -214,7 +245,7 @@ function setupPopupAuthListeners() {
         });
     }
 
-    // 2. ฟอร์มสมัครสมาชิก (Register) - โค้ดเดิมคงไว้
+    // 2. ฟอร์มสมัครสมาชิก (Register)
     const regForm = document.getElementById('form-popup-register');
     if (regForm) {
         regForm.addEventListener('submit', async function(e) {
@@ -273,7 +304,7 @@ function setupPopupAuthListeners() {
                     btnSubmit.innerHTML = `<i class="bi bi-person-plus me-1"></i>ยืนยันการสมัครสมาชิก`;
                 }
             } catch (err) {
-                showPopupAlert(`❌ เกิดข้อผิดพลาดในการสมัครสมาชิกห: ${err.message}`);
+                showPopupAlert(`❌ เกิดข้อผิดพลาดในการสมัครสมาชิก: ${err.message}`);
                 btnSubmit.disabled = false;
                 btnSubmit.innerHTML = `<i class="bi bi-person-plus me-1"></i>ยืนยันการสมัครสมาชิก`;
             }

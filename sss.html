@@ -1,1 +1,328 @@
-sddfg
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gyver Code Race - Teacher Lobby Control</title>
+    
+    <!-- Bootstrap 5, Icons & Kanit Font -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- QRCode JS Library -->
+    <script src="https://cdnjs.cloudflare.net/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: 'Kanit', sans-serif;
+            min-height: 100vh;
+        }
+
+        .card-custom {
+            background: #1e293b;
+            border: 2px solid #334155;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        .qr-card {
+            background: #ffffff;
+            padding: 15px;
+            border-radius: 16px;
+            display: inline-block;
+        }
+
+        .student-item-card {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 14px;
+            padding: 12px 16px;
+            transition: all 0.2s;
+        }
+
+        .student-item-card:hover {
+            border-color: #38bdf8;
+        }
+
+        .student-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: 2px solid #38bdf8;
+            object-fit: cover;
+        }
+
+        /* Fullscreen Overlay สำหรับฉายนับถอยหลังบนจอโปรเจกเตอร์ */
+        .countdown-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .countdown-number {
+            font-size: 10rem;
+            font-weight: 800;
+            color: #f59e0b;
+            text-shadow: 0 0 40px rgba(245, 158, 11, 0.6);
+            animation: pulse 0.8s infinite alternate;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.9); }
+            100% { transform: scale(1.1); }
+        }
+    </style>
+</head>
+<body class="py-4">
+
+    <div class="container" style="max-width: 1000px;">
+        
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4 border-bottom border-secondary pb-3">
+            <div>
+                <h2 class="fw-bold text-info m-0"><i class="bi bi-sliders me-2"></i>Gyver Code Race - แผงควบคุมครู</h2>
+                <p class="text-muted small m-0">สร้างห้องแข่งขัน จัดการกลุ่ม และคุมจอนับถอยหลังขึ้นโปรเจกเตอร์</p>
+            </div>
+            <a href="../../../index.html" class="btn btn-outline-light btn-sm rounded-pill px-3">
+                <i class="bi bi-house-door-fill me-1"></i>หน้าหลัก
+            </a>
+        </div>
+
+        <!-- 1. ส่วนสร้างห้องใหม่ (CREATE LOBBY FORM) -->
+        <div id="create-room-section" class="card card-custom p-4 mb-4">
+            <h4 class="fw-bold text-warning mb-3"><i class="bi bi-plus-circle-fill me-2"></i>ตั้งค่าและสร้างห้องแข่งขันใหม่</h4>
+            
+            <form onsubmit="handleCreateLobby(event)">
+                <div class="row g-3 mb-3">
+                    <!-- รูปแบบการเล่น (เดี่ยว / กลุ่ม) -->
+                    <div class="col-md-6">
+                        <label class="form-label text-white-50 small">1. รูปแบบการแข่งขัน</label>
+                        <select id="game-type" class="form-select bg-dark text-white border-secondary fw-bold" onchange="toggleTeamSettings(this.value)">
+                            <option value="solo">👤 โหมดเดี่ยว (Solo Race)</option>
+                            <option value="team">👥 โหมดกลุ่ม (Team Battle)</option>
+                        </select>
+                    </div>
+
+                    <!-- ประเภทข้อสอบ -->
+                    <div class="col-md-6">
+                        <label class="form-label text-white-50 small">2. ประเภทข้อสอบในรอบนี้</label>
+                        <select id="game-mode" class="form-select bg-dark text-white border-secondary fw-bold">
+                            <option value="typing">⌨️ 1. พิมพ์เร็ว (Typing Speed) - วัดความเร็วถูกต้อง</option>
+                            <option value="problem">🧩 2. แข่งแก้โจทย์ (Problem Solving) - เขียนโค้ด Python ผ่าน Test Cases</option>
+                            <option value="mcq">❓ 3. คำถาม 4 ตัวเลือก (Multiple Choice) - ตอบถูก +1 / ผิด -1</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- ตั้งค่าเพิ่มเติมสำหรับโหมดกลุ่ม -->
+                <div id="team-settings-zone" class="p-3 mb-3 bg-dark rounded-3 border border-secondary d-none">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-md-6">
+                            <label class="form-label text-info small m-0 fw-bold"><i class="bi bi-people-fill me-1"></i>จำนวนสมาชิกสูงสุดต่อกลุ่ม (คน)</label>
+                            <input type="number" id="max-team-members" class="form-control form-control-sm bg-slate-900 text-white border-secondary" value="4" min="2" max="10">
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted d-block">* นักเรียนที่เข้าห้องมาสามารถใส่เลขกลุ่มเอง หรือใส่เลข 0 เพื่อให้ครูกดสุ่มได้</small>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-warning btn-lg w-100 fw-bold shadow py-3">
+                    <i class="bi bi-broadcast me-2"></i>สร้าง Lobby และเปิด QR Code บนจอโปรเจกเตอร์
+                </button>
+            </form>
+        </div>
+
+        <!-- 2. ส่วนควบคุมห้องแข่ง LOBBY DASHBOARD (แสดงเมื่อสร้างห้องเสร็จแล้ว) -->
+        <div id="active-lobby-section" class="card card-custom p-4 d-none">
+            
+            <div class="row g-4 align-items-center mb-4">
+                <!-- ฝั่งซ้าย: QR Code + รหัสห้องสำหรับฉายขึ้นจอ -->
+                <div class="col-md-5 text-center border-end border-secondary pe-md-4">
+                    <span class="badge bg-primary px-3 py-2 fs-6 mb-2">สแกนเพื่อเข้าร่วมห้องเรียน</span>
+                    <div class="qr-card shadow mb-3 mx-auto">
+                        <div id="qrcode-box"></div>
+                    </div>
+                    <h3 class="fw-bold text-white mb-1">รหัสห้อง: <span class="text-warning display-6 fw-bold" id="display-room-code">RACE88</span></h3>
+                    <small class="text-muted">ให้นักเรียนสแกน QR หรือกรอกรหัสห้องบนมือถือ</small>
+                </div>
+
+                <!-- ฝั่งขวา: แผงปุ่มควบคุมสั่งการของครู -->
+                <div class="col-md-7">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4 class="fw-bold text-white m-0"><i class="bi bi-gear-wide-connected text-info me-2"></i>การควบคุมห้องแข่ง</h4>
+                        <span class="badge bg-success px-3 py-2" id="room-status-badge">สถานะ: รอคนเข้าห้อง</span>
+                    </div>
+
+                    <!-- ปุ่มสุ่มจัดกลุ่มสำหรับครู -->
+                    <div class="p-3 bg-dark rounded-3 border border-secondary mb-3">
+                        <label class="form-label text-white-50 small m-0 mb-2"><i class="bi bi-shuffle me-1"></i>ระบบจัดกลุ่มอัตโนมัติ (กรณีเด็กใส่เลข 0 หรือกลุ่มไม่เท่ากัน)</label>
+                        <div class="d-flex gap-2">
+                            <input type="number" id="target-groups-count" class="form-control form-control-sm bg-slate-900 text-white border-secondary text-center fw-bold" style="max-width: 130px;" value="4" min="2" placeholder="จำนวนกลุ่ม">
+                            <button class="btn btn-info btn-sm fw-bold px-3 flex-grow-1" onclick="autoBalanceTeams()">
+                                <i class="bi bi-diagram-3-fill me-1"></i>สุ่มจัดกลุ่มให้นักเรียนเท่าๆ กัน
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- ปุ่มเริ่มเกม / สั่งหยุด -->
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-success btn-lg fw-bold shadow py-3 fs-4" onclick="startCountdownAndGame()">
+                            <i class="bi bi-play-circle-fill me-2"></i>กดเริ่มเกมทันที (นับถอยหลัง 5-4-3-2-1)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="border-secondary my-4">
+
+            <!-- รายชื่อนักเรียนที่เข้ามาใน Lobby (เรียงเป็นบัตรรายการ) -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold text-white m-0">
+                    <i class="bi bi-people-fill text-warning me-2"></i>นักเรียนที่อยู่ใน Lobby ขณะนี้ (<span id="student-count">0</span> คน)
+                </h5>
+                <button class="btn btn-sm btn-outline-danger" onclick="clearAllStudents()">
+                    <i class="bi bi-trash3 me-1"></i>เตะทุกคนออก
+                </button>
+            </div>
+
+            <!-- Grid รายชื่อนักเรียน -->
+            <div class="row g-3" id="student-list-grid" style="max-height: 380px; overflow-y: auto;">
+                <!-- การ์ดตัวอย่างนักเรียน -->
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- FULLSCREEN OVERLAY: นับถอยหลังบนจอใหญ่ 5-4-3-2-Ready-GO! -->
+    <div id="countdown-modal" class="countdown-overlay d-none">
+        <h2 class="text-white fw-bold mb-4 fs-1"><i class="bi bi-flag-fill me-2 text-warning"></i>การแข่งขันกำลังจะเริ่มขึ้น...</h2>
+        <div class="countdown-number" id="countdown-text">5</div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // จำลองข้อมูลนักเรียนใน Lobby
+        let studentList = [
+            { id: '1', nickname: 'กายเวอร์', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=A', team: 0 },
+            { id: '2', nickname: 'สมชาย', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=B', team: 1 },
+            { id: '3', nickname: 'สมหญิง', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=C', team: 1 },
+            { id: '4', nickname: 'อนันต์', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=D', team: 0 },
+            { id: '5', nickname: 'ปุ่น', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=E', team: 2 }
+        ];
+
+        function toggleTeamSettings(value) {
+            const zone = document.getElementById('team-settings-zone');
+            if (value === 'team') {
+                zone.classList.remove('d-none');
+            } else {
+                zone.classList.add('d-none');
+            }
+        }
+
+        // กดสร้างห้องใหม่
+        function handleCreateLobby(e) {
+            e.preventDefault();
+
+            // ย้ายหน้าจอไปยังส่วนคุมห้อง
+            document.getElementById('create-room-section').classList.add('d-none');
+            document.getElementById('active-lobby-section').classList.remove('d-none');
+
+            // เจน QR Code
+            const roomCode = "RACE" + Math.floor(10 + Math.random() * 90);
+            document.getElementById('display-room-code').innerText = roomCode;
+
+            document.getElementById("qrcode-box").innerHTML = "";
+            new QRCode(document.getElementById("qrcode-box"), {
+                text: `https://s-gyver.github.io/Sgyver/features/education/race/student_lobby.html?room=${roomCode}`,
+                width: 150,
+                height: 150
+            });
+
+            renderStudents();
+        }
+
+        // วาดการ์ดนักเรียนใน Lobby
+        function renderStudents() {
+            const grid = document.getElementById('student-list-grid');
+            document.getElementById('student-count').innerText = studentList.length;
+
+            grid.innerHTML = "";
+            studentList.forEach((s, idx) => {
+                const card = `
+                    <div class="col-md-6 col-lg-4">
+                        <div class="student-item-card d-flex align-items-center justify-content-between">
+                            <div class="d-flex align-items-center gap-3">
+                                <img src="${s.avatar}" class="student-avatar">
+                                <div>
+                                    <h6 class="fw-bold text-white m-0">${s.nickname}</h6>
+                                    <span class="badge ${s.team === 0 ? 'bg-secondary' : 'bg-primary'} small">
+                                        ${s.team === 0 ? 'กลุ่ม: สุ่มโดยครู (0)' : 'กลุ่มที่ ' + s.team}
+                                    </span>
+                                </div>
+                            </div>
+                            <button class="btn btn-sm btn-outline-danger border-0 fs-5" onclick="kickStudent(${idx})" title="เตะออกไปแก้ชื่อ/รูป">
+                                <i class="bi bi-person-x-fill"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                grid.innerHTML += card;
+            });
+        }
+
+        // ปุ่มครูกดเตะนักเรียนออก (Kick)
+        function kickStudent(index) {
+            if (confirm(`คุณแน่ใจใช่ไหมที่จะเตะ "${studentList[index].nickname}" ออกไปให้แก้ไขข้อมูลก่อน?`)) {
+                studentList.splice(index, 1);
+                renderStudents();
+            }
+        }
+
+        // ปุ่มสุ่มจัดกลุ่มอัตโนมัติ
+        function autoBalanceTeams() {
+            const numGroups = parseInt(document.getElementById('target-groups-count').value) || 2;
+            
+            // สุ่มจัดกลุ่มนักเรียนทุกคน
+            studentList.forEach((s, idx) => {
+                s.team = (idx % numGroups) + 1;
+            });
+
+            renderStudents();
+            alert(`จัดกลุ่มให้อัตโนมัติเรียบร้อยแล้ว! (กระจายเข้า ${numGroups} กลุ่ม)`);
+        }
+
+        // เริ่มเกมพร้อมระบบนับถอยหลัง 5-4-3-2-Ready-GO!
+        function startCountdownAndGame() {
+            const overlay = document.getElementById('countdown-modal');
+            const countdownText = document.getElementById('countdown-text');
+            overlay.classList.remove('d-none');
+
+            const steps = ["5", "4", "3", "2", "READY", "GO!"];
+            let stepIdx = 0;
+
+            const timer = setInterval(() => {
+                stepIdx++;
+                if (stepIdx < steps.length) {
+                    countdownText.innerText = steps[stepIdx];
+                } else {
+                    clearInterval(timer);
+                    overlay.classList.add('d-none');
+                    alert("🚀 เริ่มการแข่งขัน! (นำทางเข้าสู่หน้าจอโปรเจกเตอร์แข่ง)");
+                }
+            }, 1000);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,166 @@
+:root {
+    --bg-dark: #050811;
+    --card-bg: #0d1322;
+    --border-color: #1e293b;
+    --cyan-glow: #38bdf8;
+    --warning-glow: #f59e0b;
+    --text-bright: #f8fafc;
+    --text-subtle: #cbd5e1;
+}
+
+body.cyber-projector-body {
+    background-color: var(--bg-dark);
+    color: var(--text-bright);
+    font-family: 'Kanit', sans-serif;
+    min-height: 100vh;
+}
+
+.font-mono {
+    font-family: 'Fira Code', monospace;
+}
+
+.text-cyan {
+    color: var(--cyan-glow) !important;
+}
+
+.text-subtle {
+    color: var(--text-subtle) !important;
+}
+
+.cyber-card {
+    background: var(--card-bg);
+    border: 2px solid var(--border-color);
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+}
+
+.cyber-header {
+    background: #0f172a;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+}
+
+.pulse-badge {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+/* การ์ดแสดงผลนักเรียนใน Lobby */
+.student-lobby-card {
+    background: #020617;
+    border: 2px solid var(--border-color);
+    border-radius: 16px;
+    padding: 10px 12px;
+    position: relative;
+    transition: all 0.2s ease;
+    overflow: visible !important; /* เปิดให้ขอบลอยทะลุได้ */
+    z-index: 10;                  /* ปรับ z-index ให้สูงขึ้น */
+    height: 100%;
+}
+
+.student-lobby-card:hover {
+    border-color: var(--cyan-glow);
+    transform: translateY(-2px);
+    z-index: 20;
+}
+
+/* ล็อกขนาดรูปภาพอวตารไม่ให้ยืดหรือล้น */
+.student-avatar-img {
+    width: 48px !important;
+    height: 48px !important;
+    min-width: 48px !important;
+    min-height: 48px !important;
+    flex-shrink: 0;
+    border-radius: 50%;
+    border: 2px solid var(--cyan-glow);
+    object-fit: cover;
+    background: #000;
+    cursor: pointer;
+}
+
+/* ป๊อปอัป Emoji สดๆ บนตัวนักเรียน */
+.emoji-bubble {
+    position: absolute;
+    top: 2px;             /* ปรับระยะให้อยู่ในกรอบการ์ดช่วงเริ่มต้น */
+    right: 12px;
+    font-size: 2rem;
+    animation: popUpFloat 1.8s forwards cubic-bezier(0.18, 0.89, 0.32, 1.28);
+    pointer-events: none;
+    z-index: 9999;        /* ดันชั้นให้สูงที่สุดเหนือทุกองค์ประกอบ */
+}
+
+@keyframes popUpFloat {
+    0% {
+        opacity: 0;
+        transform: translateY(10px) scale(0.5);
+    }
+    20% {
+        opacity: 1;
+        transform: translateY(-10px) scale(1.3);
+    }
+    80% {
+        opacity: 1;
+        transform: translateY(-25px) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-35px) scale(0.8);
+    }
+}
+
+/* Popover ขยายอวตารลอยระดับ Top Layer */
+.avatar-popover-box {
+    position: fixed;
+    z-index: 99999;
+    pointer-events: none;
+    background: #0f172a;
+    border: 2px solid #38bdf8;
+    border-radius: 16px;
+    padding: 8px;
+    box-shadow: 0 0 30px rgba(56, 189, 248, 0.7);
+    transform: translate(15px, -50%);
+    transition: opacity 0.15s ease-in-out;
+}
+
+.avatar-popover-box img {
+    width: 140px;
+    height: 140px;
+    border-radius: 12px;
+    object-fit: cover;
+    background: #000;
+}
+
+/* Overlay นับถอยหลังยักษ์กลางจอ */
+.cyber-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(3, 7, 18, 0.95);
+    backdrop-filter: blur(12px);
+    z-index: 999999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#countdown-number {
+    font-size: 12rem;
+    text-shadow: 0 0 50px rgba(245, 158, 11, 0.8);
+    animation: scalePulse 1s infinite;
+}
+
+@keyframes scalePulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+}
+
+/* Feed item สไตล์แชตย่อย */
+.feed-item {
+    padding: 4px 0;
+    border-bottom: 1px solid #1e293b;
+    line-height: 1.4;
+}

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gyver Code Race - Teacher Create Lobby</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@600;700&family=Kanit:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../../../assets/js/supabaseClient.js"></script>
+
+    <link rel="stylesheet" href="teacher_lobby.css">
+</head>
+<body class="cyber-body py-4">
+
+    <div class="container" style="max-width: 800px;">
+        
+        <div class="d-flex justify-content-between align-items-center mb-4 border-bottom border-secondary pb-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="header-icon-box bg-warning text-dark p-2 rounded-3">
+                    <i class="bi bi-broadcast fs-3"></i>
+                </div>
+                <div>
+                    <h3 class="fw-bold text-white m-0 font-mono">Teacher Control Hub</h3>
+                    <small class="text-subtle font-mono">สร้างห้องแข่งขันและกำหนดค่าสำหรับนักเรียน</small>
+                </div>
+            </div>
+            <a href="../race_home.html" class="btn btn-outline-light btn-sm rounded-pill px-3 font-mono">
+                <i class="bi bi-arrow-left me-1"></i>ย้อนกลับ
+            </a>
+        </div>
+
+        <div class="cyber-card p-4">
+            <form id="create-lobby-form" onsubmit="handleCreateLobby(event)">
+                
+                <!-- 1. เลือกโหมดการแข่งขัน -->
+                <div class="mb-4">
+                    <label class="form-label text-warning font-mono fw-bold mb-3 fs-5">
+                        <i class="bi bi-controller me-2"></i>1. เลือกโหมดการแข่งขัน (Game Mode)
+                    </label>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <input type="radio" class="btn-check" name="gameMode" id="mode-typing" value="typing" checked>
+                            <label class="btn btn-outline-info w-100 p-3 text-start font-mono h-100" for="mode-typing">
+                                <i class="bi bi-keyboard fs-2 d-block mb-2 text-cyan"></i>
+                                <strong class="d-block text-white">1. พิมพ์โค้ดเร็ว</strong>
+                                <small class="text-subtle d-block">วัดสปีด WPM ความแม่นยำภาษา Python</small>
+                            </label>
+                        </div>
+                        <div class="col-md-4">
+                            <input type="radio" class="btn-check" name="gameMode" id="mode-problem" value="problem">
+                            <label class="btn btn-outline-info w-100 p-3 text-start font-mono h-100" for="mode-problem">
+                                <i class="bi bi-code-slash fs-2 d-block mb-2 text-warning"></i>
+                                <strong class="d-block text-white">2. แข่งแก้โจทย์</strong>
+                                <small class="text-subtle d-block">เขียนโปรแกรมตรวจด้วย Test Cases</small>
+                            </label>
+                        </div>
+                        <div class="col-md-4">
+                            <input type="radio" class="btn-check" name="gameMode" id="mode-quiz" value="quiz">
+                            <label class="btn btn-outline-info w-100 p-3 text-start font-mono h-100" for="mode-quiz">
+                                <i class="bi bi-ui-checks fs-2 d-block mb-2 text-success"></i>
+                                <strong class="d-block text-white">3. โหมด 4 ตัวเลือก</strong>
+                                <small class="text-subtle d-block">ตอบคำถามตัวเลือกวิชาการแย่งแต้ม</small>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. รูปแบบการแข่งขัน & เลือกห้องเรียน -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <div class="p-3 bg-dark rounded-3 border border-secondary h-100">
+                            <label class="form-label text-white font-mono small fw-bold mb-2">
+                                <i class="bi bi-people-fill me-1"></i>2. รูปแบบการแข่งขัน
+                            </label>
+                            <div class="d-flex gap-3 mt-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="matchType" id="type-solo" value="solo" checked onchange="toggleTeamSettings(false)">
+                                    <label class="form-check-label text-white font-mono" for="type-solo">
+                                        แข่งเดี่ยว (Solo)
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="matchType" id="type-team" value="team" onchange="toggleTeamSettings(true)">
+                                    <label class="form-check-label text-warning font-mono" for="type-team">
+                                        แข่งกลุ่ม (Team)
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="p-3 bg-dark rounded-3 border border-secondary h-100">
+                            <label class="form-label text-white font-mono small fw-bold mb-2">
+                                <i class="bi bi-door-open-fill me-1"></i>3. ระบุชั้นเรียนที่จะแข่ง
+                            </label>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <select id="teacher-level" class="form-select bg-slate-900 text-white border-secondary font-mono" required>
+                                        <option value="ม.5">ม.5</option>
+                                        <option value="ม.1">ม.1</option>
+                                        <option value="ม.2">ม.2</option>
+                                        <option value="ม.3">ม.3</option>
+                                        <option value="ม.4">ม.4</option>
+                                        <option value="ม.6">ม.6</option>
+                                    </select>
+                                </div>
+                                <div class="col-6">
+                                    <select id="teacher-room" class="form-select bg-slate-900 text-white border-secondary font-mono" required>
+                                        <option value="10">ห้อง 10</option>
+                                        <option value="1">ห้อง 1</option>
+                                        <option value="2">ห้อง 2</option>
+                                        <option value="3">ห้อง 3</option>
+                                        <option value="4">ห้อง 4</option>
+                                        <option value="5">ห้อง 5</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Room Code สุ่มอัตโนมัติ -->
+                <div class="p-3 bg-dark rounded-3 border border-info mb-4 d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-info font-mono small d-block">รหัสห้องเรียน (ROOM CODE AUTO GENERATED):</span>
+                        <h2 class="fw-extrabold text-warning font-mono m-0" id="generated-room-code">RACE88</h2>
+                    </div>
+                    <button type="button" class="btn btn-outline-warning btn-sm font-mono" onclick="generateNewRoomCode()">
+                        <i class="bi bi-shuffle me-1"></i>สุ่มรหัสใหม่
+                    </button>
+                </div>
+
+                <!-- ปุ่มสั่งสร้างห้องและนำทางไปยังหน้าคุมการแข่ง -->
+                <button type="submit" id="btn-create-lobby" class="btn btn-warning btn-lg w-100 py-3 font-mono fw-bold shadow fs-5">
+                    <i class="bi bi-gear-fill me-2"></i>สร้างห้องแข่งและไปตั้งค่าโจทย์ (Create Room & Setup)
+                </button>
+
+            </form>
+        </div>
+
+    </div>
+
+    <script src="teacher_lobby.js"></script>
+</body>
+</html>

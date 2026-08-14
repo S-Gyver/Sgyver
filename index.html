@@ -54,24 +54,20 @@
                         <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-3 mt-2"
                             aria-labelledby="profileDropdown">
                             <li>
-                                <!-- ชี้ไปที่ auth/profile.html -->
                                 <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="auth/profile.html">
                                     <i class="bi bi-person-gear text-primary fs-5"></i>
                                     <div>
                                         <div class="fw-bold text-dark small">จัดการโปรไฟล์</div>
-                                        <div class="text-muted text-xs" style="font-size: 0.75rem;">เปลี่ยนชื่อ /
-                                            รูปภาพโปรไฟล์</div>
+                                        <div class="text-muted text-xs" style="font-size: 0.75rem;">เปลี่ยนชื่อ / รูปภาพโปรไฟล์</div>
                                     </div>
                                 </a>
                             </li>
                             <li>
-                                <!-- ชี้ไปที่ auth/upgrade.html -->
                                 <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="auth/upgrade.html">
                                     <i class="bi bi-rocket-takeoff text-warning fs-5"></i>
                                     <div>
                                         <div class="fw-bold text-dark small">อัปเกรดสิทธิ์</div>
-                                        <div class="text-muted text-xs" style="font-size: 0.75rem;">
-                                            ขยับสิทธิ์เข้าถึงฟีเจอร์ระดับสูง</div>
+                                        <div class="text-muted text-xs" style="font-size: 0.75rem;">ขยับสิทธิ์เข้าถึงฟีเจอร์ระดับสูง</div>
                                     </div>
                                 </a>
                             </li>
@@ -84,7 +80,6 @@
                                     <i class="bi bi-box-arrow-right fs-5"></i> ออกจากระบบ
                                 </a>
                             </li>
-                        </ul>
                         </ul>
                     </div>
                 </div>
@@ -129,8 +124,7 @@
                                 <h6 class="fw-bold text-dark m-0 fs-5">Gyver Instant Wheel</h6>
                                 <span class="badge-ready"><i class="bi bi-check-circle-fill me-1"></i>พร้อมใช้งาน</span>
                             </div>
-                            <p class="text-secondary small m-0">ระบบวงล้อสุ่มชื่อด่วน
-                                พิมพ์รายชื่อ/สร้างเลขที่แล้วสุ่มได้ทันที</p>
+                            <p class="text-secondary small m-0">ระบบวงล้อสุ่มชื่อด่วน พิมพ์รายชื่อ/สร้างเลขที่แล้วสุ่มได้ทันที</p>
                         </div>
                     </a>
                 </div>
@@ -144,27 +138,21 @@
             </div>
 
             <div class="row g-3">
+                <!-- 1. Gyver Wheel (Live) -->
                 <div class="col-md-6 col-lg-4">
                     <div id="education-wheel-card" class="action-card disabled-card p-3 h-100">
                         <!-- ถูกสลับการ์ดอัตโนมัติด้วย index.js -->
                     </div>
                 </div>
 
+                <!-- 2. Gyver Code Race (แทนที่ Online Quiz System) -->
                 <div class="col-md-6 col-lg-4">
-                    <div class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100">
-                        <div class="icon-box bg-secondary bg-gradient text-white">
-                            <i class="bi bi-journal-check"></i>
-                        </div>
-                        <div>
-                            <div class="d-flex align-items-center gap-2 mb-1">
-                                <h6 class="fw-bold text-muted m-0">Online Quiz System</h6>
-                                <span class="badge bg-light text-secondary border">Soon</span>
-                            </div>
-                            <p class="text-muted small m-0">ระบบทำข้อสอบและเก็บคะแนนอัตโนมัติ</p>
-                        </div>
+                    <div id="education-race-card" class="action-card disabled-card p-3 h-100">
+                        <!-- ถูกสลับการ์ดอัตโนมัติด้วย index.js -->
                     </div>
                 </div>
 
+                <!-- 3. E-Learning Tools -->
                 <div class="col-md-6 col-lg-4">
                     <div class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100">
                         <div class="icon-box bg-secondary bg-gradient text-white">
@@ -254,8 +242,7 @@
                         <div class="tab-pane fade show active" id="panel-login">
                             <form id="form-popup-login">
                                 <div class="mb-3">
-                                    <label class="form-label small fw-bold text-secondary">ชื่อผู้ใช้งาน หรือ อีเมล
-                                        (Username / Email)</label>
+                                    <label class="form-label small fw-bold text-secondary">ชื่อผู้ใช้งาน หรือ อีเมล (Username / Email)</label>
                                     <input type="text" id="popup-login-email" class="form-control"
                                         placeholder="พิมพ์ชื่อผู้ใช้ หรือ name@example.com" required>
                                 </div>
@@ -274,54 +261,35 @@
                         <!-- 2. ฟอร์มสมัครสมาชิก (Register) -->
                         <div class="tab-pane fade" id="panel-register">
                             <form id="form-popup-register">
-                                <!-- 1. Username -->
                                 <div class="mb-3">
-                                    <label class="form-label small fw-bold text-secondary">1. ชื่อผู้ใช้งาน (Username)
-                                        <span class="text-danger">*</span></label>
-                                    <input type="text" id="popup-reg-username" class="form-control"
-                                        placeholder="เช่น gyver" required>
+                                    <label class="form-label small fw-bold text-secondary">1. ชื่อผู้ใช้งาน (Username) <span class="text-danger">*</span></label>
+                                    <input type="text" id="popup-reg-username" class="form-control" placeholder="เช่น gyver" required>
                                 </div>
 
-                                <!-- 2. Email -->
                                 <div class="mb-3">
-                                    <label class="form-label small fw-bold text-secondary">2. อีเมล (E-mail) <span
-                                            class="text-danger">*</span></label>
-                                    <input type="email" id="popup-reg-email" class="form-control"
-                                        placeholder="name@example.com" required>
+                                    <label class="form-label small fw-bold text-secondary">2. อีเมล (E-mail) <span class="text-danger">*</span></label>
+                                    <input type="email" id="popup-reg-email" class="form-control" placeholder="name@example.com" required>
                                 </div>
 
-                                <!-- 3. Password -->
                                 <div class="mb-3">
-                                    <label class="form-label small fw-bold text-secondary">3. รหัสผ่าน (Password) <span
-                                            class="text-danger">*</span></label>
-                                    <input type="password" id="popup-reg-pass" class="form-control"
-                                        placeholder="•••••••• (ขั้นต่ำ 6 ตัว)" minlength="6" required>
+                                    <label class="form-label small fw-bold text-secondary">3. รหัสผ่าน (Password) <span class="text-danger">*</span></label>
+                                    <input type="password" id="popup-reg-pass" class="form-control" placeholder="•••••••• (ขั้นต่ำ 6 ตัว)" minlength="6" required>
                                 </div>
 
-                                <!-- 4. Confirm Password (เพิ่มใหม่) -->
                                 <div class="mb-3">
-                                    <label class="form-label small fw-bold text-secondary">4. ยืนยันรหัสผ่านอีกครั้ง
-                                        <span class="text-danger">*</span></label>
-                                    <input type="password" id="popup-reg-pass-confirm" class="form-control"
-                                        placeholder="••••••••" minlength="6" required>
+                                    <label class="form-label small fw-bold text-secondary">4. ยืนยันรหัสผ่านอีกครั้ง <span class="text-danger">*</span></label>
+                                    <input type="password" id="popup-reg-pass-confirm" class="form-control" placeholder="••••••••" minlength="6" required>
                                 </div>
 
-                                <!-- 5. Avatar Upload -->
                                 <div class="mb-4">
-                                    <label class="form-label small fw-bold text-secondary">5. แทรกรูปโปรไฟล์ <span
-                                            class="text-muted fw-normal">(เลือกหรือไม่เลือกก็ได้)</span></label>
+                                    <label class="form-label small fw-bold text-secondary">5. แทรกรูปโปรไฟล์ <span class="text-muted fw-normal">(เลือกหรือไม่เลือกก็ได้)</span></label>
                                     <div class="d-flex align-items-center gap-3">
-                                        <input type="file" id="popup-reg-avatar-file" class="form-control"
-                                            accept="image/*" onchange="previewAvatar(event)">
-                                        <img id="avatar-preview"
-                                            src="https://cdn-icons-png.flaticon.com/512/149/149071.png"
-                                            class="rounded-circle border"
-                                            style="width: 45px; height: 45px; object-fit: cover;" alt="Preview">
+                                        <input type="file" id="popup-reg-avatar-file" class="form-control" accept="image/*" onchange="previewAvatar(event)">
+                                        <img id="avatar-preview" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" class="rounded-circle border" style="width: 45px; height: 45px; object-fit: cover;" alt="Preview">
                                     </div>
                                 </div>
 
-                                <button type="submit" class="btn btn-success w-100 py-2 fw-bold shadow-sm rounded-3"
-                                    id="btn-popup-reg">
+                                <button type="submit" class="btn btn-success w-100 py-2 fw-bold shadow-sm rounded-3" id="btn-popup-reg">
                                     <i class="bi bi-person-plus me-1"></i>ยืนยันการสมัครสมาชิก
                                 </button>
                             </form>

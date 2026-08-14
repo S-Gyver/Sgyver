@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gyver Code Race - Student Waiting Lobby</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@600;700&family=Kanit:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../../../assets/js/supabaseClient.js"></script>
+
+    <link rel="stylesheet" href="../teacher/teacher_lobby.css">
+    <style>
+        .my-avatar-box {
+            width: 100%;
+            max-width: 220px;
+            height: 280px;
+            border-radius: 20px;
+            border: 3px solid #38bdf8;
+            object-fit: cover;
+            background: #020617;
+            box-shadow: 0 0 25px rgba(56, 189, 248, 0.4);
+        }
+        .peer-avatar-sm {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            object-fit: cover;
+            border: 2px solid #38bdf8;
+        }
+        .peer-chip {
+            background: #020617;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            padding: 6px 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .radar-spinner-sm {
+            width: 32px;
+            height: 32px;
+            border: 3px solid rgba(56, 189, 248, 0.2);
+            border-top: 3px solid #38bdf8;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .emoji-btn-item {
+            font-size: 1.8rem;
+            cursor: pointer;
+            transition: transform 0.15s ease;
+            user-select: none;
+        }
+        .emoji-btn-item:hover {
+            transform: scale(1.3);
+        }
+    </style>
+</head>
+<body class="cyber-body py-3">
+
+    <div class="container-fluid px-3 px-md-5" style="max-width: 1250px;">
+        
+        <!-- ส่วนที่ 1: แถบบนแสดงรายชื่อนักเรียนที่เข้าร่วมแล้ว -->
+        <div class="cyber-card p-3 mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-info font-mono fs-6 px-3 py-2">ROOM CODE: <span id="wait-room-code" class="text-warning fw-bold">----</span></span>
+                    <span class="text-cyan font-mono small fw-bold"><i class="bi bi-people-fill me-1"></i>นักเรียนที่เข้าร่วมแล้ว (<span id="joined-count" class="text-warning">0</span> คน)</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="radar-spinner-sm"></div>
+                    <span class="text-subtle font-mono small">SYNCING...</span>
+                </div>
+            </div>
+
+            <div id="joined-players-container" class="d-flex flex-wrap gap-2 overflow-x-auto pb-1" style="max-height: 110px;">
+                <div class="text-subtle small font-mono py-2"><i class="bi bi-hourglass-split me-1"></i>กำลังดึงรายชื่อผู้เข้าแข่งขัน...</div>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            
+            <!-- ส่วนที่ 2: ฝั่งซ้าย โปรไฟล์ตัวเอง + Emoji Reaction -->
+            <div class="col-lg-4">
+                <div class="cyber-card p-4 text-center h-100 d-flex flex-column align-items-center justify-content-between">
+                    
+                    <div class="w-100">
+                        <small class="text-cyan font-mono d-block mb-3 fw-bold"><i class="bi bi-person-badge-fill me-1"></i>MY RACER PROFILE</small>
+                        
+                        <div class="position-relative mb-3">
+                            <img id="wait-avatar-img" src="https://api.dicebear.com/7.x/bottts/svg?seed=Racer1" class="my-avatar-box">
+                        </div>
+
+                        <h4 class="fw-bold text-white font-mono mb-1" id="wait-name-text">กำลังโหลด...</h4>
+                        <div class="d-flex justify-content-center gap-2 mb-3">
+                            <span class="badge bg-success font-mono" id="wait-class-badge">ม.-/-</span>
+                            <span class="badge bg-dark border border-secondary text-info font-mono">เลขที่: <span id="wait-no-text">-</span></span>
+                            <span class="badge bg-dark border border-warning text-warning font-mono" id="wait-team-badge">แข่งเดี่ยว</span>
+                        </div>
+                    </div>
+
+                    <!-- แผงกด Emoji Reaction -->
+                    <div class="w-100 bg-dark p-3 rounded-3 border border-secondary">
+                        <small class="text-subtle font-mono d-block mb-2"><i class="bi bi-emoji-smile me-1"></i>กดส่ง Emoji ทักทายขึ้นจอครู:</small>
+                        <div class="d-flex justify-content-around align-items-center">
+                            <span class="emoji-btn-item" onclick="sendEmojiReaction('🔥')">🔥</span>
+                            <span class="emoji-btn-item" onclick="sendEmojiReaction('🚀')">🚀</span>
+                            <span class="emoji-btn-item" onclick="sendEmojiReaction('😎')">😎</span>
+                            <span class="emoji-btn-item" onclick="sendEmojiReaction('🎉')">🎉</span>
+                            <span class="emoji-btn-item" onclick="sendEmojiReaction('💩')">💩</span>
+                            <span class="emoji-btn-item" onclick="sendEmojiReaction('👏')">👏</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- ส่วนที่ 3: ฝั่งขวา รายละเอียดการแข่ง + การ์ดไอเทมในร้าน -->
+            <div class="col-lg-8">
+                <div class="cyber-card p-4 h-100 d-flex flex-column justify-content-between">
+                    
+                    <div>
+                        <div class="d-flex justify-content-between align-items-center mb-3 border-bottom border-secondary pb-2">
+                            <h5 class="fw-bold text-warning font-mono m-0">
+                                <i class="bi bi-controller me-2"></i>รายละเอียดการแข่งขัน (MATCH SETTINGS)
+                            </h5>
+                            <span class="badge bg-danger font-mono animate-pulse"><i class="bi bi-broadcast me-1"></i>WAITING FOR TEACHER</span>
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <div class="p-3 bg-dark rounded-3 border border-secondary">
+                                    <small class="text-subtle font-mono d-block mb-1">โหมดการแข่งขัน (Game Mode):</small>
+                                    <span class="text-cyan font-mono fw-bold fs-5" id="rule-mode-text">พิมพ์เร็ววัดสปีด (Typing Speed)</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="p-3 bg-dark rounded-3 border border-secondary">
+                                    <small class="text-subtle font-mono d-block mb-1">รูปแบบการแข่ง (Type):</small>
+                                    <span class="text-warning font-mono fw-bold fs-5" id="rule-type-text">ประเภทบุคคล (Solo)</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-3 bg-dark rounded-3 border border-secondary mb-3">
+                            <small class="text-white font-mono fw-bold d-block mb-2"><i class="bi bi-shield-check text-success me-1"></i>กติกาและเงื่อนไขการแข่ง:</small>
+                            <ul class="text-subtle font-mono small m-0 ps-3">
+                                <li class="mb-1">พิมพ์โค้ดภาษา Python ให้ตรงตามต้นแบบที่ปรากฏบนหน้าจอทีละตัวอักษร</li>
+                                <li class="mb-1">ระยะเวลาการแข่ง: <strong class="text-warning" id="rule-time-text">ไม่จำกัดเวลา</strong></li>
+                                <li class="mb-1">เงื่อนไขแจก Gold: <strong class="text-warning" id="rule-gold-text">แจก 3 Gold / ทุก 10%</strong></li>
+                                <li class="mb-1">ระบบคำถามกวนใจ: <strong class="text-danger" id="rule-quiz-text">ปิดใช้งาน</strong></li>
+                                <li class="mb-1 d-flex align-items-center flex-wrap gap-1">
+                                    <span>ไอเทมที่เปิดขายในร้านค้า:</span>
+                                    <div id="rule-shop-items-container" class="d-inline-flex flex-wrap gap-1 ms-1">
+                                        <span class="badge bg-secondary text-white font-mono" style="font-size: 0.7rem;">🛡️ โล่ป้องกัน</span>
+                                        <span class="badge bg-secondary text-white font-mono" style="font-size: 0.7rem;">👁️ หน้าจอเบลอ</span>
+                                        <span class="badge bg-primary text-white font-mono" style="font-size: 0.7rem;">❄️ แช่แข็งระบบ</span>
+                                        <span class="badge bg-secondary text-white font-mono" style="font-size: 0.7rem;">⚡ สปีดบูสท์</span>
+                                    </div>
+                                </li>
+                                <li><strong>ไม่อนุญาตให้คัดลอก/วาง (Copy-Paste) โค้ดโดยเด็ดขาด</strong></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- สถานะการรอ -->
+                    <div class="alert alert-dark border-info text-info font-mono m-0 d-flex align-items-center gap-3">
+                        <i class="bi bi-info-circle-fill fs-3 text-info"></i>
+                        <div>
+                            <strong class="d-block text-white">พร้อมลงสนามแล้ว!</strong>
+                            <small class="text-subtle">เมื่อคุณครูกดปุ่ม <span class="text-warning">"เริ่มการแข่งขัน (Start Race)"</span> บนหน้าจอใหญ่ ระบบจะนำท่านเข้าสู่สนามแข่งโดยอัตโนมัติ</small>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script src="student_waiting.js"></script>
+</body>
+</html>

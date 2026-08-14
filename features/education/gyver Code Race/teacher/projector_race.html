@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gyver Code Race - Live Projector Arena</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@600;700;800&family=Kanit:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- QRCode Generator Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../../../assets/js/supabaseClient.js"></script>
+
+    <link rel="stylesheet" href="teacher_lobby.css">
+    <style>
+        .player-card-hover {
+            position: relative;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .player-card-hover:hover {
+            transform: scale(1.1);
+            z-index: 10;
+        }
+        .peer-avatar-lg {
+            width: 70px;
+            height: 90px;
+            border-radius: 12px;
+            object-fit: cover;
+            border: 2px solid #38bdf8;
+            background: #020617;
+        }
+        .qr-card-box {
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 16px;
+            display: inline-block;
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
+        }
+        .feed-box {
+            background: #030712;
+            border: 1px solid #1f2937;
+            border-radius: 8px;
+            height: 110px;
+            overflow-y: auto;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+        }
+
+        .card-emoji-badge {
+            position: absolute;
+            top: -12px;
+            right: -12px;
+            font-size: 2.2rem;
+            filter: drop-shadow(0 0 10px rgba(255, 200, 0, 0.8));
+            animation: emojiPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            z-index: 20;
+            pointer-events: none;
+        }
+        @keyframes emojiPop {
+            0% { transform: scale(0) rotate(-20deg); opacity: 0; }
+            60% { transform: scale(1.4) rotate(10deg); opacity: 1; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(0.5); opacity: 1; }
+            50% { transform: translateY(-150px) scale(1.3); opacity: 0.9; }
+            100% { transform: translateY(-300px) scale(1); opacity: 0; }
+        }
+    </style>
+</head>
+<body class="cyber-body py-2 px-3">
+
+    <div class="container-fluid p-0">
+        
+        <div class="cyber-card p-2 px-3 mb-3 d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-3">
+                <span class="badge bg-warning text-dark font-mono fs-5 fw-bold px-3 py-2">
+                    <i class="bi bi-broadcast me-1"></i>GYVER RACE
+                </span>
+                <div>
+                    <h4 class="fw-extrabold text-white font-mono m-0 tracking-wide">SPEED TYPING ARENA</h4>
+                    <small class="badge bg-dark border border-success text-success font-mono" style="font-size: 0.65rem;">
+                        ● LOBBY WAITING FOR PLAYERS
+                    </small>
+                </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-3">
+                <div class="px-3 py-1 bg-dark rounded-3 border border-secondary text-end font-mono">
+                    <small class="text-subtle d-block" style="font-size: 0.65rem;">STATUS</small>
+                    <span class="text-warning fw-bold small" id="status-text">รอกดเริ่มการแข่งขันจากครู</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            
+            <div class="col-lg-8 d-flex flex-column gap-3">
+                <div class="cyber-card p-3 flex-grow-1 d-flex flex-column" style="min-height: 380px;">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold text-cyan font-mono m-0">
+                            <i class="bi bi-people-fill me-2 text-warning"></i>นักเรียนที่เข้าร่วมแล้ว (<span id="proj-student-count" class="text-warning">0</span> คน)
+                        </h5>
+                        <small class="text-subtle font-mono" style="font-size: 0.75rem;">* ชี้ที่รูปเพื่อดูขนาดใหญ่</small>
+                    </div>
+
+                    <div id="projector-students-grid" class="d-flex flex-wrap gap-3 overflow-y-auto align-content-start flex-grow-1 p-2" style="max-height: 330px;">
+                        <div class="text-center text-subtle font-mono py-5 w-100">
+                            <i class="bi bi-hourglass-split fs-2 d-block mb-2 text-warning"></i>
+                            กำลังรอนักเรียนสแกนเข้าห้องแข่งขัน...
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cyber-card p-3">
+                    <small class="text-warning font-mono fw-bold d-block mb-2">
+                        <i class="bi bi-chat-square-quote-fill me-1"></i>LIVE REACTION & ACTIVITY FEED
+                    </small>
+                    <div id="activity-feed-box" class="feed-box p-2">
+                        <div class="text-cyan mb-1">[SYSTEM] ห้องพร้อมรองรับการแข่งขัน สแกน QR Code เข้ามาได้เลย!</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4 d-flex flex-column gap-3">
+                <div class="cyber-card p-3 text-center">
+                    <small class="text-subtle font-mono d-block mb-1">SCAN QR OR ENTER ROOM CODE</small>
+                    <h1 class="display-4 fw-extrabold text-cyan font-mono mb-2" id="proj-room-code">RACE88</h1>
+                    <div class="qr-card-box mb-2" id="qrcode-container"></div>
+                    <small class="text-subtle font-mono d-block" style="font-size: 0.75rem;">
+                        ให้นักเรียนสแกนเพื่อเข้าห้องรอการแข่งขัน
+                    </small>
+                </div>
+
+                <div class="cyber-card p-3 font-mono">
+                    <small class="text-warning fw-bold d-block mb-3 fs-6">
+                        <i class="bi bi-sliders me-1"></i>MATCH CONFIGURATION
+                    </small>
+
+                    <div class="bg-dark p-2 rounded-2 border border-secondary mb-2 d-flex justify-content-between align-items-center">
+                        <small class="text-subtle"><i class="bi bi-controller me-1 text-cyan"></i>รูปแบบการแข่ง:</small>
+                        <span class="text-white fw-bold small" id="cfg-match-type">โหมดเดี่ยว (Solo Race)</span>
+                    </div>
+
+                    <div class="bg-dark p-2 rounded-2 border border-secondary mb-2 d-flex justify-content-between align-items-center">
+                        <small class="text-subtle"><i class="bi bi-clock-history me-1 text-warning"></i>เวลาแข่งขัน:</small>
+                        <span class="text-warning fw-bold small" id="cfg-time-limit">ไม่จำกัดเวลา</span>
+                    </div>
+
+                    <div class="bg-dark p-2 rounded-2 border border-secondary mb-2 d-flex justify-content-between align-items-center">
+                        <small class="text-subtle"><i class="bi bi-coin me-1 text-warning"></i>เงื่อนไขแจก Gold:</small>
+                        <span class="text-white fw-bold small" id="cfg-gold-rule">3 Gold / ทุก 10%</span>
+                    </div>
+
+                    <div class="bg-dark p-2 rounded-2 border border-secondary mb-2 d-flex justify-content-between align-items-center">
+                        <small class="text-subtle"><i class="bi bi-patch-question me-1 text-danger"></i>คำถามกวนใจ (4 ช้อยส์):</small>
+                        <span class="text-danger fw-bold small" id="cfg-quiz-rule">ปิดใช้งาน</span>
+                    </div>
+
+                    <div class="bg-dark p-2 rounded-2 border border-secondary">
+                        <small class="text-subtle d-block mb-1"><i class="bi bi-shop me-1 text-info"></i>ไอเทมที่เปิดขายในรอบนี้:</small>
+                        <div class="d-flex flex-wrap gap-1" id="cfg-items-list">
+                            <span class="badge bg-secondary text-white" style="font-size: 0.65rem;">🛡️ โล่ป้องกัน (3G)</span>
+                            <span class="badge bg-secondary text-white" style="font-size: 0.65rem;">👁️ หน้าจอเบลอ (4G)</span>
+                            <span class="badge bg-secondary text-white" style="font-size: 0.65rem;">❄️ แช่แข็งระบบ (5G)</span>
+                            <span class="badge bg-secondary text-white" style="font-size: 0.65rem;">⚡ สปีดบูสท์ (6G)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script src="projector_race.js"></script>
+</body>
+</html>

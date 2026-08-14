@@ -1,0 +1,142 @@
+:root {
+    --bg-dark: #090d16;
+    --card-bg: #111827;
+    --border-color: #334155;
+    --text-bright: #f8fafc;
+    --text-subtle: #cbd5e1;
+    --cyan-glow: #38bdf8;
+    --warning-glow: #f59e0b;
+}
+
+body.cyber-body {
+    background-color: var(--bg-dark);
+    color: var(--text-bright);
+    font-family: 'Kanit', sans-serif;
+    min-height: 100vh;
+}
+
+.font-mono {
+    font-family: 'Fira Code', monospace;
+}
+
+.text-subtle {
+    color: var(--text-subtle) !important;
+}
+
+.text-cyan {
+    color: var(--cyan-glow) !important;
+}
+
+.header-icon-box {
+    width: 50px;
+    height: 50px;
+    border-radius: 14px;
+    background: #1e293b;
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cyber-card {
+    background: var(--card-bg);
+    border: 2px solid var(--border-color);
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.game-select-card {
+    background: #0f172a;
+    border: 2px solid var(--border-color);
+    border-radius: 14px;
+    padding: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transition: all 0.2s ease;
+    height: 100%;
+}
+
+.game-select-card:hover {
+    border-color: var(--cyan-glow);
+    transform: translateY(-2px);
+}
+
+.game-select-card.active {
+    border-color: var(--warning-glow);
+    background: rgba(245, 158, 11, 0.12);
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.3);
+}
+
+.game-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    flex-shrink: 0;
+}
+
+.type-select-card {
+    background: #0f172a;
+    border: 2px solid var(--border-color);
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.type-select-card:hover, .type-select-card.active {
+    border-color: var(--cyan-glow);
+    background: rgba(56, 189, 248, 0.1);
+}
+
+.bg-slate-900 {
+    background-color: #020617 !important;
+}
+
+/* Toast Notification Style */
+#cyberToast {
+    background: #0f172a !important;
+    border: 1px solid #334155 !important;
+    border-radius: 12px !important;
+    backdrop-filter: blur(8px);
+}
+#cyberToast.toast-success {
+    border-color: #22c55e !important;
+    box-shadow: 0 0 15px rgba(34, 197, 94, 0.3);
+}
+#cyberToast.toast-danger {
+    border-color: #ef4444 !important;
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+}
+
+/* สไตล์เฉพาะอวตารของนักเรียน */
+.student-avatar-hover {
+    transition: transform 0.2s ease;
+    cursor: pointer;
+}
+
+/* กล่องพรีวิวอวตารลอยอิสระระดับ Top Layer (ไม่โดน Scrollbar ตัดขอบ) */
+.avatar-popover-box {
+    position: fixed;
+    z-index: 99999;
+    pointer-events: none;
+    background: #0f172a;
+    border: 2px solid #38bdf8;
+    border-radius: 16px;
+    padding: 8px;
+    box-shadow: 0 0 25px rgba(56, 189, 248, 0.6);
+    transform: translate(15px, -50%);
+    transition: opacity 0.15s ease-in-out;
+}
+
+.avatar-popover-box img {
+    width: 110px;
+    height: 110px;
+    border-radius: 12px;
+    object-fit: cover;
+    background: #000;
+}
