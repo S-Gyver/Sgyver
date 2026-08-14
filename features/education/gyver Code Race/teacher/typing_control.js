@@ -19,16 +19,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     fetchAndListenStudents();
 });
 
+// teacher/typing_control.js
+
 function setupQRCode(code) {
     const qrBox = document.getElementById("qrcode-box");
     if (qrBox) {
         qrBox.innerHTML = "";
-        const joinUrl = `${window.location.origin}/features/education/gyver%20Code%20Race/student/student_lobby.html?room=${code}`;
+        
+        // 🔗 ปรับ URL ให้ตรงกับไฟล์ student_lobby.html พร้อมส่งทั้ง room และ classKey
+        const origin = window.location.origin;
+        const joinUrl = `${origin}/features/education/gyver%20Code%20Race/student/student_lobby.html?room=${code}&classKey=${encodeURIComponent(classKey)}`;
+        
         try {
             if (typeof QRCode !== 'undefined') {
-                new QRCode(qrBox, { text: joinUrl, width: 130, height: 130 });
+                new QRCode(qrBox, { 
+                    text: joinUrl, 
+                    width: 140, 
+                    height: 140,
+                    colorDark: "#020617",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.M
+                });
             }
-        } catch (e) {}
+        } catch (e) {
+            console.error("QR Code Error:", e);
+        }
     }
 }
 

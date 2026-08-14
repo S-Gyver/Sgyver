@@ -4,7 +4,7 @@ let hasSavedProfile = false;
 
 document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
-    const roomCode = urlParams.get('room') || 'RACE88';
+    const roomCode = (urlParams.get('room') || 'RACE88').toUpperCase();
     const isTeamMode = urlParams.get('type') === 'team';
 
     const roomCodeEl = document.getElementById('lobby-room-code');
@@ -67,14 +67,15 @@ function loadSavedProfile() {
             document.getElementById('student-room').value = profile.studentRoom || '';
             document.getElementById('student-number').value = profile.studentNumber || '';
 
-            document.getElementById('saved-display-name-th').innerText = `${profile.nicknameTh} (${profile.firstnameTh} ${profile.lastnameTh})`;
-            document.getElementById('saved-display-name-en').innerText = `${profile.nicknameEn} (${profile.firstnameEn} ${profile.lastnameEn})`;
+            document.getElementById('saved-display-name-th').innerText = `${profile.nicknameTh} (${profile.firstnameTh || ''} ${profile.lastnameTh || ''})`;
+            document.getElementById('saved-display-name-en').innerText = `${profile.nicknameEn || ''} (${profile.firstnameEn || ''} ${profile.lastnameEn || ''})`;
             document.getElementById('saved-display-class').innerText = profile.studentClass || 'ม.-/-';
             document.getElementById('saved-display-no').innerText = profile.studentNumber || '-';
 
             if (profile.avatarUrl) {
                 currentAvatarUrl = profile.avatarUrl;
-                document.getElementById('student-avatar-preview').src = currentAvatarUrl;
+                const avatarImg = document.getElementById('student-avatar-preview');
+                if (avatarImg) avatarImg.src = currentAvatarUrl;
             }
 
             document.getElementById('saved-profile-card')?.classList.remove('d-none');
@@ -180,6 +181,15 @@ async function handleStudentJoin(e) {
         btnSubmit.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>กำลังบันทึกข้อมูล...`;
     }
 
+    const urlParams = new URLSearchParams(window.location.search);
+    let roomCode = (urlParams.get('room') || 'RACE88').toUpperCase();
+
+    // หากมีการกรอกรหัสห้องเพิ่มในอินพุต ให้รับค่าที่กรอกมา
+    const roomInputEl = document.getElementById('input-room-code');
+    if (roomInputEl && roomInputEl.value.trim()) {
+        roomCode = roomInputEl.value.trim().toUpperCase();
+    }
+
     let nicknameTh = document.getElementById('student-nickname-th')?.value.trim();
     let firstnameTh = document.getElementById('student-firstname-th')?.value.trim();
     let lastnameTh = document.getElementById('student-lastname-th')?.value.trim();
@@ -191,9 +201,6 @@ async function handleStudentJoin(e) {
     let studentRoom = document.getElementById('student-room')?.value;   
     let studentNumber = document.getElementById('student-number')?.value.trim();
     let teamNum = document.getElementById('student-team-num')?.value || 0;
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const roomCode = urlParams.get('room') || 'RACE88';
 
     if (hasSavedProfile) {
         const savedData = localStorage.getItem('gyver_race_student_profile');
@@ -222,8 +229,27 @@ async function handleStudentJoin(e) {
     }
 
     const cleanLevel = studentLevel.replace('ม.', '').trim();
-    const classKey = `${cleanLevel}/${studentRoom}`; 
-    const studentClassFormatted = `${studentLevel}/${studentRoom}`;
+    let classKey = `${cleanLevel}/${studentRoom}`; 
+    let studentClassFormatted = `${studentLevel}/${studentRoom}`;
+
+    // 🔍 ตรวจสอบรหัสห้องกับตาราง lobbies ใน Supabase DB
+    try {
+        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+            let { data: lobbyData } = await supabaseClient
+                .from('lobbies')
+                .select('*')
+                .eq('room_code', roomCode)
+                .maybeSingle();
+
+            if (lobbyData && lobbyData.class_key) {
+                classKey = lobbyData.class_key;
+                const [lvl, rm] = classKey.split('/');
+                if (lvl && rm) studentClassFormatted = `ม.${lvl}/${rm}`;
+            }
+        }
+    } catch (e) {
+        console.warn("Lobby check warning:", e);
+    }
 
     let finalAvatarUrl = currentAvatarUrl;
     if (selectedFileObject) {
@@ -260,11 +286,15 @@ async function handleStudentJoin(e) {
                 level: studentLevel,
                 room: studentRoom,
                 class_name: studentClassFormatted,
-                number: parseInt(studentNumber) || 0,
+                number: parseInt(studentNumber) || 10,
                 image: finalAvatarUrl,
                 status: 'approved',
                 score: 0,
-                spunCount: 0
+                spunCount: 0,
+                progress: 0,
+                code: '',
+                wpm: 0,
+                errors: 0
             };
 
             let { data: existingClass } = await supabaseClient
@@ -278,7 +308,7 @@ async function handleStudentJoin(e) {
             if (existingClass) {
                 playersList = Array.isArray(existingClass.players) ? existingClass.players : [];
 
-                const existingIdx = playersList.findIndex(p => p.number === newPlayerData.number);
+                const existingIdx = playersList.findIndex(p => p.number === newPlayerData.number || p.nickname_th === newPlayerData.nickname_th);
                 if (existingIdx !== -1) {
                     playersList[existingIdx] = { ...playersList[existingIdx], ...newPlayerData };
                 } else {
@@ -301,6 +331,6 @@ async function handleStudentJoin(e) {
         console.error("Supabase Save Error:", err);
     }
 
-    // ย้ายไปหน้ารอครูกดเริ่มแข่งขัน
-    window.location.href = `student_waiting.html?room=${roomCode}&name=${encodeURIComponent(nicknameTh)}&class=${encodeURIComponent(studentClassFormatted)}&no=${studentNumber}&team=${teamNum}`;
+    // 🚀 ย้ายไปหน้ารอครูกดเริ่มแข่งขันพร้อมส่ง Parameter ครบถ้วน
+    window.location.href = `student_waiting.html?room=${roomCode}&name=${encodeURIComponent(nicknameTh)}&class=${encodeURIComponent(studentClassFormatted)}&no=${studentNumber}&classKey=${encodeURIComponent(classKey)}&team=${teamNum}`;
 }
