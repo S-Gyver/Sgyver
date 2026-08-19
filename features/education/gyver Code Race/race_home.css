@@ -1,104 +1,174 @@
-body {
-    background-color: #0f172a;
-    color: #f8fafc;
+/* ========================================================
+   🏎️ Gyver Code Race - Home Arena Custom Styles
+   ======================================================== */
+
+body.race-home-bg {
+    background-color: #0b0e17;
+    color: #f8f9fa;
     font-family: 'Kanit', sans-serif;
-    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
 }
 
-.card-action {
-    background: #1e293b;
-    border: 2px solid #334155;
-    border-radius: 24px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-    transition: transform 0.2s, border-color 0.2s;
+.font-mono { font-family: 'Fira Code', monospace !important; }
+.font-kanit { font-family: 'Kanit', sans-serif !important; }
+.fw-black { font-weight: 800; }
+.fw-extrabold { font-weight: 700; }
+
+.text-subtle { color: #8e9aaf; }
+.text-cyan { color: #00f2fe; }
+
+/* 🌌 Background Effects */
+.bg-cyber-grid {
+    position: absolute;
+    inset: 0;
+    background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    z-index: 1;
+    pointer-events: none;
 }
 
-.card-action:hover {
-    transform: translateY(-4px);
-    border-color: #38bdf8;
+.bg-glow-blur {
+    position: absolute;
+    width: 380px;
+    height: 380px;
+    border-radius: 50%;
+    filter: blur(120px);
+    opacity: 0.18;
+    z-index: 1;
+    pointer-events: none;
 }
 
-.action-icon {
-    width: 70px;
-    height: 70px;
-    border-radius: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 2.2rem;
-}
+.glow-1 { top: -50px; left: 10%; background: #ff007f; }
+.glow-2 { bottom: -50px; right: 10%; background: #00f2fe; }
 
-.bg-gradient-warning {
-    background: linear-gradient(135deg, #f59e0b, #d97706);
-}
-
-.bg-gradient-info {
-    background: linear-gradient(135deg, #0284c7, #0369a1);
-}
-
-.card-mode {
-    background: #131c2e;
-    border: 1px solid #1e293b;
-    border-radius: 16px;
-}
-
-.mode-badge {
-    width: 40px;
-    height: 40px;
+/* 🏆 Header & Badges */
+.brand-badge {
+    background: rgba(255, 193, 7, 0.15);
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    padding: 6px 12px;
     border-radius: 10px;
+}
+
+.brand-text {
+    letter-spacing: 0.5px;
+    background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.bg-live-badge {
+    background: rgba(0, 242, 254, 0.08);
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+}
+
+.live-dot {
+    width: 8px;
+    height: 8px;
+    background-color: #00f2fe;
+    border-radius: 50%;
+    display: inline-block;
+    box-shadow: 0 0 10px #00f2fe;
+}
+
+.text-cyber-gradient {
+    background: linear-gradient(135deg, #00f2fe 0%, #4facfe 50%, #00c6ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* 🃏 Role Selection Cards */
+.max-w-900 { max-width: 900px; }
+
+.cyber-role-card {
+    background: rgba(18, 24, 38, 0.75);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.cyber-role-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+}
+
+.teacher-card:hover { border-color: rgba(255, 193, 7, 0.5); }
+.student-card:hover { border-color: rgba(0, 242, 254, 0.5); }
+
+/* 🌟 Icon Box */
+.role-icon-box {
+    width: 80px;
+    height: 80px;
+    border-radius: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.2rem;
 }
 
-/* features/education/gyver Code Race/race_home.css */
-
-.role-card {
-    background: #0f172a;
-    border: 2px solid #1e293b;
-    border-radius: 20px;
-    padding: 30px;
-    transition: all 0.3s ease;
+.bg-warning-glow {
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid rgba(255, 193, 7, 0.25);
+    box-shadow: inset 0 0 20px rgba(255, 193, 7, 0.15);
 }
 
-.role-card.teacher-card:hover {
-    border-color: #f59e0b;
-    box-shadow: 0 10px 30px rgba(245, 158, 11, 0.2);
+.bg-cyan-glow {
+    background: rgba(0, 242, 254, 0.1);
+    border: 1px solid rgba(0, 242, 254, 0.25);
+    box-shadow: inset 0 0 20px rgba(0, 242, 254, 0.15);
 }
 
-.role-card.student-card:hover {
-    border-color: #38bdf8;
-    box-shadow: 0 10px 30px rgba(56, 189, 248, 0.2);
-}
-
-.input-code-box {
-    background: #020617;
-    border: 1px solid #334155;
-    color: #f59e0b;
-    font-family: 'Fira Code', monospace;
-    font-weight: 800;
-    font-size: 1.2rem;
-    letter-spacing: 2px;
-    text-align: center;
-}
-
-.input-code-box:focus {
-    background: #020617;
-    color: #f59e0b;
-    border-color: #38bdf8;
-    box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);
-}
-
-.role-icon-wrapper {
-    width: 70px;
-    height: 70px;
-    font-size: 2rem;
-}
-
-.qr-scanner-box {
-    width: 100%;
-    min-height: 250px;
-    background: #000000;
+/* 🔘 Buttons & Inputs */
+.btn-cyber-lg {
+    padding: 14px 20px;
+    font-size: 1.1rem;
     border-radius: 12px;
 }
+
+.btn-cyber-md {
+    padding: 10px 16px;
+    border-radius: 12px;
+}
+
+.btn-cyber-sm {
+    padding: 6px 16px;
+    font-size: 0.85rem;
+}
+
+.btn-cyan {
+    background-color: #00f2fe;
+    color: #0b0e17;
+    border: none;
+    transition: background 0.2s;
+}
+
+.btn-cyan:hover {
+    background-color: #4facfe;
+    color: #0b0e17;
+}
+
+.input-group-cyber input {
+    border-radius: 12px 0 0 12px !important;
+    letter-spacing: 2px;
+}
+
+.input-group-cyber button {
+    border-radius: 0 12px 12px 0 !important;
+}
+
+.input-group-cyber input:focus {
+    box-shadow: none;
+    border-color: #00f2fe;
+}
+
+/* ⚡ Animations */
+@keyframes pulseGlow {
+    0%, 100% { opacity: 0.8; }
+    50% { opacity: 1; box-shadow: 0 0 15px rgba(0, 242, 254, 0.4); }
+}
+
+.animate-pulse-glow { animation: pulseGlow 2.5s infinite; }

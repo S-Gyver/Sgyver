@@ -377,9 +377,23 @@ async function promptClearAllLobbies() {
     }
 }
 
-function handleAdminLogout() {
-    sessionStorage.removeItem('gyver_admin_session');
-    window.location.href = '../index.html';
+// 🟢 ฟังก์ชันออกจากระบบแบบแก้ไขแล้ว (เคลียร์ Session และสั่งเด้งออกไปหน้า index.html)
+async function handleAdminLogout() {
+    try {
+        // 1. เคลียร์ Session Admin ทั้งหมดใน Storage
+        sessionStorage.removeItem('gyver_admin_session');
+        localStorage.removeItem('gyver_admin_session');
+
+        // 2. ออกจากระบบ Supabase
+        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+            await supabaseClient.auth.signOut();
+        }
+    } catch (err) {
+        console.error("Logout error:", err);
+    } finally {
+        // 3. นำทางกลับไปยังหน้าหลัก index.html
+        window.location.href = '../index.html';
+    }
 }
 
 function showToast(msg) {

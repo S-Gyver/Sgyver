@@ -8,45 +8,44 @@
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link
-        href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Kanit:wght@300;400;500;600;700&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Kanit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- QRCode JS -->
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 
-    <link rel="stylesheet" href="teacher_lobby.css">
-    
+    <link rel="stylesheet" href="typing_control.css">
 </head>
 
-<body class="cyber-body py-4">
+<body class="cyber-body py-4 position-relative">
 
-    <div class="container-fluid px-3 px-md-4">
+    <!-- Background Elements ให้เข้าธีมเดียวกับ Race Home / Teacher Lobby -->
+    <div class="bg-glow-blur glow-top"></div>
+    <div class="bg-glow-blur glow-bottom"></div>
+    <div class="bg-cyber-grid"></div>
+
+    <div class="container-fluid px-3 px-md-4 position-relative z-2">
 
         <!-- Header Banner สำหรับเกมพิมพ์เร็ว -->
-        <div class="cyber-card p-3 mb-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div class="cyber-card p-3 mb-4 border-cyan d-flex justify-content-between align-items-center flex-wrap gap-3 shadow-lg">
             <div class="d-flex align-items-center gap-3">
-                <div class="game-icon bg-primary text-white fs-2" style="width: 55px; height: 55px;">
-                    <i class="bi bi-keyboard-fill"></i>
+                <div class="hub-icon-box bg-cyan-glow">
+                    <i class="bi bi-keyboard-fill text-cyan fs-2"></i>
                 </div>
                 <div>
                     <div class="d-flex align-items-center gap-2">
-                        <span class="badge bg-primary font-mono">GAME 1</span>
-                        <h4 class="fw-bold text-white m-0 font-mono">ห้องคุมการแข่ง : พิมพ์เร็ว (Speed Typing Arena)
-                        </h4>
+                        <span class="badge bg-cyan text-dark font-mono fw-bold">GAME 1</span>
+                        <h4 class="fw-black text-white m-0 font-kanit">ห้องคุมการแข่ง : พิมพ์เร็ว (Speed Typing Arena)</h4>
                     </div>
-                    <p class="text-subtle small m-0 mt-1">จัดการผู้เข้าแข่งขัน เลือกชุดโจทย์ และสั่งเปิดจอโปรเจกเตอร์
-                    </p>
+                    <p class="text-subtle small m-0 mt-1 font-kanit">จัดการผู้เข้าแข่งขัน เลือกชุดโจทย์ และสั่งเปิดจอโปรเจกเตอร์</p>
                 </div>
             </div>
 
             <div class="d-flex align-items-center gap-3">
-                <div class="bg-dark p-2 rounded-3 border border-secondary text-center px-3">
-                    <small class="text-subtle d-block font-mono">ROOM CODE</small>
-                    <span class="text-warning fw-bold fs-4 font-mono" id="display-room-code">----</span>
+                <div class="room-code-badge p-2 px-3 rounded-3 border border-warning-subtle text-center">
+                    <small class="text-cyan d-block font-mono">ROOM CODE</small>
+                    <span class="text-warning fw-extrabold fs-4 font-mono" id="display-room-code">----</span>
                 </div>
-                <!-- 🚪 เปลี่ยนปุ่มปิดห้องนี้เรียกใช้ฟังก์ชัน openCloseRoomModal() -->
-                <button type="button" class="btn btn-outline-light btn-sm font-mono" onclick="openCloseRoomModal()">
+                <button type="button" class="btn btn-outline-light btn-cyber-sm font-mono rounded-pill" onclick="openCloseRoomModal()">
                     <i class="bi bi-x-lg me-1"></i>ปิดห้องนี้
                 </button>
             </div>
@@ -60,43 +59,38 @@
                 <div class="cyber-card p-3 h-100 d-flex flex-column gap-3">
 
                     <!-- QR Code สำหรับฉายให้เด็กสแกน -->
-                    <div class="bg-dark p-3 rounded-3 border border-secondary text-center">
-                        <div id="qrcode-box" class="bg-white p-2 rounded-3 d-inline-block mb-2"></div>
+                    <div class="qr-box-card p-3 rounded-3 text-center border-cyan">
+                        <div id="qrcode-box" class="bg-white p-2 rounded-3 d-inline-block mb-2 shadow-sm"></div>
                         <small class="text-subtle d-block font-mono">ให้นักเรียนสแกน QR เพื่อเข้าร่วมห้องนี้</small>
                     </div>
 
                     <!-- 🔴 ส่วนที่ 1: รอนุมัติ (Pending Approval) -->
-                    <div class="bg-dark p-3 rounded-3 border border-warning">
+                    <div class="config-sub-box p-3 rounded-3 border-warning-subtle">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <h6 class="fw-bold text-warning m-0 font-mono small">
                                 <i class="bi bi-hourglass-split me-1"></i>รออนุมัติ (<span id="pending-count">0</span>)
                             </h6>
-                            <button class="btn btn-sm btn-success font-mono py-0 px-2" style="font-size: 0.75rem;"
-                                onclick="approveAllStudents()">
+                            <button class="btn btn-sm btn-success font-mono py-0 px-2" style="font-size: 0.75rem;" onclick="approveAllStudents()">
                                 <i class="bi bi-check-all me-1"></i>อนุมัติทั้งหมด
                             </button>
                         </div>
 
-                        <div class="d-flex flex-column gap-2 overflow-auto" id="pending-list-grid"
-                            style="max-height: 180px;">
+                        <div class="d-flex flex-column gap-2 overflow-auto" id="pending-list-grid" style="max-height: 180px;">
                         </div>
                     </div>
 
                     <!-- 🟢 ส่วนที่ 2: อนุมัติแล้ว (Approved Players) -->
-                    <div class="bg-dark p-3 rounded-3 border border-secondary flex-grow-1 d-flex flex-column">
+                    <div class="config-sub-box p-3 rounded-3 flex-grow-1 d-flex flex-column">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <h6 class="fw-bold text-cyan m-0 font-mono small">
-                                <i class="bi bi-person-check-fill me-1"></i>อนุมัติแล้ว / พร้อมแข่ง (<span
-                                    id="approved-count">0</span>)
+                                <i class="bi bi-person-check-fill me-1"></i>อนุมัติแล้ว / พร้อมแข่ง (<span id="approved-count">0</span>)
                             </h6>
-                            <button class="btn btn-sm btn-outline-danger font-mono py-0 px-2"
-                                style="font-size: 0.75rem;" onclick="clearAllApprovedStudents()">
+                            <button class="btn btn-sm btn-outline-danger font-mono py-0 px-2" style="font-size: 0.75rem;" onclick="clearAllApprovedStudents()">
                                 <i class="bi bi-trash3 me-1"></i>เตะทุกคน
                             </button>
                         </div>
 
-                        <div class="d-flex flex-column gap-2 overflow-auto flex-grow-1" id="approved-list-grid"
-                            style="max-height: 220px;">
+                        <div class="d-flex flex-column gap-2 overflow-auto flex-grow-1" id="approved-list-grid" style="max-height: 220px;">
                         </div>
                     </div>
 
@@ -107,14 +101,13 @@
             <div class="col-lg-8 d-flex flex-column gap-3">
 
                 <!-- 1. กล่องเลือกโจทย์ใน Stock -->
-                <div class="cyber-card p-3">
+                <div class="cyber-card p-3 p-md-4">
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="fw-bold text-cyan m-0 font-mono">
+                        <h5 class="fw-bold text-cyan m-0 font-kanit">
                             <i class="bi bi-file-code-fill me-2"></i>จัดการโจทย์พิมพ์เร็ว
                         </h5>
                         <div class="d-flex gap-2">
-                            <button class="btn btn-success btn-sm font-mono fw-bold" data-bs-toggle="modal"
-                                data-bs-target="#addStockProblemModal">
+                            <button class="btn btn-success btn-sm font-mono fw-bold" data-bs-toggle="modal" data-bs-target="#addStockProblemModal">
                                 <i class="bi bi-plus-lg me-1"></i>เพิ่มโจทย์ใหม่
                             </button>
                             <button class="btn btn-warning btn-sm font-mono fw-bold" onclick="openEditProblemModal()">
@@ -128,24 +121,20 @@
 
                     <div class="mb-3">
                         <label class="form-label text-subtle small font-mono">เลือกชุดโจทย์จาก Stock ของเกมนี้:</label>
-                        <select id="saved-problems-select"
-                            class="form-select bg-dark text-white border-secondary font-mono"
-                            onchange="loadSelectedProblem(this.value)">
+                        <select id="saved-problems-select" class="form-select form-select-cyber font-mono" onchange="loadSelectedProblem(this.value)">
                             <option value="">กำลังโหลดรายการโจทย์...</option>
                         </select>
                     </div>
 
-                    <div class="bg-dark p-3 rounded-3 border border-secondary">
-                        <small class="text-warning d-block font-mono mb-1"><i
-                                class="bi bi-code-square me-1"></i>โค้ดที่จะให้นักเรียนพิมพ์แข่ง:</small>
-                        <pre id="problem-preview-code" class="text-white font-mono m-0"
-                            style="font-size: 1rem;">// กรุณาเลือกโจทย์จากรายการด้านบน</pre>
+                    <div class="code-preview-box p-3 rounded-3">
+                        <small class="text-warning d-block font-mono mb-1"><i class="bi bi-code-square me-1"></i>โค้ดที่จะให้นักเรียนพิมพ์แข่ง:</small>
+                        <pre id="problem-preview-code" class="text-cyan font-mono m-0" style="font-size: 1rem;">// กรุณาเลือกโจทย์จากรายการด้านบน</pre>
                     </div>
                 </div>
 
                 <!-- 2. ✨ โซนตั้งค่ากติกา & ร้านค้า -->
-                <div class="cyber-card p-3">
-                    <h5 class="fw-bold text-warning mb-3 font-mono">
+                <div class="cyber-card p-3 p-md-4">
+                    <h5 class="fw-bold text-warning mb-3 font-kanit">
                         <i class="bi bi-sliders me-2"></i>การตั้งค่าเงื่อนไข กติกา & ร้านค้า
                     </h5>
 
@@ -154,26 +143,22 @@
                         <!-- 👈 ฝั่งซ้าย: กำหนดเวลา + คำถามกวนใจ -->
                         <div class="col-md-6 d-flex flex-column gap-3">
 
-                            <div class="bg-dark p-3 rounded-3 border border-secondary d-flex flex-column gap-3">
+                            <div class="config-sub-box p-3 rounded-3 d-flex flex-column gap-3">
                                 <!-- 1. กำหนดเวลาการแข่งขัน -->
                                 <div>
                                     <div class="d-flex justify-content-between align-items-center">
                                         <label class="form-label text-warning font-mono fw-bold m-0 small">
                                             <i class="bi bi-clock-history me-1"></i>กำหนดเวลาการแข่งขัน:
                                         </label>
-                                        <div class="form-check form-switch m-0">
-                                            <input class="form-check-input" type="checkbox" id="timer-toggle-switch"
-                                                onchange="toggleTimerSettings(this.checked)">
-                                            <label class="form-check-label text-subtle small font-mono ms-1"
-                                                id="timer-toggle-label" for="timer-toggle-switch">ไม่จำกัดเวลา</label>
+                                        <div class="form-check form-switch m-0 custom-cyber-switch">
+                                            <input class="form-check-input" type="checkbox" id="timer-toggle-switch" onchange="toggleTimerSettings(this.checked)">
+                                            <label class="form-check-label text-subtle small font-mono ms-1" id="timer-toggle-label" for="timer-toggle-switch">ไม่จำกัดเวลา</label>
                                         </div>
                                     </div>
 
                                     <div id="timer-select-zone" class="d-none mt-2">
-                                        <label
-                                            class="form-label text-white font-mono small fw-bold mb-1">เลือกระยะเวลาแข่งขัน:</label>
-                                        <select id="game-duration-select"
-                                            class="form-select form-select-sm bg-slate-900 text-warning border-secondary font-mono">
+                                        <label class="form-label text-white font-mono small fw-bold mb-1">เลือกระยะเวลาแข่งขัน:</label>
+                                        <select id="game-duration-select" class="form-select form-select-sm form-select-cyber font-mono">
                                             <option value="60">1 นาที (60 วินาที)</option>
                                             <option value="120">2 นาที (120 วินาที)</option>
                                             <option value="180" selected>3 นาที (180 วินาที)</option>
@@ -191,45 +176,33 @@
                                         <label class="form-label text-danger font-mono fw-bold m-0 small">
                                             <i class="bi bi-patch-question-fill me-1"></i>ระบบคำถามกวนใจเด้งขัดจังหวะ:
                                         </label>
-                                        <div class="form-check form-switch m-0">
-                                            <input class="form-check-input" type="checkbox" id="quiz-toggle-switch"
-                                                onchange="toggleQuizSettings(this.checked)">
-                                            <label class="form-check-label text-subtle small font-mono ms-1"
-                                                id="quiz-toggle-label" for="quiz-toggle-switch">ปิดใช้งาน</label>
+                                        <div class="form-check form-switch m-0 custom-cyber-switch">
+                                            <input class="form-check-input" type="checkbox" id="quiz-toggle-switch" onchange="toggleQuizSettings(this.checked)">
+                                            <label class="form-check-label text-subtle small font-mono ms-1" id="quiz-toggle-label" for="quiz-toggle-switch">ปิดใช้งาน</label>
                                         </div>
                                     </div>
 
                                     <div id="quiz-select-zone" class="d-none mt-2">
                                         <div class="row g-2 mb-2">
                                             <div class="col-7">
-                                                <!-- 🟢 ดึงข้อมูลชุดวิชาจากคลังกลาง quiz_subjects -->
-                                                <select id="quiz-stock-select"
-                                                    class="form-select form-select-sm bg-slate-900 text-white border-secondary font-mono">
+                                                <select id="quiz-stock-select" class="form-select form-select-sm form-select-cyber font-mono">
                                                     <option value="">กำลังโหลดชุดคำถามคลังกลาง...</option>
                                                 </select>
                                             </div>
                                             <div class="col-5">
                                                 <div class="input-group input-group-sm">
-                                                    <span
-                                                        class="input-group-text bg-slate-900 text-subtle border-secondary font-mono">ได้</span>
-                                                    <input type="number" id="quiz-reward-gold"
-                                                        class="form-control bg-slate-900 text-warning fw-bold border-secondary font-mono text-center"
-                                                        value="2" min="0" max="50">
-                                                    <span
-                                                        class="input-group-text bg-slate-900 text-warning border-secondary font-mono">G</span>
+                                                    <span class="input-group-text bg-dark-subtle text-subtle border-secondary font-mono">ได้</span>
+                                                    <input type="number" id="quiz-reward-gold" class="form-control bg-dark text-warning fw-bold border-secondary font-mono text-center" value="2" min="0" max="50">
+                                                    <span class="input-group-text bg-dark-subtle text-warning border-secondary font-mono">G</span>
                                                 </div>
                                             </div>
                                         </div>
 
                                         <div class="d-flex gap-1">
-                                            <!-- แก้ไขปุ่มใน typing_control.html -->
-                                            <a href="../../question_bank/question_bank.html"
-                                                class="btn btn-sm btn-outline-info font-mono text-nowrap py-1 px-2 flex-fill text-decoration-none">
-                                                <i class="bi bi-gear-fill me-1"></i>จัดการคลังคำถามกลาง (Question Bank)
+                                            <a href="../../question_bank/question_bank.html" class="btn btn-sm btn-outline-info font-mono text-nowrap py-1 px-2 flex-fill text-decoration-none">
+                                                <i class="bi bi-gear-fill me-1"></i>จัดการคลังคำถามกลาง
                                             </a>
-                                            <button
-                                                class="btn btn-sm btn-outline-warning font-mono text-nowrap py-1 px-2"
-                                                onclick="loadQuizSubjectsFromCentralBank()" title="รีเฟรชโจทย์">
+                                            <button class="btn btn-sm btn-outline-warning font-mono text-nowrap py-1 px-2" onclick="loadQuizSubjectsFromCentralBank()" title="รีเฟรชโจทย์">
                                                 <i class="bi bi-arrow-clockwise"></i>
                                             </button>
                                         </div>
@@ -238,140 +211,102 @@
                             </div>
 
                             <!-- 3. เงื่อนไขการรับ Gold -->
-                            <div class="bg-dark p-3 rounded-3 border border-secondary flex-grow-1">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <label class="form-label text-warning font-mono fw-bold m-0 small">
-                                        <i class="bi bi-gift-fill me-1"></i>เงื่อนไขการรับ Gold จากการพิมพ์:
-                                    </label>
-                                    <div class="form-check form-switch m-0">
-                                        <input class="form-check-input" type="checkbox" id="gold-toggle-switch" checked
-                                            onchange="toggleGoldSettings(this.checked)">
-                                        <label class="form-check-label text-warning small font-mono"
-                                            id="gold-toggle-label" for="gold-toggle-switch">เปิดใช้งาน</label>
-                                    </div>
-                                </div>
+<div class="config-sub-box p-3 rounded-3 flex-grow-1">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <label class="form-label text-warning font-mono fw-bold m-0 small">
+            <i class="bi bi-gift-fill me-1"></i>เงื่อนไขการรับ Gold จากการพิมพ์:
+        </label>
+        <div class="form-check form-switch m-0 custom-cyber-switch">
+            <input class="form-check-input" type="checkbox" id="gold-toggle-switch" checked onchange="toggleGoldSettings(this.checked)">
+            <label class="form-check-label text-warning small font-mono" id="gold-toggle-label" for="gold-toggle-switch">เปิดใช้งาน</label>
+        </div>
+    </div>
 
-                                <div id="gold-select-zone" class="mt-2">
-                                    <div class="row g-2 align-items-center">
-                                        <div class="col-6">
-                                            <div class="input-group input-group-sm">
-                                                <span
-                                                    class="input-group-text bg-slate-900 text-subtle border-secondary font-mono">แจกทุกๆ</span>
-                                                <select id="gold-step-percent"
-                                                    class="form-select bg-slate-900 text-white border-secondary font-mono">
-                                                    <option value="5">5%</option>
-                                                    <option value="10" selected>10%</option>
-                                                    <option value="20">20%</option>
-                                                    <option value="25">25%</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="col-6">
-                                            <div class="input-group input-group-sm">
-                                                <span
-                                                    class="input-group-text bg-slate-900 text-subtle border-secondary font-mono">รับได้</span>
-                                                <input type="number" id="gold-reward-amount"
-                                                    class="form-control bg-slate-900 text-warning fw-bold border-secondary font-mono text-center"
-                                                    value="3" min="1" max="50">
-                                                <span
-                                                    class="input-group-text bg-slate-900 text-warning border-secondary font-mono">Gold</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+    <div id="gold-select-zone" class="mt-2">
+        <div class="row g-2 align-items-center">
+            <div class="col-6">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text input-group-cyber-label font-mono">แจกทุกๆ</span>
+                    <select id="gold-step-percent" class="form-select form-select-cyber font-mono">
+                        <option value="5">5%</option>
+                        <option value="10" selected>10%</option>
+                        <option value="20">20%</option>
+                        <option value="25">25%</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text input-group-cyber-label font-mono">รับได้</span>
+                    <input type="number" id="gold-reward-amount" class="form-control bg-dark text-warning fw-bold border-secondary font-mono text-center" value="3" min="1" max="50">
+                    <span class="input-group-text input-group-cyber-label gold-text font-mono">Gold</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
                         </div>
 
                         <!-- 👉 ฝั่งขวา: ร้านค้าไอเทม -->
                         <div class="col-md-6">
-                            <div class="bg-dark p-3 rounded-3 border border-secondary h-100">
+                            <div class="config-sub-box p-3 rounded-3 h-100">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                     <label class="form-label text-cyan font-mono fw-bold m-0 small">
                                         <i class="bi bi-bag-check-fill me-1"></i>ไอเทมที่จะเปิดขายในรอบนี้:
                                     </label>
-                                    <div class="form-check form-switch m-0">
-                                        <input class="form-check-input" type="checkbox" id="shop-toggle-switch" checked
-                                            onchange="toggleShopSettings(this.checked)">
-                                        <label class="form-check-label text-cyan small font-mono" id="shop-toggle-label"
-                                            for="shop-toggle-switch">เปิดใช้งาน</label>
+                                    <div class="form-check form-switch m-0 custom-cyber-switch">
+                                        <input class="form-check-input" type="checkbox" id="shop-toggle-switch" checked onchange="toggleShopSettings(this.checked)">
+                                        <label class="form-check-label text-cyan small font-mono" id="shop-toggle-label" for="shop-toggle-switch">เปิดใช้งาน</label>
                                     </div>
                                 </div>
 
                                 <div id="shop-select-zone" class="d-flex flex-column gap-2 mt-2">
                                     <!-- 🛡️ 1. โล่ป้องกัน -->
-                                    <div
-                                        class="p-2 bg-slate-900 rounded-3 border border-secondary d-flex align-items-center justify-content-between">
-                                        <div class="form-check form-switch m-0 d-flex align-items-center gap-2">
-                                            <input class="form-check-input" type="checkbox" id="item-shield-enable"
-                                                checked>
-                                            <label class="form-check-label text-white small font-mono"
-                                                for="item-shield-enable">🛡️ โล่ป้องกัน</label>
+                                    <div class="p-2 shop-item-card rounded-3 d-flex align-items-center justify-content-between">
+                                        <div class="form-check form-switch m-0 d-flex align-items-center gap-2 custom-cyber-switch">
+                                            <input class="form-check-input" type="checkbox" id="item-shield-enable" checked>
+                                            <label class="form-check-label text-white small font-mono" for="item-shield-enable">🛡️ โล่ป้องกัน</label>
                                         </div>
                                         <div class="input-group input-group-sm" style="width: 90px;">
-                                            <input type="number" id="item-shield-price"
-                                                class="form-control bg-dark text-warning border-secondary text-center font-mono"
-                                                value="3" min="1">
-                                            <span
-                                                class="input-group-text bg-dark text-warning border-secondary font-mono"
-                                                style="font-size: 0.7rem;">G</span>
+                                            <input type="number" id="item-shield-price" class="form-control bg-dark text-warning border-secondary text-center font-mono" value="3" min="1">
+                                            <span class="input-group-text bg-dark text-warning border-secondary font-mono" style="font-size: 0.7rem;">G</span>
                                         </div>
                                     </div>
 
                                     <!-- 👻 2. หน้าจอเบลอ -->
-                                    <div
-                                        class="p-2 bg-slate-900 rounded-3 border border-secondary d-flex align-items-center justify-content-between">
-                                        <div class="form-check form-switch m-0 d-flex align-items-center gap-2">
-                                            <input class="form-check-input" type="checkbox" id="item-distract-enable"
-                                                checked>
-                                            <label class="form-check-label text-white small font-mono"
-                                                for="item-distract-enable">👻 หน้าจอเบลอ</label>
+                                    <div class="p-2 shop-item-card rounded-3 d-flex align-items-center justify-content-between">
+                                        <div class="form-check form-switch m-0 d-flex align-items-center gap-2 custom-cyber-switch">
+                                            <input class="form-check-input" type="checkbox" id="item-distract-enable" checked>
+                                            <label class="form-check-label text-white small font-mono" for="item-distract-enable">👻 หน้าจอเบลอ</label>
                                         </div>
                                         <div class="input-group input-group-sm" style="width: 90px;">
-                                            <input type="number" id="item-distract-price"
-                                                class="form-control bg-dark text-warning border-secondary text-center font-mono"
-                                                value="4" min="1">
-                                            <span
-                                                class="input-group-text bg-dark text-warning border-secondary font-mono"
-                                                style="font-size: 0.7rem;">G</span>
+                                            <input type="number" id="item-distract-price" class="form-control bg-dark text-warning border-secondary text-center font-mono" value="4" min="1">
+                                            <span class="input-group-text bg-dark text-warning border-secondary font-mono" style="font-size: 0.7rem;">G</span>
                                         </div>
                                     </div>
 
                                     <!-- ❄️ 3. แช่แข็งระบบ -->
-                                    <div
-                                        class="p-2 bg-slate-900 rounded-3 border border-secondary d-flex align-items-center justify-content-between">
-                                        <div class="form-check form-switch m-0 d-flex align-items-center gap-2">
-                                            <input class="form-check-input" type="checkbox" id="item-freeze-enable"
-                                                checked>
-                                            <label class="form-check-label text-white small font-mono"
-                                                for="item-freeze-enable">❄️ แช่แข็งระบบ</label>
+                                    <div class="p-2 shop-item-card rounded-3 d-flex align-items-center justify-content-between">
+                                        <div class="form-check form-switch m-0 d-flex align-items-center gap-2 custom-cyber-switch">
+                                            <input class="form-check-input" type="checkbox" id="item-freeze-enable" checked>
+                                            <label class="form-check-label text-white small font-mono" for="item-freeze-enable">❄️ แช่แข็งระบบ</label>
                                         </div>
                                         <div class="input-group input-group-sm" style="width: 90px;">
-                                            <input type="number" id="item-freeze-price"
-                                                class="form-control bg-dark text-warning border-secondary text-center font-mono"
-                                                value="5" min="1">
-                                            <span
-                                                class="input-group-text bg-dark text-warning border-secondary font-mono"
-                                                style="font-size: 0.7rem;">G</span>
+                                            <input type="number" id="item-freeze-price" class="form-control bg-dark text-warning border-secondary text-center font-mono" value="5" min="1">
+                                            <span class="input-group-text bg-dark text-warning border-secondary font-mono" style="font-size: 0.7rem;">G</span>
                                         </div>
                                     </div>
 
                                     <!-- ⚡ 4. สปีดบูสท์ -->
-                                    <div
-                                        class="p-2 bg-slate-900 rounded-3 border border-secondary d-flex align-items-center justify-content-between">
-                                        <div class="form-check form-switch m-0 d-flex align-items-center gap-2">
-                                            <input class="form-check-input" type="checkbox" id="item-boost-enable"
-                                                checked>
-                                            <label class="form-check-label text-white small font-mono"
-                                                for="item-boost-enable">⚡ สปีดบูสท์</label>
+                                    <div class="p-2 shop-item-card rounded-3 d-flex align-items-center justify-content-between">
+                                        <div class="form-check form-switch m-0 d-flex align-items-center gap-2 custom-cyber-switch">
+                                            <input class="form-check-input" type="checkbox" id="item-boost-enable" checked>
+                                            <label class="form-check-label text-white small font-mono" for="item-boost-enable">⚡ สปีดบูสท์</label>
                                         </div>
                                         <div class="input-group input-group-sm" style="width: 90px;">
-                                            <input type="number" id="item-boost-price"
-                                                class="form-control bg-dark text-warning border-secondary text-center font-mono"
-                                                value="6" min="1">
-                                            <span
-                                                class="input-group-text bg-dark text-warning border-secondary font-mono"
-                                                style="font-size: 0.7rem;">G</span>
+                                            <input type="number" id="item-boost-price" class="form-control bg-dark text-warning border-secondary text-center font-mono" value="6" min="1">
+                                            <span class="input-group-text bg-dark text-warning border-secondary font-mono" style="font-size: 0.7rem;">G</span>
                                         </div>
                                     </div>
                                 </div>
@@ -382,37 +317,32 @@
                 </div>
 
                 <!-- 3. 🎛️ MATCH CONTROL CENTER -->
-                <div class="cyber-card p-3 border-warning">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <small class="text-warning font-mono fw-bold">
-                            <i class="bi bi-headset me-1"></i>MATCH CONTROL CENTER (แผงควบคุมสนามแข่งขัน)
+                <div class="cyber-card p-3 p-md-4 border-warning">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <small class="text-warning font-mono fw-bold fs-6">
+                            <i class="bi bi-headset me-2"></i>MATCH CONTROL CENTER (แผงควบคุมสนามแข่งขัน)
                         </small>
-                        <span class="badge bg-dark border border-warning text-warning font-mono"
-                            id="match-status-badge">STATUS: WAITING</span>
+                        <span class="badge bg-dark border border-warning text-warning font-mono px-3 py-2" id="match-status-badge">STATUS: WAITING</span>
                     </div>
 
                     <div class="row g-2">
                         <div class="col-md-3">
-                            <a href="projector_race.html" target="_blank"
-                                class="btn btn-outline-info w-100 py-3 font-mono fw-bold">
+                            <a href="projector_race.html" target="_blank" class="btn btn-outline-info w-100 py-3 font-mono fw-bold">
                                 <i class="bi bi-display me-1"></i>เปิดจอใหญ่
                             </a>
                         </div>
                         <div class="col-md-3">
-                            <button id="btn-start-match" class="btn btn-warning w-100 py-3 font-mono fw-bold shadow"
-                                onclick="promptActionConfirm('start')">
+                            <button id="btn-start-match" class="btn btn-warning w-100 py-3 font-mono fw-black shadow" onclick="promptActionConfirm('start')">
                                 <i class="bi bi-play-circle-fill me-1"></i>เริ่มการแข่งขัน
                             </button>
                         </div>
                         <div class="col-md-3">
-                            <button id="btn-pause-match" class="btn btn-outline-warning w-100 py-3 font-mono fw-bold"
-                                onclick="promptActionConfirm('pause')" disabled>
+                            <button id="btn-pause-match" class="btn btn-outline-warning w-100 py-3 font-mono fw-bold" onclick="promptActionConfirm('pause')" disabled>
                                 <i class="bi bi-pause-circle-fill me-1"></i>พักการแข่งขัน
                             </button>
                         </div>
                         <div class="col-md-3">
-                            <button id="btn-end-match" class="btn btn-outline-danger w-100 py-3 font-mono fw-bold"
-                                onclick="promptActionConfirm('end')" disabled>
+                            <button id="btn-end-match" class="btn btn-outline-danger w-100 py-3 font-mono fw-bold" onclick="promptActionConfirm('end')" disabled>
                                 <i class="bi bi-stop-circle-fill me-1"></i>จบการแข่งทันที
                             </button>
                         </div>
@@ -428,29 +358,24 @@
     <!-- Modals เพิ่ม/แก้ไข/ลบ โจทย์ -->
     <div class="modal fade" id="addStockProblemModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content bg-dark text-white border-secondary font-mono">
+            <div class="modal-content cyber-modal text-white font-mono">
                 <div class="modal-header border-secondary">
-                    <h5 class="modal-title text-warning"><i class="bi bi-plus-square-fill me-2"></i>เพิ่มโจทย์ใหม่ลง
-                        Stock เกมพิมพ์เร็ว</h5>
+                    <h5 class="modal-title text-warning"><i class="bi bi-plus-square-fill me-2"></i>เพิ่มโจทย์ใหม่ลง Stock เกมพิมพ์เร็ว</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label text-subtle small">ชื่อหัวข้อโจทย์</label>
-                        <input type="text" id="new-prob-title"
-                            class="form-control bg-slate-900 text-white border-secondary"
-                            placeholder="เช่น คำนวณบวกลบเลข Python พื้นฐาน">
+                        <input type="text" id="new-prob-title" class="form-control form-select-cyber" placeholder="เช่น คำนวณบวกลบเลข Python พื้นฐาน">
                     </div>
                     <div class="mb-3">
                         <label class="form-label text-subtle small">โค้ดต้นแบบที่ให้นักเรียนพิมพ์แข่ง</label>
-                        <textarea id="new-prob-code" class="form-control bg-slate-900 text-info border-secondary"
-                            rows="6" placeholder="พิมพ์โค้ด Python ที่นี่..."></textarea>
+                        <textarea id="new-prob-code" class="form-control form-select-cyber text-cyan" rows="6" placeholder="พิมพ์โค้ด Python ที่นี่..."></textarea>
                     </div>
                 </div>
                 <div class="modal-footer border-secondary">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
-                    <button type="button" class="btn btn-success fw-bold" onclick="addNewProblemToStock()">เพิ่มลง Stock
-                        โจทย์</button>
+                    <button type="button" class="btn btn-success fw-bold" onclick="addNewProblemToStock()">เพิ่มลง Stock โจทย์</button>
                 </div>
             </div>
         </div>
@@ -458,29 +383,25 @@
 
     <div class="modal fade" id="editProblemModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content bg-dark text-white border-warning font-mono">
+            <div class="modal-content cyber-modal text-white font-mono">
                 <div class="modal-header border-secondary">
-                    <h5 class="modal-title text-warning"><i class="bi bi-pencil-square me-2"></i>แก้ไขโจทย์พิมพ์เร็ว
-                    </h5>
+                    <h5 class="modal-title text-warning"><i class="bi bi-pencil-square me-2"></i>แก้ไขโจทย์พิมพ์เร็ว</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <input type="hidden" id="edit-prob-id">
                     <div class="mb-3">
                         <label class="form-label text-subtle small">ชื่อหัวข้อโจทย์</label>
-                        <input type="text" id="edit-prob-title"
-                            class="form-control bg-slate-900 text-white border-secondary">
+                        <input type="text" id="edit-prob-title" class="form-control form-select-cyber">
                     </div>
                     <div class="mb-3">
                         <label class="form-label text-subtle small">โค้ดต้นแบบที่ให้นักเรียนพิมพ์แข่ง</label>
-                        <textarea id="edit-prob-code" class="form-control bg-slate-900 text-info border-secondary"
-                            rows="6"></textarea>
+                        <textarea id="edit-prob-code" class="form-control form-select-cyber text-cyan" rows="6"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer border-secondary">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
-                    <button type="button" class="btn btn-warning fw-bold text-dark"
-                        onclick="saveEditedProblem()">บันทึกการแก้ไข</button>
+                    <button type="button" class="btn btn-warning fw-bold text-dark" onclick="saveEditedProblem()">บันทึกการแก้ไข</button>
                 </div>
             </div>
         </div>
@@ -488,73 +409,61 @@
 
     <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-sm">
-            <div class="modal-content bg-dark text-white border-danger rounded-4 p-3 text-center shadow-lg font-mono">
+            <div class="modal-content cyber-modal border-danger text-white rounded-4 p-3 text-center shadow-lg font-mono">
                 <div class="modal-body p-2">
                     <div class="text-danger mb-2 fs-1"><i class="bi bi-trash-fill"></i></div>
                     <h5 class="fw-bold text-danger mb-2">ยืนยันการลบโจทย์</h5>
                     <p class="text-subtle small mb-4" id="delete-target-title">คุณต้องการลบโจทย์นี้ใช่หรือไม่?</p>
                     <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-secondary w-50 py-2"
-                            data-bs-dismiss="modal">ยกเลิก</button>
-                        <button type="button" class="btn btn-danger fw-bold w-50 py-2"
-                            onclick="confirmDeleteProblem()">ลบโจทย์</button>
+                        <button type="button" class="btn btn-secondary w-50 py-2" data-bs-dismiss="modal">ยกเลิก</button>
+                        <button type="button" class="btn btn-danger fw-bold w-50 py-2" onclick="confirmDeleteProblem()">ลบโจทย์</button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 🌟 Cyberpunk Close Room Modal (สำหรับยืนยันการปิดห้องนี้) -->
     <div class="modal fade" id="closeRoomModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-sm">
-            <div class="modal-content bg-dark text-white border-danger rounded-4 p-3 text-center shadow-lg font-mono">
+            <div class="modal-content cyber-modal border-danger text-white rounded-4 p-3 text-center shadow-lg font-mono">
                 <div class="modal-body p-2">
                     <div class="text-danger mb-2 fs-1"><i class="bi bi-door-closed-fill"></i></div>
                     <h5 class="fw-bold text-danger mb-2">ยืนยันการปิดห้องนี้</h5>
                     <p class="text-subtle small mb-4">คุณต้องการปิดห้องแข่งและกลับไปหน้าหลักใช่หรือไม่?</p>
                     <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-secondary w-50 py-2"
-                            data-bs-dismiss="modal">ยกเลิก</button>
-                        <button type="button" class="btn btn-danger fw-bold w-50 py-2"
-                            onclick="confirmCloseRoom()">ปิดห้อง</button>
+                        <button type="button" class="btn btn-secondary w-50 py-2" data-bs-dismiss="modal">ยกเลิก</button>
+                        <button type="button" class="btn btn-danger fw-bold w-50 py-2" onclick="confirmCloseRoom()">ปิดห้อง</button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 🌟 Cyberpunk Kick Student Modal -->
     <div class="modal fade" id="studentKickModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-sm">
-            <div class="modal-content bg-dark text-white border-danger rounded-4 p-3 text-center shadow-lg font-mono">
+            <div class="modal-content cyber-modal border-danger text-white rounded-4 p-3 text-center shadow-lg font-mono">
                 <div class="modal-body p-2">
                     <div class="text-danger mb-2 fs-1"><i class="bi bi-person-x-fill"></i></div>
                     <h5 class="fw-bold text-danger mb-2">ยืนยันการเตะนักเรียน</h5>
-                    <p class="text-subtle small mb-4" id="kick-student-modal-msg">คุณต้องการเตะนักเรียนคนนี้ใช่หรือไม่?
-                    </p>
+                    <p class="text-subtle small mb-4" id="kick-student-modal-msg">คุณต้องการเตะนักเรียนคนนี้ใช่หรือไม่?</p>
                     <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-secondary w-50 py-2"
-                            data-bs-dismiss="modal">ยกเลิก</button>
-                        <button type="button" class="btn btn-danger fw-bold w-50 py-2"
-                            id="btn-confirm-student-kick">เตะออก</button>
+                        <button type="button" class="btn btn-secondary w-50 py-2" data-bs-dismiss="modal">ยกเลิก</button>
+                        <button type="button" class="btn btn-danger fw-bold w-50 py-2" id="btn-confirm-student-kick">เตะออก</button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 🌟 Cyberpunk Action Confirm Modal -->
     <div class="modal fade" id="actionConfirmModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-sm">
-            <div class="modal-content bg-dark text-white border-warning rounded-4 p-3 text-center shadow-lg font-mono"
-                id="action-modal-card">
+            <div class="modal-content cyber-modal border-warning text-white rounded-4 p-3 text-center shadow-lg font-mono" id="action-modal-card">
                 <div class="modal-body p-2">
                     <div class="mb-2 fs-1" id="action-modal-icon"><i class="bi bi-question-circle-fill"></i></div>
                     <h5 class="fw-bold mb-2" id="action-modal-title">ยืนยันการทำรายการ</h5>
                     <p class="text-subtle small mb-4" id="action-modal-msg">คุณต้องการดำเนินการต่อใช่หรือไม่?</p>
                     <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-secondary w-50 py-2"
-                            data-bs-dismiss="modal">ยกเลิก</button>
+                        <button type="button" class="btn btn-secondary w-50 py-2" data-bs-dismiss="modal">ยกเลิก</button>
                         <button type="button" class="btn fw-bold w-50 py-2" id="btn-action-confirm-submit">ตกลง</button>
                     </div>
                 </div>
@@ -564,14 +473,12 @@
 
     <!-- Toast Notification -->
     <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 11000;">
-        <div id="cyberToast" class="toast align-items-center text-white border-0 shadow-lg" role="alert"
-            aria-live="assertive" aria-atomic="true">
+        <div id="cyberToast" class="toast align-items-center text-white border-0 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true">
             <div class="d-flex">
                 <div class="toast-body font-mono fs-6 d-flex align-items-center gap-2" id="toast-message">
                     <i class="bi bi-check-circle-fill text-success"></i> บันทึกข้อมูลสำเร็จ
                 </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
-                    aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
             </div>
         </div>
     </div>

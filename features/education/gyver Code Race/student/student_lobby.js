@@ -1,6 +1,7 @@
 let currentAvatarUrl = '';
 let selectedFileObject = null;
-let hasSavedProfile = false;
+let currentUserId = null;
+let userEmail = '';
 
 document.addEventListener('DOMContentLoaded', async () => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -14,7 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const roomCodeEl = document.getElementById('lobby-room-code');
     if (roomCodeEl) {
-        roomCodeEl.innerText = roomCode || 'RACE88';
+        roomCodeEl.innerText = roomCode || '8090';
     }
 
     const teamZone = document.getElementById('team-input-zone');
@@ -37,8 +38,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         joinForm.addEventListener('submit', handleStudentJoin);
     }
 
-    // 🔍 โหลดโปรไฟล์ (พร้อมเช็กว่ามาจาก User สมัครใหม่หรือไม่)
-    await loadSavedProfile();
+    // 🟢 โหลดข้อมูลจากตาราง profiles ใน Supabase มาแสดงผล
+    await loadUserProfileFromDatabase();
 });
 
 function updateClassPreview() {
@@ -57,88 +58,125 @@ function updateClassPreview() {
     }
 }
 
-async function loadSavedProfile() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const paramName = urlParams.get('name');
+// 🟢 1. ดึงข้อมูลโปรไฟล์จากตาราง profiles ใน Supabase มาใส่ฟอร์ม
+async function loadUserProfileFromDatabase() {
+    try {
+        if (typeof supabaseClient === 'undefined' || !supabaseClient) return;
 
-    // 1. ตรวจสอบว่าใน Supabase มี Session User ที่เพิ่งล็อกอินเข้ามาใหม่หรือไม่
-    if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-        try {
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            if (session && session.user) {
-                const userMeta = session.user.user_metadata || {};
-                const authUsername = userMeta.username || session.user.email.split('@')[0];
-                
-                // เช็ก LocalStorage ว่าตรงกับ User ปัจจุบันหรือไม่
-                const savedData = localStorage.getItem('gyver_race_student_profile');
-                if (savedData) {
-                    const p = JSON.parse(savedData);
-                    if (p.nicknameTh && p.nicknameTh !== authUsername && !paramName) {
-                        // ถ้าเป็น User ใหม่ แต่ค้างชื่อเดิมไว้ -> ล้างค่าเดิมทิ้ง
-                        localStorage.removeItem('gyver_race_student_profile');
-                    }
+        // ดึง Session ผู้ใช้ปัจจุบัน
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session && session.user) {
+            currentUserId = session.user.id;
+            userEmail = session.user.email || '';
+        }
+
+        // เช็ก Admin/User Session สำรองใน Storage
+        const savedAdminSession = sessionStorage.getItem('gyver_admin_session') || localStorage.getItem('gyver_admin_session');
+        if (savedAdminSession) {
+            try {
+                const adminData = JSON.parse(savedAdminSession);
+                if (adminData) {
+                    if (!userEmail) userEmail = adminData.email || '';
+                    if (!currentUserId) currentUserId = adminData.id || null;
+                }
+            } catch (e) {}
+        }
+
+        let profile = null;
+
+        // ค้นหาแถวโปรไฟล์ในตาราง profiles
+        if (currentUserId) {
+            const { data } = await supabaseClient
+                .from('profiles')
+                .select('*')
+                .eq('id', currentUserId)
+                .maybeSingle();
+            profile = data;
+        }
+
+        if (!profile && userEmail) {
+            const { data } = await supabaseClient
+                .from('profiles')
+                .select('*')
+                .eq('email', userEmail)
+                .maybeSingle();
+            profile = data;
+        }
+
+        // หยอดข้อมูลใส่ช่องต่างๆ ในฟอร์มหากมีข้อมูลเดิม
+        if (profile) {
+            if (!currentUserId) currentUserId = profile.id;
+
+            // 🇹🇭 ภาษาไทย
+            if (document.getElementById('student-nickname-th')) document.getElementById('student-nickname-th').value = profile.nickname || '';
+            if (document.getElementById('student-firstname-th')) document.getElementById('student-firstname-th').value = profile.first_name || '';
+            if (document.getElementById('student-lastname-th')) document.getElementById('student-lastname-th').value = profile.last_name || '';
+
+            // 🇬🇧 ภาษาอังกฤษ
+            if (document.getElementById('student-nickname-en')) document.getElementById('student-nickname-en').value = profile.nickname_en || '';
+            if (document.getElementById('student-firstname-en')) document.getElementById('student-firstname-en').value = profile.first_name_en || '';
+            if (document.getElementById('student-lastname-en')) document.getElementById('student-lastname-en').value = profile.last_name_en || '';
+
+            // 🏫 ชั้นเรียน & เลขที่
+            if (profile.student_class) {
+                const classParts = profile.student_class.split('/');
+                if (classParts.length === 2) {
+                    const levelVal = classParts[0].startsWith('ม.') ? classParts[0] : `ม.${classParts[0]}`;
+                    if (document.getElementById('student-level')) document.getElementById('student-level').value = levelVal;
+                    if (document.getElementById('student-room')) document.getElementById('student-room').value = classParts[1];
+                } else if (document.getElementById('student-level')) {
+                    document.getElementById('student-level').value = profile.student_class;
                 }
             }
-        } catch (err) {}
-    }
 
-    const savedData = localStorage.getItem('gyver_race_student_profile');
-    
-    // ถ้าไม่มีข้อมูล หรือURL ส่ง Parameter คนใหม่มา ให้แสดงฟอร์มเต็ม
-    if (!savedData || paramName) {
-        showFullFormMode();
-        randomizeAvatar();
-        return;
-    }
-
-    try {
-        const profile = JSON.parse(savedData);
-        if (profile && profile.nicknameTh) {
-            hasSavedProfile = true;
-
-            if (document.getElementById('student-nickname-th')) document.getElementById('student-nickname-th').value = profile.nicknameTh || '';
-            if (document.getElementById('student-firstname-th')) document.getElementById('student-firstname-th').value = profile.firstnameTh || '';
-            if (document.getElementById('student-lastname-th')) document.getElementById('student-lastname-th').value = profile.lastnameTh || '';
-            if (document.getElementById('student-level')) document.getElementById('student-level').value = profile.studentLevel || 'ม.5';
-            if (document.getElementById('student-room')) document.getElementById('student-room').value = profile.studentRoom || '10';
-            if (document.getElementById('student-number')) document.getElementById('student-number').value = profile.studentNumber || '10';
-
-            if (document.getElementById('saved-display-name-th')) document.getElementById('saved-display-name-th').innerText = `${profile.nicknameTh} (${profile.firstnameTh || ''} ${profile.lastnameTh || ''})`;
-            if (document.getElementById('saved-display-class')) document.getElementById('saved-display-class').innerText = profile.studentClass || 'ม.5/10';
-            if (document.getElementById('saved-display-no')) document.getElementById('saved-display-no').innerText = profile.studentNumber || '10';
-
-            if (profile.avatarUrl) {
-                currentAvatarUrl = profile.avatarUrl;
-                const avatarImg = document.getElementById('student-avatar-preview');
-                if (avatarImg) avatarImg.src = currentAvatarUrl;
+            if (document.getElementById('student-number')) {
+                document.getElementById('student-number').value = profile.student_number || '';
             }
 
-            document.getElementById('saved-profile-card')?.classList.remove('d-none');
-            document.getElementById('full-profile-form-zone')?.classList.add('d-none');
-            document.getElementById('avatar-btn-group')?.classList.add('d-none');
+            // 🖼️ อวตาร / รูปโปรไฟล์
+            if (profile.avatar_url) {
+                currentAvatarUrl = profile.avatar_url;
+                const avatarImg = document.getElementById('student-avatar-preview');
+                if (avatarImg) avatarImg.src = currentAvatarUrl;
+            } else {
+                randomizeAvatar();
+            }
+
+            updateClassPreview();
         } else {
-            showFullFormMode();
-            randomizeAvatar();
+            // กรณีไม่มีข้อมูลเดิม -> เช็ก LocalStorage สำรอง หรือสุ่มอวตารใหม่
+            loadFromLocalStorageOrRandom();
         }
-    } catch (e) {
-        showFullFormMode();
-        randomizeAvatar();
+
+    } catch (err) {
+        console.error("Load profile error:", err);
+        loadFromLocalStorageOrRandom();
     }
 }
 
-function enableEditProfileMode() {
-    hasSavedProfile = false;
-    document.getElementById('saved-profile-card')?.classList.add('d-none');
-    document.getElementById('full-profile-form-zone')?.classList.remove('d-none');
-    document.getElementById('avatar-btn-group')?.classList.remove('d-none');
-    updateClassPreview();
-}
-
-function showFullFormMode() {
-    hasSavedProfile = false;
-    document.getElementById('saved-profile-card')?.classList.add('d-none');
-    document.getElementById('full-profile-form-zone')?.classList.remove('d-none');
-    document.getElementById('avatar-btn-group')?.classList.remove('d-none');
+function loadFromLocalStorageOrRandom() {
+    const savedData = localStorage.getItem('gyver_race_student_profile');
+    if (savedData) {
+        try {
+            const p = JSON.parse(savedData);
+            if (document.getElementById('student-nickname-th')) document.getElementById('student-nickname-th').value = p.nicknameTh || '';
+            if (document.getElementById('student-firstname-th')) document.getElementById('student-firstname-th').value = p.firstnameTh || '';
+            if (document.getElementById('student-lastname-th')) document.getElementById('student-lastname-th').value = p.lastnameTh || '';
+            if (document.getElementById('student-level')) document.getElementById('student-level').value = p.studentLevel || '';
+            if (document.getElementById('student-room')) document.getElementById('student-room').value = p.studentRoom || '';
+            if (document.getElementById('student-number')) document.getElementById('student-number').value = p.studentNumber || '';
+            if (p.avatarUrl) {
+                currentAvatarUrl = p.avatarUrl;
+                const avatarImg = document.getElementById('student-avatar-preview');
+                if (avatarImg) avatarImg.src = currentAvatarUrl;
+            } else {
+                randomizeAvatar();
+            }
+            updateClassPreview();
+            return;
+        } catch (e) {}
+    }
+    randomizeAvatar();
 }
 
 function randomizeAvatar() {
@@ -170,6 +208,7 @@ function handleCustomAvatarUpload(e) {
     reader.readAsDataURL(file);
 }
 
+// 💾 2. เมื่องกดเริ่ม/เข้าร่วมแข่งขัน -> บันทึกลงตาราง profiles และนำเข้าห้องแข่ง
 async function handleStudentJoin(e) {
     if (e) e.preventDefault();
 
@@ -180,32 +219,20 @@ async function handleStudentJoin(e) {
     }
 
     const urlParams = new URLSearchParams(window.location.search);
-    let inputRoom = (document.getElementById('input-room-code')?.value || document.getElementById('student-room-code')?.value || urlParams.get('room') || 'RACE88').trim().toUpperCase();
+    let inputRoom = (document.getElementById('input-room-code')?.value || document.getElementById('student-room-code')?.value || urlParams.get('room') || '8090').trim().toUpperCase();
 
-    let nicknameTh = document.getElementById('student-nickname-th')?.value.trim();
+    let nicknameTh = document.getElementById('student-nickname-th')?.value.trim() || '';
     let firstnameTh = document.getElementById('student-firstname-th')?.value.trim() || '';
     let lastnameTh = document.getElementById('student-lastname-th')?.value.trim() || '';
+
+    let nicknameEn = document.getElementById('student-nickname-en')?.value.trim() || '';
+    let firstnameEn = document.getElementById('student-firstname-en')?.value.trim() || '';
+    let lastnameEn = document.getElementById('student-lastname-en')?.value.trim() || '';
 
     let studentLevel = document.getElementById('student-level')?.value || 'ม.5'; 
     let studentRoom = document.getElementById('student-room')?.value || '10';   
     let studentNumber = document.getElementById('student-number')?.value.trim() || '10';
     let teamNum = document.getElementById('student-team-num')?.value || 0;
-
-    if (hasSavedProfile) {
-        const savedData = localStorage.getItem('gyver_race_student_profile');
-        if (savedData) {
-            try {
-                const p = JSON.parse(savedData);
-                nicknameTh = p.nicknameTh || nicknameTh;
-                firstnameTh = p.firstnameTh || firstnameTh;
-                lastnameTh = p.lastnameTh || lastnameTh;
-                studentLevel = p.studentLevel || studentLevel;
-                studentRoom = p.studentRoom || studentRoom;
-                studentNumber = p.studentNumber || studentNumber;
-                if (p.avatarUrl) currentAvatarUrl = p.avatarUrl;
-            } catch (err) {}
-        }
-    }
 
     if (!inputRoom) {
         alert("⚠️ กรุณากรอกรหัสห้อง (Room Code) ก่อนครับ!");
@@ -214,13 +241,12 @@ async function handleStudentJoin(e) {
     }
 
     if (!nicknameTh) {
-        alert("⚠️ กรุณากรอกชื่อเล่นนักเรียนก่อนครับ!");
+        alert("⚠️ กรุณากรอกชื่อเล่นภาษาไทยก่อนครับ!");
         resetJoinBtn();
         return;
     }
 
-    const cleanLevel = studentLevel.replace('ม.', '').trim();
-    let classKey = `${cleanLevel}/${studentRoom}`; 
+    let targetClassKey = inputRoom; 
     let studentClassFormatted = `${studentLevel}/${studentRoom}`;
 
     try {
@@ -232,20 +258,21 @@ async function handleStudentJoin(e) {
                 .maybeSingle();
 
             if (lobbyData && lobbyData.class_key) {
-                classKey = lobbyData.class_key;
-                const [lvl, rm] = classKey.split('/');
-                if (lvl && rm) studentClassFormatted = `ม.${lvl}/${rm}`;
+                targetClassKey = lobbyData.class_key;
             }
         }
     } catch (err) {
-        console.warn("Lobbies fetch warning:", err);
+        console.warn("Lobbies fetch error:", err);
     }
 
+    // เซฟลง LocalStorage สำรอง
     const profilePayload = {
         nicknameTh,
         firstnameTh,
         lastnameTh,
-        fullnameTh: `${firstnameTh} ${lastnameTh}`,
+        nicknameEn,
+        firstnameEn,
+        lastnameEn,
         studentLevel,
         studentRoom,
         studentClass: studentClassFormatted,
@@ -254,23 +281,74 @@ async function handleStudentJoin(e) {
     };
     localStorage.setItem('gyver_race_student_profile', JSON.stringify(profilePayload));
 
-    // student/student_lobby.js (เฉพาะส่วน handleStudentJoin)
+    try {
+    if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+        const newPlayerData = {
+            name: `${nicknameTh} (${studentClassFormatted})`,
+            nickname_th: nicknameTh,
+            firstname_th: firstnameTh,
+            lastname_th: lastnameTh,
+            level: studentLevel,
+            room: studentRoom,
+            class_name: studentClassFormatted,
+            number: parseInt(studentNumber) || 10,
+            image: currentAvatarUrl,
+            status: 'pending',
+            score: 0,
+            progress: 0,
+            wpm: 0,
+            errors: 0
+        };
 
-// ...โค้ดส่วนบนคงเดิม...
+        // ดึงข้อมูลห้องจาก lobbies
+        let { data: lobbyData } = await supabaseClient
+            .from('lobbies')
+            .select('players')
+            .eq('room_code', inputRoom)
+            .maybeSingle();
 
+        let playersList = [];
+
+        if (lobbyData) {
+            playersList = Array.isArray(lobbyData.players) ? lobbyData.players : [];
+
+            // เช็กว่ามีนักเรียนคนนี้แล้วหรือไม่
+            const existingIdx = playersList.findIndex(p => String(p.number) === String(newPlayerData.number) && p.nickname_th === newPlayerData.nickname_th);
+
+            if (existingIdx !== -1) {
+                playersList[existingIdx] = { ...playersList[existingIdx], ...newPlayerData };
+            } else {
+                playersList.push(newPlayerData);
+            }
+
+            // อัปเดตรายชื่อผู้เล่นกลับลงตาราง lobbies
+            await supabaseClient
+                .from('lobbies')
+                .update({ players: playersList })
+                .eq('room_code', inputRoom);
+        }
+    }
+} catch (err) {
+    console.error("Save Player to Lobbies Error:", err);
+}
+
+    // 🟢 4. บันทึกผู้เล่นรอนุมัติเข้าตาราง class_rooms
     try {
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
             const newPlayerData = {
-                name: `${nicknameTh} ${studentClassFormatted}`,
+                name: `${nicknameTh} (${studentClassFormatted})`,
                 nickname_th: nicknameTh,
                 firstname_th: firstnameTh,
                 lastname_th: lastnameTh,
+                nickname_en: nicknameEn,
+                firstname_en: firstnameEn,
+                lastname_en: lastnameEn,
                 level: studentLevel,
                 room: studentRoom,
                 class_name: studentClassFormatted,
                 number: parseInt(studentNumber) || 10,
                 image: currentAvatarUrl,
-                status: 'pending', // 👈 แก้ตรงนี้จาก 'approved' ให้เป็น 'pending' (รออนุมัติ)
+                status: 'pending',
                 score: 0,
                 spunCount: 0,
                 progress: 0,
@@ -282,7 +360,7 @@ async function handleStudentJoin(e) {
             let { data: existingClass } = await supabaseClient
                 .from('class_rooms')
                 .select('*')
-                .eq('class_key', classKey)
+                .eq('class_key', targetClassKey)
                 .maybeSingle();
 
             let playersList = [];
@@ -300,20 +378,20 @@ async function handleStudentJoin(e) {
                 await supabaseClient
                     .from('class_rooms')
                     .update({ players: playersList })
-                    .eq('class_key', classKey);
+                    .eq('class_key', targetClassKey);
 
             } else {
                 playersList.push(newPlayerData);
                 await supabaseClient
                     .from('class_rooms')
-                    .insert([{ class_key: classKey, players: playersList }]);
+                    .insert([{ class_key: targetClassKey, players: playersList }]);
             }
         }
     } catch (err) {
         console.error("Supabase Save Player Error:", err);
     }
 
-    window.location.href = `student_waiting.html?room=${inputRoom}&name=${encodeURIComponent(nicknameTh)}&class=${encodeURIComponent(studentClassFormatted)}&no=${studentNumber}&classKey=${encodeURIComponent(classKey)}&team=${teamNum}`;
+    window.location.href = `student_waiting.html?room=${inputRoom}&name=${encodeURIComponent(nicknameTh)}&class=${encodeURIComponent(studentClassFormatted)}&no=${studentNumber}&classKey=${encodeURIComponent(targetClassKey)}&team=${teamNum}`;
 }
 
 function resetJoinBtn() {

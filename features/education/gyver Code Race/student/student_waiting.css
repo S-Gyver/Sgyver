@@ -1,5 +1,5 @@
 /* ========================================================
-   🏎️ Gyver Code Race - Student Lobby Custom Styles
+   🏎️ Gyver Code Race - Student Waiting Lobby Custom Styles
    ======================================================== */
 
 body.cyber-body {
@@ -18,10 +18,9 @@ body.cyber-body {
 .fw-extrabold { font-weight: 700 !important; }
 
 /* 🎨 Text Colors */
-.text-subtle { color: #8a99ad !important; }
+.text-subtle { color: #a0aec0 !important; }
 .text-cyan { color: #00f2fe !important; }
 .bg-cyan { background-color: #00f2fe !important; }
-.bg-slate-900 { background-color: #0d121d !important; }
 
 /* 🌌 Background Elements Theme เดียวกับ Race Home */
 .bg-cyber-grid {
@@ -58,7 +57,7 @@ body.cyber-body {
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
 }
 
-.config-sub-box, .bg-dark {
+.bg-dark {
     background: rgba(20, 27, 44, 0.6) !important;
     border: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
@@ -68,50 +67,82 @@ body.cyber-body {
 }
 
 /* 🖼️ Avatar Preview Frame */
-.avatar-picker-box {
+.my-avatar-box {
     width: 100% !important;
-    max-width: 240px !important;
+    max-width: 220px !important;
     height: 280px !important;
     border-radius: 20px !important;
     border: 2px solid #00f2fe !important;
-    background: #020617 !important;
     object-fit: cover !important;
-    box-shadow: 0 0 20px rgba(0, 242, 254, 0.3) !important;
-    transition: all 0.25s ease !important;
+    background: #020617 !important;
+    box-shadow: 0 0 25px rgba(0, 242, 254, 0.35) !important;
 }
 
-/* 🎛️ Form Controls & Selects */
-.form-control, .form-select {
-    background-color: #0d121d !important;
-    color: #ffffff !important;
-    border: 1px solid rgba(255, 255, 255, 0.18) !important;
+.peer-avatar-sm {
+    width: 38px !important;
+    height: 38px !important;
     border-radius: 10px !important;
+    object-fit: cover !important;
+    border: 2px solid #00f2fe !important;
 }
 
-.form-control:focus, .form-select:focus {
-    border-color: #00f2fe !important;
-    box-shadow: 0 0 12px rgba(0, 242, 254, 0.3) !important;
+.peer-chip {
+    background: rgba(13, 18, 29, 0.9) !important;
+    border: 1px solid rgba(0, 242, 254, 0.25) !important;
+    border-radius: 12px !important;
+    padding: 6px 12px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 10px !important;
 }
 
-.form-control::placeholder {
-    color: #4a5568 !important;
+/* 🌀 Radar Spinner */
+.radar-spinner-sm {
+    width: 28px !important;
+    height: 28px !important;
+    border: 3px solid rgba(0, 242, 254, 0.2) !important;
+    border-top: 3px solid #00f2fe !important;
+    border-radius: 50% !important;
+    animation: spin 1s linear infinite !important;
 }
 
-/* 🔘 Custom Cyber Switch */
-.form-check-input:checked {
-    background-color: #00f2fe !important;
-    border-color: #00f2fe !important;
-    box-shadow: 0 0 10px rgba(0, 242, 254, 0.4) !important;
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
-/* 🚀 Submit Button */
-#btn-submit-join {
+/* 😀 Emoji Reaction Buttons */
+.emoji-btn-item {
+    font-size: 1.8rem !important;
+    cursor: pointer !important;
+    transition: transform 0.15s ease !important;
+    user-select: none !important;
+}
+
+.emoji-btn-item:hover {
+    transform: scale(1.3) !important;
+}
+
+/* ℹ️ Cyber Alert Box Fix (แก้ปัญหากล่องล่างสุดตัวอักษรจม) */
+.cyber-alert-info {
+    background: rgba(0, 242, 254, 0.08) !important;
+    border: 1px solid rgba(0, 242, 254, 0.3) !important;
     border-radius: 14px !important;
-    border: none !important;
-    transition: transform 0.2s, box-shadow 0.2s !important;
+    color: #f8f9fa !important;
 }
 
-#btn-submit-join:hover {
-    transform: translateY(-2px) !important;
-    box-shadow: 0 10px 25px rgba(255, 193, 7, 0.35) !important;
+/* 💬 Modals */
+.cyber-modal {
+    background-color: #0f1522 !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* ⚡ Pulse Effect */
+@keyframes pulseGlow {
+    0%, 100% { opacity: 0.8; }
+    50% { opacity: 1; box-shadow: 0 0 12px rgba(255, 0, 127, 0.6); }
+}
+
+.animate-pulse {
+    animation: pulseGlow 2s infinite !important;
 }

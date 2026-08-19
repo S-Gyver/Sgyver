@@ -1,16 +1,26 @@
 document.addEventListener('DOMContentLoaded', async () => {
     const urlParams = new URLSearchParams(window.location.search);
-    const roomCode = urlParams.get('room') || 'RACE88';
+    const roomCode = (urlParams.get('room') || '8090').trim().toUpperCase();
     const name = urlParams.get('name') || 'นักเรียน';
     const className = urlParams.get('class') || 'ม.-/-';
     const no = urlParams.get('no') || '-';
     const team = urlParams.get('team') || '0';
+    
+    // 🟢 บังคับใช้ classKey จาก URL หรืออิงตาม roomCode ให้ตรงกันทุกจอ
+    const classKey = urlParams.get('classKey') || roomCode;
 
     // 1. แสดงโปรไฟล์ตัวเอง
-    document.getElementById('wait-room-code').innerText = roomCode;
-    document.getElementById('wait-name-text').innerText = name;
-    document.getElementById('wait-class-badge').innerText = className;
-    document.getElementById('wait-no-text').innerText = no;
+    const waitRoomCode = document.getElementById('wait-room-code');
+    if (waitRoomCode) waitRoomCode.innerText = roomCode;
+
+    const waitNameText = document.getElementById('wait-name-text');
+    if (waitNameText) waitNameText.innerText = name;
+
+    const waitClassBadge = document.getElementById('wait-class-badge');
+    if (waitClassBadge) waitClassBadge.innerText = className;
+
+    const waitNoText = document.getElementById('wait-no-text');
+    if (waitNoText) waitNoText.innerText = no;
     
     const teamBadge = document.getElementById('wait-team-badge');
     const ruleTypeText = document.getElementById('rule-type-text');
@@ -29,18 +39,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const profile = JSON.parse(savedData);
             if (profile.avatarUrl) {
-                document.getElementById('wait-avatar-img').src = profile.avatarUrl;
+                const avatarImg = document.getElementById('wait-avatar-img');
+                if (avatarImg) avatarImg.src = profile.avatarUrl;
             }
         } catch (e) {}
     }
 
-    // 2. ดึง Config เริ่มต้น
+    // 2. ดึง Config เริ่มต้นของห้อง
     await fetchInitialMatchConfig(roomCode);
 
-    // 3. ดึงรายชื่อเพื่อนร่วมห้อง
-    fetchJoinedPlayers(roomCode, className);
+    // 3. 🟢 ดึงรายชื่อเพื่อนร่วมห้องและเปิด Realtime Sync
+    fetchAndListenJoinedPlayers(classKey, roomCode);
 
-    // 4. ฟังคำสั่ง Realtime จากครู
+    // 4. ฟังคำสั่ง Realtime จากครู (เริ่มเกม/ปรับตั้งค่า)
     listenTeacherRealtimeSignals(roomCode, name, className, no, team);
 });
 
@@ -80,7 +91,7 @@ function updateStudentConfigUI(cfg) {
     const quizEl = document.getElementById('rule-quiz-text');
     if (quizEl && cfg.quiz) {
         quizEl.innerText = cfg.quiz.enabled 
-            ? `เปิดใช้งาน (${cfg.quiz.stock_name})` 
+            ? `เปิดใช้งาน (${cfg.quiz.stock_name || 'คลังโจทย์'})` 
             : 'ปิดใช้งาน';
     }
 
@@ -101,39 +112,85 @@ function updateStudentConfigUI(cfg) {
     }
 }
 
-async function fetchJoinedPlayers(roomCode, className) {
-    const container = document.getElementById('joined-players-container');
-    const countEl = document.getElementById('joined-count');
-    if (!container) return;
+// 🟢 3. ดึงรายชื่อเพื่อนร่วมห้องสด และฟังเหตุการณ์อัปเดต
+async function fetchAndListenJoinedPlayers(classKey, roomCode) {
+    await fetchJoinedPlayers(classKey, roomCode);
 
+    if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+        // ฟังการอัปเดตแบบ Realtime
+        supabaseClient
+            .channel(`waiting_sync_${roomCode}`)
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'class_rooms'
+            }, () => {
+                fetchJoinedPlayers(classKey, roomCode);
+            })
+            .subscribe();
+
+        // Polling สำรองเพื่อความนิ่ง
+        setInterval(() => fetchJoinedPlayers(classKey, roomCode), 1500);
+    }
+}
+
+async function fetchJoinedPlayers(classKey, roomCode) {
     try {
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-            const cleanLevel = className.replace('ม.', '').trim();
-
-            let { data: classData } = await supabaseClient
+            // 🟢 แก้ไข: ใช้ .select() ดึงแถวทั้งหมดที่อาจแมตช์ ไม่ใช้ .maybeSingle() ป้องกัน Error 400
+            let { data: rooms } = await supabaseClient
                 .from('class_rooms')
                 .select('players')
-                .eq('class_key', cleanLevel)
-                .maybeSingle();
+                .or(`class_key.eq.${classKey},class_key.eq.${roomCode}`);
 
-            if (classData && Array.isArray(classData.players)) {
-                const players = classData.players;
-                if (countEl) countEl.innerText = players.length;
+            if (rooms && rooms.length > 0) {
+                let allPlayers = [];
+                let playerMap = new Map();
 
-                container.innerHTML = players.map(p => `
-                    <div class="peer-chip">
-                        <img src="${p.image || 'https://api.dicebear.com/7.x/bottts/svg?seed=' + encodeURIComponent(p.nickname_th || 'Racer')}" class="peer-avatar-sm">
-                        <div class="font-mono lh-1">
-                            <span class="text-white fw-bold d-block small">${p.nickname_th || p.name}</span>
-                            <small class="text-subtle" style="font-size: 0.7rem;">เลขที่ ${p.number || '-'}</small>
-                        </div>
-                    </div>
-                `).join('');
-            } else {
-                if (countEl) countEl.innerText = '1';
+                // รวมเด็กจากทุกแถวที่หาเจอ และตัดคนที่ซ้ำกันออก
+                rooms.forEach(r => {
+                    if (Array.isArray(r.players)) {
+                        r.players.forEach(p => {
+                            const uniqueKey = p.number ? `${p.number}_${p.nickname_th}` : p.name;
+                            if (!playerMap.has(uniqueKey)) {
+                                playerMap.set(uniqueKey, p);
+                                allPlayers.push(p);
+                            }
+                        });
+                    }
+                });
+
+                renderJoinedPlayersUI(allPlayers);
             }
         }
-    } catch (err) {}
+    } catch (err) {
+        console.error("Fetch players error:", err);
+    }
+}
+
+// 🟢 แสดงผลชิปรายชื่อนักเรียนทุกคน
+function renderJoinedPlayersUI(players) {
+    const container = document.getElementById('joined-players-container');
+    const countEl = document.getElementById('joined-count');
+
+    if (!container) return;
+
+    if (countEl) countEl.innerText = players.length;
+
+    if (players.length === 0) {
+        container.innerHTML = `<div class="text-subtle small font-mono py-2"><i class="bi bi-hourglass-split me-1"></i>กำลังดึงรายชื่อผู้เข้าแข่งขัน...</div>`;
+        return;
+    }
+
+    container.innerHTML = players.map(p => `
+        <div class="peer-chip">
+            <img src="${p.image || p.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=' + encodeURIComponent(p.nickname_th || 'Racer')}" class="peer-avatar-sm">
+            <div class="font-mono lh-1">
+                <span class="text-white fw-bold d-block small">${p.nickname_th || p.name}</span>
+                <small class="text-subtle" style="font-size: 0.7rem;">เลขที่ ${p.number || '-'}</small>
+            </div>
+        </div>
+    `).join('');
 }
 
 function listenTeacherRealtimeSignals(roomCode, name, className, no, team) {
@@ -152,7 +209,6 @@ function listenTeacherRealtimeSignals(roomCode, name, className, no, team) {
     }
 }
 
-// 🚪 เปิด Custom Modal แจ้งเตือนสวยๆ
 function openLeaveConfirmModal() {
     const modalEl = document.getElementById('leaveConfirmModal');
     if (modalEl) {
@@ -161,7 +217,6 @@ function openLeaveConfirmModal() {
     }
 }
 
-// 🚪 ยืนยันการออกจากห้อง (ลบเด็กออกจาก DB)
 async function confirmLeaveRoom() {
     const btnConfirm = document.getElementById('btn-confirm-leave');
     if (btnConfirm) {
@@ -170,29 +225,31 @@ async function confirmLeaveRoom() {
     }
 
     const urlParams = new URLSearchParams(window.location.search);
-    const className = urlParams.get('class') || 'ม.-/-';
+    const roomCode = urlParams.get('room') || '';
+    const classKey = urlParams.get('classKey') || roomCode;
     const no = urlParams.get('no') || '-';
     const name = urlParams.get('name') || '';
 
     try {
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-            const cleanLevel = className.replace('ม.', '').trim();
-
-            let { data: classData } = await supabaseClient
+            let { data: rooms } = await supabaseClient
                 .from('class_rooms')
-                .select('players')
-                .eq('class_key', cleanLevel)
-                .maybeSingle();
+                .select('*')
+                .or(`class_key.eq.${classKey},class_key.eq.${roomCode}`);
 
-            if (classData && Array.isArray(classData.players)) {
-                const updatedPlayers = classData.players.filter(
-                    p => String(p.number) !== String(no) && p.nickname_th !== name
-                );
+            if (rooms && rooms.length > 0) {
+                for (let room of rooms) {
+                    if (Array.isArray(room.players)) {
+                        const updatedPlayers = room.players.filter(
+                            p => String(p.number) !== String(no) && p.nickname_th !== name
+                        );
 
-                await supabaseClient
-                    .from('class_rooms')
-                    .update({ players: updatedPlayers })
-                    .eq('class_key', cleanLevel);
+                        await supabaseClient
+                            .from('class_rooms')
+                            .update({ players: updatedPlayers })
+                            .eq('id', room.id);
+                    }
+                }
             }
         }
     } catch (e) {
@@ -204,7 +261,7 @@ async function confirmLeaveRoom() {
 
 async function sendEmojiReaction(emoji) {
     const urlParams = new URLSearchParams(window.location.search);
-    const roomCode = urlParams.get('room') || 'RACE88';
+    const roomCode = urlParams.get('room') || '8090';
     const name = urlParams.get('name') || 'นักเรียน';
 
     const messageText = `😀 ${name} ส่ง Reaction ${emoji}`;

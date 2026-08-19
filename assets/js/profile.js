@@ -1,207 +1,259 @@
-// assets/js/profile.js
+let currentUserId = null;
+let isEmailEditable = false;
 
-let editAvatarBase64 = '';
+document.addEventListener('DOMContentLoaded', async () => {
+    const fileInput = document.getElementById('profile-avatar-file') || document.getElementById('page-avatar-file');
+    if (fileInput) {
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                if (file.size > 2 * 1024 * 1024) {
+                    alert("⚠️ ไฟล์รูปภาพใหญ่เกินไป (ต้องไม่เกิน 2MB)");
+                    fileInput.value = '';
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const preview = document.getElementById('profile-avatar-preview') || document.getElementById('page-avatar-preview');
+                    if (preview) preview.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
 
-function showProfileAlert(msg, type = 'danger') {
-    const el = document.getElementById('profile-alert');
-    if (el) {
-        el.className = `alert alert-${type} py-2 small text-center`;
-        el.innerText = msg;
-        el.classList.remove('d-none');
+    await loadUserProfileData();
+});
+
+function enableEmailEdit() {
+    const emailInput = document.getElementById('profile-email') || document.getElementById('page-email');
+    const btnEdit = document.getElementById('btn-toggle-edit-email');
+    const helpText = document.getElementById('email-help-text');
+
+    if (!emailInput) return;
+
+    isEmailEditable = !isEmailEditable;
+
+    if (isEmailEditable) {
+        emailInput.removeAttribute('readonly');
+        emailInput.removeAttribute('disabled');
+        emailInput.classList.remove('bg-light');
+        emailInput.focus();
+
+        if (btnEdit) {
+            btnEdit.className = "btn btn-warning font-mono fw-bold";
+            btnEdit.innerHTML = `<i class="bi bi-lock-fill me-1"></i>ล็อคช่อง`;
+        }
+        if (helpText) helpText.innerText = "⚠️ คุณกำลังแก้ไขอีเมล กรุณากด 'บันทึกการเปลี่ยนแปลง' ด้านล่างเมื่อเสร็จสิ้น";
+    } else {
+        emailInput.setAttribute('readonly', 'true');
+        emailInput.setAttribute('disabled', 'true');
+        emailInput.classList.add('bg-light');
+
+        if (btnEdit) {
+            btnEdit.className = "btn btn-outline-warning font-mono fw-bold";
+            btnEdit.innerHTML = `<i class="bi bi-pencil-square me-1"></i>แก้ไขอีเมล`;
+        }
+        if (helpText) helpText.innerText = "* กดปุ่มแก้ไขเพื่อเปลี่ยนที่อยู่อีเมลใหม่";
     }
 }
 
-function showPasswordAlert(msg, type = 'danger') {
-    const el = document.getElementById('password-alert');
-    if (el) {
-        el.className = `alert alert-${type} py-2 small text-center`;
-        el.innerText = msg;
-        el.classList.remove('d-none');
-    }
-}
+async function loadUserProfileData() {
+    try {
+        if (typeof supabaseClient === 'undefined' || !supabaseClient) return;
 
-// 🖼️ บีบอัดรูปภาพให้เล็กลงมากเป็นพิเศษ (100x100px)
-function previewPageAvatar(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+        let userEmail = '';
+        let targetId = null;
 
-    if (file.size > 5 * 1024 * 1024) {
-        showProfileAlert('❌ ขนาดไฟล์ใหญ่เกิน 5MB กรุณาเลือกไฟล์ที่เล็กลง');
-        event.target.value = '';
-        return;
-    }
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session && session.user) {
+            userEmail = session.user.email || '';
+            targetId = session.user.id;
+        }
 
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const img = new Image();
-        img.onload = function() {
-            const canvas = document.createElement('canvas');
-            const targetSize = 100; // บีบรูปเหลือขนาด 100x100 px
-            
-            canvas.width = targetSize;
-            canvas.height = targetSize;
-            const ctx = canvas.getContext('2d');
+        const savedAdminSession = sessionStorage.getItem('gyver_admin_session') || localStorage.getItem('gyver_admin_session');
+        let adminData = null;
+        if (savedAdminSession) {
+            try {
+                adminData = JSON.parse(savedAdminSession);
+                if (adminData) {
+                    if (!userEmail) userEmail = adminData.email || '';
+                    if (!targetId) targetId = adminData.id || null;
+                }
+            } catch (e) {}
+        }
 
-            let srcX = 0, srcY = 0, srcSize = Math.min(img.width, img.height);
-            if (img.width > img.height) {
-                srcX = (img.width - img.height) / 2;
-            } else {
-                srcY = (img.height - img.width) / 2;
+        let profile = null;
+
+        if (targetId) {
+            const { data } = await supabaseClient
+                .from('profiles')
+                .select('*')
+                .eq('id', targetId)
+                .maybeSingle();
+            profile = data;
+        }
+
+        if (!profile && userEmail) {
+            const { data } = await supabaseClient
+                .from('profiles')
+                .select('*')
+                .eq('email', userEmail)
+                .maybeSingle();
+            profile = data;
+        }
+
+        if (profile) {
+            currentUserId = profile.id;
+
+            if (profile.avatar_url) {
+                const previewImg = document.getElementById('profile-avatar-preview') || document.getElementById('page-avatar-preview');
+                const sidebarAvatar = document.getElementById('sidebar-avatar');
+                if (previewImg) previewImg.src = profile.avatar_url;
+                if (sidebarAvatar) sidebarAvatar.src = profile.avatar_url;
             }
 
-            ctx.drawImage(img, srcX, srcY, srcSize, srcSize, 0, 0, targetSize, targetSize);
+            const usernameInput = document.getElementById('profile-username') || document.getElementById('page-username');
+            if (usernameInput) usernameInput.value = profile.username || '';
 
-            // บีบอัดเป็น JPEG คุณภาพ 0.5 (ขนาดไฟล์จะเหลือแค่ไม่กี่ KB)
-            editAvatarBase64 = canvas.toDataURL('image/jpeg', 0.5);
-            document.getElementById('page-avatar-preview').src = editAvatarBase64;
-        };
-        img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-}
+            const emailInput = document.getElementById('profile-email') || document.getElementById('page-email');
+            if (emailInput) emailInput.value = profile.email || userEmail || '';
 
-// โหลดข้อมูลโปรไฟล์
-async function loadUserProfile() {
-    if (!window.supabaseClient) return;
+            // 🇹🇭 ข้อมูลภาษาไทย
+            if (document.getElementById('profile-nickname')) document.getElementById('profile-nickname').value = profile.nickname || '';
+            if (document.getElementById('profile-firstname')) document.getElementById('profile-firstname').value = profile.first_name || '';
+            if (document.getElementById('profile-lastname')) document.getElementById('profile-lastname').value = profile.last_name || '';
 
-    try {
-        const { data: { session } } = await window.supabaseClient.auth.getSession();
-        if (!session || !session.user) {
-            window.location.href = '../index.html';
-            return;
+            // 🇬🇧 ข้อมูลภาษาอังกฤษ
+            if (document.getElementById('profile-nickname-en')) document.getElementById('profile-nickname-en').value = profile.nickname_en || '';
+            if (document.getElementById('profile-firstname-en')) document.getElementById('profile-firstname-en').value = profile.first_name_en || '';
+            if (document.getElementById('profile-lastname-en')) document.getElementById('profile-lastname-en').value = profile.last_name_en || '';
+
+            // ชั้นเรียน / เลขที่ / โทรศัพท์ / Social
+            if (document.getElementById('profile-class')) document.getElementById('profile-class').value = profile.student_class || '';
+            if (document.getElementById('profile-number')) document.getElementById('profile-number').value = profile.student_number || '';
+            if (document.getElementById('profile-phone')) document.getElementById('profile-phone').value = profile.phone || '';
+            if (document.getElementById('profile-line')) document.getElementById('profile-line').value = profile.line_id || '';
+            if (document.getElementById('profile-facebook')) document.getElementById('profile-facebook').value = profile.facebook || '';
+            if (document.getElementById('profile-instagram')) document.getElementById('profile-instagram').value = profile.instagram || '';
+
+            const sidebarName = document.getElementById('sidebar-display-name');
+            const sidebarBadge = document.getElementById('sidebar-role-badge');
+            if (sidebarName) sidebarName.innerText = profile.nickname ? `${profile.nickname} (${profile.username})` : profile.username;
+            if (sidebarBadge) sidebarBadge.innerText = `Role: ${(profile.role || 'user').toUpperCase()} (Lv.${profile.level ?? 1})`;
         }
-
-        const username = session.user.user_metadata?.username || session.user.email.split('@')[0];
-        let avatar = session.user.user_metadata?.avatar_url;
-        
-        // ถ้าเป็น Base64 แบบเดิมที่ยาวเกินไป ให้ใช้รูป Default ชั่วคราว
-        if (!avatar || avatar.length > 50000) {
-            avatar = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-        }
-
-        const role = session.user.user_metadata?.role || 'user';
-
-        const sidebarName = document.getElementById('sidebar-display-name');
-        const sidebarAvatar = document.getElementById('sidebar-avatar');
-        const sidebarBadge = document.getElementById('sidebar-role-badge');
-
-        if (sidebarName) sidebarName.innerText = username;
-        if (sidebarAvatar) sidebarAvatar.src = avatar;
-        if (sidebarBadge) sidebarBadge.innerText = role === 'admin' ? 'Admin Lv.5' : 'User Lv.1';
-
-        const emailInput = document.getElementById('page-email');
-        const usernameInput = document.getElementById('page-username');
-        const previewImg = document.getElementById('page-avatar-preview');
-
-        if (emailInput) emailInput.value = session.user.email;
-        if (usernameInput) usernameInput.value = username;
-        if (previewImg) previewImg.src = avatar;
 
     } catch (err) {
-        console.error("Load user profile error:", err);
+        console.error("Load user profile catch error:", err);
     }
 }
 
-function setupFormListeners() {
-    // 1. บันทึกแก้ไขโปรไฟล์
-    const profileForm = document.getElementById('form-profile-info');
-    if (profileForm) {
-        profileForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const btn = document.getElementById('btn-save-profile');
-            const newUsername = document.getElementById('page-username').value.trim();
+// 💾 บันทึกข้อมูลโปรไฟล์กลับลง Supabase
+async function handleSaveProfile(e) {
+    if (e) e.preventDefault();
 
-            btn.disabled = true;
-            btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span>กำลังบันทึก...`;
+    const usernameInput = document.getElementById('profile-username') || document.getElementById('page-username');
+    const emailInput = document.getElementById('profile-email') || document.getElementById('page-email');
 
-            try {
-                const { data: { session } } = await window.supabaseClient.auth.getSession();
-                let currentAvatar = session.user.user_metadata?.avatar_url;
+    const usernameVal = usernameInput?.value.trim() || '';
+    const emailVal = emailInput?.value.trim() || '';
 
-                // เช็กถ้าของเดิมยาวเกินไป ให้ตัดล้างออก
-                if (currentAvatar && currentAvatar.length > 50000) {
-                    currentAvatar = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-                }
+    if (!emailVal && !usernameVal) return alert("⚠️ กรุณากรอกชื่อผู้ใช้งานหรืออีเมลก่อนบันทึกครับ");
 
-                // สร้าง Clean Payload
-                const cleanPayload = {
-                    username: newUsername,
-                    role: session.user.user_metadata?.role || 'user',
-                    avatar_url: editAvatarBase64 || currentAvatar || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'
-                };
-
-                // ส่งยิงอัปเดต
-                const { data, error } = await window.supabaseClient.auth.updateUser({
-                    data: cleanPayload
-                });
-
-                if (error) {
-                    showProfileAlert(`❌ อัปเดตไม่สำเร็จ: ${error.message}`);
-                    btn.disabled = false;
-                    btn.innerHTML = `<i class="bi bi-floppy-fill me-1"></i>บันทึกการเปลี่ยนแปลง`;
-                } else {
-                    showProfileAlert('🎉 บันทึกข้อมูลโปรไฟล์สำเร็จเรียบร้อย!', 'success');
-                    editAvatarBase64 = '';
-                    setTimeout(() => {
-                        btn.disabled = false;
-                        btn.innerHTML = `<i class="bi bi-floppy-fill me-1"></i>บันทึกการเปลี่ยนแปลง`;
-                        loadUserProfile();
-                    }, 800);
-                }
-            } catch (err) {
-                showProfileAlert(`❌ ข้อผิดพลาด: ${err.message}`);
-                btn.disabled = false;
-                btn.innerHTML = `<i class="bi bi-floppy-fill me-1"></i>บันทึกการเปลี่ยนแปลง`;
-            }
-        });
+    const btnSave = document.getElementById('btn-save-profile');
+    if (btnSave) {
+        btnSave.disabled = true;
+        btnSave.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>กำลังบันทึก...`;
     }
 
-    // 2. เปลี่ยนรหัสผ่าน
-    const passForm = document.getElementById('form-change-password');
-    if (passForm) {
-        passForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const newPass = document.getElementById('new-password').value;
-            const confirmPass = document.getElementById('confirm-new-password').value;
-            const btn = document.getElementById('btn-save-pass');
-
-            if (newPass !== confirmPass) {
-                return showPasswordAlert('❌ รหัสผ่านทั้งสองช่องไม่ตรงกัน');
+    try {
+        if (isEmailEditable && emailVal) {
+            const { error: authErr } = await supabaseClient.auth.updateUser({ email: emailVal });
+            if (authErr) {
+                console.warn("Supabase Auth Email Update Warning:", authErr.message);
             }
+        }
 
-            btn.disabled = true;
-            btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span>กำลังอัปเดต...`;
+        const fileInput = document.getElementById('profile-avatar-file') || document.getElementById('page-avatar-file');
+        const previewImg = document.getElementById('profile-avatar-preview') || document.getElementById('page-avatar-preview');
+        let avatarUrl = previewImg?.src || '';
 
-            try {
-                const { error } = await window.supabaseClient.auth.updateUser({
-                    password: newPass
-                });
+        if (fileInput && fileInput.files && fileInput.files[0]) {
+            const file = fileInput.files[0];
+            const fileExt = file.name.split('.').pop();
+            const fileName = `avatar_${currentUserId || Date.now()}_${Date.now()}.${fileExt}`;
 
-                if (error) {
-                    showPasswordAlert(`❌ เปลี่ยนรหัสผ่านไม่สำเร็จ: ${error.message}`);
-                    btn.disabled = false;
-                    btn.innerHTML = `<i class="bi bi-key-fill me-1"></i>อัปเดตรหัสผ่านใหม่`;
-                } else {
-                    showPasswordAlert('🎉 เปลี่ยนรหัสผ่านใหม่เรียบร้อยแล้ว!', 'success');
-                    passForm.reset();
-                    btn.disabled = false;
-                    btn.innerHTML = `<i class="bi bi-key-fill me-1"></i>อัปเดตรหัสผ่านใหม่`;
-                }
-            } catch (err) {
-                showPasswordAlert(`❌ เกิดข้อผิดพลาดในการอัปเดตรหัสผ่าน`);
-                btn.disabled = false;
-                btn.innerHTML = `<i class="bi bi-key-fill me-1"></i>อัปเดตรหัสผ่านใหม่`;
+            const { data: uploadData, error: uploadErr } = await supabaseClient.storage
+                .from('avatars')
+                .upload(fileName, file, { upsert: true });
+
+            if (!uploadErr) {
+                const { data: publicUrlData } = supabaseClient.storage.from('avatars').getPublicUrl(fileName);
+                avatarUrl = publicUrlData.publicUrl;
             }
-        });
-    }
+        }
 
-    const avatarInput = document.getElementById('page-avatar-file');
-    if (avatarInput) {
-        avatarInput.addEventListener('change', previewPageAvatar);
+        // 🟢 ตัด updated_at ออก ป้องกันปัญหา Schema Cache Error
+        const profilePayload = {
+            username: usernameVal,
+            email: emailVal,
+            nickname: document.getElementById('profile-nickname')?.value.trim() || null,
+            first_name: document.getElementById('profile-firstname')?.value.trim() || null,
+            last_name: document.getElementById('profile-lastname')?.value.trim() || null,
+            nickname_en: document.getElementById('profile-nickname-en')?.value.trim() || null,
+            first_name_en: document.getElementById('profile-firstname-en')?.value.trim() || null,
+            last_name_en: document.getElementById('profile-lastname-en')?.value.trim() || null,
+            student_class: document.getElementById('profile-class')?.value.trim() || null,
+            student_number: document.getElementById('profile-number')?.value.trim() || null,
+            phone: document.getElementById('profile-phone')?.value.trim() || null,
+            line_id: document.getElementById('profile-line')?.value.trim() || null,
+            facebook: document.getElementById('profile-facebook')?.value.trim() || null,
+            instagram: document.getElementById('profile-instagram')?.value.trim() || null,
+            avatar_url: avatarUrl
+        };
+
+        let resultError = null;
+
+        if (currentUserId) {
+            const { error } = await supabaseClient
+                .from('profiles')
+                .update(profilePayload)
+                .eq('id', currentUserId);
+            resultError = error;
+        } else {
+            const { error } = await supabaseClient
+                .from('profiles')
+                .update(profilePayload)
+                .eq('email', emailVal);
+            resultError = error;
+        }
+
+        if (resultError) {
+            alert("❌ บันทึกข้อมูลล้มเหลว: " + resultError.message);
+        } else {
+            alert("✅ บันทึกข้อมูลโปรไฟล์เรียบร้อยแล้ว!");
+            if (isEmailEditable) enableEmailEdit();
+            await loadUserProfileData();
+        }
+
+    } catch (err) {
+        console.error("Save profile catch error:", err);
+        alert("❌ เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+    } finally {
+        if (btnSave) {
+            btnSave.disabled = false;
+            btnSave.innerHTML = `<i class="bi bi-floppy-fill me-1"></i>บันทึกการเปลี่ยนแปลง`;
+        }
     }
 }
 
-window.onload = () => {
-    loadUserProfile();
-    setupFormListeners();
-};
+async function logoutProfilePage() {
+    if (confirm("ต้องการออกจากระบบใช่หรือไม่?")) {
+        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+            await supabaseClient.auth.signOut();
+        }
+        sessionStorage.clear();
+        localStorage.removeItem('gyver_admin_session');
+        window.location.href = '../index.html';
+    }
+}

@@ -1,5 +1,5 @@
 let roomCode = 'RACE88';
-let classKey = '5/10';
+let classKey = 'General';
 let autoSaveTimer = null;
 let typingProblemStock = [];
 let studentList = [];
@@ -7,12 +7,10 @@ let isGamePaused = false;
 let pendingActionType = null;
 let pendingKickStudentNo = null;
 
-// 📍 อัปเดตในไฟล์ typing_control.js
-
 document.addEventListener('DOMContentLoaded', async () => {
     const urlParams = new URLSearchParams(window.location.search);
-    roomCode = urlParams.get('room') || 'RACE88';
-    classKey = urlParams.get('classKey') || '5/10';
+    roomCode = (urlParams.get('room') || '8592').trim().toUpperCase();
+    classKey = urlParams.get('classKey') || roomCode; // 🟢 ใช้ roomCode เป็น classKey สื่อสารตรงกัน
 
     const roomDisplay = document.getElementById('display-room-code');
     if (roomDisplay) roomDisplay.innerText = roomCode;
@@ -20,37 +18,69 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupQRCode(roomCode);
     bindAutoSaveEvents();
 
+    // 🟢 ลงทะเบียนห้อง 4 หลักในตาราง lobbies และสร้างห้องใน class_rooms พร้อมรับเด็ก
+    await registerRoomInDatabase(roomCode, classKey);
+
     await initPageData();
     fetchAndListenStudents();
 });
 
-// 🟢 ดักจับเหตุการณ์เมื่อผู้ใช้กด Back ย้อนกลับมาจากหน้าอื่น (แก้ปัญหา BFCache)
+// 📌 ฟังก์ชันสร้าง/ลงทะเบียนห้องลง Supabase
+async function registerRoomInDatabase(code, key) {
+    try {
+        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+            const initialConfig = getGameSettingsConfig();
+            
+            // 1. ลงทะเบียนห้องแข่งใน lobbies
+            await supabaseClient
+                .from('lobbies')
+                .upsert({
+                    room_code: code,
+                    class_key: key,
+                    status: 'WAITING',
+                    match_config: initialConfig,
+                    created_at: new Date().toISOString()
+                }, { onConflict: 'room_code' });
+
+            // 2. สร้างแถวห้องเรียนใน class_rooms สำหรับเก็บเด็กที่ Join
+            const { data: existingClass } = await supabaseClient
+                .from('class_rooms')
+                .select('class_key')
+                .eq('class_key', key)
+                .maybeSingle();
+
+            if (!existingClass) {
+                await supabaseClient
+                    .from('class_rooms')
+                    .insert([{ class_key: key, players: [] }]);
+            }
+        }
+    } catch (err) {
+        console.error("Register room catch error:", err);
+    }
+}
+
+// 🟢 ดักจับเหตุการณ์ BFCache เมื่อกดย้อนกลับ
 window.addEventListener('pageshow', async (event) => {
-    // สั่งโหลดข้อมูลคลังโจทย์ใหม่และอัปเดต UI ของสวิตช์ทุกครั้งที่ย้อนกลับมาหน้านี้
     await initPageData();
 });
 
-// 🔄 ฟังก์ชันโหลดข้อมูลและอัปเดต UI สวิตช์ให้ตรงกับความเป็นจริง
 async function initPageData() {
     await fetchProblemsFromDB();
     await loadQuizSubjectsFromCentralBank();
     
-    // ตรวจสอบและอัปเดตการแสดงผลของโซนคำถามกวนใจให้ตรงกับสวิตช์
     const quizSwitch = document.getElementById('quiz-toggle-switch');
     if (quizSwitch) {
         toggleQuizSettings(quizSwitch.checked);
     }
 }
 
-// 📚 ดึงรายชื่อชุดวิชาคำถามส่วนตัวของผู้ใช้จากตาราง quiz_subjects (ฉบับแก้ไข Error column created_at)
 async function loadQuizSubjectsFromCentralBank() {
     const selectBox = document.getElementById('quiz-stock-select');
     if (!selectBox) return;
 
     try {
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-            
-            // 🔑 1. ดึง user_id ของผู้ใช้ที่ล็อกอินปัจจุบัน
             const { data: { session } } = await supabaseClient.auth.getSession();
             const currentUserId = session?.user?.id;
 
@@ -59,7 +89,6 @@ async function loadQuizSubjectsFromCentralBank() {
                 return;
             }
 
-            // 🟢 2. ดึงเฉพาะชุดวิชาคำถามของผู้ใช้คนนี้ (เรียงตาม subject_key แทน created_at)
             const { data: subjects, error } = await supabaseClient
                 .from('quiz_subjects')
                 .select('subject_key, questions')
@@ -72,7 +101,6 @@ async function loadQuizSubjectsFromCentralBank() {
                 return;
             }
 
-            // 🟢 3. หยอดชุดวิชาลงใน Dropdown
             if (subjects && subjects.length > 0) {
                 selectBox.innerHTML = subjects.map(s => {
                     const qCount = Array.isArray(s.questions) ? s.questions.length : 0;
@@ -85,7 +113,7 @@ async function loadQuizSubjectsFromCentralBank() {
             triggerAutoSave();
         }
     } catch (err) {
-        console.error("Load quiz subjects from central bank catch error:", err);
+        console.error("Load quiz subjects catch error:", err);
     }
 }
 
@@ -96,7 +124,9 @@ function setupQRCode(code) {
         const origin = window.location.origin;
         const pathname = window.location.pathname;
         const basePath = pathname.substring(0, pathname.indexOf('/teacher/'));
-        const joinUrl = `${origin}${basePath}/student/student_lobby.html?room=${code}&classKey=${encodeURIComponent(classKey)}`;
+        
+        // 🟢 แก้ไข Path ชี้ไปยัง student_lobby.html ให้ถูกต้อง
+        const joinUrl = `${origin}${basePath}/student/student_lobby.html?room=${code}`;
 
         try {
             if (typeof QRCode !== 'undefined') {
@@ -108,7 +138,6 @@ function setupQRCode(code) {
     }
 }
 
-// 🚪 1. เปิด Modal ยืนยันการปิดห้องนี้
 function openCloseRoomModal() {
     const modalEl = document.getElementById('closeRoomModal');
     if (modalEl) {
@@ -117,12 +146,10 @@ function openCloseRoomModal() {
     }
 }
 
-// 🚪 2. ยืนยันปิดห้องและพาย้ายกลับไป teacher_lobby.html
 function confirmCloseRoom() {
     window.location.href = 'teacher_lobby.html';
 }
 
-// 📡 ดึงรายชื่อนักเรียนสด
 async function fetchAndListenStudents() {
     await fetchStudents();
 
@@ -175,7 +202,7 @@ function renderStudentsUI() {
 
     if (pendingGrid) {
         pendingGrid.innerHTML = pendingList.length === 0 
-            ? `<div class="text-center text-muted small py-2 font-mono">ไม่มีนักเรียนรอนุมัติ</div>`
+            ? `<div class="text-center text-muted-cyber small py-3 font-mono">ไม่มีนักเรียนรอนุมัติ</div>`
             : pendingList.map(s => `
                 <div class="p-2 bg-slate-900 rounded-3 border border-warning d-flex align-items-center justify-content-between">
                     <div class="d-flex align-items-center gap-2 overflow-hidden me-2">
@@ -198,7 +225,7 @@ function renderStudentsUI() {
 
     if (approvedGrid) {
         approvedGrid.innerHTML = approvedList.length === 0
-            ? `<div class="text-center text-muted small py-2 font-mono">ยังไม่มีนักเรียนในห้องแข่ง</div>`
+            ? `<div class="text-center text-muted-cyber small py-3 font-mono">ยังไม่มีนักเรียนในห้องแข่ง</div>`
             : approvedList.map(s => `
                 <div class="p-2 bg-slate-900 rounded-3 border border-secondary d-flex align-items-center justify-content-between">
                     <div class="d-flex align-items-center gap-2 overflow-hidden me-2">
@@ -294,10 +321,6 @@ async function clearAllApprovedStudents() {
         renderStudentsUI();
     } catch (e) {}
 }
-
-/* ----------------------------------------------------
-   📝 ระบบจัดการ STOCK โจทย์
----------------------------------------------------- */
 
 async function addNewProblemToStock() {
     const titleEl = document.getElementById('new-prob-title');
@@ -460,8 +483,6 @@ async function confirmDeleteProblem() {
     }
 }
 
-/* ---------------------------------------------------- */
-
 function toggleTimerSettings(isEnabled) {
     const zone = document.getElementById('timer-select-zone');
     const label = document.getElementById('timer-toggle-label');
@@ -588,7 +609,7 @@ function promptActionConfirm(actionType) {
     const btnSubmit = document.getElementById('btn-action-confirm-submit');
 
     if (actionType === 'start') {
-        if (card) card.className = "modal-content bg-dark text-white border-warning rounded-4 p-3 text-center shadow-lg font-mono";
+        if (card) card.className = "modal-content cyber-modal border-warning text-white rounded-4 p-3 text-center shadow-lg font-mono";
         if (icon) icon.innerHTML = `<i class="bi bi-play-circle-fill text-warning"></i>`;
         if (title) title.innerText = "ยืนยันการเริ่มแข่งขัน";
         if (msg) msg.innerText = "คุณต้องการสั่งเริ่มการแข่งขันบนหน้าจอของนักเรียนทุกคนใช่หรือไม่?";
@@ -599,7 +620,7 @@ function promptActionConfirm(actionType) {
         }
     } else if (actionType === 'pause') {
         const isNextPause = !isGamePaused;
-        if (card) card.className = "modal-content bg-dark text-white border-warning rounded-4 p-3 text-center shadow-lg font-mono";
+        if (card) card.className = "modal-content cyber-modal border-warning text-white rounded-4 p-3 text-center shadow-lg font-mono";
         if (icon) icon.innerHTML = `<i class="bi bi-pause-circle-fill text-warning"></i>`;
         if (title) title.innerText = isNextPause ? "ยืนยันการพักการแข่งขัน" : "ยืนยันการแข่งต่อ";
         if (msg) msg.innerText = isNextPause ? "คุณต้องการพักสนามแข่งชั่วคราวใช่หรือไม่?" : "คุณต้องการเปิดสนามแข่งให้เด็กเล่นต่อใช่หรือไม่?";
@@ -609,7 +630,7 @@ function promptActionConfirm(actionType) {
             btnSubmit.onclick = executeConfirmedAction;
         }
     } else if (actionType === 'end') {
-        if (card) card.className = "modal-content bg-dark text-white border-danger rounded-4 p-3 text-center shadow-lg font-mono";
+        if (card) card.className = "modal-content cyber-modal border-danger text-white rounded-4 p-3 text-center shadow-lg font-mono";
         if (icon) icon.innerHTML = `<i class="bi bi-stop-circle-fill text-danger"></i>`;
         if (title) title.innerText = "ยืนยันการจบการแข่งขันทันที";
         if (msg) msg.innerText = "การแข่งขันจะถูกสั่งหยุดและสรุปผลทันที คุณต้องการจบเกมเลยใช่หรือไม่?";
@@ -695,14 +716,10 @@ async function togglePauseGame() {
     } catch (e) {}
 }
 
-// teacher/typing_control.js
-
-// ⏹️ สั่งจบเกมทันทีกลางคัน (Force End Race) + ลบแถวใน DB + นำทางไปหน้าสรุปผล
 async function forceEndGame() {
     try {
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
             
-            // 1. ส่ง Broadcast สัญญาณจบเกมไปให้นักเรียนและจอโปรเจกเตอร์
             const channel = supabaseClient.channel(`room_signal_${roomCode}`);
             await channel.send({
                 type: 'broadcast',
@@ -710,7 +727,6 @@ async function forceEndGame() {
                 payload: { roomCode: roomCode, classKey: classKey }
             });
 
-            // 2. ลบแถวรหัสห้องนี้ออกจากตาราง lobbies ทันที
             const { error } = await supabaseClient
                 .from('lobbies')
                 .delete()
@@ -718,13 +734,10 @@ async function forceEndGame() {
 
             if (error) {
                 console.error("Delete lobby error:", error.message);
-            } else {
-                console.log(`🧹 ลบรหัสห้อง ${roomCode} ออกจากตาราง lobbies เรียบร้อยแล้ว`);
             }
 
             showToast("🏁 จบการแข่งขันเรียบร้อย กำลังไปหน้าสรุปผล...");
 
-            // 🚀 3. นำทางไปยังหน้าสรุปผลการแข่งขัน
             setTimeout(() => {
                 window.location.href = `race_summary.html?room=${roomCode}&classKey=${encodeURIComponent(classKey)}`;
             }, 1000);
@@ -734,24 +747,18 @@ async function forceEndGame() {
     }
 }
 
-// 🧹 สั่ง Auto Clean-up ลบห้องที่ลืมปิดและผ่านไปเกิน 24 ชม.
 async function cleanupOldLobbies() {
     try {
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
             const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-
-            // ลบห้องที่ถูกสร้างมานานเกิน 24 ชั่วโมง
             await supabaseClient
                 .from('lobbies')
                 .delete()
                 .lt('created_at', twentyFourHoursAgo);
         }
-    } catch (e) {
-        console.warn("Cleanup old lobbies warning:", e);
-    }
+    } catch (e) {}
 }
 
-// เรียกใช้งาน Auto Clean-up ทันทีเมื่อเปิดหน้าควบคุม
 document.addEventListener('DOMContentLoaded', () => {
     cleanupOldLobbies();
 });

@@ -1,10 +1,18 @@
-/* profile.css */
+/* ========================================================
+   👤 Gyver Workspace - Profile Page Custom Styles
+   ======================================================== */
 
+body {
+    font-family: 'Kanit', sans-serif;
+    background-color: #f8fafc;
+}
+
+/* 📌 Sidebar Navigation Styling */
 .sidebar-menu .nav-link {
-    color: #4a5568;
-    font-weight: 500;
-    padding: 12px 18px;
+    color: #475569;
     border-radius: 12px;
+    padding: 10px 16px;
+    font-weight: 500;
     transition: all 0.2s ease;
 }
 
@@ -16,9 +24,42 @@
 .sidebar-menu .nav-link.active {
     background-color: #0d6efd !important;
     color: #ffffff !important;
+    font-weight: 600;
     box-shadow: 0 4px 12px rgba(13, 110, 253, 0.25);
+}
+
+/* ✂️ Section Dividers (เส้นแบ่งโซนฟอร์ม) */
+.profile-section-divider {
+    position: relative;
+    text-align: left;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 8px;
+}
+
+.profile-section-divider span {
+    background-color: #ffffff;
+    padding-right: 12px;
+}
+
+/* 🎛️ Form Control Fixes */
+.form-control:focus, .form-select:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
 }
 
 .border-dashed {
     border-style: dashed !important;
+}
+
+/* 📱 Responsive Adjustments */
+@media (max-width: 991px) {
+    .sidebar-menu {
+        flex-direction: row !important;
+        overflow-x: auto;
+        white-space: nowrap;
+        padding-bottom: 8px;
+    }
+    .sidebar-menu .nav-link {
+        flex: 0 0 auto;
+    }
 }

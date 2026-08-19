@@ -1,142 +1,218 @@
-:root {
-    --bg-dark: #090d16;
-    --card-bg: #111827;
-    --border-color: #334155;
-    --text-bright: #f8fafc;
-    --text-subtle: #cbd5e1;
-    --cyan-glow: #38bdf8;
-    --warning-glow: #f59e0b;
-}
+/* ========================================================
+   🎮 Teacher Control Hub Custom Styles
+   ======================================================== */
 
-body.cyber-body {
-    background-color: var(--bg-dark);
-    color: var(--text-bright);
+body.cyber-lobby-bg {
+    background-color: #090c15;
+    color: #f8f9fa;
     font-family: 'Kanit', sans-serif;
-    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
 }
 
-.font-mono {
-    font-family: 'Fira Code', monospace;
-}
+.font-mono { font-family: 'Fira Code', monospace !important; }
+.font-kanit { font-family: 'Kanit', sans-serif !important; }
+.fw-black { font-weight: 800; }
 
-.text-subtle {
-    color: var(--text-subtle) !important;
-}
+.text-subtle { color: #8a99ad; }
+.text-cyan { color: #00f2fe; }
 
-.text-cyan {
-    color: var(--cyan-glow) !important;
-}
-
-.header-icon-box {
-    width: 50px;
-    height: 50px;
-    border-radius: 14px;
-    background: #1e293b;
-    border: 1px solid var(--border-color);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.cyber-card {
-    background: var(--card-bg);
-    border: 2px solid var(--border-color);
-    border-radius: 20px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-}
-
-.game-select-card {
-    background: #0f172a;
-    border: 2px solid var(--border-color);
-    border-radius: 14px;
-    padding: 16px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    transition: all 0.2s ease;
-    height: 100%;
-}
-
-.game-select-card:hover {
-    border-color: var(--cyan-glow);
-    transform: translateY(-2px);
-}
-
-.game-select-card.active {
-    border-color: var(--warning-glow);
-    background: rgba(245, 158, 11, 0.12);
-    box-shadow: 0 0 15px rgba(245, 158, 11, 0.3);
-}
-
-.game-icon {
-    width: 46px;
-    height: 46px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.6rem;
-    flex-shrink: 0;
-}
-
-.type-select-card {
-    background: #0f172a;
-    border: 2px solid var(--border-color);
-    border-radius: 14px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.type-select-card:hover, .type-select-card.active {
-    border-color: var(--cyan-glow);
-    background: rgba(56, 189, 248, 0.1);
-}
-
-.bg-slate-900 {
-    background-color: #020617 !important;
-}
-
-/* Toast Notification Style */
-#cyberToast {
-    background: #0f172a !important;
-    border: 1px solid #334155 !important;
-    border-radius: 12px !important;
-    backdrop-filter: blur(8px);
-}
-#cyberToast.toast-success {
-    border-color: #22c55e !important;
-    box-shadow: 0 0 15px rgba(34, 197, 94, 0.3);
-}
-#cyberToast.toast-danger {
-    border-color: #ef4444 !important;
-    box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
-}
-
-/* สไตล์เฉพาะอวตารของนักเรียน */
-.student-avatar-hover {
-    transition: transform 0.2s ease;
-    cursor: pointer;
-}
-
-/* กล่องพรีวิวอวตารลอยอิสระระดับ Top Layer (ไม่โดน Scrollbar ตัดขอบ) */
-.avatar-popover-box {
-    position: fixed;
-    z-index: 99999;
+/* 🌌 Background Elements */
+.bg-cyber-grid {
+    position: absolute;
+    inset: 0;
+    background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    background-size: 35px 35px;
+    z-index: 1;
     pointer-events: none;
-    background: #0f172a;
-    border: 2px solid #38bdf8;
-    border-radius: 16px;
-    padding: 8px;
-    box-shadow: 0 0 25px rgba(56, 189, 248, 0.6);
-    transform: translate(15px, -50%);
-    transition: opacity 0.15s ease-in-out;
 }
 
-.avatar-popover-box img {
-    width: 110px;
-    height: 110px;
-    border-radius: 12px;
-    object-fit: cover;
-    background: #000;
+.bg-glow-blur {
+    position: absolute;
+    width: 400px;
+    height: 400px;
+    border-radius: 50%;
+    filter: blur(140px);
+    opacity: 0.16;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.glow-top { top: -80px; left: 20%; background: #00f2fe; }
+.glow-bottom { bottom: -80px; right: 20%; background: #ff007f; }
+
+/* 🃏 Hub Card Container */
+.cyber-hub-card {
+    background: rgba(15, 21, 34, 0.85);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+}
+
+.border-cyan { border-color: rgba(0, 242, 254, 0.3) !important; }
+
+.hub-icon-box {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bg-cyan-glow {
+    background: rgba(0, 242, 254, 0.12);
+    border: 1px solid rgba(0, 242, 254, 0.3);
+}
+
+/* 🕹️ Game Mode Cards */
+.mode-card {
+    background: rgba(22, 30, 48, 0.6);
+    border: 2px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.mode-card:hover {
+    background: rgba(30, 42, 68, 0.8);
+    border-color: rgba(0, 242, 254, 0.4);
+    transform: translateY(-4px);
+}
+
+.mode-card.active {
+    background: linear-gradient(135deg, rgba(0, 242, 254, 0.15) 0%, rgba(15, 21, 34, 0.9) 100%);
+    border-color: #00f2fe;
+    box-shadow: 0 0 20px rgba(0, 242, 254, 0.25);
+}
+
+.mode-icon {
+    font-size: 2rem;
+    color: #00f2fe;
+}
+
+.mode-desc {
+    font-size: 0.82rem;
+    color: #8a99ad;
+    line-height: 1.4;
+}
+
+.mode-badge-tag {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: #ffc107;
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid rgba(255, 193, 7, 0.25);
+    padding: 3px 8px;
+    border-radius: 6px;
+    display: inline-block;
+}
+
+/* ⚙️ Sub Config Box */
+.config-sub-box {
+    background: rgba(20, 27, 44, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
+}
+
+.section-label {
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+
+.section-label-sm {
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+/* 🔘 Custom Cyber Radio & Select */
+.custom-cyber-radio .form-check-input {
+    background-color: #0d121d;
+    border-color: #00f2fe;
+    width: 1.15em;
+    height: 1.15em;
+}
+
+.custom-cyber-radio .form-check-input:checked {
+    background-color: #00f2fe;
+    border-color: #00f2fe;
+}
+
+.form-select-cyber {
+    background-color: #0d121d;
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.form-select-cyber:focus {
+    border-color: #00f2fe;
+    box-shadow: 0 0 10px rgba(0, 242, 254, 0.2);
+}
+
+/* 🔑 Room Code Box */
+.room-code-box {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.05) 0%, rgba(15, 21, 34, 0.8) 100%);
+    border: 2px dashed rgba(255, 193, 7, 0.4);
+    border-radius: 16px;
+}
+
+.display-code-text {
+    font-size: 2.8rem;
+    font-weight: 800;
+    letter-spacing: 4px;
+    text-shadow: 0 0 15px rgba(255, 193, 7, 0.4);
+}
+
+/* 🚀 Create Button */
+.btn-cyber-submit {
+    padding: 16px 24px;
+    border-radius: 14px;
+    border: none;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.btn-cyber-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(255, 193, 7, 0.35) !important;
+}
+
+.btn-cyber-sm {
+    padding: 6px 16px;
+    font-size: 0.85rem;
+}
+
+/* 👥 แผงตั้งค่ากลุ่มแข่งขัน */
+#team-config-panel {
+    animation: fadeInSlideDown 0.3s ease-out forwards;
+}
+
+@keyframes fadeInSlideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 📲 ตกแต่งกล่อง QR Code */
+.qr-wrapper {
+    display: inline-block;
+    border: 2px solid #00f2fe;
+    box-shadow: 0 0 15px rgba(0, 242, 254, 0.3);
+}
+
+#qrcode-box img {
+    display: block;
+    margin: 0 auto;
 }

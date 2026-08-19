@@ -1,0 +1,193 @@
+/* ========================================================
+   ⌨️ Gyver Code Race - Typing Control Panel Cyberpunk Theme
+   ======================================================== */
+
+body.cyber-body {
+    background-color: #090c15 !important;
+    color: #f8f9fa !important;
+    font-family: 'Kanit', sans-serif !important;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* 🔤 Font Utilities */
+.font-mono { font-family: 'Fira Code', monospace !important; }
+.font-kanit { font-family: 'Kanit', sans-serif !important; }
+.fw-black { font-weight: 800 !important; }
+.fw-extrabold { font-weight: 700 !important; }
+
+/* 🎨 Text Colors Fix (แก้ตัวหนังสือมืดอ่านยาก) */
+.text-subtle { color: #a0aec0 !important; } /* ปรับสีเทาให้อ่อนลง อ่านง่ายชัดเจน */
+.text-muted-cyber { color: #cbd5e1 !important; font-weight: 500; } /* ข้อความสถานะว่างเปล่า */
+.text-cyan { color: #00f2fe !important; }
+.bg-cyan { background-color: #00f2fe !important; }
+
+/* 🌌 Background Elements Theme เดียวกับ Race Home */
+.bg-cyber-grid {
+    position: absolute;
+    inset: 0;
+    background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    background-size: 35px 35px;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.bg-glow-blur {
+    position: absolute;
+    width: 450px;
+    height: 450px;
+    border-radius: 50%;
+    filter: blur(140px);
+    opacity: 0.15;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.glow-top { top: -100px; left: 15%; background: #00f2fe; }
+.glow-bottom { bottom: -100px; right: 15%; background: #ff007f; }
+
+/* 🃏 Cyber Cards */
+.cyber-card {
+    background: rgba(15, 21, 34, 0.85) !important;
+    backdrop-filter: blur(16px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 20px !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+}
+
+.border-cyan { border-color: rgba(0, 242, 254, 0.3) !important; }
+.border-warning-subtle { border-color: rgba(255, 193, 7, 0.3) !important; }
+
+/* 🕹️ Icon & Badges */
+.hub-icon-box {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bg-cyan-glow {
+    background: rgba(0, 242, 254, 0.12);
+    border: 1px solid rgba(0, 242, 254, 0.3);
+}
+
+.room-code-badge {
+    background: rgba(255, 193, 7, 0.05);
+    border-radius: 12px;
+}
+
+/* ⚙️ Sub Config Boxes */
+.config-sub-box {
+    background: rgba(20, 27, 44, 0.6) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.qr-box-card {
+    background: rgba(20, 27, 44, 0.6) !important;
+    border: 1px dashed rgba(0, 242, 254, 0.3) !important;
+}
+
+.shop-item-card {
+    background: rgba(10, 13, 20, 0.7) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+/* 🏷️ Input Group Labels Fix (แก้กล่อง 'แจกทุกๆ', 'รับได้', 'Gold') */
+.input-group-cyber-label {
+    background-color: #1a2234 !important;
+    color: #e2e8f0 !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    font-weight: 600 !important;
+}
+
+.input-group-cyber-label.gold-text {
+    color: #ffc107 !important;
+    font-weight: 700 !important;
+}
+
+/* 📋 Code Block Display */
+.code-preview-box {
+    background-color: #070a10 !important;
+    border: 1px solid rgba(0, 242, 254, 0.25) !important;
+    box-shadow: inset 0 0 15px rgba(0, 242, 254, 0.08) !important;
+}
+
+pre#problem-preview-code {
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+/* 📲 QR Code Display */
+#qrcode-box img {
+    display: block;
+    margin: 0 auto;
+}
+
+/* 🎛️ Form Controls & Switches */
+.form-select-cyber, .form-control {
+    background-color: #0d121d !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 10px !important;
+}
+
+.form-select-cyber:focus, .form-control:focus {
+    border-color: #00f2fe !important;
+    box-shadow: 0 0 10px rgba(0, 242, 254, 0.25) !important;
+}
+
+/* 🔘 Custom Switches */
+.custom-cyber-switch .form-check-input {
+    background-color: #0d121d !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+    cursor: pointer;
+}
+
+.custom-cyber-switch .form-check-input:checked {
+    background-color: #00f2fe !important;
+    border-color: #00f2fe !important;
+    box-shadow: 0 0 10px rgba(0, 242, 254, 0.4) !important;
+}
+
+/* 🔘 Buttons */
+.btn-cyber-sm {
+    padding: 6px 16px;
+    font-size: 0.85rem;
+}
+
+/* 💬 Cyber Modals */
+.cyber-modal {
+    background-color: #0f1522 !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* ⚡ Pulse Effect */
+@keyframes pulseGlow {
+    0%, 100% { opacity: 0.8; }
+    50% { opacity: 1; box-shadow: 0 0 12px rgba(255, 193, 7, 0.6); }
+}
+
+.animate-pulse {
+    animation: pulseGlow 2s infinite;
+}
+
+/* 📜 Custom Scrollbar */
+.overflow-auto::-webkit-scrollbar {
+    width: 6px;
+}
+.overflow-auto::-webkit-scrollbar-track {
+    background: #0d121d;
+    border-radius: 4px;
+}
+.overflow-auto::-webkit-scrollbar-thumb {
+    background: #2a354d;
+    border-radius: 4px;
+}
+.overflow-auto::-webkit-scrollbar-thumb:hover {
+    background: #00f2fe;
+}
