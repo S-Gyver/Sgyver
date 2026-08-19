@@ -37,7 +37,7 @@ unlockAudioContext();
 function playTickSound() {
     try {
         soundTick.currentTime = 0;
-        soundTick.volume = 1.0; // การันตีความดังเสียงหมุน 100%
+        soundTick.volume = 1.0; 
         soundTick.play().catch(e => {});
     } catch (e) {}
 }
