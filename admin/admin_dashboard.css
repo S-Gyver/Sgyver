@@ -1,0 +1,43 @@
+/* ========================================================
+   🎨 Gyver Studio - Admin Dashboard Custom Styles
+   ======================================================== */
+
+/* 🛠️ แก้ปัญหา Dropdown Menu ล้นซ้อนด้านหลังตาราง */
+.table-responsive {
+    overflow: visible !important;
+}
+
+.table td {
+    position: relative;
+}
+
+.dropdown-menu {
+    z-index: 1050 !important;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.5) !important;
+}
+
+/* 📂 กล่องแจ้งเตือนเมื่อไม่พบข้อมูลกิจกรรม (ห้องเรียน / คลังโจทย์) */
+.user-empty-state-box {
+    background-color: #1a1d20 !important;
+    color: #ffc107 !important;
+    border: 1px solid #495057 !important;
+    border-radius: 0.5rem !important;
+    text-align: center !important;
+    padding: 1.5rem !important;
+    margin-top: 0.5rem !important;
+    margin-bottom: 0.5rem !important;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.2) !important;
+}
+
+.user-empty-state-box i {
+    font-size: 2rem !important;
+    display: block !important;
+    margin-bottom: 0.5rem !important;
+    color: #ffc107 !important;
+}
+
+.user-empty-state-box span {
+    font-size: 1rem !important;
+    font-weight: 700 !important;
+    color: #ffc107 !important;
+}

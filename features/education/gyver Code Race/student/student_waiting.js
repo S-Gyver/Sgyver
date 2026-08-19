@@ -60,11 +60,9 @@ async function fetchInitialMatchConfig(roomCode) {
     } catch (e) {}
 }
 
-// 🎨 อัปเดต UI รายละเอียดการแข่งบนจอนักเรียนสดๆ
 function updateStudentConfigUI(cfg) {
     if (!cfg) return;
 
-    // เวลาแข่งขัน
     const timeEl = document.getElementById('rule-time-text');
     if (timeEl && cfg.timer) {
         timeEl.innerText = cfg.timer.unlimited 
@@ -72,7 +70,6 @@ function updateStudentConfigUI(cfg) {
             : `${Math.floor(cfg.timer.duration / 60)} นาที (${cfg.timer.duration} วินาที)`;
     }
 
-    // เงื่อนไข Gold
     const goldEl = document.getElementById('rule-gold-text');
     if (goldEl && cfg.gold) {
         goldEl.innerText = cfg.gold.enabled 
@@ -80,7 +77,6 @@ function updateStudentConfigUI(cfg) {
             : 'ปิดใช้งาน';
     }
 
-    // คำถามกวนใจ
     const quizEl = document.getElementById('rule-quiz-text');
     if (quizEl && cfg.quiz) {
         quizEl.innerText = cfg.quiz.enabled 
@@ -88,7 +84,6 @@ function updateStudentConfigUI(cfg) {
             : 'ปิดใช้งาน';
     }
 
-    // 🛍️ รายการไอเทมในร้านค้า (สี badge แช่แข็งระบบใช้ bg-primary)
     const shopContainer = document.getElementById('rule-shop-items-container');
     if (shopContainer && cfg.items) {
         if (!cfg.items.enabled) {
@@ -157,7 +152,56 @@ function listenTeacherRealtimeSignals(roomCode, name, className, no, team) {
     }
 }
 
-// ส่ง Emoji Reaction ขึ้นจอโปรเจกเตอร์ (ส่ง Broadcast สด + บันทึกลง DB)
+// 🚪 เปิด Custom Modal แจ้งเตือนสวยๆ
+function openLeaveConfirmModal() {
+    const modalEl = document.getElementById('leaveConfirmModal');
+    if (modalEl) {
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+}
+
+// 🚪 ยืนยันการออกจากห้อง (ลบเด็กออกจาก DB)
+async function confirmLeaveRoom() {
+    const btnConfirm = document.getElementById('btn-confirm-leave');
+    if (btnConfirm) {
+        btnConfirm.disabled = true;
+        btnConfirm.innerText = "กำลังออก...";
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const className = urlParams.get('class') || 'ม.-/-';
+    const no = urlParams.get('no') || '-';
+    const name = urlParams.get('name') || '';
+
+    try {
+        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+            const cleanLevel = className.replace('ม.', '').trim();
+
+            let { data: classData } = await supabaseClient
+                .from('class_rooms')
+                .select('players')
+                .eq('class_key', cleanLevel)
+                .maybeSingle();
+
+            if (classData && Array.isArray(classData.players)) {
+                const updatedPlayers = classData.players.filter(
+                    p => String(p.number) !== String(no) && p.nickname_th !== name
+                );
+
+                await supabaseClient
+                    .from('class_rooms')
+                    .update({ players: updatedPlayers })
+                    .eq('class_key', cleanLevel);
+            }
+        }
+    } catch (e) {
+        console.warn("Leave room error:", e);
+    }
+
+    window.location.href = '../race_home.html';
+}
+
 async function sendEmojiReaction(emoji) {
     const urlParams = new URLSearchParams(window.location.search);
     const roomCode = urlParams.get('room') || 'RACE88';
@@ -167,7 +211,6 @@ async function sendEmojiReaction(emoji) {
 
     try {
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-            // ⚡ 1. ยิงสัญญาณ Broadcast ตรงไปหน้า Projector ทันที
             const channel = supabaseClient.channel(`room_signal_${roomCode}`);
             await channel.send({
                 type: 'broadcast',
@@ -179,7 +222,6 @@ async function sendEmojiReaction(emoji) {
                 }
             });
 
-            // 💾 2. บันทึกลง DB ตาราง combat_logs
             await supabaseClient.from('combat_logs').insert([{
                 room_code: roomCode,
                 message: messageText,

@@ -2,13 +2,11 @@ let currentAvatarUrl = '';
 let selectedFileObject = null;
 let hasSavedProfile = false;
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     const urlParams = new URLSearchParams(window.location.search);
-    // 1. ดึงรหัสห้องจาก URL (ถ้ามี)
     let roomCode = (urlParams.get('room') || '').trim().toUpperCase();
     const isTeamMode = urlParams.get('type') === 'team';
 
-    // ถ้าใน URL มีเลขห้อง ให้เอาไปใส่ในช่องกรอก และโชว์บนหน้าจอ
     const roomInputEl = document.getElementById('input-room-code') || document.getElementById('student-room-code');
     if (roomInputEl && roomCode) {
         roomInputEl.value = roomCode;
@@ -34,13 +32,13 @@ document.addEventListener('DOMContentLoaded', () => {
         fileInput.addEventListener('change', handleCustomAvatarUpload);
     }
 
-    // ผูก Event ปุ่มกด Join
     const joinForm = document.getElementById('student-join-form') || document.querySelector('form');
     if (joinForm) {
         joinForm.addEventListener('submit', handleStudentJoin);
     }
 
-    loadSavedProfile();
+    // 🔍 โหลดโปรไฟล์ (พร้อมเช็กว่ามาจาก User สมัครใหม่หรือไม่)
+    await loadSavedProfile();
 });
 
 function updateClassPreview() {
@@ -59,9 +57,35 @@ function updateClassPreview() {
     }
 }
 
-function loadSavedProfile() {
+async function loadSavedProfile() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const paramName = urlParams.get('name');
+
+    // 1. ตรวจสอบว่าใน Supabase มี Session User ที่เพิ่งล็อกอินเข้ามาใหม่หรือไม่
+    if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+        try {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session && session.user) {
+                const userMeta = session.user.user_metadata || {};
+                const authUsername = userMeta.username || session.user.email.split('@')[0];
+                
+                // เช็ก LocalStorage ว่าตรงกับ User ปัจจุบันหรือไม่
+                const savedData = localStorage.getItem('gyver_race_student_profile');
+                if (savedData) {
+                    const p = JSON.parse(savedData);
+                    if (p.nicknameTh && p.nicknameTh !== authUsername && !paramName) {
+                        // ถ้าเป็น User ใหม่ แต่ค้างชื่อเดิมไว้ -> ล้างค่าเดิมทิ้ง
+                        localStorage.removeItem('gyver_race_student_profile');
+                    }
+                }
+            }
+        } catch (err) {}
+    }
+
     const savedData = localStorage.getItem('gyver_race_student_profile');
-    if (!savedData) {
+    
+    // ถ้าไม่มีข้อมูล หรือURL ส่ง Parameter คนใหม่มา ให้แสดงฟอร์มเต็ม
+    if (!savedData || paramName) {
         showFullFormMode();
         randomizeAvatar();
         return;
@@ -146,7 +170,6 @@ function handleCustomAvatarUpload(e) {
     reader.readAsDataURL(file);
 }
 
-// 🚀 ฟังก์ชันหลักในการ Join ด้วยรหัสห้อง (Room Code)
 async function handleStudentJoin(e) {
     if (e) e.preventDefault();
 
@@ -157,8 +180,6 @@ async function handleStudentJoin(e) {
     }
 
     const urlParams = new URLSearchParams(window.location.search);
-    
-    // ดึงรหัสห้องจากอินพุตถ้าพิมพ์มา หรือดึงจาก URL
     let inputRoom = (document.getElementById('input-room-code')?.value || document.getElementById('student-room-code')?.value || urlParams.get('room') || 'RACE88').trim().toUpperCase();
 
     let nicknameTh = document.getElementById('student-nickname-th')?.value.trim();
@@ -170,7 +191,6 @@ async function handleStudentJoin(e) {
     let studentNumber = document.getElementById('student-number')?.value.trim() || '10';
     let teamNum = document.getElementById('student-team-num')?.value || 0;
 
-    // ดึงโปรไฟล์เดิมถ้าระบบจำไว้แล้ว
     if (hasSavedProfile) {
         const savedData = localStorage.getItem('gyver_race_student_profile');
         if (savedData) {
@@ -203,7 +223,6 @@ async function handleStudentJoin(e) {
     let classKey = `${cleanLevel}/${studentRoom}`; 
     let studentClassFormatted = `${studentLevel}/${studentRoom}`;
 
-    // 🔍 1. ตรวจเช็กว่ามีห้องนี้ใน Supabase หรือไม่
     try {
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
             let { data: lobbyData } = await supabaseClient
@@ -222,7 +241,6 @@ async function handleStudentJoin(e) {
         console.warn("Lobbies fetch warning:", err);
     }
 
-    // 💾 2. บันทึกโปรไฟล์ลง LocalStorage
     const profilePayload = {
         nicknameTh,
         firstnameTh,
@@ -236,7 +254,10 @@ async function handleStudentJoin(e) {
     };
     localStorage.setItem('gyver_race_student_profile', JSON.stringify(profilePayload));
 
-    // 💾 3. บันทึกนักเรียนลงตาราง class_rooms ใน Supabase DB
+    // student/student_lobby.js (เฉพาะส่วน handleStudentJoin)
+
+// ...โค้ดส่วนบนคงเดิม...
+
     try {
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
             const newPlayerData = {
@@ -249,7 +270,7 @@ async function handleStudentJoin(e) {
                 class_name: studentClassFormatted,
                 number: parseInt(studentNumber) || 10,
                 image: currentAvatarUrl,
-                status: 'approved',
+                status: 'pending', // 👈 แก้ตรงนี้จาก 'approved' ให้เป็น 'pending' (รออนุมัติ)
                 score: 0,
                 spunCount: 0,
                 progress: 0,
@@ -292,7 +313,6 @@ async function handleStudentJoin(e) {
         console.error("Supabase Save Player Error:", err);
     }
 
-    // 🚀 4. นำทางไปหน้า student_waiting.html ทันที
     window.location.href = `student_waiting.html?room=${inputRoom}&name=${encodeURIComponent(nicknameTh)}&class=${encodeURIComponent(studentClassFormatted)}&no=${studentNumber}&classKey=${encodeURIComponent(classKey)}&team=${teamNum}`;
 }
 

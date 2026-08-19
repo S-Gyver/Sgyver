@@ -1,6 +1,9 @@
 let authModalInstance = null;
 let selectedRegFile = null;
 
+// 📍 Path ตรงไปยังโฟลเดอร์ admin นอกสุด
+const ADMIN_DASHBOARD_PATH = './admin/admin_dashboard.html';
+
 function showPopupAlert(message, type = 'danger') {
     const alertBox = document.getElementById('popup-auth-alert');
     if (alertBox) {
@@ -10,7 +13,6 @@ function showPopupAlert(message, type = 'danger') {
     }
 }
 
-// 🖼️ พรีวิวรูปและเก็บตัวแปรไฟล์รูปภาพ
 function previewAvatar(event) {
     const file = event.target.files[0];
     if (file) {
@@ -33,7 +35,6 @@ function previewAvatar(event) {
     }
 }
 
-// ☁️ ฟังก์ชันอัปโหลดรูปขึ้น Supabase Storage (Bucket: avatars)
 async function uploadAvatarStorage(file) {
     if (!file) return 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
 
@@ -56,11 +57,28 @@ async function uploadAvatarStorage(file) {
     return data.publicUrl;
 }
 
-// 🔍 เช็กสถานะสิทธิ์ User (Lv.0 vs Lv.1)
+// 🔍 เช็กสถานะสิทธิ์ User (Lv.0 vs Lv.1 vs Admin)
 async function checkUserLevel() {
     if (!window.supabaseClient) return;
 
     try {
+        // 🔴 1. ตรวจสอบ Admin Session จาก SessionStorage
+        const adminSessionStr = sessionStorage.getItem('gyver_admin_session');
+        if (adminSessionStr) {
+            try {
+                const adminSession = JSON.parse(adminSessionStr);
+                if (adminSession && adminSession.isLoggedIn) {
+                    if (window.location.pathname.endsWith('index.html') || window.location.pathname === '/') {
+                        window.location.href = ADMIN_DASHBOARD_PATH;
+                    }
+                    return;
+                }
+            } catch (e) {
+                sessionStorage.removeItem('gyver_admin_session');
+            }
+        }
+
+        // 🟢 2. เช็กเซสชันผู้ใช้จาก Supabase Auth
         const { data: { session } } = await window.supabaseClient.auth.getSession();
         
         const loginBtn = document.getElementById('auth-login-btn');
@@ -74,9 +92,20 @@ async function checkUserLevel() {
         const navUserAvatar = document.getElementById('nav-user-avatar');
 
         if (session && session.user) {
-            const displayName = session.user.user_metadata?.username || session.user.email;
+            const displayName = session.user.user_metadata?.username || session.user.email || '';
             const avatarUrl = session.user.user_metadata?.avatar_url || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
             
+            // 👑 เช็กว่าบัญชีที่ล็อกอินมามีชื่อหรืออีเมลเป็น admin หรือไม่
+            if (displayName.toLowerCase() === 'admin' || session.user.email.toLowerCase().startsWith('admin@')) {
+                sessionStorage.setItem('gyver_admin_session', JSON.stringify({
+                    isLoggedIn: true,
+                    username: 'admin',
+                    name: 'ผู้ดูแลระบบ'
+                }));
+                window.location.href = ADMIN_DASHBOARD_PATH;
+                return;
+            }
+
             if (loginBtn) loginBtn.classList.add('d-none');
             if (userProfileZone) {
                 userProfileZone.classList.remove('d-none');
@@ -89,7 +118,6 @@ async function checkUserLevel() {
             if (badgeText) badgeText.innerText = 'Gyver Portal (Lv.1 Member)';
             if (welcomeDesc) welcomeDesc.innerText = `ยินดีต้อนรับคุณ ${displayName} ปลดล็อกสิทธิ์การใช้งานหมวดห้องเรียนอัจฉริยะเรียบร้อยแล้ว`;
 
-            // 1. การ์ด Gyver Wheel (Live) เมื่อเป็น Lv.1
             if (eduWheelCard) {
                 eduWheelCard.className = "action-card p-3 h-100";
                 eduWheelCard.innerHTML = `
@@ -108,26 +136,23 @@ async function checkUserLevel() {
                 `;
             }
 
-            // index.js (เฉพาะส่วนการ์ด eduRaceCard)
-
-// 2. การ์ด Gyver Code Race เมื่อเป็น Lv.1 (วิ่งไป race_home.html)
-if (eduRaceCard) {
-    eduRaceCard.className = "action-card p-3 h-100";
-    eduRaceCard.innerHTML = `
-        <a href="features/education/gyver%20Code%20Race/race_home.html" class="d-flex align-items-center gap-3 text-decoration-none text-dark h-100">
-            <div class="icon-box bg-danger bg-gradient text-white shadow-sm">
-                <i class="bi bi-controller"></i>
-            </div>
-            <div class="flex-grow-1">
-                <div class="d-flex align-items-center justify-content-between mb-1">
-                    <h6 class="fw-bold text-dark m-0 fs-5">Gyver Code Race</h6>
-                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 small">Lv.1 Member</span>
-                </div>
-                <p class="text-secondary small m-0">เกมแข่งพิมพ์โค้ดภาษา Python ออนไลน์ สนุกตื่นเต้นแบบ Realtime</p>
-            </div>
-        </a>
-    `;
-}
+            if (eduRaceCard) {
+                eduRaceCard.className = "action-card p-3 h-100";
+                eduRaceCard.innerHTML = `
+                    <a href="features/education/gyver%20Code%20Race/race_home.html" class="d-flex align-items-center gap-3 text-decoration-none text-dark h-100">
+                        <div class="icon-box bg-danger bg-gradient text-white shadow-sm">
+                            <i class="bi bi-controller"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <h6 class="fw-bold text-dark m-0 fs-5">Gyver Code Race</h6>
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 small">Lv.1 Member</span>
+                            </div>
+                            <p class="text-secondary small m-0">เกมแข่งพิมพ์โค้ดภาษา Python ออนไลน์ สนุกตื่นเต้นแบบ Realtime</p>
+                        </div>
+                    </a>
+                `;
+            }
 
         } else {
             if (loginBtn) loginBtn.classList.remove('d-none');
@@ -139,7 +164,6 @@ if (eduRaceCard) {
             if (badgeText) badgeText.innerText = 'Gyver Portal (Lv.0 Visitor)';
             if (welcomeDesc) welcomeDesc.innerText = 'ยินดีต้อนรับผู้เยี่ยมชม สามารถใช้เครื่องมือด่วนได้ทันที หรือลงชื่อเข้าใช้งานเพื่อปลดล็อกฟังก์ชันห้องเรียนออนไลน์';
 
-            // 1. การ์ด Gyver Wheel (Live) เมื่อเป็น Lv.0
             if (eduWheelCard) {
                 eduWheelCard.className = "action-card disabled-card p-3 d-flex align-items-center gap-3 h-100";
                 eduWheelCard.innerHTML = `
@@ -156,7 +180,6 @@ if (eduRaceCard) {
                 `;
             }
 
-            // 2. การ์ด Gyver Code Race เมื่อเป็น Lv.0
             if (eduRaceCard) {
                 eduRaceCard.className = "action-card disabled-card p-3 d-flex align-items-center gap-3 h-100";
                 eduRaceCard.innerHTML = `
@@ -185,7 +208,6 @@ function setupPopupAuthListeners() {
         authModalInstance = bootstrap.Modal.getOrCreateInstance(authModalEl);
     }
 
-    // 1. ฟอร์มเข้าสู่ระบบ (Login)
     const loginForm = document.getElementById('form-popup-login');
     if (loginForm) {
         loginForm.addEventListener('submit', async function(e) {
@@ -227,14 +249,29 @@ function setupPopupAuthListeners() {
                     btnSubmit.disabled = false;
                     btnSubmit.innerHTML = `<i class="bi bi-box-arrow-in-right me-1"></i>ลงชื่อเข้าใช้งาน`;
                 } else {
-                    showPopupAlert('🎉 ล็อกอินสำเร็จ!', 'success');
-                    setTimeout(() => {
-                        if (authModalInstance) authModalInstance.hide();
-                        btnSubmit.disabled = false;
-                        btnSubmit.innerHTML = `<i class="bi bi-box-arrow-in-right me-1"></i>ลงชื่อเข้าใช้งาน`;
-                        loginForm.reset();
-                        checkUserLevel();
-                    }, 800);
+                    const loggedUsername = data.user?.user_metadata?.username || inputIdentifier;
+
+                    if (loggedUsername.toLowerCase() === 'admin' || targetEmail.toLowerCase().startsWith('admin@')) {
+                        sessionStorage.setItem('gyver_admin_session', JSON.stringify({
+                            isLoggedIn: true,
+                            username: 'admin',
+                            name: 'ผู้ดูแลระบบ'
+                        }));
+
+                        showPopupAlert('🔑 ยินดีต้อนรับผู้ดูแลระบบ! กำลังไปหน้า Admin Dashboard...', 'success');
+                        setTimeout(() => {
+                            window.location.href = ADMIN_DASHBOARD_PATH;
+                        }, 800);
+                    } else {
+                        showPopupAlert('🎉 ล็อกอินสำเร็จ!', 'success');
+                        setTimeout(() => {
+                            if (authModalInstance) authModalInstance.hide();
+                            btnSubmit.disabled = false;
+                            btnSubmit.innerHTML = `<i class="bi bi-box-arrow-in-right me-1"></i>ลงชื่อเข้าใช้งาน`;
+                            loginForm.reset();
+                            checkUserLevel();
+                        }, 800);
+                    }
                 }
 
             } catch (err) {
@@ -245,7 +282,6 @@ function setupPopupAuthListeners() {
         });
     }
 
-    // 2. ฟอร์มสมัครสมาชิก (Register)
     const regForm = document.getElementById('form-popup-register');
     if (regForm) {
         regForm.addEventListener('submit', async function(e) {
@@ -279,7 +315,7 @@ function setupPopupAuthListeners() {
                         data: {
                             username: username,
                             avatar_url: avatarPublicUrl,
-                            role: 'user'
+                            role: username.toLowerCase() === 'admin' ? 'admin' : 'user'
                         }
                     }
                 });
@@ -313,6 +349,8 @@ function setupPopupAuthListeners() {
 }
 
 async function logoutMainSystem() {
+    sessionStorage.removeItem('gyver_admin_session');
+
     if (window.supabaseClient) {
         await window.supabaseClient.auth.signOut();
         checkUserLevel();

@@ -1,0 +1,31 @@
+ body { 
+    background-color: #1e1e2f; 
+    color: #f8f9fa; 
+    font-family: 'Kanit', sans-serif;
+}
+
+.card-custom { 
+    background-color: #27293d; 
+    border: none; 
+    border-radius: 12px; 
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2); 
+}
+
+.list-item-custom { 
+    background-color: #1d1e2f !important; 
+    border: 1px solid #2b354f !important; 
+    color: white !important; 
+    transition: background 0.2s; 
+}
+
+.list-item-custom:hover { 
+    background-color: #222437 !important; 
+}
+
+.quiz-choice-preview-box {
+    white-space: pre-wrap;
+    font-family: 'Courier New', monospace;
+    background: rgba(0,0,0,0.2);
+    padding: 4px 8px;
+    border-radius: 4px;
+}

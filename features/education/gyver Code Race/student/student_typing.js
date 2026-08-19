@@ -13,6 +13,13 @@ let lastProgressMilestone = 0;
 let progressPercent = 0;
 let isQuizActive = false;
 
+// ⚙️ ตัวแปรเก็บ Match Config ที่รับมาจากครูสดๆ
+let matchConfig = {
+    gold: { enabled: true, amount: 3, milestone: '10%' },
+    items: { enabled: true, shield: true, blind: true, freeze: true, boost: true },
+    quiz: { enabled: false, reward_gold: 2 }
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
     roomCode = urlParams.get('room') || 'RACE88';
@@ -50,7 +57,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (inputArea) {
-        // 💾 ดึงโค้ดที่เคยพิมพ์ค้างไว้กลับมาหากกดรีเฟรชหน้าเว็บ
         const savedDraft = localStorage.getItem(`draft_code_${roomCode}_${studentNo}`);
         if (savedDraft) {
             inputArea.value = savedDraft;
@@ -68,34 +74,66 @@ document.addEventListener('DOMContentLoaded', () => {
         inputArea.addEventListener('paste', (e) => e.preventDefault());
         inputArea.addEventListener('input', handleTypingCheck);
 
-        // ตรวจสอบเช็กคำทันทีถ้ารีเฟรชกลับมาแล้วมีโค้ดค้างอยู่
         if (inputArea.value.length > 0) {
             handleTypingCheck();
         }
     }
 
-    fetchMatchConfig();
+    // 📡 โหลด Config เริ่มต้น และเปิดฟัง Realtime ปรับเปลี่ยนกลางเกม
+    fetchAndListenMatchConfig();
 });
 
-async function fetchMatchConfig() {
+// 📡 ฟังการสวิตช์เปิด-ปิดตั้งค่าสดๆ จากคุณครู
+async function fetchAndListenMatchConfig() {
     try {
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+            // 1. ดึงค่าเริ่มต้น
             const { data } = await supabaseClient
                 .from('lobbies')
                 .select('match_config')
                 .eq('room_code', roomCode)
                 .maybeSingle();
 
-            if (data && data.match_config && data.match_config.target_code) {
-                targetCode = data.match_config.target_code;
-                const targetDisplay = document.getElementById('target-code-display');
-                if (targetDisplay) {
-                    targetDisplay.innerText = targetCode;
-                    document.getElementById('char-count').innerText = `0 / ${targetCode.length} CHARS`;
-                }
+            if (data && data.match_config) {
+                applyMatchConfig(data.match_config);
             }
+
+            // 2. ⚡ ฟัง Broadcast จากครูกลางเกมเมื่อกดเปิด-ปิดสวิตช์
+            const channel = supabaseClient.channel(`room_signal_${roomCode}`);
+            channel.on('broadcast', { event: 'config_updated' }, (payload) => {
+                if (payload && payload.payload) {
+                    console.log("⚡ ครูกดเปลี่ยนตั้งค่ากลางเกม!", payload.payload);
+                    applyMatchConfig(payload.payload);
+                    addCombatLog("⚙️ คุณครูได้ทำการอัปเดตตั้งค่าการแข่งขันกลางสนาม!");
+                }
+            }).subscribe();
         }
     } catch (e) {}
+}
+
+// 🎨 ปรับเปลี่ยนการทำงานในเครื่องเด็กตาม Config ใหม่
+function applyMatchConfig(cfg) {
+    if (!cfg) return;
+    matchConfig = cfg;
+
+    // อัปเดตโจทย์ถ้าครูเปลี่ยนโจทย์
+    if (cfg.target_code) {
+        targetCode = cfg.target_code;
+        const targetDisplay = document.getElementById('target-code-display');
+        if (targetDisplay) targetDisplay.innerText = targetCode;
+    }
+
+    // ปรับการใช้งานร้านค้า
+    const shopBtn = document.querySelector('.btn-cyber-shop');
+    if (shopBtn) {
+        if (cfg.items && cfg.items.enabled === false) {
+            shopBtn.classList.add('disabled');
+            shopBtn.setAttribute('disabled', 'true');
+        } else {
+            shopBtn.classList.remove('disabled');
+            shopBtn.removeAttribute('disabled');
+        }
+    }
 }
 
 function handleTypingCheck() {
@@ -110,7 +148,6 @@ function handleTypingCheck() {
         startTime = new Date();
     }
 
-    // 💾 บันทึก Draft ลง LocalStorage ป้องกันหายเมื่อรีเฟรช
     localStorage.setItem(`draft_code_${roomCode}_${studentNo}`, userText);
 
     document.getElementById('char-count').innerText = `${userText.length} / ${targetCode.length} CHARS`;
@@ -133,22 +170,28 @@ function handleTypingCheck() {
             document.getElementById('wpm-counter').innerText = wpm;
         }
 
-        const currentMilestone = Math.floor(progressPercent / 10);
-        if (currentMilestone > lastProgressMilestone) {
-            const earned = (currentMilestone - lastProgressMilestone) * 3;
-            currentGold += earned;
-            lastProgressMilestone = currentMilestone;
-            document.getElementById('gold-count').innerText = currentGold;
-            addCombatLog(`🎉 พิมพ์ถึง ${currentMilestone * 10}% ได้รับ +${earned} GOLD!`);
+        // แจก Gold ตามเงื่อนไขปัจจุบัน
+        const step = parseInt(matchConfig.gold?.milestone || '10') || 10;
+        const reward = matchConfig.gold?.amount ?? 3;
 
-            if ([3, 6].includes(currentMilestone)) {
+        const currentMilestone = Math.floor(progressPercent / step);
+        if (currentMilestone > lastProgressMilestone) {
+            if (matchConfig.gold?.enabled !== false) {
+                const earned = (currentMilestone - lastProgressMilestone) * reward;
+                currentGold += earned;
+                document.getElementById('gold-count').innerText = currentGold;
+                addCombatLog(`🎉 พิมพ์ถึง ${currentMilestone * step}% ได้รับ +${earned} GOLD!`);
+            }
+            lastProgressMilestone = currentMilestone;
+
+            // ตรวจสอบระบบคำถามกวนใจถ้าครูเปิดใช้งาน
+            if (matchConfig.quiz?.enabled && [3, 6].includes(currentMilestone)) {
                 triggerInterruptionQuiz();
             }
         }
 
         if (progressPercent === 100) {
             addCombatLog("🏁 เข้าเส้นชัยเรียบร้อยแล้ว!");
-            // เคลียร์ Draft เมื่อแข่งเสร็จ
             localStorage.removeItem(`draft_code_${roomCode}_${studentNo}`);
         }
 
@@ -165,7 +208,6 @@ function handleTypingCheck() {
 async function syncTypingData(typedCode, progress, wpm, errors) {
     try {
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-            
             const channel = supabaseClient.channel(`room_typing_${roomCode}`);
             await channel.send({
                 type: 'broadcast',
@@ -217,11 +259,12 @@ function triggerInterruptionQuiz() {
 
 function submitQuizAnswer(chosenOption) {
     const overlay = document.getElementById('quiz-interruption-overlay');
+    const reward = matchConfig.quiz?.reward_gold ?? 2;
     
     if (chosenOption === 3) {
-        currentGold += 2;
+        currentGold += reward;
         document.getElementById('gold-count').innerText = currentGold;
-        addCombatLog("✅ ตอบถูกต้อง! ได้รับ +2 GOLD รางวัล");
+        addCombatLog(`✅ ตอบถูกต้อง! ได้รับ +${reward} GOLD รางวัล`);
     } else {
         progressPercent = Math.max(0, progressPercent - 15);
         const newCharLength = Math.floor((targetCode.length * progressPercent) / 100);
@@ -263,6 +306,11 @@ async function sendEmojiReaction(emoji) {
 }
 
 function buyCard(cardType, price) {
+    if (matchConfig.items?.enabled === false) {
+        alert("❌ ร้านค้าถูกปิดใช้งานโดยคุณครู!");
+        return;
+    }
+
     if (currentGold < price) {
         alert("❌ Gold ไม่เพียงพอ!");
         return;

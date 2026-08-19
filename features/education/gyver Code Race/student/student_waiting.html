@@ -7,7 +7,7 @@
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@600;700&family=Kanit:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@600;700;800&family=Kanit:wght@400;600;700;800&display=swap" rel="stylesheet">
 
     <!-- Supabase Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -68,16 +68,23 @@
 
     <div class="container-fluid px-3 px-md-5" style="max-width: 1250px;">
         
-        <!-- ส่วนที่ 1: แถบบนแสดงรายชื่อนักเรียนที่เข้าร่วมแล้ว -->
+        <!-- ส่วนที่ 1: แถบบนแสดงรายชื่อนักเรียน + ปุ่มออกจากห้อง -->
         <div class="cyber-card p-3 mb-3">
-            <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
                 <div class="d-flex align-items-center gap-2">
                     <span class="badge bg-info font-mono fs-6 px-3 py-2">ROOM CODE: <span id="wait-room-code" class="text-warning fw-bold">----</span></span>
                     <span class="text-cyan font-mono small fw-bold"><i class="bi bi-people-fill me-1"></i>นักเรียนที่เข้าร่วมแล้ว (<span id="joined-count" class="text-warning">0</span> คน)</span>
                 </div>
-                <div class="d-flex align-items-center gap-2">
-                    <div class="radar-spinner-sm"></div>
-                    <span class="text-subtle font-mono small">SYNCING...</span>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="radar-spinner-sm"></div>
+                        <span class="text-subtle font-mono small">SYNCING ...</span>
+                    </div>
+
+                    <!-- 🚪 ปุ่มออกจากห้อง -->
+                    <button class="btn btn-outline-danger font-mono btn-sm px-3 rounded-pill fw-bold" onclick="openLeaveConfirmModal()">
+                        <i class="bi bi-box-arrow-right me-1"></i>ออกจากห้อง
+                    </button>
                 </div>
             </div>
 
@@ -123,7 +130,7 @@
                 </div>
             </div>
 
-            <!-- ส่วนที่ 3: ฝั่งขวา รายละเอียดการแข่ง + การ์ดไอเทมในร้าน -->
+            <!-- ส่วนที่ 3: ฝั่งขวา รายละเอียดการแข่ง -->
             <div class="col-lg-8">
                 <div class="cyber-card p-4 h-100 d-flex flex-column justify-content-between">
                     
@@ -182,11 +189,28 @@
 
                 </div>
             </div>
-
         </div>
 
     </div>
 
+    <!-- 🌟 Cyberpunk Confirm Modal สำหรับยืนยันการออกจากห้อง -->
+    <div class="modal fade" id="leaveConfirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content bg-dark text-white border-danger rounded-4 p-3 text-center shadow-lg font-mono">
+                <div class="modal-body p-2">
+                    <div class="text-danger mb-2 fs-1"><i class="bi bi-box-arrow-right"></i></div>
+                    <h5 class="fw-bold text-danger mb-2">ยืนยันการออกจากห้อง</h5>
+                    <p class="text-subtle small mb-4">คุณต้องการออกจากห้องแข่งขันใช่หรือไม่?</p>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-secondary w-50 py-2" data-bs-dismiss="modal">ยกเลิก</button>
+                        <button type="button" class="btn btn-danger fw-bold w-50 py-2" id="btn-confirm-leave" onclick="confirmLeaveRoom()">ออกจากห้อง</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="student_waiting.js"></script>
 </body>
 </html>

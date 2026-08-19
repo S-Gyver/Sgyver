@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gyver Code Race - Summary & Leaderboard</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@600;700;800&family=Kanit:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../../../assets/js/supabaseClient.js"></script>
+
+    <!-- CSS External Files -->
+    <link rel="stylesheet" href="teacher_lobby.css">
+    <link rel="stylesheet" href="race_summary.css">
+</head>
+
+<body class="cyber-body py-4">
+
+    <div class="container" style="max-width: 900px;">
+
+        <!-- Header Bar -->
+        <div class="cyber-card p-3 mb-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="game-icon bg-warning text-dark fs-2" style="width: 55px; height: 55px;">
+                    <i class="bi bi-trophy-fill"></i>
+                </div>
+                <div>
+                    <h4 class="fw-bold text-white m-0 font-mono">MATCH SUMMARY & LEADERBOARD</h4>
+                    <p class="text-subtle small m-0 mt-1 font-mono">สรุปผลการแข่งขันห้อง: <span class="text-warning fw-bold" id="summary-room-code">----</span> (ห้องเรียน <span id="summary-class-key">--/--</span>)</p>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <!-- 🏠 แก้ไข path นำทางกลับไปยังหน้า index.html -->
+                <a href="../../../../index.html" class="btn btn-warning font-mono fw-bold">
+                    <i class="bi bi-house-door-fill me-1"></i>กลับหน้าหลัก
+                </a>
+            </div>
+        </div>
+
+        <!-- 🏆 1. แท่นรับรางวัล PODIUM (TOP 3) -->
+        <div class="cyber-card p-4 mb-4">
+            <h5 class="fw-bold text-center text-warning font-mono mb-4">
+                <i class="bi bi-award-fill me-2"></i>ผู้ชนะการแข่งขัน 3 อันดับแรก (TOP 3 RACERS)
+            </h5>
+
+            <div class="podium-box" id="podium-container">
+                <div class="text-center text-subtle font-mono py-4 w-100">กำลังประมวลผลอันดับ...</div>
+            </div>
+        </div>
+
+        <!-- 📊 2. ตารางสรุปคะแนนทั้งหมด (ALL PLAYERS RANKING) -->
+        <div class="cyber-card p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold text-cyan font-mono m-0">
+                    <i class="bi bi-list-ol me-2"></i>ตารางอันดับและสถิติของผู้แข่งทุกคน
+                </h5>
+                <span class="badge bg-dark border border-secondary text-subtle font-mono" id="total-players-count">0 คน</span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table leaderboard-table font-mono m-0">
+                    <thead>
+                        <tr>
+                            <th class="text-center" style="width: 70px;">อันดับ</th>
+                            <th>ผู้เข้าแข่งขัน</th>
+                            <th class="text-center">ความคืบหน้า</th>
+                            <th class="text-center">สปีด (WPM)</th>
+                            <th class="text-center">สถานะ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-tbody">
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-subtle">กำลังโหลดข้อมูล...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="race_summary.js"></script>
+</body>
+
+</html>
