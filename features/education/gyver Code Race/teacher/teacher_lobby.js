@@ -1,76 +1,114 @@
 let currentRoomCode = '';
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // 🧹 เคลียร์ห้องเก่าของครูที่ค้างในฐานข้อมูลก่อน
+    await cleanupPreviousTeacherLobbies();
     generateNewRoomCode();
 });
 
-// สุ่มสร้างรหัสห้อง เช่น RACE88
-function generateNewRoomCode() {
-    const letters = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-    const numbers = "123456789";
-    
-    let code = "RACE";
-    for (let i = 0; i < 2; i++) {
-        code += numbers.charAt(Math.floor(Math.random() * numbers.length));
+// 🧹 เคลียร์ห้องสถานะ WAITING เก่าของครู
+async function cleanupPreviousTeacherLobbies() {
+    try {
+        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session?.user?.id) {
+                await supabaseClient
+                    .from('lobbies')
+                    .delete()
+                    .eq('status', 'WAITING');
+            }
+        }
+    } catch (e) {
+        console.warn("Cleanup error:", e);
     }
-
-    currentRoomCode = code;
-    const roomEl = document.getElementById('generated-room-code');
-    if (roomEl) roomEl.innerText = currentRoomCode;
 }
 
-function toggleTeamSettings(isTeam) {
-    // ฟังก์ชันจัดการการเปิด/ปิดตั้งค่าโหมดกลุ่ม
+// 🎲 สุ่มสร้างรหัสห้อง 4 หลัก
+function generateNewRoomCode() {
+    const randomCode = Math.floor(1000 + Math.random() * 9000).toString();
+    currentRoomCode = randomCode;
+
+    const roomDisplay = document.getElementById('display-room-code');
+    if (roomDisplay) roomDisplay.innerText = currentRoomCode;
+
+    const joinUrl = `${window.location.origin}/features/education/gyver%20Code%20Race/student/student_lobby.html?room=${currentRoomCode}`;
+    updateQRCode(joinUrl);
 }
 
-// ครูสั่งกดสร้างห้องแข่ง
-async function handleCreateLobby(e) {
-    e.preventDefault();
+// 📲 สร้างรูป QR Code สแกนเข้าห้อง
+function updateQRCode(url) {
+    const qrBox = document.getElementById('qrcode-box');
+    if (!qrBox) return;
+    
+    qrBox.innerHTML = '';
+    try {
+        if (typeof QRCode !== 'undefined') {
+            new QRCode(qrBox, {
+                text: url,
+                width: 110,
+                height: 110,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+        }
+    } catch (e) {
+        console.error("QR Code error:", e);
+    }
+}
 
-    const btnSubmit = document.getElementById('btn-create-lobby');
+function selectGameMode(mode, element) {
+    if (typeof selectedMode !== 'undefined') selectedMode = mode;
+    document.querySelectorAll('.mode-card').forEach(card => card.classList.remove('active'));
+    if (element) element.classList.add('active');
+}
+
+function toggleTeamConfig(isTeam) {
+    const panel = document.getElementById('team-config-panel');
+    if (panel) {
+        if (isTeam) panel.classList.remove('d-none');
+        else panel.classList.add('d-none');
+    }
+}
+
+// 🚀 ครูสั่งสร้างห้องแข่งขัน
+async function handleCreateLobby() {
+    const btnSubmit = document.getElementById('create-lobby-btn');
     if (btnSubmit) {
         btnSubmit.disabled = true;
         btnSubmit.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>กำลังสร้างห้องแข่งขัน...`;
     }
 
-    const gameMode = document.querySelector('input[name="gameMode"]:checked')?.value || 'typing';
+    const roomCode = document.getElementById('display-room-code')?.innerText.trim() || currentRoomCode;
+    const gameMode = typeof selectedMode !== 'undefined' ? selectedMode : 'typing';
     const matchType = document.querySelector('input[name="matchType"]:checked')?.value || 'solo';
-    const level = document.getElementById('teacher-level')?.value || 'ม.5';
-    const room = document.getElementById('teacher-room')?.value || '10';
     
-    const cleanLevel = level.replace('ม.', '').trim();
-    const classKey = `${cleanLevel}/${room}`; // เช่น "5/10"
+    let teamSize = '1';
+    let teamAssign = 'none';
+
+    if (matchType === 'team') {
+        teamSize = document.getElementById('team-size-select')?.value || '2';
+        teamAssign = document.getElementById('team-assign-select')?.value || 'auto_random';
+    }
 
     try {
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-            
-            const lobbyPayload = {
-                room_code: currentRoomCode,
-                game_mode: gameMode,
-                match_type: matchType,
-                class_key: classKey,
-                status: 'WAITING',
-                created_at: new Date().toISOString()
-            };
-
-            // บันทึกสร้างห้องแข่งใหม่ลงตาราง lobbies
-            const { data, error } = await supabaseClient
+            await supabaseClient
                 .from('lobbies')
-                .upsert([lobbyPayload], { onConflict: 'room_code' })
-                .select();
-
-            if (error) {
-                console.error("Lobby Creation Error:", error.message, error.details);
-            } else {
-                console.log("สร้างห้องลงตาราง lobbies สำเร็จ:", data);
-            }
+                .upsert([{
+                    room_code: roomCode,
+                    game_mode: gameMode,
+                    match_type: matchType,
+                    status: 'WAITING',
+                    players: [],
+                    created_at: new Date().toISOString()
+                }], { onConflict: 'room_code' });
         }
     } catch (err) {
-        console.error("Create Lobby Catch Error:", err);
+        console.error("Create Lobby Error:", err);
     }
 
-    // 🚀 นำทางไปหน้าตั้งค่าและคุมการแข่ง (typing_control.html)
     setTimeout(() => {
-        window.location.href = `typing_control.html?room=${currentRoomCode}&mode=${gameMode}&type=${matchType}&classKey=${encodeURIComponent(classKey)}`;
-    }, 500);
+        window.location.href = `typing_control.html?room=${roomCode}&mode=${gameMode}&type=${matchType}&teamSize=${teamSize}&teamAssign=${teamAssign}`;
+    }, 300);
 }

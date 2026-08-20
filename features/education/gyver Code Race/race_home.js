@@ -1,7 +1,6 @@
 let html5QrCodeScanner = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-    // ผูก Event Listener สำรองสำหรับ Quick Join
     const quickJoinBtn = document.getElementById('btn-quick-join');
     const quickRoomInput = document.getElementById('quick-room-code');
 
@@ -9,10 +8,10 @@ document.addEventListener('DOMContentLoaded', () => {
         quickJoinBtn.addEventListener('click', () => {
             const roomCode = quickRoomInput.value.trim().toUpperCase();
             if (!roomCode) {
-                alert('กรุณากรอกรหัสห้องก่อนครับ!');
+                showCyberAlert('ข้อผิดพลาด', 'กรุณากรอกรหัสห้องก่อนครับ!', 'warning');
                 return;
             }
-            window.location.href = `student/student_lobby.html?room=${roomCode}`;
+            validateRoomAndRedirect(roomCode);
         });
 
         quickRoomInput.addEventListener('keypress', (e) => {
@@ -23,18 +22,86 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// 🚀 ฟังก์ชันสำหรับกด Join ห้องปกติ
+// 🟢 1. สั่งโชว์ Cyberpunk Alert Modal แทน alert() ดั้งเดิม
+function showCyberAlert(title, message, type = 'warning') {
+    const titleEl = document.getElementById('cyber-alert-title');
+    const msgEl = document.getElementById('cyber-alert-message');
+    const iconEl = document.getElementById('cyber-alert-icon');
+    const modalEl = document.getElementById('cyberAlertModal');
+
+    if (titleEl) titleEl.innerText = title;
+    if (msgEl) msgEl.innerText = message;
+    
+    if (iconEl) {
+        if (type === 'danger') {
+            iconEl.innerHTML = `<i class="bi bi-x-circle-fill text-danger"></i>`;
+            if (titleEl) titleEl.className = "fw-bold text-danger mb-2";
+        } else {
+            iconEl.innerHTML = `<i class="bi bi-exclamation-triangle-fill text-warning"></i>`;
+            if (titleEl) titleEl.className = "fw-bold text-warning mb-2";
+        }
+    }
+
+    if (modalEl && typeof bootstrap !== 'undefined') {
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    } else {
+        alert(`${title}: ${message}`);
+    }
+}
+
+// 🟢 2. เช็กความมีอยู่จริงของห้องในตาราง lobbies ก่อนพาไปหน้า student_lobby
+async function validateRoomAndRedirect(roomCode) {
+    if (!roomCode) {
+        showCyberAlert("แจ้งเตือน", "กรุณากรอกรหัสห้องก่อนครับ!", "warning");
+        return;
+    }
+
+    const submitBtn = document.querySelector('#join-room-form button[type="submit"]');
+    let originalText = '';
+    if (submitBtn) {
+        originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> เช็กห้อง...`;
+    }
+
+    try {
+        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+            let { data: lobbyData, error } = await supabaseClient
+                .from('lobbies')
+                .select('room_code, status')
+                .eq('room_code', roomCode)
+                .maybeSingle();
+
+            // 🛑 ถ้าไม่พบห้องในฐานข้อมูล lobbies
+            if (error || !lobbyData) {
+                showCyberAlert("ไม่พบห้องแข่งขัน", `ไม่พบห้องหมายเลข "${roomCode}" ในระบบ กรุณาตรวจสอบรหัสห้อง หรือรอคุณครูเปิดห้องก่อนครับ`, "danger");
+                resetSubmitBtn(submitBtn, originalText);
+                return;
+            }
+        }
+    } catch (err) {
+        console.error("Check lobby error:", err);
+    }
+
+    // ✅ พบห้องแข่งขันจริง พาเข้าสู่หน้าตั้งค่าโปรไฟล์นักเรียน
+    window.location.href = `student/student_lobby.html?room=${roomCode}`;
+}
+
+function resetSubmitBtn(btn, text) {
+    if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = text;
+    }
+}
+
+// 🚀 ฟังก์ชันกดปุ่ม JOIN หน้าแรก
 function handleJoinRoom(e) {
     if (e) e.preventDefault();
     const codeInput = document.getElementById('room-code-input');
     const code = codeInput ? codeInput.value.trim().toUpperCase() : '';
     
-    if (!code) {
-        alert('กรุณากรอกรหัสห้องก่อนครับ!');
-        return;
-    }
-
-    window.location.href = `student/student_lobby.html?room=${code}`;
+    validateRoomAndRedirect(code);
 }
 
 // 📷 เปิด Modal สแกน QR Code
@@ -57,7 +124,7 @@ function startQrScanner() {
     }
 
     if (typeof Html5Qrcode === 'undefined') {
-        alert('⚠️ ระบบสแกน QR Code ยังโหลดไม่สมบูรณ์ กรุณาลองใหม่อีกครั้ง');
+        showCyberAlert("ระบบขัดข้อง", "ระบบสแกน QR Code ยังโหลดไม่สมบูรณ์ กรุณาลองใหม่อีกครั้ง", "danger");
         return;
     }
 
@@ -75,7 +142,7 @@ function startQrScanner() {
         onQrCodeScanError
     ).catch(err => {
         console.error("Camera access error:", err);
-        alert("⚠️ ไม่สามารถเปิดกล้องได้ กรุณาอนุญาตสิทธิ์การใช้งานกล้องในเบราว์เซอร์ครับ");
+        showCyberAlert("กล้องขัดข้อง", "ไม่สามารถเปิดกล้องได้ กรุณาอนุญาตสิทธิ์การใช้งานกล้องในเบราว์เซอร์ครับ", "danger");
     });
 }
 
@@ -83,18 +150,19 @@ function startQrScanner() {
 function onQrCodeScanSuccess(decodedText) {
     stopQrScanner();
 
-    // 1. กรณี QR Code เป็น Link แบบเต็ม (เช่น https://.../student_lobby.html?room=8090)
+    let extractedRoomCode = '';
+
     if (decodedText.includes("room=")) {
-        window.location.href = decodedText;
-        return;
+        const urlParams = new URLSearchParams(decodedText.split('?')[1]);
+        extractedRoomCode = (urlParams.get('room') || '').trim().toUpperCase();
+    } else {
+        extractedRoomCode = decodedText.trim().toUpperCase();
     }
 
-    // 2. กรณี QR Code เป็นรหัสห้อง 4 หลัก (เช่น 8090)
-    const cleanRoomCode = decodedText.trim().toUpperCase();
-    if (cleanRoomCode) {
-        window.location.href = `student/student_lobby.html?room=${cleanRoomCode}`;
+    if (extractedRoomCode) {
+        validateRoomAndRedirect(extractedRoomCode);
     } else {
-        alert("❌ QR Code ไม่ถูกต้อง กรุณาสแกนใหม่อีกครั้ง");
+        showCyberAlert("QR Code ไม่ถูกต้อง", "QR Code ไม่ถูกต้อง กรุณาสแกนใหม่อีกครั้ง", "danger");
         openQRCamera();
     }
 }
@@ -103,7 +171,6 @@ function onQrCodeScanError(errorMessage) {
     // อยู่ระหว่างค้นหา QR Code
 }
 
-// 🛑 ปิดกล้องและปิด Modal
 function closeQRCamera() {
     stopQrScanner();
 

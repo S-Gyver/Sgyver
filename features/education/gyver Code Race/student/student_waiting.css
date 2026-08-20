@@ -146,3 +146,31 @@ body.cyber-body {
 .animate-pulse {
     animation: pulseGlow 2s infinite !important;
 }
+
+/* 🔔 Custom Cyber Toast Alert สไตล์นีออนอ่านง่าย */
+.cyber-toast-alert {
+    background: rgba(13, 17, 28, 0.95) !important;
+    border: 1px solid #00f2fe !important;
+    color: #ffffff !important;
+    border-radius: 14px !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 15px rgba(0, 242, 254, 0.25) !important;
+    backdrop-filter: blur(10px) !important;
+    padding: 12px 20px !important;
+    font-family: 'Kanit', sans-serif !important;
+    z-index: 99999 !important;
+}
+
+/* สีข้อความเน้นย้ำ */
+.cyber-toast-alert .highlight-name {
+    color: #ff007f !important; /* สีชมพูนีออนเน้นชื่อนักเรียน */
+    font-weight: 700 !important;
+}
+
+/* สีปุ่มปิด X */
+.cyber-toast-alert .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%) !important;
+    opacity: 0.8;
+}
+.cyber-toast-alert .btn-close:hover {
+    opacity: 1;
+}

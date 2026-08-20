@@ -1,5 +1,4 @@
-let roomCode = 'RACE88';
-let classKey = 'General';
+let roomCode = '8090';
 let autoSaveTimer = null;
 let typingProblemStock = [];
 let studentList = [];
@@ -9,8 +8,7 @@ let pendingKickStudentNo = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
     const urlParams = new URLSearchParams(window.location.search);
-    roomCode = (urlParams.get('room') || '8592').trim().toUpperCase();
-    classKey = urlParams.get('classKey') || roomCode; // 🟢 ใช้ roomCode เป็น classKey สื่อสารตรงกัน
+    roomCode = (urlParams.get('room') || '8090').trim().toUpperCase();
 
     const roomDisplay = document.getElementById('display-room-code');
     if (roomDisplay) roomDisplay.innerText = roomCode;
@@ -18,50 +16,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupQRCode(roomCode);
     bindAutoSaveEvents();
 
-    // 🟢 ลงทะเบียนห้อง 4 หลักในตาราง lobbies และสร้างห้องใน class_rooms พร้อมรับเด็ก
-    await registerRoomInDatabase(roomCode, classKey);
-
+    await registerRoomInDatabase(roomCode);
     await initPageData();
+    
+    // 🟢 ฟังข้อมูลนักเรียนแบบ Realtime
     fetchAndListenStudents();
 });
 
-// 📌 ฟังก์ชันสร้าง/ลงทะเบียนห้องลง Supabase
-async function registerRoomInDatabase(code, key) {
+async function registerRoomInDatabase(code) {
     try {
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
             const initialConfig = getGameSettingsConfig();
             
-            // 1. ลงทะเบียนห้องแข่งใน lobbies
             await supabaseClient
                 .from('lobbies')
                 .upsert({
                     room_code: code,
-                    class_key: key,
                     status: 'WAITING',
                     match_config: initialConfig,
                     created_at: new Date().toISOString()
                 }, { onConflict: 'room_code' });
-
-            // 2. สร้างแถวห้องเรียนใน class_rooms สำหรับเก็บเด็กที่ Join
-            const { data: existingClass } = await supabaseClient
-                .from('class_rooms')
-                .select('class_key')
-                .eq('class_key', key)
-                .maybeSingle();
-
-            if (!existingClass) {
-                await supabaseClient
-                    .from('class_rooms')
-                    .insert([{ class_key: key, players: [] }]);
-            }
         }
     } catch (err) {
         console.error("Register room catch error:", err);
     }
 }
 
-// 🟢 ดักจับเหตุการณ์ BFCache เมื่อกดย้อนกลับ
-window.addEventListener('pageshow', async (event) => {
+window.addEventListener('pageshow', async () => {
     await initPageData();
 });
 
@@ -70,9 +51,7 @@ async function initPageData() {
     await loadQuizSubjectsFromCentralBank();
     
     const quizSwitch = document.getElementById('quiz-toggle-switch');
-    if (quizSwitch) {
-        toggleQuizSettings(quizSwitch.checked);
-    }
+    if (quizSwitch) toggleQuizSettings(quizSwitch.checked);
 }
 
 async function loadQuizSubjectsFromCentralBank() {
@@ -96,7 +75,6 @@ async function loadQuizSubjectsFromCentralBank() {
                 .order('subject_key', { ascending: true });
 
             if (error) {
-                console.error("Fetch quiz_subjects error:", error.message);
                 selectBox.innerHTML = `<option value="">เกิดข้อผิดพลาดในการดึงคลังโจทย์</option>`;
                 return;
             }
@@ -124,8 +102,6 @@ function setupQRCode(code) {
         const origin = window.location.origin;
         const pathname = window.location.pathname;
         const basePath = pathname.substring(0, pathname.indexOf('/teacher/'));
-        
-        // 🟢 แก้ไข Path ชี้ไปยัง student_lobby.html ให้ถูกต้อง
         const joinUrl = `${origin}${basePath}/student/student_lobby.html?room=${code}`;
 
         try {
@@ -138,29 +114,17 @@ function setupQRCode(code) {
     }
 }
 
-function openCloseRoomModal() {
-    const modalEl = document.getElementById('closeRoomModal');
-    if (modalEl) {
-        const modal = new bootstrap.Modal(modalEl);
-        modal.show();
-    }
-}
-
-function confirmCloseRoom() {
-    window.location.href = 'teacher_lobby.html';
-}
-
 async function fetchAndListenStudents() {
     await fetchStudents();
 
     if (typeof supabaseClient !== 'undefined' && supabaseClient) {
         supabaseClient
-            .channel(`class_rooms_sync_${classKey}`)
+            .channel(`lobbies_sync_${roomCode}`)
             .on('postgres_changes', {
                 event: 'UPDATE',
                 schema: 'public',
-                table: 'class_rooms',
-                filter: `class_key=eq.${classKey}`
+                table: 'lobbies',
+                filter: `room_code=eq.${roomCode}`
             }, (payload) => {
                 if (payload.new && Array.isArray(payload.new.players)) {
                     studentList = payload.new.players;
@@ -169,7 +133,10 @@ async function fetchAndListenStudents() {
             })
             .subscribe();
 
-        setInterval(fetchStudents, 1500);
+        const channel = supabaseClient.channel(`room_signal_${roomCode}`);
+        channel.on('broadcast', { event: 'player_left' }, () => {
+            fetchStudents();
+        }).subscribe();
     }
 }
 
@@ -177,17 +144,22 @@ async function fetchStudents() {
     try {
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
             let { data } = await supabaseClient
-                .from('class_rooms')
+                .from('lobbies')
                 .select('players')
-                .eq('class_key', classKey)
+                .eq('room_code', roomCode)
                 .maybeSingle();
 
             if (data && Array.isArray(data.players)) {
                 studentList = data.players;
                 renderStudentsUI();
+            } else {
+                studentList = [];
+                renderStudentsUI();
             }
         }
-    } catch (e) {}
+    } catch (e) {
+        console.error("Fetch students catch error:", e);
+    }
 }
 
 function renderStudentsUI() {
@@ -195,7 +167,7 @@ function renderStudentsUI() {
     const approvedGrid = document.getElementById('approved-list-grid');
 
     const pendingList = studentList.filter(s => s.status === 'pending');
-    const approvedList = studentList.filter(s => s.status !== 'pending');
+    const approvedList = studentList.filter(s => s.status === 'approved');
 
     if (document.getElementById('pending-count')) document.getElementById('pending-count').innerText = pendingList.length;
     if (document.getElementById('approved-count')) document.getElementById('approved-count').innerText = approvedList.length;
@@ -249,20 +221,24 @@ async function approveStudent(studentNo) {
     try {
         studentList = studentList.map(s => String(s.number) === String(studentNo) ? { ...s, status: 'approved' } : s);
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-            await supabaseClient.from('class_rooms').update({ players: studentList }).eq('class_key', classKey);
+            await supabaseClient.from('lobbies').update({ players: studentList }).eq('room_code', roomCode);
         }
         renderStudentsUI();
-    } catch (e) {}
+    } catch (e) {
+        console.error("Approve student error:", e);
+    }
 }
 
 async function approveAllStudents() {
     try {
         studentList = studentList.map(s => ({ ...s, status: 'approved' }));
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-            await supabaseClient.from('class_rooms').update({ players: studentList }).eq('class_key', classKey);
+            await supabaseClient.from('lobbies').update({ players: studentList }).eq('room_code', roomCode);
         }
         renderStudentsUI();
-    } catch (e) {}
+    } catch (e) {
+        console.error("Approve all students error:", e);
+    }
 }
 
 function kickStudent(studentNo) {
@@ -299,7 +275,14 @@ async function executeConfirmedKickStudent() {
         studentList = studentList.filter(s => String(s.number) !== String(pendingKickStudentNo));
 
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-            await supabaseClient.from('class_rooms').update({ players: studentList }).eq('class_key', classKey);
+            await supabaseClient.from('lobbies').update({ players: studentList }).eq('room_code', roomCode);
+
+            const channel = supabaseClient.channel(`room_signal_${roomCode}`);
+            await channel.send({
+                type: 'broadcast',
+                event: 'kicked_out',
+                payload: { number: pendingKickStudentNo, name: targetName }
+            });
         }
 
         renderStudentsUI();
@@ -316,10 +299,12 @@ async function clearAllApprovedStudents() {
     try {
         studentList = [];
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-            await supabaseClient.from('class_rooms').update({ players: [] }).eq('class_key', classKey);
+            await supabaseClient.from('lobbies').update({ players: [] }).eq('room_code', roomCode);
         }
         renderStudentsUI();
-    } catch (e) {}
+    } catch (e) {
+        console.error("Clear approved students error:", e);
+    }
 }
 
 async function addNewProblemToStock() {
@@ -329,10 +314,7 @@ async function addNewProblemToStock() {
     const title = titleEl ? titleEl.value.trim() : '';
     const code = codeEl ? codeEl.value.trim() : '';
 
-    if (!title || !code) {
-        alert("⚠️ กรุณากรอกทั้งชื่อหัวข้อโจทย์และโค้ดต้นแบบก่อนครับ!");
-        return;
-    }
+    if (!title || !code) return alert("⚠️ กรุณากรอกทั้งชื่อหัวข้อโจทย์และโค้ดต้นแบบก่อนครับ!");
 
     try {
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
@@ -345,10 +327,7 @@ async function addNewProblemToStock() {
                     created_at: new Date().toISOString()
                 }]);
 
-            if (error) {
-                alert("❌ เกิดข้อผิดพลาดในการบันทึกโจทย์: " + error.message);
-                return;
-            }
+            if (error) return alert("❌ เกิดข้อผิดพลาดในการบันทึกโจทย์: " + error.message);
 
             const modalEl = document.getElementById('addStockProblemModal');
             if (modalEl) {
@@ -371,10 +350,7 @@ function openEditProblemModal() {
     const selectBox = document.getElementById('saved-problems-select');
     const currentId = selectBox ? selectBox.value : null;
 
-    if (!currentId) {
-        alert("⚠️ กรุณาเลือกโจทย์ที่ต้องการแก้ไขก่อนครับ!");
-        return;
-    }
+    if (!currentId) return alert("⚠️ กรุณาเลือกโจทย์ที่ต้องการแก้ไขก่อนครับ!");
 
     const problem = typingProblemStock.find(p => String(p.id) === String(currentId));
     if (!problem) return;
@@ -395,25 +371,16 @@ async function saveEditedProblem() {
     const title = document.getElementById('edit-prob-title')?.value.trim();
     const code = document.getElementById('edit-prob-code')?.value.trim();
 
-    if (!title || !code) {
-        alert("⚠️ กรุณากรอกทั้งชื่อหัวข้อโจทย์และโค้ดก่อนครับ!");
-        return;
-    }
+    if (!title || !code) return alert("⚠️ กรุณากรอกทั้งชื่อหัวข้อโจทย์และโค้ดก่อนครับ!");
 
     try {
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
             const { error } = await supabaseClient
                 .from('game_problems')
-                .update({
-                    title: title,
-                    starter_code: code
-                })
+                .update({ title: title, starter_code: code })
                 .eq('id', id);
 
-            if (error) {
-                alert("❌ บันทึกแก้ไขล้มเหลว: " + error.message);
-                return;
-            }
+            if (error) return alert("❌ บันทึกแก้ไขล้มเหลว: " + error.message);
 
             const modalEl = document.getElementById('editProblemModal');
             if (modalEl) {
@@ -433,10 +400,7 @@ function openDeleteProblemModal() {
     const selectBox = document.getElementById('saved-problems-select');
     const currentId = selectBox ? selectBox.value : null;
 
-    if (!currentId) {
-        alert("⚠️ กรุณาเลือกโจทย์ที่ต้องการลบก่อนครับ!");
-        return;
-    }
+    if (!currentId) return alert("⚠️ กรุณาเลือกโจทย์ที่ต้องการลบก่อนครับ!");
 
     const problem = typingProblemStock.find(p => String(p.id) === String(currentId));
     if (!problem) return;
@@ -459,15 +423,8 @@ async function confirmDeleteProblem() {
 
     try {
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-            const { error } = await supabaseClient
-                .from('game_problems')
-                .delete()
-                .eq('id', currentId);
-
-            if (error) {
-                alert("❌ ลบโจทย์ล้มเหลว: " + error.message);
-                return;
-            }
+            const { error } = await supabaseClient.from('game_problems').delete().eq('id', currentId);
+            if (error) return alert("❌ ลบโจทย์ล้มเหลว: " + error.message);
 
             const modalEl = document.getElementById('deleteConfirmModal');
             if (modalEl) {
@@ -528,16 +485,10 @@ function toggleQuizSettings(isEnabled) {
     
     if (isEnabled) {
         if (zone) zone.classList.remove('d-none');
-        if (label) { 
-            label.innerText = "เปิดใช้งาน"; 
-            label.classList.replace('text-subtle', 'text-danger'); 
-        }
+        if (label) { label.innerText = "เปิดใช้งาน"; label.classList.replace('text-subtle', 'text-danger'); }
     } else {
         if (zone) zone.classList.add('d-none');
-        if (label) { 
-            label.innerText = "ปิดใช้งาน"; 
-            label.classList.replace('text-danger', 'text-subtle'); 
-        }
+        if (label) { label.innerText = "ปิดใช้งาน"; label.classList.replace('text-danger', 'text-subtle'); }
     }
     triggerAutoSave();
 }
@@ -547,18 +498,14 @@ function bindAutoSaveEvents() {
     selectors.forEach(sel => {
         document.querySelectorAll(sel).forEach(el => {
             el.addEventListener('change', triggerAutoSave);
-            if (el.tagName === 'INPUT' && el.type === 'number') {
-                el.addEventListener('input', triggerAutoSave);
-            }
+            if (el.tagName === 'INPUT' && el.type === 'number') el.addEventListener('input', triggerAutoSave);
         });
     });
 }
 
 function triggerAutoSave() {
     clearTimeout(autoSaveTimer);
-    autoSaveTimer = setTimeout(() => {
-        saveAndBroadcastMatchConfig();
-    }, 200);
+    autoSaveTimer = setTimeout(() => saveAndBroadcastMatchConfig(), 200);
 }
 
 async function saveAndBroadcastMatchConfig() {
@@ -719,49 +666,24 @@ async function togglePauseGame() {
 async function forceEndGame() {
     try {
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-            
             const channel = supabaseClient.channel(`room_signal_${roomCode}`);
             await channel.send({
                 type: 'broadcast',
                 event: 'end_game',
-                payload: { roomCode: roomCode, classKey: classKey }
+                payload: { roomCode: roomCode }
             });
 
-            const { error } = await supabaseClient
-                .from('lobbies')
-                .delete()
-                .eq('room_code', roomCode);
-
-            if (error) {
-                console.error("Delete lobby error:", error.message);
-            }
+            await supabaseClient.from('lobbies').delete().eq('room_code', roomCode);
 
             showToast("🏁 จบการแข่งขันเรียบร้อย กำลังไปหน้าสรุปผล...");
-
             setTimeout(() => {
-                window.location.href = `race_summary.html?room=${roomCode}&classKey=${encodeURIComponent(classKey)}`;
+                window.location.href = `race_summary.html?room=${roomCode}`;
             }, 1000);
         }
     } catch (e) {
         console.error("Force end game catch error:", e);
     }
 }
-
-async function cleanupOldLobbies() {
-    try {
-        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-            const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-            await supabaseClient
-                .from('lobbies')
-                .delete()
-                .lt('created_at', twentyFourHoursAgo);
-        }
-    } catch (e) {}
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    cleanupOldLobbies();
-});
 
 async function fetchProblemsFromDB() {
     try {
@@ -802,3 +724,40 @@ function showToast(msg) {
         }
     }
 }
+
+// 🚪 ฟังก์ชันลบห้องออกจากตาราง lobbies เมื่อครูกดปิดห้อง หรือกดย้อนกลับ
+async function removeLobbyFromDatabase() {
+    if (!roomCode) return;
+    try {
+        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+            const channel = supabaseClient.channel(`room_signal_${roomCode}`);
+            await channel.send({
+                type: 'broadcast',
+                event: 'room_closed',
+                payload: { roomCode: roomCode }
+            });
+
+            await supabaseClient
+                .from('lobbies')
+                .delete()
+                .eq('room_code', roomCode);
+        }
+    } catch (e) {
+        console.warn("Delete lobby error:", e);
+    }
+}
+
+// 🚪 ยืนยันการปิดห้องจาก Modal
+async function confirmCloseRoom() {
+    await removeLobbyFromDatabase();
+    window.location.href = 'teacher_lobby.html';
+}
+
+// 🟢 ดักจับเมื่อครูกดย้อนกลับ (Back Button), ปิดแท็บ หรือสลับหน้า
+window.addEventListener('beforeunload', () => {
+    removeLobbyFromDatabase();
+});
+
+window.addEventListener('pagehide', () => {
+    removeLobbyFromDatabase();
+});

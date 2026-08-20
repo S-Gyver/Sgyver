@@ -5,22 +5,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const className = urlParams.get('class') || 'ม.-/-';
     const no = urlParams.get('no') || '-';
     const team = urlParams.get('team') || '0';
-    
-    // 🟢 บังคับใช้ classKey จาก URL หรืออิงตาม roomCode ให้ตรงกันทุกจอ
-    const classKey = urlParams.get('classKey') || roomCode;
 
-    // 1. แสดงโปรไฟล์ตัวเอง
-    const waitRoomCode = document.getElementById('wait-room-code');
-    if (waitRoomCode) waitRoomCode.innerText = roomCode;
-
-    const waitNameText = document.getElementById('wait-name-text');
-    if (waitNameText) waitNameText.innerText = name;
-
-    const waitClassBadge = document.getElementById('wait-class-badge');
-    if (waitClassBadge) waitClassBadge.innerText = className;
-
-    const waitNoText = document.getElementById('wait-no-text');
-    if (waitNoText) waitNoText.innerText = no;
+    // 1. แสดงข้อมูลผู้ใช้
+    if (document.getElementById('wait-room-code')) document.getElementById('wait-room-code').innerText = roomCode;
+    if (document.getElementById('wait-name-text')) document.getElementById('wait-name-text').innerText = name;
+    if (document.getElementById('wait-class-badge')) document.getElementById('wait-class-badge').innerText = className;
+    if (document.getElementById('wait-no-text')) document.getElementById('wait-no-text').innerText = no;
     
     const teamBadge = document.getElementById('wait-team-badge');
     const ruleTypeText = document.getElementById('rule-type-text');
@@ -38,20 +28,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (savedData) {
         try {
             const profile = JSON.parse(savedData);
-            if (profile.avatarUrl) {
-                const avatarImg = document.getElementById('wait-avatar-img');
-                if (avatarImg) avatarImg.src = profile.avatarUrl;
+            if (profile.avatarUrl && document.getElementById('wait-avatar-img')) {
+                document.getElementById('wait-avatar-img').src = profile.avatarUrl;
             }
         } catch (e) {}
     }
 
-    // 2. ดึง Config เริ่มต้นของห้อง
+    // 2. ดึง Match Config เริ่มต้น
     await fetchInitialMatchConfig(roomCode);
 
-    // 3. 🟢 ดึงรายชื่อเพื่อนร่วมห้องและเปิด Realtime Sync
-    fetchAndListenJoinedPlayers(classKey, roomCode);
+    // 3. 🟢 ฟังและซิงก์รายชื่อผู้เล่น Realtime จากตาราง lobbies
+    fetchAndListenJoinedPlayers(roomCode);
 
-    // 4. ฟังคำสั่ง Realtime จากครู (เริ่มเกม/ปรับตั้งค่า)
+    // 4. ดักฟังคำสั่งจากครู (อนุมัติ/เริ่มเกม/ลบออกจากห้อง)
     listenTeacherRealtimeSignals(roomCode, name, className, no, team);
 });
 
@@ -112,55 +101,37 @@ function updateStudentConfigUI(cfg) {
     }
 }
 
-// 🟢 3. ดึงรายชื่อเพื่อนร่วมห้องสด และฟังเหตุการณ์อัปเดต
-async function fetchAndListenJoinedPlayers(classKey, roomCode) {
-    await fetchJoinedPlayers(classKey, roomCode);
+async function fetchAndListenJoinedPlayers(roomCode) {
+    await fetchJoinedPlayers(roomCode);
 
     if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-        // ฟังการอัปเดตแบบ Realtime
         supabaseClient
-            .channel(`waiting_sync_${roomCode}`)
+            .channel(`waiting_sync_lobbies_${roomCode}`)
             .on('postgres_changes', {
-                event: '*',
+                event: 'UPDATE',
                 schema: 'public',
-                table: 'class_rooms'
-            }, () => {
-                fetchJoinedPlayers(classKey, roomCode);
+                table: 'lobbies',
+                filter: `room_code=eq.${roomCode}`
+            }, (payload) => {
+                if (payload.new && Array.isArray(payload.new.players)) {
+                    renderJoinedPlayersUI(payload.new.players);
+                }
             })
             .subscribe();
-
-        // Polling สำรองเพื่อความนิ่ง
-        setInterval(() => fetchJoinedPlayers(classKey, roomCode), 1500);
     }
 }
 
-async function fetchJoinedPlayers(classKey, roomCode) {
+async function fetchJoinedPlayers(roomCode) {
     try {
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-            // 🟢 แก้ไข: ใช้ .select() ดึงแถวทั้งหมดที่อาจแมตช์ ไม่ใช้ .maybeSingle() ป้องกัน Error 400
-            let { data: rooms } = await supabaseClient
-                .from('class_rooms')
+            let { data: lobbyData } = await supabaseClient
+                .from('lobbies')
                 .select('players')
-                .or(`class_key.eq.${classKey},class_key.eq.${roomCode}`);
+                .eq('room_code', roomCode)
+                .maybeSingle();
 
-            if (rooms && rooms.length > 0) {
-                let allPlayers = [];
-                let playerMap = new Map();
-
-                // รวมเด็กจากทุกแถวที่หาเจอ และตัดคนที่ซ้ำกันออก
-                rooms.forEach(r => {
-                    if (Array.isArray(r.players)) {
-                        r.players.forEach(p => {
-                            const uniqueKey = p.number ? `${p.number}_${p.nickname_th}` : p.name;
-                            if (!playerMap.has(uniqueKey)) {
-                                playerMap.set(uniqueKey, p);
-                                allPlayers.push(p);
-                            }
-                        });
-                    }
-                });
-
-                renderJoinedPlayersUI(allPlayers);
+            if (lobbyData && Array.isArray(lobbyData.players)) {
+                renderJoinedPlayersUI(lobbyData.players);
             }
         }
     } catch (err) {
@@ -168,13 +139,11 @@ async function fetchJoinedPlayers(classKey, roomCode) {
     }
 }
 
-// 🟢 แสดงผลชิปรายชื่อนักเรียนทุกคน
 function renderJoinedPlayersUI(players) {
     const container = document.getElementById('joined-players-container');
     const countEl = document.getElementById('joined-count');
 
     if (!container) return;
-
     if (countEl) countEl.innerText = players.length;
 
     if (players.length === 0) {
@@ -198,15 +167,87 @@ function listenTeacherRealtimeSignals(roomCode, name, className, no, team) {
         const channel = supabaseClient.channel(`room_signal_${roomCode}`);
         
         channel.on('broadcast', { event: 'config_updated' }, (payload) => {
-            if (payload && payload.payload) {
-                updateStudentConfigUI(payload.payload);
-            }
+            if (payload && payload.payload) updateStudentConfigUI(payload.payload);
         });
 
-        channel.on('broadcast', { event: 'start_game' }, () => {
-            goToBattleArena(roomCode, name, className, no, team);
+        // 🟢 เมื่อครูกดปุ่มเริ่มเกม
+        channel.on('broadcast', { event: 'start_game' }, async () => {
+            await checkApprovalAndGoToArena(roomCode, name, className, no, team);
+        });
+
+        // 🟢 เมื่อโดนเตะออกจากห้อง
+        channel.on('broadcast', { event: 'kicked_out' }, (payload) => {
+            if (payload && payload.payload && String(payload.payload.number) === String(no)) {
+                // ในไฟล์ student/student_waiting.js
+
+function listenTeacherRealtimeSignals(roomCode, name, className, no, team) {
+    if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+        const channel = supabaseClient.channel(`room_signal_${roomCode}`);
+        
+        channel.on('broadcast', { event: 'config_updated' }, (payload) => {
+            if (payload && payload.payload) updateStudentConfigUI(payload.payload);
+        });
+
+        // เมื่อครูกดปุ่มเริ่มเกม
+        channel.on('broadcast', { event: 'start_game' }, async () => {
+            await checkApprovalAndGoToArena(roomCode, name, className, no, team);
+        });
+
+        // 🟢 เมื่อโดนคุณครูเตะออกจากห้อง
+        channel.on('broadcast', { event: 'kicked_out' }, (payload) => {
+            if (payload && payload.payload && String(payload.payload.number) === String(no)) {
+                showCyberKickedModal();
+            }
         }).subscribe();
     }
+}
+
+// 🟢 แสดง Cyberpunk Modal เมื่อโดนเตะออกจากห้อง
+function showCyberKickedModal() {
+    const modalEl = document.getElementById('kickedNoticeModal');
+    if (modalEl) {
+        if (typeof bootstrap !== 'undefined') {
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+        } else {
+            alert("⚠️ คุณถูกคุณครูเตะออกจากห้องแข่งขันแล้วครับ!");
+            window.location.href = '../race_home.html';
+        }
+    } else {
+        alert("⚠️ คุณถูกคุณครูเตะออกจากห้องแข่งขันแล้วครับ!");
+        window.location.href = '../race_home.html';
+    }
+}
+                window.location.href = '../race_home.html';
+            }
+        }).subscribe();
+    }
+}
+
+async function checkApprovalAndGoToArena(roomCode, name, className, no, team) {
+    try {
+        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+            let { data: lobbyData } = await supabaseClient
+                .from('lobbies')
+                .select('players')
+                .eq('room_code', roomCode)
+                .maybeSingle();
+
+            if (lobbyData && Array.isArray(lobbyData.players)) {
+                const me = lobbyData.players.find(p => String(p.number) === String(no) && p.nickname_th === name);
+
+                // 🛑 หากสถานะไม่ใช่อนุมัติ (approved) จะไม่ให้เข้าเล่น
+                if (!me || me.status !== 'approved') {
+                    alert("⚠️ คุณยังไม่ได้รับการอนุมัติให้เข้าแข่งขัน กรุณารอคุณครูกด 'อนุมัติ' ก่อนครับ!");
+                    return;
+                }
+            }
+        }
+    } catch (e) {
+        console.warn("Check approval status error:", e);
+    }
+
+    goToBattleArena(roomCode, name, className, no, team);
 }
 
 function openLeaveConfirmModal() {
@@ -217,6 +258,44 @@ function openLeaveConfirmModal() {
     }
 }
 
+// 🚪 ฟังก์ชันสั่งลบตนเองออกจากตาราง lobbies
+async function removeStudentFromLobby() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomCode = (urlParams.get('room') || '8090').trim().toUpperCase();
+    const no = urlParams.get('no') || '-';
+    const name = urlParams.get('name') || '';
+
+    try {
+        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+            let { data: lobbyData } = await supabaseClient
+                .from('lobbies')
+                .select('players')
+                .eq('room_code', roomCode)
+                .maybeSingle();
+
+            if (lobbyData && Array.isArray(lobbyData.players)) {
+                const updatedPlayers = lobbyData.players.filter(
+                    p => String(p.number) !== String(no) && p.nickname_th !== name
+                );
+
+                await supabaseClient
+                    .from('lobbies')
+                    .update({ players: updatedPlayers })
+                    .eq('room_code', roomCode);
+
+                const channel = supabaseClient.channel(`room_signal_${roomCode}`);
+                await channel.send({
+                    type: 'broadcast',
+                    event: 'player_left',
+                    payload: { number: no, name: name }
+                });
+            }
+        }
+    } catch (e) {
+        console.warn("Remove student error:", e);
+    }
+}
+
 async function confirmLeaveRoom() {
     const btnConfirm = document.getElementById('btn-confirm-leave');
     if (btnConfirm) {
@@ -224,44 +303,21 @@ async function confirmLeaveRoom() {
         btnConfirm.innerText = "กำลังออก...";
     }
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const roomCode = urlParams.get('room') || '';
-    const classKey = urlParams.get('classKey') || roomCode;
-    const no = urlParams.get('no') || '-';
-    const name = urlParams.get('name') || '';
-
-    try {
-        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-            let { data: rooms } = await supabaseClient
-                .from('class_rooms')
-                .select('*')
-                .or(`class_key.eq.${classKey},class_key.eq.${roomCode}`);
-
-            if (rooms && rooms.length > 0) {
-                for (let room of rooms) {
-                    if (Array.isArray(room.players)) {
-                        const updatedPlayers = room.players.filter(
-                            p => String(p.number) !== String(no) && p.nickname_th !== name
-                        );
-
-                        await supabaseClient
-                            .from('class_rooms')
-                            .update({ players: updatedPlayers })
-                            .eq('id', room.id);
-                    }
-                }
-            }
-        }
-    } catch (e) {
-        console.warn("Leave room error:", e);
-    }
-
+    await removeStudentFromLobby();
     window.location.href = '../race_home.html';
 }
 
+window.addEventListener('beforeunload', () => {
+    removeStudentFromLobby();
+});
+
+window.addEventListener('pagehide', () => {
+    removeStudentFromLobby();
+});
+
 async function sendEmojiReaction(emoji) {
     const urlParams = new URLSearchParams(window.location.search);
-    const roomCode = urlParams.get('room') || '8090';
+    const roomCode = (urlParams.get('room') || '8090').trim().toUpperCase();
     const name = urlParams.get('name') || 'นักเรียน';
 
     const messageText = `😀 ${name} ส่ง Reaction ${emoji}`;
@@ -272,11 +328,7 @@ async function sendEmojiReaction(emoji) {
             await channel.send({
                 type: 'broadcast',
                 event: 'emoji_reaction',
-                payload: {
-                    name: name,
-                    emoji: emoji,
-                    message: messageText
-                }
+                payload: { name: name, emoji: emoji, message: messageText }
             });
 
             await supabaseClient.from('combat_logs').insert([{
