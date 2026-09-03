@@ -1,0 +1,10 @@
+.animal-avatar-card {
+    border: 1px solid #dee2e6 !important;
+    border-radius: 16px !important;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.animal-avatar-card:hover {
+    transform: translateY(-3px) scale(1.04);
+    border-color: #198754 !important;
+    box-shadow: 0 6px 15px rgba(25, 135, 84, 0.2) !important;
+}

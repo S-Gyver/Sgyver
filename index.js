@@ -118,23 +118,23 @@ async function checkUserLevel() {
             if (badgeText) badgeText.innerText = 'Gyver Portal (Lv.1 Member)';
             if (welcomeDesc) welcomeDesc.innerText = `ยินดีต้อนรับคุณ ${displayName} ปลดล็อกสิทธิ์การใช้งานหมวดห้องเรียนอัจฉริยะเรียบร้อยแล้ว`;
 
-            if (eduWheelCard) {
-                eduWheelCard.className = "action-card p-3 h-100";
-                eduWheelCard.innerHTML = `
-                    <a href="features/education/wheel/wheel.html" class="d-flex align-items-center gap-3 text-decoration-none text-dark h-100">
-                        <div class="icon-box bg-primary bg-gradient text-white shadow-sm">
-                            <i class="bi bi-broadcast"></i>
-                        </div>
-                        <div class="flex-grow-1">
-                            <div class="d-flex align-items-center justify-content-between mb-1">
-                                <h6 class="fw-bold text-dark m-0 fs-5">Gyver Wheel (Live)</h6>
-                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-1 small">Lv.1 Member</span>
-                            </div>
-                            <p class="text-secondary small m-0">วงล้อสุ่มรายชื่อออนไลน์ บันทึกสถิติคะแนนสดลงฐานข้อมูล</p>
-                        </div>
-                    </a>
-                `;
-            }
+if (eduWheelCard) {
+    eduWheelCard.className = "action-card p-3 h-100";
+    eduWheelCard.innerHTML = `
+        <a href="features/education/wheel/wheel_display.html" class="d-flex align-items-center gap-3 text-decoration-none text-dark h-100">
+            <div class="icon-box bg-primary bg-gradient text-white shadow-sm">
+                <i class="bi bi-broadcast"></i>
+            </div>
+            <div class="flex-grow-1">
+                <div class="d-flex align-items-center justify-content-between mb-1">
+                    <h6 class="fw-bold text-dark m-0 fs-5">Gyver Wheel (Live)</h6>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-1 small">Lv.1 Member</span>
+                </div>
+                <p class="text-secondary small m-0">วงล้อสุ่มรายชื่อออนไลน์ บันทึกสถิติคะแนนสดลงฐานข้อมูล</p>
+            </div>
+        </a>
+    `;
+}
 
             if (eduRaceCard) {
                 eduRaceCard.className = "action-card p-3 h-100";

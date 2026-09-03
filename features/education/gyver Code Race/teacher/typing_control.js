@@ -1,4 +1,8 @@
 let roomCode = '8090';
+let matchType = 'solo';
+let teamSize = '2';
+let teamAssign = 'auto_random';
+
 let autoSaveTimer = null;
 let typingProblemStock = [];
 let studentList = [];
@@ -9,90 +13,297 @@ let pendingKickStudentNo = null;
 document.addEventListener('DOMContentLoaded', async () => {
     const urlParams = new URLSearchParams(window.location.search);
     roomCode = (urlParams.get('room') || '8090').trim().toUpperCase();
+    matchType = urlParams.get('type') || 'solo';
+    teamSize = urlParams.get('teamSize') || '2';
+    teamAssign = urlParams.get('teamAssign') || 'auto_random';
 
     const roomDisplay = document.getElementById('display-room-code');
     if (roomDisplay) roomDisplay.innerText = roomCode;
 
+    const matchBadge = document.getElementById('match-type-badge');
+    const summaryMode = document.getElementById('summary-mode-text');
+    if (matchBadge) matchBadge.innerText = matchType === 'team' ? `แข่งกลุ่ม (Team)` : `แข่งเดี่ยว (Solo)`;
+    if (summaryMode) summaryMode.innerText = matchType === 'team' ? `แข่งกลุ่ม (${teamSize} คน/ทีม)` : `Solo`;
+
+    const shuffleBtn = document.getElementById('btn-auto-shuffle-teams');
+    if (shuffleBtn) {
+        if (matchType === 'team' && teamAssign === 'auto_random') {
+            shuffleBtn.classList.remove('d-none');
+        } else {
+            shuffleBtn.classList.add('d-none');
+        }
+    }
+
     setupQRCode(roomCode);
-    bindAutoSaveEvents();
 
-    await registerRoomInDatabase(roomCode);
-    await initPageData();
-    
-    // 🟢 ฟังข้อมูลนักเรียนแบบ Realtime
-    fetchAndListenStudents();
+    try {
+        await fetchProblemsFromDB();
+        await loadQuizSubjectsFromCentralBank();
+        await ensureRoomExistsInDatabase(roomCode);
+        await fetchAndApplySavedConfig();
+
+        bindAutoSaveEvents();
+        fetchAndListenStudents();
+    } catch (err) {
+        console.error("Initialization error:", err);
+    }
 });
 
-async function registerRoomInDatabase(code) {
+async function ensureRoomExistsInDatabase(code) {
+    if (!code || typeof supabaseClient === 'undefined' || !supabaseClient) return;
+
     try {
-        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-            const initialConfig = getGameSettingsConfig();
-            
-            await supabaseClient
+        const { data: existing, error: checkErr } = await supabaseClient
+            .from('lobbies')
+            .select('*')
+            .eq('room_code', code)
+            .maybeSingle();
+
+        if (!existing) {
+            const payload = getGameSettingsPayload();
+            const { error: insertErr } = await supabaseClient
                 .from('lobbies')
-                .upsert({
+                .insert([{
                     room_code: code,
+                    match_type: matchType,
                     status: 'WAITING',
-                    match_config: initialConfig,
-                    created_at: new Date().toISOString()
-                }, { onConflict: 'room_code' });
+                    created_at: new Date().toISOString(),
+                    ...payload
+                }]);
+
+            if (insertErr) {
+                console.error("❌ สร้างห้องไม่สำเร็จ:", insertErr);
+            } else {
+                console.log("✅ สร้างแถวห้องใหม่ใน lobbies เรียบร้อย:", code);
+            }
         }
     } catch (err) {
-        console.error("Register room catch error:", err);
+        console.error("ensureRoomExistsInDatabase error:", err);
     }
 }
 
-window.addEventListener('pageshow', async () => {
-    await initPageData();
-});
-
-async function initPageData() {
-    await fetchProblemsFromDB();
-    await loadQuizSubjectsFromCentralBank();
-    
-    const quizSwitch = document.getElementById('quiz-toggle-switch');
-    if (quizSwitch) toggleQuizSettings(quizSwitch.checked);
-}
-
-async function loadQuizSubjectsFromCentralBank() {
-    const selectBox = document.getElementById('quiz-stock-select');
-    if (!selectBox) return;
-
+async function fetchAndApplySavedConfig() {
     try {
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            const currentUserId = session?.user?.id;
+            let { data, error } = await supabaseClient
+                .from('lobbies')
+                .select('*')
+                .eq('room_code', roomCode)
+                .maybeSingle();
 
-            if (!currentUserId) {
-                selectBox.innerHTML = `<option value="">กรุณาลงชื่อเข้าใช้งานระบบก่อน</option>`;
-                return;
+            if (!error && data) {
+                const preview = document.getElementById('problem-preview-code');
+                const summaryProb = document.getElementById('summary-problem-text');
+                const selectBox = document.getElementById('saved-problems-select');
+
+                let matchedProb = null;
+                if (data.target_code) {
+                    const cleanTarget = data.target_code.trim();
+                    matchedProb = typingProblemStock.find(p => (p.starter_code || p.code || '').trim() === cleanTarget);
+                }
+
+                if (matchedProb) {
+                    if (selectBox) selectBox.value = matchedProb.id;
+                    if (preview) preview.innerText = matchedProb.starter_code || matchedProb.code || "";
+                    if (summaryProb) summaryProb.innerText = matchedProb.title || "เลือกแล้ว";
+                } else if (typingProblemStock.length > 0) {
+                    const firstProb = typingProblemStock[0];
+                    if (selectBox) selectBox.value = firstProb.id;
+                    if (preview) preview.innerText = firstProb.starter_code || firstProb.code || "";
+                    if (summaryProb) summaryProb.innerText = firstProb.title || "เลือกแล้ว";
+                }
+
+                const timerSwitch = document.getElementById('timer-toggle-switch');
+                const durationSelect = document.getElementById('game-duration-select');
+                if (timerSwitch) {
+                    timerSwitch.checked = !!data.timer_enabled;
+                    toggleTimerSettingsUI(timerSwitch.checked);
+                    if (durationSelect && data.timer_duration) {
+                        durationSelect.value = String(data.timer_duration);
+                    }
+                }
+
+                const quizSwitch = document.getElementById('quiz-toggle-switch');
+                const quizStockSelect = document.getElementById('quiz-stock-select');
+                if (quizSwitch) {
+                    quizSwitch.checked = !!data.quiz_enabled;
+                    toggleQuizSettingsUI(quizSwitch.checked);
+                    if (quizStockSelect && data.quiz_stock_id) {
+                        quizStockSelect.value = data.quiz_stock_id;
+                    }
+                }
+
+                const goldSwitch = document.getElementById('gold-toggle-switch');
+                const goldStepSelect = document.getElementById('gold-step-percent');
+                const goldAmountInput = document.getElementById('gold-reward-amount');
+                if (goldSwitch) {
+                    goldSwitch.checked = !!data.gold_enabled;
+                    toggleGoldSettingsUI(goldSwitch.checked);
+                    if (goldStepSelect && data.gold_milestone) {
+                        goldStepSelect.value = String(data.gold_milestone);
+                    }
+                    if (goldAmountInput && data.gold_amount) {
+                        goldAmountInput.value = data.gold_amount;
+                    }
+                }
+
+                const shopSwitch = document.getElementById('shop-toggle-switch');
+                if (shopSwitch) {
+                    shopSwitch.checked = !!data.shop_enabled;
+                    toggleShopSettingsUI(shopSwitch.checked);
+
+                    if (document.getElementById('item-shield-enable')) document.getElementById('item-shield-enable').checked = !!data.item_shield;
+                    if (document.getElementById('item-distract-enable')) document.getElementById('item-distract-enable').checked = !!data.item_blind;
+                    if (document.getElementById('item-freeze-enable')) document.getElementById('item-freeze-enable').checked = !!data.item_freeze;
+                    if (document.getElementById('item-boost-enable')) document.getElementById('item-boost-enable').checked = !!data.item_boost;
+                }
+
+                updateHeaderMatchSummaryDirect(data);
+                return true;
             }
+        }
+    } catch (e) {
+        console.warn("Fetch saved config error:", e);
+    }
+    return false;
+}
 
-            const { data: subjects, error } = await supabaseClient
-                .from('quiz_subjects')
-                .select('subject_key, questions')
-                .eq('user_id', currentUserId)
-                .order('subject_key', { ascending: true });
+function updateHeaderMatchSummaryDirect(data) {
+    if (!data) return;
 
-            if (error) {
-                selectBox.innerHTML = `<option value="">เกิดข้อผิดพลาดในการดึงคลังโจทย์</option>`;
-                return;
+    const summaryTimer = document.getElementById('summary-timer-text');
+    if (summaryTimer) {
+        summaryTimer.innerText = !data.timer_enabled 
+            ? "ไม่จำกัดเวลา" 
+            : `${Math.floor((data.timer_duration || 180) / 60)} นาที (${data.timer_duration || 180}s)`;
+        summaryTimer.className = data.timer_enabled ? "text-info fw-bold" : "text-subtle";
+    }
+
+    const summaryGold = document.getElementById('summary-gold-text');
+    if (summaryGold) {
+        summaryGold.innerText = data.gold_enabled 
+            ? `แจก ${data.gold_amount || 3}G / ${data.gold_milestone || '10%'}` 
+            : "ปิดใช้งาน";
+        summaryGold.className = data.gold_enabled ? "text-warning fw-bold" : "text-subtle";
+    }
+
+    const summaryQuiz = document.getElementById('summary-quiz-text');
+    if (summaryQuiz) {
+        summaryQuiz.innerText = data.quiz_enabled ? "เปิดใช้งาน" : "ปิดใช้งาน";
+        summaryQuiz.className = data.quiz_enabled ? "text-danger fw-bold" : "text-subtle";
+    }
+
+    const summaryShop = document.getElementById('summary-shop-text');
+    if (summaryShop) {
+        if (!data.shop_enabled) {
+            summaryShop.innerText = "ปิดใช้งาน";
+            summaryShop.className = "text-subtle";
+        } else {
+            let activeItems = [];
+            if (data.item_shield) activeItems.push("🛡️โล่");
+            if (data.item_blind) activeItems.push("👁️เบลอ");
+            if (data.item_freeze) activeItems.push("❄️แช่แข็ง");
+            if (data.item_boost) activeItems.push("⚡บูสท์");
+            
+            summaryShop.innerText = activeItems.length > 0 ? activeItems.join(" ") : "ไม่มีไอเทม";
+            summaryShop.className = "text-cyan fw-bold";
+        }
+    }
+}
+
+function toggleTimerSettingsUI(isEnabled) {
+    const zone = document.getElementById('timer-select-zone');
+    const label = document.getElementById('timer-toggle-label');
+    if (isEnabled) {
+        if (zone) zone.classList.remove('d-none');
+        if (label) { label.innerText = "เปิดใช้งาน"; label.className = "form-check-label text-warning small ms-1"; }
+    } else {
+        if (zone) zone.classList.add('d-none');
+        if (label) { label.innerText = "ปิดใช้งาน"; label.className = "form-check-label text-subtle small ms-1"; }
+    }
+}
+
+function toggleGoldSettingsUI(isEnabled) {
+    const zone = document.getElementById('gold-select-zone');
+    const label = document.getElementById('gold-toggle-label');
+    if (zone) zone.classList.toggle('d-none', !isEnabled);
+    if (label) {
+        label.innerText = isEnabled ? "เปิดใช้งาน" : "ปิดใช้งาน";
+        label.className = isEnabled ? "form-check-label text-warning small" : "form-check-label text-subtle small";
+    }
+}
+
+function toggleShopSettingsUI(isEnabled) {
+    const zone = document.getElementById('shop-select-zone');
+    const label = document.getElementById('shop-toggle-label');
+    if (zone) zone.classList.toggle('d-none', !isEnabled);
+    if (label) {
+        label.innerText = isEnabled ? "เปิดใช้งาน" : "ปิดใช้งาน";
+        label.className = isEnabled ? "form-check-label text-cyan small" : "form-check-label text-subtle small";
+    }
+}
+
+function toggleQuizSettingsUI(isEnabled) {
+    const zone = document.getElementById('quiz-select-zone');
+    const label = document.getElementById('quiz-toggle-label');
+    if (zone) zone.classList.toggle('d-none', !isEnabled);
+    if (label) {
+        label.innerText = isEnabled ? "เปิดใช้งาน" : "ปิดใช้งาน";
+        label.className = isEnabled ? "form-check-label text-danger small ms-1" : "form-check-label text-subtle small ms-1";
+    }
+}
+
+function toggleTimerSettings(isEnabled) {
+    toggleTimerSettingsUI(isEnabled);
+    triggerAutoSave();
+}
+
+function toggleGoldSettings(isEnabled) {
+    toggleGoldSettingsUI(isEnabled);
+    triggerAutoSave();
+}
+
+function toggleShopSettings(isEnabled) {
+    toggleShopSettingsUI(isEnabled);
+    triggerAutoSave();
+}
+
+function toggleQuizSettings(isEnabled) {
+    toggleQuizSettingsUI(isEnabled);
+    triggerAutoSave();
+}
+
+function updateHeaderMatchSummary() {
+    const payload = getGameSettingsPayload();
+    updateHeaderMatchSummaryDirect(payload);
+}
+
+async function fetchProblemsFromDB() {
+    try {
+        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+            const { data, error } = await supabaseClient
+                .from('game_problems')
+                .select('*')
+                .eq('game_mode', 'typing')
+                .order('created_at', { ascending: true });
+                
+            if (!error && data) {
+                typingProblemStock = data;
+                renderProblemSelectOptions();
             }
-
-            if (subjects && subjects.length > 0) {
-                selectBox.innerHTML = subjects.map(s => {
-                    const qCount = Array.isArray(s.questions) ? s.questions.length : 0;
-                    return `<option value="${s.subject_key}">📚 ${s.subject_key} (${qCount} ข้อ)</option>`;
-                }).join('');
-            } else {
-                selectBox.innerHTML = `<option value="">ยังไม่มีชุดคำถาม (คลิกจัดการคลังโจทย์กลางเพื่อเพิ่ม)</option>`;
-            }
-
-            triggerAutoSave();
         }
     } catch (err) {
-        console.error("Load quiz subjects catch error:", err);
+        console.error("Fetch problems error:", err);
     }
+}
+
+function renderProblemSelectOptions() {
+    const selectBox = document.getElementById('saved-problems-select');
+    if (!selectBox) return;
+    selectBox.innerHTML = "";
+    typingProblemStock.forEach((p, idx) => {
+        selectBox.innerHTML += `<option value="${p.id}">โจทย์ที่ ${idx + 1}: ${p.title}</option>`;
+    });
 }
 
 function setupQRCode(code) {
@@ -106,11 +317,9 @@ function setupQRCode(code) {
 
         try {
             if (typeof QRCode !== 'undefined') {
-                new QRCode(qrBox, { text: joinUrl, width: 140, height: 140 });
+                new QRCode(qrBox, { text: joinUrl, width: 110, height: 110 });
             }
-        } catch (e) {
-            console.error("QR Code Error:", e);
-        }
+        } catch (e) {}
     }
 }
 
@@ -152,19 +361,14 @@ async function fetchStudents() {
             if (data && Array.isArray(data.players)) {
                 studentList = data.players;
                 renderStudentsUI();
-            } else {
-                studentList = [];
-                renderStudentsUI();
             }
         }
-    } catch (e) {
-        console.error("Fetch students catch error:", e);
-    }
+    } catch (e) {}
 }
 
 function renderStudentsUI() {
     const pendingGrid = document.getElementById('pending-list-grid');
-    const approvedGrid = document.getElementById('approved-list-grid');
+    const teamsGrid = document.getElementById('teams-container-grid');
 
     const pendingList = studentList.filter(s => s.status === 'pending');
     const approvedList = studentList.filter(s => s.status === 'approved');
@@ -174,47 +378,102 @@ function renderStudentsUI() {
 
     if (pendingGrid) {
         pendingGrid.innerHTML = pendingList.length === 0 
-            ? `<div class="text-center text-muted-cyber small py-3 font-mono">ไม่มีนักเรียนรอนุมัติ</div>`
+            ? `<div class="text-center text-subtle small py-3 font-mono">ไม่มีนักเรียนรอนุมัติ</div>`
             : pendingList.map(s => `
-                <div class="p-2 bg-slate-900 rounded-3 border border-warning d-flex align-items-center justify-content-between">
+                <div class="p-2 bg-dark rounded-3 border border-warning d-flex align-items-center justify-content-between">
                     <div class="d-flex align-items-center gap-2 overflow-hidden me-2">
-                        <img src="${s.image || s.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=' + encodeURIComponent(s.nickname_th || 'Racer')}" class="rounded-circle flex-shrink-0" style="width:34px; height:34px; object-fit:cover; border: 1px solid #f59e0b;">
-                        <span class="fw-bold text-white small text-truncate">
-                            ${s.nickname_th || s.name} <small class="text-subtle fw-normal">(เลขที่ ${s.number || '-'})</small>
-                        </span>
+                        <img src="${s.image || s.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=' + encodeURIComponent(s.nickname_th || 'Racer')}" class="rounded-circle" style="width:30px; height:30px; object-fit:cover;">
+                        <span class="fw-bold text-white small text-truncate">${s.nickname_th || s.name} <small class="text-subtle">(เลขที่ ${s.number || '-'})</small></span>
                     </div>
-                    <div class="d-flex gap-1 flex-shrink-0">
-                        <button type="button" class="btn btn-sm btn-success py-1 px-2 font-mono fw-bold d-flex align-items-center gap-1" onclick="approveStudent('${s.number}')">
-                            <i class="bi bi-check-lg"></i><span>อนุมัติ</span>
-                        </button>
-                        <button type="button" class="btn btn-sm btn-danger py-1 px-2 font-mono fw-bold d-flex align-items-center gap-1" onclick="kickStudent('${s.number}')">
-                            <i class="bi bi-x-lg"></i><span>ปฏิเสธ</span>
-                        </button>
+                    <div class="d-flex gap-1">
+                        <button type="button" class="btn btn-sm btn-success py-0 px-2 font-mono" onclick="approveStudent('${s.number}')"><i class="bi bi-check-lg"></i></button>
+                        <button type="button" class="btn btn-sm btn-danger py-0 px-2 font-mono" onclick="kickStudent('${s.number}')"><i class="bi bi-x-lg"></i></button>
                     </div>
                 </div>
             `).join('');
     }
 
-    if (approvedGrid) {
-        approvedGrid.innerHTML = approvedList.length === 0
-            ? `<div class="text-center text-muted-cyber small py-3 font-mono">ยังไม่มีนักเรียนในห้องแข่ง</div>`
-            : approvedList.map(s => `
-                <div class="p-2 bg-slate-900 rounded-3 border border-secondary d-flex align-items-center justify-content-between">
-                    <div class="d-flex align-items-center gap-2 overflow-hidden me-2">
-                        <img src="${s.image || s.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=' + encodeURIComponent(s.nickname_th || 'Racer')}" class="rounded-circle flex-shrink-0" style="width:34px; height:34px; object-fit:cover; border: 1px solid #38bdf8;">
-                        <span class="fw-bold text-white small text-truncate">
-                            ${s.nickname_th || s.name} <small class="text-subtle fw-normal">(เลขที่ ${s.number || '-'})</small>
-                        </span>
-                    </div>
-                    <div class="d-flex align-items-center gap-2 flex-shrink-0">
-                        <span class="badge bg-success font-mono">พร้อมแข่ง</span>
-                        <button type="button" class="btn btn-sm btn-outline-danger py-1 px-2 font-mono fw-bold d-flex align-items-center gap-1" onclick="kickStudent('${s.number}')">
-                            <i class="bi bi-person-x-fill"></i><span>เตะ</span>
-                        </button>
+    if (teamsGrid) {
+        if (approvedList.length === 0) {
+            teamsGrid.innerHTML = `<div class="col-12 text-center text-subtle py-5 font-mono">ยังไม่มีนักเรียนในห้องแข่ง</div>`;
+            return;
+        }
+
+        if (matchType === 'solo') {
+            teamsGrid.innerHTML = `
+                <div class="col-12">
+                    <div class="p-3 bg-dark rounded-3 border border-secondary d-flex flex-wrap gap-2">
+                        ${approvedList.map(s => renderStudentChip(s)).join('')}
                     </div>
                 </div>
-            `).join('');
+            `;
+        } else {
+            const teamMap = new Map();
+            approvedList.forEach(s => {
+                const tNum = s.team || s.team_id || '1';
+                if (!teamMap.has(tNum)) teamMap.set(tNum, []);
+                teamMap.get(tNum).push(s);
+            });
+
+            let cardsHtml = '';
+            teamMap.forEach((members, tNum) => {
+                cardsHtml += `
+                    <div class="col-md-6 col-xl-4">
+                        <div class="cyber-card p-3 h-100 border-info">
+                            <div class="d-flex justify-content-between align-items-center mb-2 border-bottom border-secondary pb-2">
+                                <span class="fw-bold text-warning font-mono"><i class="bi bi-people-fill me-1"></i>กลุ่ม ${tNum}</span>
+                                <span class="badge bg-info text-dark font-mono">${members.length} คน</span>
+                            </div>
+                            <div class="d-flex flex-column gap-2">
+                                ${members.map(s => renderStudentChip(s)).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            teamsGrid.innerHTML = cardsHtml;
+        }
     }
+}
+
+function renderStudentChip(s) {
+    return `
+        <div class="p-2 bg-slate-900 rounded-3 border border-secondary d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-2 overflow-hidden me-2">
+                <img src="${s.image || s.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=' + encodeURIComponent(s.nickname_th || 'Racer')}" class="rounded-circle" style="width:28px; height:28px; object-fit:cover;">
+                <span class="fw-bold text-white small text-truncate">${s.nickname_th || s.name} <small class="text-subtle">(เลขที่ ${s.number || '-'})</small></span>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 font-mono" onclick="kickStudent('${s.number}')"><i class="bi bi-person-x-fill"></i></button>
+        </div>
+    `;
+}
+
+async function autoRandomizeTeams() {
+    const approvedList = studentList.filter(s => s.status === 'approved');
+    if (approvedList.length === 0) return showCyberAlert("ไม่สามารถสุ่มกลุ่มได้", "ยังไม่มีนักเรียนที่ได้รับการอนุมัติในห้องแข่งครับ", "warning");
+
+    const perTeam = parseInt(teamSize) || 2;
+    const shuffled = [...approvedList].sort(() => Math.random() - 0.5);
+
+    shuffled.forEach((student, index) => {
+        const groupNum = Math.floor(index / perTeam) + 1;
+        student.team = String(groupNum);
+    });
+
+    studentList = studentList.map(s => {
+        const found = shuffled.find(m => String(m.number) === String(s.number));
+        return found ? found : s;
+    });
+
+    if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+        await supabaseClient.from('lobbies').update({ players: studentList }).eq('room_code', roomCode);
+
+        const channel = supabaseClient.channel(`room_signal_${roomCode}`);
+        await channel.send({ type: 'broadcast', event: 'teams_shuffled', payload: studentList });
+    }
+
+    renderStudentsUI();
+    showToast("🎲 สุ่มคละกลุ่มใหม่อัตโนมัติเรียบร้อยแล้ว!");
 }
 
 async function approveStudent(studentNo) {
@@ -224,9 +483,7 @@ async function approveStudent(studentNo) {
             await supabaseClient.from('lobbies').update({ players: studentList }).eq('room_code', roomCode);
         }
         renderStudentsUI();
-    } catch (e) {
-        console.error("Approve student error:", e);
-    }
+    } catch (e) {}
 }
 
 async function approveAllStudents() {
@@ -236,32 +493,23 @@ async function approveAllStudents() {
             await supabaseClient.from('lobbies').update({ players: studentList }).eq('room_code', roomCode);
         }
         renderStudentsUI();
-    } catch (e) {
-        console.error("Approve all students error:", e);
-    }
+    } catch (e) {}
 }
 
+// 🟢 บันทึกเลขที่นักเรียนที่จะเตะลงในตัวแปร global
 function kickStudent(studentNo) {
-    pendingKickStudentNo = studentNo;
-    const targetStudent = studentList.find(s => String(s.number) === String(studentNo));
-    const targetName = targetStudent ? (targetStudent.nickname_th || targetStudent.name) : 'นักเรียนคนนี้';
-
-    const msgEl = document.getElementById('kick-student-modal-msg');
-    if (msgEl) msgEl.innerText = `คุณต้องการปฏิเสธ/เตะ "${targetName}" ออกจากห้องใช่หรือไม่?`;
-
-    const btnSubmit = document.getElementById('btn-confirm-student-kick');
-    if (btnSubmit) btnSubmit.onclick = executeConfirmedKickStudent;
-
+    pendingKickStudentNo = String(studentNo).trim();
     const modalEl = document.getElementById('studentKickModal');
-    if (modalEl) {
+    if (modalEl && typeof bootstrap !== 'undefined') {
         const modal = new bootstrap.Modal(modalEl);
         modal.show();
     }
 }
 
+// 🟢 เตะนักเรียนออกจากห้อง พร้อมส่งสัญญาณ Realtime บอกหน้านักเรียนทันที
 async function executeConfirmedKickStudent() {
     const modalEl = document.getElementById('studentKickModal');
-    if (modalEl) {
+    if (modalEl && typeof bootstrap !== 'undefined') {
         const modal = bootstrap.Modal.getInstance(modalEl);
         if (modal) modal.hide();
     }
@@ -269,26 +517,26 @@ async function executeConfirmedKickStudent() {
     if (!pendingKickStudentNo) return;
 
     try {
-        const targetStudent = studentList.find(s => String(s.number) === String(pendingKickStudentNo));
-        const targetName = targetStudent ? (targetStudent.nickname_th || targetStudent.name) : 'นักเรียน';
-
-        studentList = studentList.filter(s => String(s.number) !== String(pendingKickStudentNo));
+        // กรองนักเรียนออกจากอาร์เรย์
+        studentList = studentList.filter(s => String(s.number).trim() !== String(pendingKickStudentNo).trim());
 
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+            // อัปเดตรายชื่อผู้เล่นที่เหลือลง Supabase
             await supabaseClient.from('lobbies').update({ players: studentList }).eq('room_code', roomCode);
 
+            // ยิง Broadcast บอกจอนักเรียนทันที
             const channel = supabaseClient.channel(`room_signal_${roomCode}`);
             await channel.send({
                 type: 'broadcast',
                 event: 'kicked_out',
-                payload: { number: pendingKickStudentNo, name: targetName }
+                payload: { number: pendingKickStudentNo }
             });
         }
 
         renderStudentsUI();
-        showToast(`🚪 เตะ ${targetName} ออกจากห้องเรียบร้อย!`);
+        showToast("🚪 เตะนักเรียนออกจากห้องเรียบร้อย!");
     } catch (e) {
-        console.error("Kick Student Error:", e);
+        console.error("Kick student error:", e);
     } finally {
         pendingKickStudentNo = null;
     }
@@ -302,415 +550,129 @@ async function clearAllApprovedStudents() {
             await supabaseClient.from('lobbies').update({ players: [] }).eq('room_code', roomCode);
         }
         renderStudentsUI();
+    } catch (e) {}
+}
+
+async function loadQuizSubjectsFromCentralBank() {
+    const selectBox = document.getElementById('quiz-stock-select');
+    if (!selectBox) return;
+
+    const defaultOptions = `
+        <option value="set_python_basics">📚 ชุดที่ 1: ความรู้ทั่วไป & Python พื้นฐาน</option>
+        <option value="set_logic_math">📚 ชุดที่ 2: ตรรกศาสตร์ & คณิตศาสตร์กวนๆ</option>
+    `;
+
+    try {
+        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+            const { data: subjects, error } = await supabaseClient
+                .from('quiz_subjects')
+                .select('subject_key, questions');
+
+            if (error || !subjects || subjects.length === 0) {
+                selectBox.innerHTML = defaultOptions;
+            } else {
+                selectBox.innerHTML = subjects.map(s => {
+                    const qCount = Array.isArray(s.questions) ? s.questions.length : 0;
+                    return `<option value="${s.subject_key}">📚 ${s.subject_key} (${qCount} ข้อ)</option>`;
+                }).join('') + defaultOptions;
+            }
+        } else {
+            selectBox.innerHTML = defaultOptions;
+        }
     } catch (e) {
-        console.error("Clear approved students error:", e);
+        selectBox.innerHTML = defaultOptions;
     }
 }
 
-async function addNewProblemToStock() {
-    const titleEl = document.getElementById('new-prob-title');
-    const codeEl = document.getElementById('new-prob-code');
-
-    const title = titleEl ? titleEl.value.trim() : '';
-    const code = codeEl ? codeEl.value.trim() : '';
-
-    if (!title || !code) return alert("⚠️ กรุณากรอกทั้งชื่อหัวข้อโจทย์และโค้ดต้นแบบก่อนครับ!");
-
-    try {
-        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-            const { error } = await supabaseClient
-                .from('game_problems')
-                .insert([{
-                    title: title,
-                    starter_code: code,
-                    game_mode: 'typing',
-                    created_at: new Date().toISOString()
-                }]);
-
-            if (error) return alert("❌ เกิดข้อผิดพลาดในการบันทึกโจทย์: " + error.message);
-
-            const modalEl = document.getElementById('addStockProblemModal');
-            if (modalEl) {
-                const modal = bootstrap.Modal.getInstance(modalEl);
-                if (modal) modal.hide();
-            }
-
-            if (titleEl) titleEl.value = '';
-            if (codeEl) codeEl.value = '';
-
-            showToast("✅ เพิ่มโจทย์ใหม่ลง Stock เรียบร้อยแล้ว!");
-            await fetchProblemsFromDB();
-        }
-    } catch (err) {
-        console.error("Add problem error:", err);
-    }
-}
-
-function openEditProblemModal() {
-    const selectBox = document.getElementById('saved-problems-select');
-    const currentId = selectBox ? selectBox.value : null;
-
-    if (!currentId) return alert("⚠️ กรุณาเลือกโจทย์ที่ต้องการแก้ไขก่อนครับ!");
-
-    const problem = typingProblemStock.find(p => String(p.id) === String(currentId));
-    if (!problem) return;
-
-    document.getElementById('edit-prob-id').value = problem.id;
-    document.getElementById('edit-prob-title').value = problem.title || '';
-    document.getElementById('edit-prob-code').value = problem.starter_code || problem.code || '';
-
-    const modalEl = document.getElementById('editProblemModal');
-    if (modalEl) {
-        const modal = new bootstrap.Modal(modalEl);
-        modal.show();
-    }
-}
-
-async function saveEditedProblem() {
-    const id = document.getElementById('edit-prob-id')?.value;
-    const title = document.getElementById('edit-prob-title')?.value.trim();
-    const code = document.getElementById('edit-prob-code')?.value.trim();
-
-    if (!title || !code) return alert("⚠️ กรุณากรอกทั้งชื่อหัวข้อโจทย์และโค้ดก่อนครับ!");
-
-    try {
-        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-            const { error } = await supabaseClient
-                .from('game_problems')
-                .update({ title: title, starter_code: code })
-                .eq('id', id);
-
-            if (error) return alert("❌ บันทึกแก้ไขล้มเหลว: " + error.message);
-
-            const modalEl = document.getElementById('editProblemModal');
-            if (modalEl) {
-                const modal = bootstrap.Modal.getInstance(modalEl);
-                if (modal) modal.hide();
-            }
-
-            showToast("✅ บันทึกแก้ไขโจทย์เรียบร้อยแล้ว!");
-            await fetchProblemsFromDB();
-        }
-    } catch (err) {
-        console.error("Save edit problem error:", err);
-    }
-}
-
-function openDeleteProblemModal() {
-    const selectBox = document.getElementById('saved-problems-select');
-    const currentId = selectBox ? selectBox.value : null;
-
-    if (!currentId) return alert("⚠️ กรุณาเลือกโจทย์ที่ต้องการลบก่อนครับ!");
-
-    const problem = typingProblemStock.find(p => String(p.id) === String(currentId));
-    if (!problem) return;
-
-    const titleEl = document.getElementById('delete-target-title');
-    if (titleEl) titleEl.innerText = `คุณต้องการลบโจทย์ "${problem.title}" ใช่หรือไม่?`;
-
-    const modalEl = document.getElementById('deleteConfirmModal');
-    if (modalEl) {
-        const modal = new bootstrap.Modal(modalEl);
-        modal.show();
-    }
-}
-
-async function confirmDeleteProblem() {
-    const selectBox = document.getElementById('saved-problems-select');
-    const currentId = selectBox ? selectBox.value : null;
-
-    if (!currentId) return;
-
-    try {
-        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-            const { error } = await supabaseClient.from('game_problems').delete().eq('id', currentId);
-            if (error) return alert("❌ ลบโจทย์ล้มเหลว: " + error.message);
-
-            const modalEl = document.getElementById('deleteConfirmModal');
-            if (modalEl) {
-                const modal = bootstrap.Modal.getInstance(modalEl);
-                if (modal) modal.hide();
-            }
-
-            showToast("🧹 ลบโจทย์ออกจาก Stock เรียบร้อยแล้ว!");
-            await fetchProblemsFromDB();
-        }
-    } catch (err) {
-        console.error("Delete problem error:", err);
-    }
-}
-
-function toggleTimerSettings(isEnabled) {
-    const zone = document.getElementById('timer-select-zone');
-    const label = document.getElementById('timer-toggle-label');
-    if (isEnabled) {
-        if (zone) zone.classList.remove('d-none');
-        if (label) { label.innerText = "จับเวลา"; label.classList.replace('text-subtle', 'text-warning'); }
-    } else {
-        if (zone) zone.classList.add('d-none');
-        if (label) { label.innerText = "ไม่จำกัดเวลา"; label.classList.replace('text-warning', 'text-subtle'); }
-    }
-    triggerAutoSave();
-}
-
-function toggleGoldSettings(isEnabled) {
-    const zone = document.getElementById('gold-select-zone');
-    const label = document.getElementById('gold-toggle-label');
-    if (isEnabled) {
-        if (zone) zone.classList.remove('d-none');
-        if (label) { label.innerText = "เปิดใช้งาน"; label.classList.replace('text-subtle', 'text-warning'); }
-    } else {
-        if (zone) zone.classList.add('d-none');
-        if (label) { label.innerText = "ปิดใช้งาน"; label.classList.replace('text-warning', 'text-subtle'); }
-    }
-    triggerAutoSave();
-}
-
-function toggleShopSettings(isEnabled) {
-    const zone = document.getElementById('shop-select-zone');
-    const label = document.getElementById('shop-toggle-label');
-    if (isEnabled) {
-        if (zone) zone.classList.remove('d-none');
-        if (label) { label.innerText = "เปิดใช้งาน"; label.classList.replace('text-subtle', 'text-cyan'); }
-    } else {
-        if (zone) zone.classList.add('d-none');
-        if (label) { label.innerText = "ปิดใช้งาน"; label.classList.replace('text-cyan', 'text-subtle'); }
-    }
-    triggerAutoSave();
-}
-
-function toggleQuizSettings(isEnabled) {
-    const zone = document.getElementById('quiz-select-zone');
-    const label = document.getElementById('quiz-toggle-label');
+function loadSelectedProblem(val, shouldSave = true) {
+    const preview = document.getElementById('problem-preview-code');
+    const summaryProb = document.getElementById('summary-problem-text');
+    const selectedProblem = typingProblemStock.find(p => String(p.id) === String(val));
     
-    if (isEnabled) {
-        if (zone) zone.classList.remove('d-none');
-        if (label) { label.innerText = "เปิดใช้งาน"; label.classList.replace('text-subtle', 'text-danger'); }
-    } else {
-        if (zone) zone.classList.add('d-none');
-        if (label) { label.innerText = "ปิดใช้งาน"; label.classList.replace('text-danger', 'text-subtle'); }
+    if (selectedProblem) {
+        if (preview) preview.innerText = selectedProblem.starter_code || selectedProblem.code || "";
+        if (summaryProb) summaryProb.innerText = selectedProblem.title || "เลือกแล้ว";
+        if (shouldSave) triggerAutoSave();
     }
-    triggerAutoSave();
 }
 
 function bindAutoSaveEvents() {
     const selectors = ['#saved-problems-select', '#quiz-stock-select', 'input[type="checkbox"]', 'select', 'input[type="number"]'];
     selectors.forEach(sel => {
-        document.querySelectorAll(sel).forEach(el => {
-            el.addEventListener('change', triggerAutoSave);
-            if (el.tagName === 'INPUT' && el.type === 'number') el.addEventListener('input', triggerAutoSave);
-        });
+        document.querySelectorAll(sel).forEach(el => el.addEventListener('change', triggerAutoSave));
     });
 }
 
 function triggerAutoSave() {
     clearTimeout(autoSaveTimer);
-    autoSaveTimer = setTimeout(() => saveAndBroadcastMatchConfig(), 200);
+    autoSaveTimer = setTimeout(() => {
+        saveAndBroadcastMatchConfig();
+        updateHeaderMatchSummary();
+    }, 200);
 }
 
 async function saveAndBroadcastMatchConfig() {
-    const config = getGameSettingsConfig();
-    try {
-        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-            const channel = supabaseClient.channel(`room_signal_${roomCode}`);
-            await channel.send({ type: 'broadcast', event: 'config_updated', payload: config });
-            await supabaseClient.from('lobbies').update({ match_config: config }).eq('room_code', roomCode);
-        }
-    } catch (err) {}
-}
-
-function getGameSettingsConfig() {
-    const isTimerEnabled = document.querySelector('#timer-toggle-switch')?.checked || false;
-    const timeDuration = parseInt(document.querySelector('#game-duration-select')?.value || 180);
-
-    const isGoldEnabled = document.querySelector('#gold-toggle-switch')?.checked ?? true;
-    const goldMilestone = document.querySelector('#gold-step-percent')?.value || '10%';
-    const goldAmount = parseInt(document.querySelector('#gold-reward-amount')?.value || 3);
-
-    const isShopEnabled = document.querySelector('#shop-toggle-switch')?.checked ?? true;
-    const itemShield = document.querySelector('#item-shield-enable')?.checked ?? true;
-    const itemBlind = document.querySelector('#item-distract-enable')?.checked ?? true;
-    const itemFreeze = document.querySelector('#item-freeze-enable')?.checked ?? true;
-    const itemBoost = document.querySelector('#item-boost-enable')?.checked ?? true;
-
-    const isQuizEnabled = document.querySelector('#quiz-toggle-switch')?.checked || false;
-    const quizStockVal = document.querySelector('#quiz-stock-select')?.value || 'set_python_basics';
-    const quizRewardGold = parseInt(document.querySelector('#quiz-reward-gold')?.value || 2);
-
-    return {
-        target_code: document.getElementById('problem-preview-code')?.innerText || '',
-        timer: { unlimited: !isTimerEnabled, duration: timeDuration },
-        gold: { enabled: isGoldEnabled, milestone: goldMilestone, amount: goldAmount },
-        items: { enabled: isShopEnabled, shield: itemShield, blind: itemBlind, freeze: itemFreeze, boost: itemBoost },
-        quiz: { enabled: isQuizEnabled, stock_id: quizStockVal, reward_gold: quizRewardGold }
-    };
-}
-
-function promptActionConfirm(actionType) {
-    pendingActionType = actionType;
-
-    const card = document.getElementById('action-modal-card');
-    const icon = document.getElementById('action-modal-icon');
-    const title = document.getElementById('action-modal-title');
-    const msg = document.getElementById('action-modal-msg');
-    const btnSubmit = document.getElementById('btn-action-confirm-submit');
-
-    if (actionType === 'start') {
-        if (card) card.className = "modal-content cyber-modal border-warning text-white rounded-4 p-3 text-center shadow-lg font-mono";
-        if (icon) icon.innerHTML = `<i class="bi bi-play-circle-fill text-warning"></i>`;
-        if (title) title.innerText = "ยืนยันการเริ่มแข่งขัน";
-        if (msg) msg.innerText = "คุณต้องการสั่งเริ่มการแข่งขันบนหน้าจอของนักเรียนทุกคนใช่หรือไม่?";
-        if (btnSubmit) {
-            btnSubmit.className = "btn btn-warning fw-bold w-50 py-2";
-            btnSubmit.innerText = "เริ่มเลย!";
-            btnSubmit.onclick = executeConfirmedAction;
-        }
-    } else if (actionType === 'pause') {
-        const isNextPause = !isGamePaused;
-        if (card) card.className = "modal-content cyber-modal border-warning text-white rounded-4 p-3 text-center shadow-lg font-mono";
-        if (icon) icon.innerHTML = `<i class="bi bi-pause-circle-fill text-warning"></i>`;
-        if (title) title.innerText = isNextPause ? "ยืนยันการพักการแข่งขัน" : "ยืนยันการแข่งต่อ";
-        if (msg) msg.innerText = isNextPause ? "คุณต้องการพักสนามแข่งชั่วคราวใช่หรือไม่?" : "คุณต้องการเปิดสนามแข่งให้เด็กเล่นต่อใช่หรือไม่?";
-        if (btnSubmit) {
-            btnSubmit.className = "btn btn-warning fw-bold w-50 py-2";
-            btnSubmit.innerText = isNextPause ? "พักเกม" : "แข่งต่อ";
-            btnSubmit.onclick = executeConfirmedAction;
-        }
-    } else if (actionType === 'end') {
-        if (card) card.className = "modal-content cyber-modal border-danger text-white rounded-4 p-3 text-center shadow-lg font-mono";
-        if (icon) icon.innerHTML = `<i class="bi bi-stop-circle-fill text-danger"></i>`;
-        if (title) title.innerText = "ยืนยันการจบการแข่งขันทันที";
-        if (msg) msg.innerText = "การแข่งขันจะถูกสั่งหยุดและสรุปผลทันที คุณต้องการจบเกมเลยใช่หรือไม่?";
-        if (btnSubmit) {
-            btnSubmit.className = "btn btn-danger fw-bold w-50 py-2";
-            btnSubmit.innerText = "จบการแข่ง";
-            btnSubmit.onclick = executeConfirmedAction;
-        }
-    }
-
-    const modalEl = document.getElementById('actionConfirmModal');
-    if (modalEl) {
-        const modal = new bootstrap.Modal(modalEl);
-        modal.show();
-    }
-}
-
-function executeConfirmedAction() {
-    const modalEl = document.getElementById('actionConfirmModal');
-    if (modalEl) {
-        const modal = bootstrap.Modal.getInstance(modalEl);
-        if (modal) modal.hide();
-    }
-
-    if (pendingActionType === 'start') {
-        startCountdownAndGame();
-    } else if (pendingActionType === 'pause') {
-        togglePauseGame();
-    } else if (pendingActionType === 'end') {
-        forceEndGame();
-    }
-}
-
-async function startCountdownAndGame() {
-    await saveAndBroadcastMatchConfig();
+    const payload = getGameSettingsPayload();
     
     try {
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-            await supabaseClient.from('lobbies').update({ status: 'RACING' }).eq('room_code', roomCode);
-
             const channel = supabaseClient.channel(`room_signal_${roomCode}`);
-            await channel.send({
-                type: 'broadcast',
-                event: 'start_game',
-                payload: { roomCode: roomCode, status: 'RACING' }
-            });
+            await channel.send({ type: 'broadcast', event: 'config_updated', payload: payload });
 
-            document.getElementById('match-status-badge').innerText = "STATUS: RACING LIVE";
-            document.getElementById('match-status-badge').className = "badge bg-danger text-white font-mono animate-pulse";
-            document.getElementById('btn-start-match').disabled = true;
-            document.getElementById('btn-pause-match').disabled = false;
-            document.getElementById('btn-end-match').disabled = false;
-
-            showToast("🚀 สั่งเริ่มการแข่งขันเรียบร้อยแล้ว!");
+            await supabaseClient
+                .from('lobbies')
+                .update(payload)
+                .eq('room_code', roomCode);
         }
-    } catch (e) {}
-}
-
-async function togglePauseGame() {
-    isGamePaused = !isGamePaused;
-    const pauseBtn = document.getElementById('btn-pause-match');
-    const badge = document.getElementById('match-status-badge');
-
-    try {
-        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-            const channel = supabaseClient.channel(`room_signal_${roomCode}`);
-            await channel.send({
-                type: 'broadcast',
-                event: 'toggle_pause',
-                payload: { paused: isGamePaused }
-            });
-
-            if (isGamePaused) {
-                if (pauseBtn) pauseBtn.innerHTML = `<i class="bi bi-play-fill me-1"></i>เล่นต่อ (Resume)`;
-                if (badge) { badge.innerText = "STATUS: PAUSED"; badge.className = "badge bg-warning text-dark font-mono"; }
-                showToast("⏸️ พักการแข่งขันชั่วคราว");
-            } else {
-                if (pauseBtn) pauseBtn.innerHTML = `<i class="bi bi-pause-circle-fill me-1"></i>พักการแข่งขัน`;
-                if (badge) { badge.innerText = "STATUS: RACING LIVE"; badge.className = "badge bg-danger text-white font-mono animate-pulse"; }
-                showToast("▶️ เล่นการแข่งขันต่อแล้ว!");
-            }
-        }
-    } catch (e) {}
-}
-
-async function forceEndGame() {
-    try {
-        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-            const channel = supabaseClient.channel(`room_signal_${roomCode}`);
-            await channel.send({
-                type: 'broadcast',
-                event: 'end_game',
-                payload: { roomCode: roomCode }
-            });
-
-            await supabaseClient.from('lobbies').delete().eq('room_code', roomCode);
-
-            showToast("🏁 จบการแข่งขันเรียบร้อย กำลังไปหน้าสรุปผล...");
-            setTimeout(() => {
-                window.location.href = `race_summary.html?room=${roomCode}`;
-            }, 1000);
-        }
-    } catch (e) {
-        console.error("Force end game catch error:", e);
+    } catch (err) {
+        console.error("saveAndBroadcastMatchConfig catch error:", err);
     }
 }
 
-async function fetchProblemsFromDB() {
-    try {
-        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-            const { data } = await supabaseClient.from('game_problems').select('*').eq('game_mode', 'typing').order('created_at', { ascending: true });
-            typingProblemStock = data || [];
-            renderProblemSelectOptions();
-        }
-    } catch (err) {}
+function getGameSettingsPayload() {
+    const isTimerEnabled = document.querySelector('#timer-toggle-switch')?.checked || false;
+    const timeDuration = parseInt(document.querySelector('#game-duration-select')?.value || 180);
+    
+    const isGoldEnabled = document.querySelector('#gold-toggle-switch')?.checked || false;
+    const goldMilestone = document.querySelector('#gold-step-percent')?.value || '10%';
+    const goldAmount = parseInt(document.querySelector('#gold-reward-amount')?.value || 3);
+    
+    const isQuizEnabled = document.querySelector('#quiz-toggle-switch')?.checked || false;
+    const quizSelect = document.querySelector('#quiz-stock-select');
+    const quizStockVal = quizSelect?.value || 'set_python_basics';
+
+    const isShopEnabled = document.querySelector('#shop-toggle-switch')?.checked || false;
+    const itemShield = document.querySelector('#item-shield-enable')?.checked || false;
+    const itemBlind = document.querySelector('#item-distract-enable')?.checked || false;
+    const itemFreeze = document.querySelector('#item-freeze-enable')?.checked || false;
+    const itemBoost = document.querySelector('#item-boost-enable')?.checked || false;
+
+    return {
+        target_code: document.getElementById('problem-preview-code')?.innerText || '',
+        timer_enabled: isTimerEnabled,
+        timer_duration: timeDuration,
+        gold_enabled: isGoldEnabled,
+        gold_milestone: goldMilestone,
+        gold_amount: goldAmount,
+        quiz_enabled: isQuizEnabled,
+        quiz_stock_id: quizStockVal,
+        shop_enabled: isShopEnabled,
+        item_shield: itemShield,
+        item_blind: itemBlind,
+        item_freeze: itemFreeze,
+        item_boost: itemBoost
+    };
 }
 
-function renderProblemSelectOptions() {
-    const selectBox = document.getElementById('saved-problems-select');
-    if (!selectBox) return;
-    selectBox.innerHTML = "";
-    typingProblemStock.forEach((p, idx) => {
-        selectBox.innerHTML += `<option value="${p.id}">โจทย์ที่ ${idx + 1}: ${p.title}</option>`;
-    });
-    if (typingProblemStock.length > 0) loadSelectedProblem(typingProblemStock[0].id);
-}
+async function saveAndCloseSettingsModal() {
+    await saveAndBroadcastMatchConfig();
+    updateHeaderMatchSummary();
+    showToast("✅ บันทึกการตั้งค่าลงฐานข้อมูลเรียบร้อยแล้ว!");
 
-function loadSelectedProblem(val) {
-    const preview = document.getElementById('problem-preview-code');
-    const selectedProblem = typingProblemStock.find(p => p.id === val);
-    if (selectedProblem && preview) {
-        preview.innerText = selectedProblem.starter_code || selectedProblem.code || "";
-        triggerAutoSave();
+    const modalEl = document.getElementById('matchSettingsModal');
+    if (modalEl && typeof bootstrap !== 'undefined') {
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
     }
 }
 
@@ -719,45 +681,33 @@ function showToast(msg) {
     const toastMsg = document.getElementById('toast-message');
     if (toastEl && toastMsg) {
         toastMsg.innerHTML = msg;
-        if (typeof bootstrap !== 'undefined') {
-            new bootstrap.Toast(toastEl).show();
-        }
+        if (typeof bootstrap !== 'undefined') new bootstrap.Toast(toastEl).show();
     }
 }
 
-// 🚪 ฟังก์ชันลบห้องออกจากตาราง lobbies เมื่อครูกดปิดห้อง หรือกดย้อนกลับ
 async function removeLobbyFromDatabase() {
     if (!roomCode) return;
     try {
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
             const channel = supabaseClient.channel(`room_signal_${roomCode}`);
-            await channel.send({
-                type: 'broadcast',
-                event: 'room_closed',
-                payload: { roomCode: roomCode }
-            });
-
-            await supabaseClient
-                .from('lobbies')
-                .delete()
-                .eq('room_code', roomCode);
+            await channel.send({ type: 'broadcast', event: 'room_closed', payload: { roomCode: roomCode } });
+            await supabaseClient.from('lobbies').delete().eq('room_code', roomCode);
         }
-    } catch (e) {
-        console.warn("Delete lobby error:", e);
+    } catch (e) {}
+}
+
+function openCloseRoomModal() {
+    const modalEl = document.getElementById('closeRoomModal');
+    if (modalEl && typeof bootstrap !== 'undefined') {
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
     }
 }
 
-// 🚪 ยืนยันการปิดห้องจาก Modal
 async function confirmCloseRoom() {
     await removeLobbyFromDatabase();
     window.location.href = 'teacher_lobby.html';
 }
 
-// 🟢 ดักจับเมื่อครูกดย้อนกลับ (Back Button), ปิดแท็บ หรือสลับหน้า
-window.addEventListener('beforeunload', () => {
-    removeLobbyFromDatabase();
-});
-
-window.addEventListener('pagehide', () => {
-    removeLobbyFromDatabase();
-});
+window.addEventListener('beforeunload', () => { removeLobbyFromDatabase(); });
+window.addEventListener('pagehide', () => { removeLobbyFromDatabase(); });

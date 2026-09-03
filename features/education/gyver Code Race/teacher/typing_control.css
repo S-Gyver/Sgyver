@@ -191,3 +191,35 @@ pre#problem-preview-code {
 .overflow-auto::-webkit-scrollbar-thumb:hover {
     background: #00f2fe;
 }
+
+/* 🔔 สไตล์ Custom Cyber Toast อ่านง่าย เข้ากับธีมหลัก */
+.toast-container .toast {
+    background: rgba(13, 17, 28, 0.95) !important;
+    border: 1px solid #00f2fe !important;
+    border-radius: 12px !important;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.8), 0 0 15px rgba(0, 242, 254, 0.25) !important;
+    backdrop-filter: blur(10px) !important;
+    color: #ffffff !important;
+}
+
+.toast-container .toast-body {
+    color: #ffffff !important;
+    font-family: 'Kanit', sans-serif !important;
+    font-weight: 500 !important;
+}
+
+/* ไอคอนความสำเร็จสีเขียวนีออน */
+.toast-container .toast-body .bi-check-circle-fill {
+    color: #00ff88 !important;
+    font-size: 1.25rem !important;
+}
+
+/* ปุ่มปิด X สีสว่างขุ่น */
+.toast-container .btn-close-white {
+    filter: invert(1) grayscale(100%) brightness(200%) !important;
+    opacity: 0.8;
+}
+
+.toast-container .btn-close-white:hover {
+    opacity: 1;
+}

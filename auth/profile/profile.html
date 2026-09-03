@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>จัดการโปรไฟล์ - Gyver Workspace</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../assets/css/index.css">
+    <link rel="stylesheet" href="../sidebar_shared.css">
+    <link rel="stylesheet" href="profile.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../assets/js/supabaseClient.js"></script>
+    <script src="../logout.js"></script>
+</head>
+<body class="bg-light min-vh-100 d-flex flex-column">
+
+    <nav class="navbar py-3 bg-white border-bottom sticky-top">
+        <div class="container">
+            <a class="navbar-brand fw-bold fs-4 text-dark d-flex align-items-center gap-2" href="../../index.html">
+                <div class="bg-primary text-white rounded-3 p-1 px-2 fs-5"><i class="bi bi-grid-1x2-fill"></i></div> Gyver Workspace
+            </a>
+            <a href="../../index.html" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-bold"><i class="bi bi-arrow-left me-1"></i>กลับหน้าหลัก</a>
+        </div>
+    </nav>
+
+    <div class="container my-5">
+        <div class="row g-4">
+            <div class="col-lg-3">
+                <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+                    <div class="text-center p-3 border-bottom mb-3">
+                        <img id="sidebar-avatar" src="https://api.dicebear.com/7.x/big-smile/svg?seed=Tiger" class="rounded-circle border border-3 border-primary mb-2 shadow-sm" style="width: 80px; height: 80px; object-fit: cover;">
+                        <h6 class="fw-bold text-dark m-0" id="sidebar-display-name">กำลังโหลด...</h6>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 mt-1 small" id="sidebar-role-badge">User Lv.1</span>
+                    </div>
+                    <div class="nav flex-column sidebar-menu gap-1">
+                        <a href="../profile/profile.html" class="nav-link active d-flex align-items-center gap-2"><i class="bi bi-person-circle fs-5"></i><span>1. จัดการโปรไฟล์</span></a>
+                        <a href="../change_password/change_password.html" class="nav-link d-flex align-items-center gap-2"><i class="bi bi-shield-lock fs-5"></i><span>2. เปลี่ยนรหัสผ่าน</span></a>
+                        <a href="../classroom_manage/classroom_manage.html" class="nav-link d-flex align-items-center gap-2"><i class="bi bi-people fs-5"></i><span>3. จัดการห้องเรียน & นักเรียน</span></a>
+                        <a href="../history/history.html" class="nav-link d-flex align-items-center gap-2"><i class="bi bi-clock-history fs-5"></i><span>4. ประวัติกิจกรรม / คะแนน</span></a>
+                        <a href="../settings/settings.html" class="nav-link d-flex align-items-center gap-2"><i class="bi bi-gear fs-5"></i><span>5. ตั้งค่าการแจ้งเตือน</span></a>
+                        <a href="../upgrade/upgrade.html" class="nav-link d-flex align-items-center gap-2"><i class="bi bi-rocket-takeoff-fill fs-5 text-warning"></i><span>6. อัปเกรดระดับสิทธิ์</span></a>
+                        <hr class="my-2">
+                        <button class="nav-link text-start d-flex align-items-center gap-2 text-danger fw-bold border-0 bg-transparent" type="button" onclick="logoutProfilePage()"><i class="bi bi-box-arrow-right fs-5"></i><span>7. ออกจากระบบ</span></button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-9">
+                <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+                    <h5 class="fw-bold text-dark border-bottom pb-3 mb-4"><i class="bi bi-person-gear text-primary me-2"></i>จัดการโปรไฟล์ส่วนตัว</h5>
+                    <form id="form-profile-info" onsubmit="handleSaveProfile(event)">
+                        <div class="mb-4 p-3 bg-light rounded-3 border">
+                            <label class="form-label small fw-bold text-secondary">รูปโปรไฟล์</label>
+                            <div class="d-flex align-items-center gap-4 flex-wrap">
+                                <img id="profile-avatar-preview" src="https://api.dicebear.com/7.x/big-smile/svg?seed=Tiger" class="rounded-circle border border-2 border-primary shadow-sm bg-white" style="width: 85px; height: 85px; object-fit: cover;">
+                                <div class="flex-grow-1">
+                                    <input type="file" id="profile-avatar-file" class="form-control form-control-sm mb-2" accept="image/*">
+                                    <button type="button" class="btn btn-sm btn-success font-mono fw-bold" data-bs-toggle="modal" data-bs-target="#animalAvatarModal"><i class="bi bi-emoji-smile-fill me-1"></i>เลือกอวตารสัตว์น่ารัก</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6"><label class="form-label small fw-bold text-secondary">ชื่อผู้ใช้งาน (Username)</label><input type="text" id="profile-username" class="form-control" required></div>
+                            <div class="col-md-6"><label class="form-label small fw-bold text-secondary">อีเมลผู้ใช้งาน (E-mail)</label><input type="email" id="profile-email" class="form-control bg-light" readonly disabled required></div>
+                        </div>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-3"><label class="form-label small fw-bold text-secondary">ชื่อเล่น</label><input type="text" id="profile-nickname" class="form-control"></div>
+                            <div class="col-md-3"><label class="form-label small fw-bold text-secondary">ชื่อจริง</label><input type="text" id="profile-firstname" class="form-control"></div>
+                            <div class="col-md-3"><label class="form-label small fw-bold text-secondary">นามสกุล</label><input type="text" id="profile-lastname" class="form-control"></div>
+                            <div class="col-md-3"><label class="form-label small fw-bold text-secondary">เบอร์โทรศัพท์</label><input type="tel" id="profile-phone" class="form-control"></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary fw-bold px-4 py-2 rounded-3 shadow-sm" id="btn-save-profile"><i class="bi bi-floppy-fill me-1"></i>บันทึกการเปลี่ยนแปลง</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="animalAvatarModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header border-bottom-0 pb-0"><h5 class="modal-title fw-bold text-success"><i class="bi bi-emoji-wink-fill me-2"></i>เลือกอวตารสัตว์น่ารัก</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body p-4"><div class="row g-3" id="animal-avatar-grid"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="profile.js"></script>
+</body>
+</html>

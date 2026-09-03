@@ -1,10 +1,16 @@
 document.addEventListener('DOMContentLoaded', async () => {
     const urlParams = new URLSearchParams(window.location.search);
-    const roomCode = (urlParams.get('room') || '8090').trim().toUpperCase();
+    const roomCode = (urlParams.get('room') || '').trim().toUpperCase();
     const name = urlParams.get('name') || 'นักเรียน';
     const className = urlParams.get('class') || 'ม.-/-';
     const no = urlParams.get('no') || '-';
     const team = urlParams.get('team') || '0';
+
+    if (!roomCode) {
+        alert("⚠️ ไม่พบรหัสห้องแข่งขัน!");
+        window.location.href = 'student_lobby.html';
+        return;
+    }
 
     // 1. แสดงข้อมูลผู้ใช้
     if (document.getElementById('wait-room-code')) document.getElementById('wait-room-code').innerText = roomCode;
@@ -34,75 +40,82 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (e) {}
     }
 
-    // 2. ดึง Match Config เริ่มต้น
-    await fetchInitialMatchConfig(roomCode);
+    // 2. ดึงกติกาการแข่งขันเริ่มต้นตรงจากตาราง lobbies
+    await fetchInitialLobbySettings(roomCode);
 
-    // 3. 🟢 ฟังและซิงก์รายชื่อผู้เล่น Realtime จากตาราง lobbies
-    fetchAndListenJoinedPlayers(roomCode);
+    // 3. ฟังการเปลี่ยนแปลงของตาราง lobbies (ซิงก์รายชื่อ & กติกา)
+    fetchAndListenLobbyChanges(roomCode, no, name);
 
-    // 4. ดักฟังคำสั่งจากครู (อนุมัติ/เริ่มเกม/ลบออกจากห้อง)
+    // 4. ดักฟังสัญญาณ Broadcast จากครู (เปลี่ยนกติกา / เริ่มเกม / เตะออก)
     listenTeacherRealtimeSignals(roomCode, name, className, no, team);
 });
 
-async function fetchInitialMatchConfig(roomCode) {
+// 🟢 ดึงกติกาการแข่งขันตรงจากคอลัมน์ในตาราง lobbies
+async function fetchInitialLobbySettings(roomCode) {
     try {
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-            const { data } = await supabaseClient
+            const { data, error } = await supabaseClient
                 .from('lobbies')
-                .select('match_config')
+                .select('*')
                 .eq('room_code', roomCode)
                 .maybeSingle();
 
-            if (data && data.match_config) {
-                updateStudentConfigUI(data.match_config);
+            if (!error && data) {
+                renderMatchSettingsUI(data);
             }
         }
-    } catch (e) {}
+    } catch (e) {
+        console.error("Fetch initial settings error:", e);
+    }
 }
 
-function updateStudentConfigUI(cfg) {
-    if (!cfg) return;
+// 🟢 แมปข้อมูลกติกาลง Element UI หน้ารออนุมัติ
+function renderMatchSettingsUI(data) {
+    if (!data) return;
 
-    const timeEl = document.getElementById('rule-time-text');
-    if (timeEl && cfg.timer) {
-        timeEl.innerText = cfg.timer.unlimited 
+    // 1. ระยะเวลาการแข่ง
+    const timerEl = document.getElementById('rule-time-text');
+    if (timerEl) {
+        timerEl.innerText = !data.timer_enabled 
             ? 'ไม่จำกัดเวลา' 
-            : `${Math.floor(cfg.timer.duration / 60)} นาที (${cfg.timer.duration} วินาที)`;
+            : `${Math.floor((data.timer_duration || 180) / 60)} นาที (${data.timer_duration || 180} วินาที)`;
     }
 
+    // 2. เงื่อนไขแจก Gold
     const goldEl = document.getElementById('rule-gold-text');
-    if (goldEl && cfg.gold) {
-        goldEl.innerText = cfg.gold.enabled 
-            ? `แจก ${cfg.gold.amount} Gold / ทุก ${cfg.gold.milestone}` 
+    if (goldEl) {
+        goldEl.innerText = data.gold_enabled 
+            ? `แจก ${data.gold_amount || 3} Gold / ทุก ${data.gold_milestone || '10%'}` 
             : 'ปิดใช้งาน';
     }
 
+    // 3. ระบบคำถามกวนใจ
     const quizEl = document.getElementById('rule-quiz-text');
-    if (quizEl && cfg.quiz) {
-        quizEl.innerText = cfg.quiz.enabled 
-            ? `เปิดใช้งาน (${cfg.quiz.stock_name || 'คลังโจทย์'})` 
-            : 'ปิดใช้งาน';
+    if (quizEl) {
+        quizEl.innerText = data.quiz_enabled ? 'เปิดใช้งาน' : 'ปิดใช้งาน';
+        quizEl.className = data.quiz_enabled ? 'text-danger fw-bold' : 'text-subtle';
     }
 
+    // 4. ร้านค้าไอเทม
     const shopContainer = document.getElementById('rule-shop-items-container');
-    if (shopContainer && cfg.items) {
-        if (!cfg.items.enabled) {
+    if (shopContainer) {
+        if (!data.shop_enabled) {
             shopContainer.innerHTML = '<span class="badge bg-danger text-white font-mono" style="font-size: 0.7rem;">ปิดใช้งานร้านค้า</span>';
-            return;
+        } else {
+            let itemsHtml = '';
+            if (data.item_shield) itemsHtml += `<span class="badge bg-info text-dark font-mono" style="font-size: 0.7rem;">🛡️ โล่ป้องกัน</span> `;
+            if (data.item_blind) itemsHtml += `<span class="badge bg-warning text-dark font-mono" style="font-size: 0.7rem;">👁️ หน้าจอเบลอ</span> `;
+            if (data.item_freeze) itemsHtml += `<span class="badge bg-primary text-white font-mono" style="font-size: 0.7rem;">❄️ แช่แข็งระบบ</span> `;
+            if (data.item_boost) itemsHtml += `<span class="badge bg-success text-white font-mono" style="font-size: 0.7rem;">⚡ สปีดบูสท์</span> `;
+
+            shopContainer.innerHTML = itemsHtml || '<span class="badge bg-secondary text-white font-mono" style="font-size: 0.7rem;">ไม่มีไอเทมเปิดขาย</span>';
         }
-
-        let itemsHtml = '';
-        if (cfg.items.shield) itemsHtml += `<span class="badge bg-info text-dark font-mono" style="font-size: 0.7rem;">🛡️ โล่ป้องกัน</span> `;
-        if (cfg.items.blind) itemsHtml += `<span class="badge bg-warning text-dark font-mono" style="font-size: 0.7rem;">👁️ หน้าจอเบลอ</span> `;
-        if (cfg.items.freeze) itemsHtml += `<span class="badge bg-primary text-white font-mono" style="font-size: 0.7rem;">❄️ แช่แข็งระบบ</span> `;
-        if (cfg.items.boost) itemsHtml += `<span class="badge bg-success text-white font-mono" style="font-size: 0.7rem;">⚡ สปีดบูสท์</span> `;
-
-        shopContainer.innerHTML = itemsHtml || '<span class="badge bg-secondary text-white font-mono" style="font-size: 0.7rem;">ไม่มีไอเทมเปิดขาย</span>';
     }
 }
 
-async function fetchAndListenJoinedPlayers(roomCode) {
-    await fetchJoinedPlayers(roomCode);
+// 🟢 ซิงก์รายชื่อผู้เล่นและเช็กสถานะโดนเตะแบบ Realtime (ตัดการเด้งเข้าสนามแข่งเมื่ออนุมัติออก)
+function fetchAndListenLobbyChanges(roomCode, myNo, myName) {
+    fetchJoinedPlayers(roomCode);
 
     if (typeof supabaseClient !== 'undefined' && supabaseClient) {
         supabaseClient
@@ -113,8 +126,19 @@ async function fetchAndListenJoinedPlayers(roomCode) {
                 table: 'lobbies',
                 filter: `room_code=eq.${roomCode}`
             }, (payload) => {
-                if (payload.new && Array.isArray(payload.new.players)) {
-                    renderJoinedPlayersUI(payload.new.players);
+                if (payload.new) {
+                    renderMatchSettingsUI(payload.new);
+
+                    if (Array.isArray(payload.new.players)) {
+                        renderJoinedPlayersUI(payload.new.players);
+
+                        // ตรวจสอบว่าโดนเตะออกจากอาร์เรย์หรือไม่
+                        const me = payload.new.players.find(p => String(p.number) === String(myNo) && p.nickname_th === myName);
+                        if (!me) {
+                            showCyberKickedModal();
+                        }
+                        // 🛑 ตัดลอจิกสั่งเข้าสนามแข่งทันทีตอนกดอนุมัติออกตรงนี้ เพื่อให้รอครูกด "เริ่มการแข่งขัน" พร้อมกันเท่านั้น
+                    }
                 }
             })
             .subscribe();
@@ -162,38 +186,22 @@ function renderJoinedPlayersUI(players) {
     `).join('');
 }
 
+// 🟢 ฟังสัญญาณ Realtime จากคุณครู
 function listenTeacherRealtimeSignals(roomCode, name, className, no, team) {
     if (typeof supabaseClient !== 'undefined' && supabaseClient) {
         const channel = supabaseClient.channel(`room_signal_${roomCode}`);
         
+        // 1. สัญญาณเปลี่ยนกติกาการแข่ง
         channel.on('broadcast', { event: 'config_updated' }, (payload) => {
-            if (payload && payload.payload) updateStudentConfigUI(payload.payload);
+            if (payload && payload.payload) renderMatchSettingsUI(payload.payload);
         });
 
-        // 🟢 เมื่อครูกดปุ่มเริ่มเกม
+        // 2. 🎯 สัญญาณเริ่มเกม (เมื่อครูกดปุ่ม "เริ่มการแข่งขัน" เท่านั้น!)
         channel.on('broadcast', { event: 'start_game' }, async () => {
             await checkApprovalAndGoToArena(roomCode, name, className, no, team);
         });
 
-        // 🟢 เมื่อโดนเตะออกจากห้อง
-        channel.on('broadcast', { event: 'kicked_out' }, (payload) => {
-            if (payload && payload.payload && String(payload.payload.number) === String(no)) {
-                // ในไฟล์ student/student_waiting.js
-
-function listenTeacherRealtimeSignals(roomCode, name, className, no, team) {
-    if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-        const channel = supabaseClient.channel(`room_signal_${roomCode}`);
-        
-        channel.on('broadcast', { event: 'config_updated' }, (payload) => {
-            if (payload && payload.payload) updateStudentConfigUI(payload.payload);
-        });
-
-        // เมื่อครูกดปุ่มเริ่มเกม
-        channel.on('broadcast', { event: 'start_game' }, async () => {
-            await checkApprovalAndGoToArena(roomCode, name, className, no, team);
-        });
-
-        // 🟢 เมื่อโดนคุณครูเตะออกจากห้อง
+        // 3. สัญญาณโดนเตะออกจากห้อง
         channel.on('broadcast', { event: 'kicked_out' }, (payload) => {
             if (payload && payload.payload && String(payload.payload.number) === String(no)) {
                 showCyberKickedModal();
@@ -202,25 +210,15 @@ function listenTeacherRealtimeSignals(roomCode, name, className, no, team) {
     }
 }
 
-// 🟢 แสดง Cyberpunk Modal เมื่อโดนเตะออกจากห้อง
+// 🟢 แสดง Modal แจ้งเตือนเมื่อโดนเตะออก
 function showCyberKickedModal() {
     const modalEl = document.getElementById('kickedNoticeModal');
-    if (modalEl) {
-        if (typeof bootstrap !== 'undefined') {
-            const modal = new bootstrap.Modal(modalEl);
-            modal.show();
-        } else {
-            alert("⚠️ คุณถูกคุณครูเตะออกจากห้องแข่งขันแล้วครับ!");
-            window.location.href = '../race_home.html';
-        }
+    if (modalEl && typeof bootstrap !== 'undefined') {
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
     } else {
-        alert("⚠️ คุณถูกคุณครูเตะออกจากห้องแข่งขันแล้วครับ!");
+        alert("⚠️ คุณถูกคุณครูเตะออกจากห้องแข่งขันครับ!");
         window.location.href = '../race_home.html';
-    }
-}
-                window.location.href = '../race_home.html';
-            }
-        }).subscribe();
     }
 }
 
@@ -236,7 +234,6 @@ async function checkApprovalAndGoToArena(roomCode, name, className, no, team) {
             if (lobbyData && Array.isArray(lobbyData.players)) {
                 const me = lobbyData.players.find(p => String(p.number) === String(no) && p.nickname_th === name);
 
-                // 🛑 หากสถานะไม่ใช่อนุมัติ (approved) จะไม่ให้เข้าเล่น
                 if (!me || me.status !== 'approved') {
                     alert("⚠️ คุณยังไม่ได้รับการอนุมัติให้เข้าแข่งขัน กรุณารอคุณครูกด 'อนุมัติ' ก่อนครับ!");
                     return;
@@ -252,18 +249,20 @@ async function checkApprovalAndGoToArena(roomCode, name, className, no, team) {
 
 function openLeaveConfirmModal() {
     const modalEl = document.getElementById('leaveConfirmModal');
-    if (modalEl) {
+    if (modalEl && typeof bootstrap !== 'undefined') {
         const modal = new bootstrap.Modal(modalEl);
         modal.show();
     }
 }
 
-// 🚪 ฟังก์ชันสั่งลบตนเองออกจากตาราง lobbies
+// 🚪 ลบข้อมูลของตนเองออกจากตาราง lobbies ทันที
 async function removeStudentFromLobby() {
     const urlParams = new URLSearchParams(window.location.search);
-    const roomCode = (urlParams.get('room') || '8090').trim().toUpperCase();
+    const roomCode = (urlParams.get('room') || '').trim().toUpperCase();
     const no = urlParams.get('no') || '-';
     const name = urlParams.get('name') || '';
+
+    if (!roomCode) return;
 
     try {
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
@@ -307,17 +306,12 @@ async function confirmLeaveRoom() {
     window.location.href = '../race_home.html';
 }
 
-window.addEventListener('beforeunload', () => {
-    removeStudentFromLobby();
-});
-
-window.addEventListener('pagehide', () => {
-    removeStudentFromLobby();
-});
+window.addEventListener('beforeunload', () => { removeStudentFromLobby(); });
+window.addEventListener('pagehide', () => { removeStudentFromLobby(); });
 
 async function sendEmojiReaction(emoji) {
     const urlParams = new URLSearchParams(window.location.search);
-    const roomCode = (urlParams.get('room') || '8090').trim().toUpperCase();
+    const roomCode = (urlParams.get('room') || '').trim().toUpperCase();
     const name = urlParams.get('name') || 'นักเรียน';
 
     const messageText = `😀 ${name} ส่ง Reaction ${emoji}`;
@@ -330,16 +324,8 @@ async function sendEmojiReaction(emoji) {
                 event: 'emoji_reaction',
                 payload: { name: name, emoji: emoji, message: messageText }
             });
-
-            await supabaseClient.from('combat_logs').insert([{
-                room_code: roomCode,
-                message: messageText,
-                log_type: 'EMOJI'
-            }]);
         }
-    } catch (e) {
-        console.warn("Send emoji error:", e);
-    }
+    } catch (e) {}
 
     const alertBox = document.createElement('div');
     alertBox.className = 'position-fixed bottom-0 start-50 translate-middle-x bg-info text-dark font-mono px-3 py-1 rounded-pill shadow fs-6 mb-3';

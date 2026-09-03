@@ -31,6 +31,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (joinForm) joinForm.addEventListener('submit', handleStudentJoin);
 
     await loadUserProfileFromDatabase();
+
+    // 🟢 ถ้ามี roomCode ใน URL ให้ดึงกติกาและฟังสัญญาณ Realtime ทันที
+    if (roomCode) {
+        await fetchLobbySettings(roomCode);
+        listenRoomConfigChanges(roomCode);
+    }
 });
 
 function updateClassPreview() {
@@ -121,7 +127,83 @@ function handleCustomAvatarUpload(e) {
     reader.readAsDataURL(file);
 }
 
-// 🟢 บันทึกข้อมูลนักเรียนเข้าตาราง lobbies เฉพาะเมื่อมีห้องจริงเท่านั้น
+// 🟢 ดึงกติกาการแข่งขันจากตาราง lobbies
+async function fetchLobbySettings(roomCode) {
+    try {
+        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+            const { data, error } = await supabaseClient
+                .from('lobbies')
+                .select('*')
+                .eq('room_code', roomCode)
+                .maybeSingle();
+
+            if (!error && data) {
+                renderMatchSettingsUI(data);
+            }
+        }
+    } catch (e) {
+        console.error("Fetch lobby settings error:", e);
+    }
+}
+
+// 🟢 แมปข้อมูลกติกาขึ้นแสดงบนหน้าจอฝั่งนักเรียน
+function renderMatchSettingsUI(data) {
+    if (!data) return;
+
+    // 1. ระยะเวลาการแข่ง
+    const timerEl = document.getElementById('setting-timer-text');
+    if (timerEl) {
+        timerEl.innerText = !data.timer_enabled 
+            ? "ไม่จำกัดเวลา" 
+            : `${Math.floor((data.timer_duration || 180) / 60)} นาที (${data.timer_duration || 180} วินาที)`;
+    }
+
+    // 2. เงื่อนไขแจก Gold
+    const goldEl = document.getElementById('setting-gold-text');
+    if (goldEl) {
+        goldEl.innerText = data.gold_enabled 
+            ? `แจก ${data.gold_amount || 3} Gold / ทุก ${data.gold_milestone || '10%'}` 
+            : "ปิดใช้งาน";
+    }
+
+    // 3. ระบบคำถามกวนใจ
+    const quizEl = document.getElementById('setting-quiz-text');
+    if (quizEl) {
+        quizEl.innerText = data.quiz_enabled ? "เปิดใช้งาน" : "ปิดใช้งาน";
+        quizEl.className = data.quiz_enabled ? "text-danger fw-bold" : "text-subtle";
+    }
+
+    // 4. ไอเทมที่เปิดขายในร้านค้า
+    const shopContainer = document.getElementById('setting-shop-items-container');
+    if (shopContainer) {
+        if (!data.shop_enabled) {
+            shopContainer.innerHTML = `<span class="text-subtle">ปิดใช้งาน</span>`;
+        } else {
+            let badges = [];
+            if (data.item_shield) badges.push(`<span class="badge bg-secondary me-1">🛡️ โล่ป้องกัน</span>`);
+            if (data.item_blind) badges.push(`<span class="badge bg-secondary me-1">👁️ หน้าจอเบลอ</span>`);
+            if (data.item_freeze) badges.push(`<span class="badge bg-primary me-1">❄️ แช่แข็งระบบ</span>`);
+            if (data.item_boost) badges.push(`<span class="badge bg-warning text-dark me-1">⚡ สปีดบูสท์</span>`);
+
+            shopContainer.innerHTML = badges.length > 0 ? badges.join('') : `<span class="text-subtle">ไม่มีไอเทมเปิดขาย</span>`;
+        }
+    }
+}
+
+// 🟢 ฟังสัญญาณ Realtime เมื่อครูเปลี่ยนกติกา
+function listenRoomConfigChanges(roomCode) {
+    if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+        const channel = supabaseClient.channel(`room_signal_${roomCode}`);
+        
+        channel.on('broadcast', { event: 'config_updated' }, (payload) => {
+            if (payload && payload.payload) {
+                renderMatchSettingsUI(payload.payload);
+            }
+        }).subscribe();
+    }
+}
+
+// 🟢 บันทึกข้อมูลนักเรียนเข้าตาราง lobbies Specific
 async function handleStudentJoin(e) {
     if (e) e.preventDefault();
 
@@ -155,14 +237,12 @@ async function handleStudentJoin(e) {
 
     try {
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-            // 🛑 1. ค้นหาห้องแข่งขันจากตาราง lobbies ก่อน
             let { data: lobbyData, error } = await supabaseClient
                 .from('lobbies')
                 .select('players, status')
                 .eq('room_code', inputRoom)
                 .maybeSingle();
 
-            // 🛑 2. ถ้าไม่พบห้องในฐานข้อมูล ให้เด้งเตือนและปฏิเสธการเข้าเล่นทันที
             if (error || !lobbyData) {
                 alert(`⚠️ ไม่พบห้องแข่งขันหมายเลข "${inputRoom}" ในระบบ!\n\nกรุณาตรวจสอบรหัสห้อง หรือรอคุณครูเปิดห้องแข่งขันก่อนครับ`);
                 resetJoinBtn();
@@ -182,7 +262,7 @@ async function handleStudentJoin(e) {
                 class_name: studentClassFormatted,
                 number: parseInt(studentNumber) || 1,
                 image: currentAvatarUrl,
-                status: 'pending', // 🔴 เริ่มต้นเป็น pending รอนุมัติจากครู
+                status: 'pending',
                 score: 0,
                 progress: 0,
                 wpm: 0,
@@ -191,7 +271,6 @@ async function handleStudentJoin(e) {
 
             let playersList = Array.isArray(lobbyData.players) ? lobbyData.players : [];
             
-            // ค้นหาและอัปเดตข้อมูลผู้เล่นเดิมหรือเพิ่มคนใหม่
             const existingIdx = playersList.findIndex(p => String(p.number) === String(newPlayerData.number) && p.nickname_th === newPlayerData.nickname_th);
             if (existingIdx !== -1) {
                 playersList[existingIdx] = { ...playersList[existingIdx], ...newPlayerData };
@@ -199,7 +278,6 @@ async function handleStudentJoin(e) {
                 playersList.push(newPlayerData);
             }
 
-            // 🟢 3. อัปเดตรายชื่อนักเรียนกลับลงห้องที่มีอยู่แล้ว
             await supabaseClient
                 .from('lobbies')
                 .update({ players: playersList })
@@ -212,7 +290,6 @@ async function handleStudentJoin(e) {
         return;
     }
 
-    // เซฟออฟไลน์สำรองใน LocalStorage
     localStorage.setItem('gyver_race_student_profile', JSON.stringify({
         nicknameTh, firstnameTh, lastnameTh, nicknameEn, firstnameEn, lastnameEn,
         studentLevel, studentRoom, studentClass: studentClassFormatted, studentNumber, avatarUrl: currentAvatarUrl

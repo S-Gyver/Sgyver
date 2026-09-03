@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gyver Wheel - Admin Monitor Panel</title>
+
+    <!-- Bootstrap 5, Icons & Kanit Font -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@600;700;800&family=Kanit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../../../assets/js/supabaseClient.js"></script>
+
+    <!-- Shared Toast & PhotoZoom Modules -->
+    <link rel="stylesheet" href="../../../../assets/css/toast_shared.css">
+    <script src="../../../../assets/js/toast_shared.js"></script>
+    <link rel="stylesheet" href="../../../../assets/css/photozoom_shared.css">
+    <script src="../../../../assets/js/photozoom_shared.js"></script>
+
+    <link rel="stylesheet" href="teacher_wheel_monitor.css">
+</head>
+<body class="cyber-body py-3">
+
+    <!-- Background Glow Elements -->
+    <div class="bg-glow-blur glow-top"></div>
+    <div class="bg-glow-blur glow-bottom"></div>
+    <div class="bg-cyber-grid"></div>
+
+    <div class="container px-3 px-md-4 position-relative z-2" style="max-width: 1050px;">
+        
+        <!-- Header ส่วนบน -->
+        <div class="cyber-card p-3 mb-4 border-cyan d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h3 class="text-white fw-bold m-0 font-kanit text-cyan-glow">
+                    <i class="bi bi-sliders text-cyan me-2"></i>Gyver Admin Panel
+                </h3>
+                <p class="text-subtle small m-0 font-mono">จัดการระบบหลังบ้าน วงล้อสุ่ม และคลังคำถาม (Supabase Cloud)</p>
+            </div>
+            
+            <div class="d-flex align-items-center gap-2 flex-wrap ms-auto font-mono">
+                <a href="wheel_display.html" target="_blank" class="btn btn-cyan-glow btn-sm fw-bold shadow-sm">
+                    <i class="bi bi-disc-fill me-1"></i>หน้าจอแสดงผล (Stage)
+                </a>
+                <a href="../../../../index.html" class="btn btn-outline-light btn-sm fw-bold">
+                    <i class="bi bi-house-door-fill me-1"></i>หน้าหลัก
+                </a>
+            </div>
+        </div>
+
+        <!-- แท็บเมนูควบคุมหลัก -->
+        <ul class="nav nav-pills gap-2 mb-4 p-2 cyber-card border-secondary rounded-3 flex-column flex-sm-row font-mono" id="pills-tab" role="tablist">
+            <li class="nav-item flex-fill" role="presentation">
+                <button class="nav-link nav-link-cyber active w-100 text-center" id="pills-monitor-tab" data-bs-toggle="pill" data-bs-target="#pills-monitor" type="button" role="tab" data-tab-name="monitor">
+                    <i class="bi bi-cpu-fill me-2"></i>ระบบสุ่มคำถาม (Live Monitor)
+                </button>
+            </li>
+            <li class="nav-item flex-fill" role="presentation">
+                <button class="nav-link nav-link-cyber w-100 text-center" id="pills-players-tab" data-bs-toggle="pill" data-bs-target="#pills-players" type="button" role="tab" data-tab-name="players">
+                    <i class="bi bi-people-fill me-2"></i>จัดการรายชื่อนักเรียน
+                </button>
+            </li>
+            <li class="nav-item flex-fill" role="presentation">
+                <button class="nav-link nav-link-cyber w-100 text-center" id="pills-quiz-tab" data-bs-toggle="pill" data-bs-target="#pills-quiz" type="button" role="tab" data-tab-name="quiz">
+                    <i class="bi bi-patch-question-fill me-2"></i>คลังคำถามคำตอบ
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="pills-tabContent">
+            
+            <!-- 🎯 แท็บที่ 1: ระบบสุ่มคำถาม (Live Monitor) -->
+            <div class="tab-pane fade show active" id="pills-monitor" role="tabpanel">
+                <div class="cyber-card p-3 p-md-4 mb-4 border-cyan">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                        <h4 class="text-white fw-bold m-0 font-kanit">
+                            <i class="bi bi-broadcast text-danger me-2"></i>บอร์ดควบคุมระยะไกล (Live Monitor)
+                        </h4>
+
+                        <!-- 📍 ป้ายแจ้งขั้นตอนปัจจุบันฝั่งนักเรียน (วางตรงกลางระหว่างหัวข้อ และปุ่มสุ่มใหม่) -->
+                        <div class="d-flex align-items-center gap-2 mx-auto mx-md-0 my-2 my-md-0">
+                            <span class="text-subtle font-mono small d-none d-sm-inline">ขั้นตอนปัจจุบัน:</span>
+                            <span class="badge bg-secondary px-3 py-2 font-mono fs-6 border border-light shadow-sm" id="monitor-step-badge">
+                                ⏳ กำลังเชื่อมต่อหน้าจอ...
+                            </span>
+                        </div>
+
+                        <div class="d-flex gap-2 align-items-center ms-auto">
+                            <button id="remote-reset-btn" class="btn btn-warning fw-bold px-3 py-1 btn-sm shadow-sm font-mono" onclick="remoteResetWindow()">
+                                <i class="bi bi-arrow-counterclockwise me-1"></i>สุ่มใหม่ (รีเซ็ตหน้าจอ)
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Layout สั่งการหลัก -->
+                    <div class="row g-3">
+                        <!-- 👈 ปุ่มควบคุมฝั่งซ้าย (พร้อม Mini Live Wheel บนสุด) -->
+                        <div class="col-12 col-md-3 d-flex flex-column gap-2 font-mono align-items-center">
+                            
+                            <!-- 🎡 Mini Live Wheel สำหรับคุณครู -->
+                            <div class="wheel-mini-container mb-2 text-center">
+                                <div id="mini-wheel-pointer" class="wheel-mini-pointer"></div>
+                                <canvas id="mini-wheel-canvas" width="140" height="140"></canvas>
+                            </div>
+
+                            <!-- 🎯 ปุ่มสั่งหมุนวงล้อ -->
+                            <button id="remote-spin-btn" class="btn btn-pink-gradient w-100 py-3 fw-bold fs-5 shadow">
+                                <i class="bi bi-play-circle-fill me-2"></i>สั่งหมุนวงล้อ
+                            </button>
+
+                            <!-- 🎯 เมนูล็อกเป้าผู้โชคดี -->
+                            <div class="w-100 mb-1">
+                                <label class="text-danger fw-bold small font-mono d-block mb-1">
+                                    <i class="bi bi-crosshair me-1"></i> ล็อกเป้าผู้โชคดี:
+                                </label>
+                                <select id="target-winner-select" class="form-select bg-dark text-danger border-danger fw-bold form-select-sm font-mono">
+                                    <option value="">🎲 สุ่มตามธรรมชาติ (Auto)</option>
+                                </select>
+                            </div>
+
+                            <!-- 🎯 ปุ่มสุ่มคำถาม -->
+                            <button id="remote-quiz-btn" class="btn btn-cyan-glow w-100 py-3 fw-bold fs-5 shadow">
+                                <i class="bi bi-question-diamond-fill me-2"></i>สุ่มคำถาม
+                            </button>
+
+                            <!-- 🎯 เลือกคำถามเจาะจง -->
+                            <div class="w-100 mb-1">
+                                <label class="text-cyan fw-bold small font-mono d-block mb-1">
+                                    <i class="bi bi-list-check me-1"></i> เลือกคำถามเจาะจง:
+                                </label>
+                                <select id="select-specific-quiz" class="form-select bg-dark text-cyan border-cyan fw-bold form-select-sm font-mono" onchange="triggerSpecificQuiz(this.value)">
+                                    <option value="">-- สุ่มคำถามอัตโนมัติ --</option>
+                                </select>
+                            </div>
+
+                            <button id="remote-confirm-btn" class="btn btn-primary w-100 py-2 fw-bold shadow" onclick="remoteConfirmAnswer()">
+                                <i class="bi bi-check-circle-fill me-1"></i>ยืนยันคำตอบแทน
+                            </button>
+                            <button id="remote-skip-btn" class="btn btn-outline-warning w-100 py-2 fw-bold shadow" onclick="remoteSkipTurn()">
+                                <i class="bi bi-skip-forward-fill me-1"></i>ข้ามรอบนี้
+                            </button>
+                        </div>
+
+                        <!-- 👉 ฝั่งขวา: กล่องเลือกห้องเรียน + แผงแสดงผลผู้ชนะ + คำถาม -->
+                        <div class="col-12 col-md-9">
+                            
+                            <!-- ส่วนเลือกห้องเรียน และ วิชาที่ใช้ -->
+                            <div class="p-3 mb-3 rounded-3 border border-secondary bg-dark-soft">
+                                <div class="row g-3 align-items-center">
+                                    <div class="col-12 col-md-6">
+                                        <label class="text-cyan fw-bold small font-mono d-block mb-1"><i class="bi bi-door-open-fill me-1"></i> ห้องเรียน:</label>
+                                        <select id="monitor-class-select" class="form-select bg-dark text-cyan border-cyan fw-bold form-select-sm font-mono" onchange="syncClassFromMonitor(this.value)">
+                                        </select>
+                                    </div>
+                                    <div class="col-12 col-md-6">
+                                        <label class="text-warning fw-bold small font-mono d-block mb-1"><i class="bi bi-journal-bookmark-fill me-1"></i> วิชาที่ใช้:</label>
+                                        <select id="monitor-subject-select" class="form-select bg-dark text-warning border-warning fw-bold form-select-sm font-mono" onchange="syncSubjectFromMonitor(this.value)">
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- แผงแสดงข้อมูลผลการสุ่มสด พร้อมปุ่ม +1 / -1 ให้คะแนนกรณีพิเศษ -->
+                            <div class="row g-2 align-items-start mb-3">
+                                <div class="col-3 col-md-2 text-center">
+                                    <div class="display-label font-mono">รูป</div>
+                                    <div id="live-winner-avatar" class="avatar-preview-box mx-auto" style="cursor: pointer;" title="คลิกเพื่อดูรูปใหญ่"><i class="bi bi-person-fill"></i></div>
+                                </div>
+                                <div class="col-9 col-md-5">
+                                    <div class="display-label font-mono">ชื่อที่สุ่มได้</div>
+                                    <div id="live-winner-name" class="box-pink-display fs-5 font-mono">-</div>
+                                </div>
+                                <div class="col-6 col-md-2">
+                                    <div class="display-label text-center font-mono">โดนสุ่ม</div>
+                                    <div id="live-winner-count" class="box-pink-display justify-content-center fs-5 font-mono">-</div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <div class="display-label text-center font-mono">แต้ม</div>
+                                    <div id="live-winner-score" class="box-pink-display justify-content-center fs-5 font-mono mb-1">-</div>
+                                    
+                                    <!-- ➕➖ ปุ่มปรับคะแนนด่วนสำหรับคนโดนสุ่ม -->
+                                    <div class="btn-group btn-group-sm w-100 font-mono">
+                                        <button class="btn btn-outline-danger fw-bold py-1" onclick="adjustCurrentWinnerScore(-1)" title="หัก 1 คะแนน">
+                                            <i class="bi bi-dash-circle me-1"></i>-1
+                                        </button>
+                                        <button class="btn btn-outline-success fw-bold py-1" onclick="adjustCurrentWinnerScore(1)" title="เพิ่ม 1 คะแนน">
+                                            <i class="bi bi-plus-circle me-1"></i>+1
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- กล่องแสดงโจทย์คำถามและตัวเลือก 1-4 -->
+                            <div class="display-label d-flex justify-content-between flex-wrap gap-1 font-mono">
+                                <span>คำถามที่สุ่มได้</span>
+                                <span id="monitor-active-subject-tag" class="text-warning fw-bold small"></span>
+                            </div>
+                            <div id="live-quiz-text" class="box-question-display mb-3 font-mono">กรุณากดหมุนวงล้อหรือเลือกสุ่มคำถาม...</div>
+                            
+                            <div class="row g-2 font-mono">
+                                <div class="col-12 col-sm-6"><button id="admin-choice-0" class="btn-choice-admin" onclick="remoteSelectChoice(0)">1. </button></div>
+                                <div class="col-12 col-sm-6"><button id="admin-choice-1" class="btn-choice-admin" onclick="remoteSelectChoice(1)">2. </button></div>
+                                <div class="col-12 col-sm-6"><button id="admin-choice-2" class="btn-choice-admin" onclick="remoteSelectChoice(2)">3. </button></div>
+                                <div class="col-12 col-sm-6"><button id="admin-choice-3" class="btn-choice-admin" onclick="remoteSelectChoice(3)">4. </button></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 👥 แท็บที่ 2: จัดการรายชื่อผู้เล่น -->
+            <div class="tab-pane fade" id="pills-players" role="tabpanel">
+                <div class="cyber-card p-3 mb-4 border-cyan">
+                    <div class="row align-items-end g-3 font-mono">
+                        <div class="col-12 col-md-4">
+                            <label class="form-label text-cyan fw-bold small m-0 mb-1"><i class="bi bi-book-half me-1"></i>ห้องเรียนที่กำลังสอน</label>
+                            <select id="current-class-select" class="form-select bg-dark text-white border-cyan fw-bold" onchange="changeClassRoom(this.value)">
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-5">
+                            <label class="form-label text-subtle small m-0 mb-1">ชั้น / ห้องเรียนใหม่</label>
+                            <input type="text" id="new-room-name" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="พิมพ์ชื่อห้องใหม่ เช่น ชุมนุม python">
+                        </div>
+                        <div class="col-12 col-md-3 d-flex gap-1 justify-content-end">
+                            <button class="btn btn-cyan-glow fw-bold btn-sm flex-grow-1" type="button" onclick="createNewClassRoom()">
+                                <i class="bi bi-folder-plus me-1"></i>เพิ่มห้อง
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm px-2" type="button" onclick="deleteCurrentClassRoom()" title="ลบห้องนี้">
+                                <i class="bi bi-trash3"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cyber-card p-3 p-md-4 mb-4 border-secondary">
+                    <h4 class="text-cyan fw-bold mb-3 font-kanit" id="player-form-title"><i class="bi bi-person-plus-fill me-2"></i>เพิ่มนักเรียนใหม่</h4>
+                    <form id="player-form" class="font-mono">
+                        <input type="hidden" id="edit-player-index" value="">
+                        <input type="hidden" id="delete-current-image-flag" value="false">
+                        
+                        <div class="row g-3 align-items-end">
+                            <div class="col-12 col-md-4">
+                                <label class="form-label text-subtle small">ชื่อผู้เล่น / นักเรียน</label>
+                                <input type="text" id="player-name" class="form-control bg-dark text-white border-secondary" placeholder="พิมพ์ชื่อนักเรียน..." required>
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label class="form-label text-subtle small" id="player-img-label">รูปโปรไฟล์ (ถ้ามี)</label>
+                                <div class="d-flex gap-2 align-items-center">
+                                    <div id="edit-preview-zone" class="d-none"></div>
+                                    <input type="file" id="player-img" class="form-control bg-dark text-white border-secondary form-control-sm" accept="image/*">
+                                    <button type="button" id="player-delete-img-btn" class="btn btn-sm btn-danger d-none" onclick="markDeleteImage()">
+                                        <i class="bi bi-image-alt"></i> ลบรูป
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-4 d-flex gap-2">
+                                <button class="btn btn-cyan-glow w-100 fw-bold shadow" type="submit" id="player-submit-btn">เพิ่มชื่อ</button>
+                                <button class="btn btn-secondary fw-bold text-white shadow d-none" type="button" id="player-cancel-edit-btn" onclick="cancelEditPlayer()">ยกเลิก</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="cyber-card p-3 p-md-4 border-secondary">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                        <h4 class="text-white fw-bold m-0 font-kanit"><i class="bi bi-list-stars text-warning me-2"></i>รายชื่อผู้เล่นปัจจุบัน (<span id="player-count" class="font-mono">0</span> คน)</h4>
+                        <button id="reset-scores-btn" class="btn btn-sm btn-outline-warning font-mono" onclick="resetAllScores()"><i class="bi bi-arrow-counterclockwise me-1"></i>รีเซ็ตสถิติทุกคนเป็น 0</button>
+                    </div>
+                    <ul id="player-list" class="list-group gap-2 font-mono" style="max-height: 400px; overflow-y: auto;"></ul>
+                </div>
+            </div>
+
+            <!-- 📚 แท็บที่ 3: คลังคำถามคำตอบ -->
+            <div class="tab-pane fade" id="pills-quiz" role="tabpanel">
+                <div class="cyber-card p-3 mb-4 border-warning">
+                    <div class="row align-items-end g-2 font-mono">
+                        <div class="col-12 col-md-4">
+                            <label class="form-label text-warning fw-bold small m-0 mb-1"><i class="bi bi-tags-fill me-1"></i>ชุดวิชาคำถามที่ต้องการจัดการ</label>
+                            <select id="current-quiz-subject-select" class="form-select bg-dark text-warning border-warning fw-bold" onchange="changeQuizSubject(this.value)">
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-5">
+                            <div class="row g-2">
+                                <input type="hidden" id="edit-subject-old-key" value="">
+                                <div class="col-4">
+                                    <label class="form-label text-subtle small m-0 mb-1">1. วิชา</label>
+                                    <input type="text" id="quiz-sub-name" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="เช่น Python" required>
+                                </div>
+                                <div class="col-5">
+                                    <label class="form-label text-subtle small m-0 mb-1">2. บทเรียน</label>
+                                    <input type="text" id="quiz-sub-content" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="เช่น Loop" required>
+                                </div>
+                                <div class="col-3">
+                                    <label class="form-label text-subtle small m-0 mb-1">3. ชั้น</label>
+                                    <input type="text" id="quiz-sub-room" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="เช่น ม.4/1" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-3 d-flex gap-1 justify-content-end mt-2 mt-md-0">
+                            <button id="quiz-sub-submit-btn" class="btn btn-warning text-dark fw-bold btn-sm flex-grow-1" type="button" onclick="handleQuizSubjectSubmit()">
+                                <i class="bi bi-plus-square me-1"></i>เพิ่มรายวิชา
+                            </button>
+                            <button id="quiz-sub-cancel-btn" class="btn btn-secondary text-white fw-bold btn-sm d-none" type="button" onclick="cancelEditQuizSubject()">
+                                ยกเลิก
+                            </button>
+                            <button class="btn btn-sm btn-outline-warning btn-sm px-2" type="button" onclick="startEditQuizSubject()" title="แก้ไขชื่อวิชานี้">
+                                <i class="bi bi-pencil-fill"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger btn-sm px-2" type="button" onclick="deleteCurrentQuizSubject()" title="ลบวิชานี้">
+                                <i class="bi bi-trash3"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cyber-card p-3 p-md-4 mb-4 border-secondary">
+                    <h4 class="text-warning fw-bold m-0 mb-3 font-kanit" id="quiz-form-title"><i class="bi bi-question-square-fill me-2"></i>สร้างโจทย์คำถามใหม่</h4>
+                    <form id="quiz-form" class="font-mono">
+                        <input type="hidden" id="edit-quiz-index" value="">
+                        
+                        <div class="mb-3">
+                            <label class="form-label text-subtle small">โจทย์คำถามหลัก</label>
+                            <textarea id="quiz-q" class="form-control bg-dark text-white border-secondary" rows="4" placeholder="พิมพ์คำถามที่ต้องการถาม..." required></textarea>
+                        </div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-12 col-md-6">
+                                <label class="text-subtle small mb-1">ตัวเลือกที่ 1</label>
+                                <textarea id="choice-0" class="form-control bg-dark text-white border-secondary" rows="2" required></textarea>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="text-subtle small mb-1">ตัวเลือกที่ 2</label>
+                                <textarea id="choice-1" class="form-control bg-dark text-white border-secondary" rows="2" required></textarea>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="text-subtle small mb-1">ตัวเลือกที่ 3</label>
+                                <textarea id="choice-2" class="form-control bg-dark text-white border-secondary" rows="2" required></textarea>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="text-subtle small mb-1">ตัวเลือกที่ 4</label>
+                                <textarea id="choice-3" class="form-control bg-dark text-white border-secondary" rows="2" required></textarea>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-subtle small">คำตอบที่ถูกต้อง</label>
+                            <select id="correct-choice" class="form-select bg-dark text-white border-secondary">
+                                <option value="0">ตัวเลือกที่ 1</option>
+                                <option value="1">ตัวเลือกที่ 2</option>
+                                <option value="2">ตัวเลือกที่ 3</option>
+                                <option value="3">ตัวเลือกที่ 4</option>
+                            </select>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="submit" id="quiz-submit-btn" class="btn btn-warning w-100 fw-bold shadow text-dark"><i class="bi bi-floppy-fill me-2"></i>บันทึกคำถามเข้าคลังของวิชานี้</button>
+                            <button type="button" id="quiz-cancel-edit-btn" class="btn btn-secondary fw-bold text-white shadow d-none" onclick="cancelEditQuiz()">ยกเลิก</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="cyber-card p-3 p-md-4 border-secondary">
+                    <h4 class="text-white fw-bold mb-3 font-kanit"><i class="bi bi-database-fill text-warning me-2"></i>รายการคำถามในชุดวิชานี้ (<span id="q-count" class="font-mono">0</span> ข้อ)</h4>
+                    <div id="quiz-list" class="list-group gap-2 font-mono" style="max-height: 350px; overflow-y: auto;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="teacher_wheel_monitor.js"></script>
+</body>
+</html>
