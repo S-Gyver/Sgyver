@@ -10,6 +10,7 @@ let isSpinning = false;
 let idleAnimationId = null;
 let realtimeChannel = null;
 let gameStates = {};
+let currentTeacherId = null;
 
 let bigWheelModalInstance = null;
 let winnerCardModalInstance = null;
@@ -19,14 +20,6 @@ let answerResultModalInstance = null;
 document.addEventListener('DOMContentLoaded', async () => {
     initModals();
     await fetchDisplayClassrooms();
-
-    const urlParams = new URLSearchParams(window.location.search);
-    currentClassId = urlParams.get('class_id') || '';
-    
-    if (currentClassId) {
-        await fetchClassroomData(currentClassId);
-    }
-
     startIdleSpinning();
 });
 
@@ -108,6 +101,7 @@ function forceCleanBackdrop() {
     });
 }
 
+// 🎯 ซิงก์ห้องเรียนตรงกับบอร์ดครูเสมอ
 async function fetchDisplayClassrooms() {
     try {
         if (typeof supabaseClient === 'undefined' || !supabaseClient) return;
@@ -115,11 +109,15 @@ async function fetchDisplayClassrooms() {
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (!session?.user) return;
 
+        currentTeacherId = session.user.id;
+
+        // ดึงสถานะปัจจุบันของครู
+        await fetchGameStateData();
+
         const { data: classrooms, error } = await supabaseClient
             .from('classrooms')
             .select('*')
-            .eq('teacher_id', session.user.id)
-            .order('created_at', { ascending: false });
+            .eq('teacher_id', currentTeacherId);
 
         if (error || !classrooms || classrooms.length === 0) {
             document.getElementById('display-room-title').innerText = 'ไม่พบห้องเรียน';
@@ -127,10 +125,12 @@ async function fetchDisplayClassrooms() {
             return;
         }
 
-        if (!currentClassId) {
-            currentClassId = classrooms[0].id;
-            await fetchClassroomData(currentClassId);
-        }
+        const targetClassKey = gameStates['current_class_key'];
+        let matchedClass = classrooms.find(c => c.class_name === targetClassKey) || classrooms[0];
+
+        currentClassId = matchedClass.id;
+        await fetchClassroomData(currentClassId);
+        listenRealtimeSignals();
     } catch (err) {
         console.error("Fetch display classrooms error:", err);
     }
@@ -152,12 +152,10 @@ async function fetchClassroomData(classId) {
             studentsList = Array.isArray(data.students) ? data.students : [];
             
             fetchQuizQuestions();
-            fetchGameStateData();
 
             drawWheel();
             drawBigWheel();
             updateLeaderboardUI();
-            listenRealtimeSignals(roomCode, classId);
         }
     } catch (e) {
         console.error("Fetch classroom error:", e);
@@ -166,13 +164,16 @@ async function fetchClassroomData(classId) {
 
 async function fetchGameStateData() {
     try {
-        const { data: { session } } = await supabaseClient.auth.getSession();
-        if (!session?.user) return;
+        if (!currentTeacherId) {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session?.user) currentTeacherId = session.user.id;
+        }
+        if (!currentTeacherId) return;
 
         const { data } = await supabaseClient
             .from('game_state')
             .select('*')
-            .eq('user_id', session.user.id);
+            .eq('user_id', currentTeacherId);
 
         if (data) {
             gameStates = {};
@@ -189,13 +190,12 @@ async function fetchGameStateData() {
 
 async function fetchQuizQuestions() {
     try {
-        const { data: { session } } = await supabaseClient.auth.getSession();
-        if (!session?.user) return;
+        if (!currentTeacherId) return;
 
         const { data } = await supabaseClient
             .from('quiz_subjects')
             .select('questions')
-            .eq('user_id', session.user.id);
+            .eq('user_id', currentTeacherId);
 
         if (data && data.length > 0) {
             questionsList = data.flatMap(d => d.questions || []);
@@ -569,15 +569,14 @@ async function openQuizModalFromCard1() {
     if (quizDisplayModalInstance) quizDisplayModalInstance.show();
 
     try {
-        const { data: { session } } = await supabaseClient.auth.getSession();
-        if (session?.user) {
+        if (currentTeacherId) {
             await supabaseClient
                 .from('game_state')
                 .upsert([
-                    { key: 'current_active_quiz', value: JSON.stringify(currentActiveQuiz), user_id: session.user.id, updated_at: new Date() },
-                    { key: 'selected_choice_idx', value: 'null', user_id: session.user.id, updated_at: new Date() },
-                    { key: 'quiz_submitted', value: 'false', user_id: session.user.id, updated_at: new Date() },
-                    { key: 'current_step', value: 'quiz_visible', user_id: session.user.id, updated_at: new Date() }
+                    { key: 'current_active_quiz', value: JSON.stringify(currentActiveQuiz), user_id: currentTeacherId, updated_at: new Date() },
+                    { key: 'selected_choice_idx', value: 'null', user_id: currentTeacherId, updated_at: new Date() },
+                    { key: 'quiz_submitted', value: 'false', user_id: currentTeacherId, updated_at: new Date() },
+                    { key: 'current_step', value: 'quiz_visible', user_id: currentTeacherId, updated_at: new Date() }
                 ], { onConflict: 'key,user_id' });
         }
     } catch (e) {
@@ -704,16 +703,15 @@ async function closeAllModals() {
     gameStates['target_winner_index'] = '-1';
 
     try {
-        const { data: { session } } = await supabaseClient.auth.getSession();
-        if (session?.user) {
+        if (currentTeacherId) {
             await supabaseClient
                 .from('game_state')
                 .upsert([
-                    { key: 'current_winner_name', value: '', user_id: session.user.id, updated_at: new Date() },
-                    { key: 'current_active_quiz', value: 'null', user_id: session.user.id, updated_at: new Date() },
-                    { key: 'selected_choice_idx', value: 'null', user_id: session.user.id, updated_at: new Date() },
-                    { key: 'target_winner_index', value: '-1', user_id: session.user.id, updated_at: new Date() },
-                    { key: 'current_step', value: 'ready', user_id: session.user.id, updated_at: new Date() }
+                    { key: 'current_winner_name', value: '', user_id: currentTeacherId, updated_at: new Date() },
+                    { key: 'current_active_quiz', value: 'null', user_id: currentTeacherId, updated_at: new Date() },
+                    { key: 'selected_choice_idx', value: 'null', user_id: currentTeacherId, updated_at: new Date() },
+                    { key: 'target_winner_index', value: '-1', user_id: currentTeacherId, updated_at: new Date() },
+                    { key: 'current_step', value: 'ready', user_id: currentTeacherId, updated_at: new Date() }
                 ], { onConflict: 'key,user_id' });
         }
     } catch (e) {
@@ -819,11 +817,12 @@ function showWinnerAnnouncement(winner) {
     box.classList.remove('d-none');
 }
 
-function listenRealtimeSignals(code, classId) {
-    if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+// 📡 ฟังสัญญาณ Realtime จากช่องครูโดยตรง
+function listenRealtimeSignals() {
+    if (typeof supabaseClient !== 'undefined' && supabaseClient && currentTeacherId) {
         if (realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
 
-        const channelName = code ? `room_${code}` : (classId ? `room_${code}` : 'room_global');
+        const channelName = `teacher_${currentTeacherId}`;
         realtimeChannel = supabaseClient.channel(channelName);
 
         realtimeChannel.on('broadcast', { event: 'spin_trigger' }, (payload) => {
@@ -841,10 +840,19 @@ function listenRealtimeSignals(code, classId) {
                 gameStates['target_winner_index'] = String(payload.payload.targetIndex);
             }
         })
+        // 🚀 สลับห้องเรียนตามครูทันที Realtime
+        .on('broadcast', { event: 'class_changed' }, async (payload) => {
+            if (payload && payload.payload && payload.payload.key) {
+                gameStates['current_class_key'] = payload.payload.key;
+                await fetchDisplayClassrooms();
+            }
+        })
+        // 🚀 สลับวิชาตามครูทันที Realtime
         .on('broadcast', { event: 'subject_changed' }, (payload) => {
             if (payload && payload.payload && payload.payload.key) {
                 const subEl = document.getElementById('display-subject-tag');
                 if (subEl) subEl.innerText = payload.payload.key;
+                fetchQuizQuestions();
             }
         })
         .on('broadcast', { event: 'quiz' }, (payload) => {

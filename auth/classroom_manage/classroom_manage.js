@@ -239,3 +239,37 @@ async function handleCreateClassroom(e) {
         btnSave.disabled = false;
     }
 }
+
+// 📱 ฟังก์ชันเปิด Modal QR Code พร้อมสร้าง Link ให้เด็กสแกน
+function openRoomQRModal() {
+    if (!activeClassroom) return;
+
+    const roomCode = activeClassroom.room_code || 'N/A';
+    const className = activeClassroom.class_name || 'ไม่มีชื่อห้อง';
+
+    document.getElementById('qr-modal-room-name').innerText = `ห้องเรียน: ${className}`;
+    document.getElementById('qr-modal-room-code').innerText = roomCode;
+
+    // 🎯 ชี้ URL ไปที่ auth/student_join/student_join.html
+    const joinUrl = `${window.location.origin}${window.location.pathname.replace('classroom_manage/classroom_manage.html', 'student_join/student_join.html')}?code=${roomCode}`;
+    
+    document.getElementById('qr-modal-link-input').value = joinUrl;
+
+    // สร้าง QR Code ผ่าน API
+    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(joinUrl)}`;
+    document.getElementById('qr-code-img').src = qrApiUrl;
+
+    const qrModal = new bootstrap.Modal(document.getElementById('roomQRModal'));
+    qrModal.show();
+}
+
+// 📋 4. ฟังก์ชันกดคัดลอกลิงก์
+function copyJoinLink() {
+    const input = document.getElementById('qr-modal-link-input');
+    input.select();
+    navigator.clipboard.writeText(input.value);
+
+    const msg = document.getElementById('copy-success-msg');
+    msg.classList.remove('d-none');
+    setTimeout(() => msg.classList.add('d-none'), 2000);
+}

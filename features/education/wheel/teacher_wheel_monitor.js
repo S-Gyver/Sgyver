@@ -969,12 +969,12 @@ function cancelEditQuiz() {
     document.getElementById('quiz-form').reset();
 }
 
-// 📡 10. ฟัง Realtime Broadcast สัญญาณสดจากฝั่งนักเรียน
+// 📡 ฟัง Realtime Broadcast สัญญาณสด
 function initSupabaseRealtime() {
-    if (typeof supabaseClient === 'undefined' || !supabaseClient) return;
+    if (typeof supabaseClient === 'undefined' || !supabaseClient || !currentUserId) return;
 
-    const currentRoom = classRooms[currentClassKey];
-    const channelName = currentRoom?.code ? `room_${currentRoom.code}` : (currentRoom?.id ? `room_${currentRoom.id}` : 'room_global');
+    // 🎯 ใช้ Global Teacher Channel สำหรับสั่งการหน้าจอแสดงผลของครูคนนี้
+    const channelName = `teacher_${currentUserId}`;
 
     if (realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
 
@@ -998,7 +998,6 @@ function initSupabaseRealtime() {
             highlightAdminChoice(idx);
         }
     })
-    // 🎯 เพิ่มการดักฟังเมื่อนักเรียนกดสุ่มคำถามจาก Pop-up ฝั่งนักเรียน
     .on('broadcast', { event: 'quiz' }, (payload) => {
         if (payload && payload.payload && payload.payload.quiz) {
             const activeQuiz = payload.payload.quiz;

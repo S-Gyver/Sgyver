@@ -164,8 +164,54 @@
                         </table>
                     </div>
                 </div>
-                <div class="modal-footer border-top-0 pt-0">
-                    <button type="button" class="btn btn-primary fw-bold font-mono px-4" data-bs-dismiss="modal">เสร็จสิ้น</button>
+                
+                <!-- 🎯 ส่วน Footer: เพิ่มปุ่มกดเปิด QR Code และเลขห้อง -->
+                <div class="modal-footer border-top-0 pt-0 d-flex justify-content-between align-items-center">
+                    <button type="button" class="btn btn-outline-primary fw-bold font-mono rounded-pill px-3" onclick="openRoomQRModal()">
+                        <i class="bi bi-qr-code-scan me-1"></i> QR Code & รหัสเข้าห้อง
+                    </button>
+                    <button type="button" class="btn btn-primary fw-bold font-mono px-4 rounded-3" data-bs-dismiss="modal">เสร็จสิ้น</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 📱 MODAL 3: แสดง QR Code และเลขห้องสำหรับนักเรียนสแกนลงชื่อ -->
+    <div class="modal fade" id="roomQRModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg text-center p-3 p-md-4">
+                <div class="modal-header border-0 pb-0 justify-content-end">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body pt-0">
+                    <div class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill fs-6 fw-bold mb-2">
+                        <i class="bi bi-phone me-1"></i> ให้นักเรียนสแกนเพื่อลงชื่อ
+                    </div>
+                    <h4 class="fw-bold text-dark mb-1" id="qr-modal-room-name">ห้องเรียน: -</h4>
+                    
+                    <!-- แถบแสดงรหัสห้องตัวใหญ่ -->
+                    <div class="my-3 p-3 bg-light rounded-4 border">
+                        <small class="text-secondary d-block mb-1">รหัสห้องเรียน (Room Code)</small>
+                        <span class="display-4 fw-bold text-primary font-monospace" id="qr-modal-room-code">------</span>
+                    </div>
+
+                    <!-- รูป QR Code ไดนามิก -->
+                    <div class="d-flex justify-content-center my-3">
+                        <div class="p-2 border rounded-4 bg-white shadow-sm">
+                            <img id="qr-code-img" src="" alt="QR Code เข้าร่วมห้อง" style="width: 210px; height: 210px; object-fit: contain;">
+                        </div>
+                    </div>
+
+                    <p class="text-muted small mb-3">สแกน QR Code ด้วยมือถือเพื่อพิมพ์ชื่อนักเรียนเข้าสู่ระบบ</p>
+                    
+                    <!-- ช่องแสดงลิงก์พร้อมปุ่มกด Copy -->
+                    <div class="input-group mb-2">
+                        <input type="text" id="qr-modal-link-input" class="form-control text-secondary bg-light small font-monospace" readonly>
+                        <button class="btn btn-outline-primary fw-bold" type="button" onclick="copyJoinLink()">
+                            <i class="bi bi-clipboard me-1"></i> คัดลอกลิงก์
+                        </button>
+                    </div>
+                    <div id="copy-success-msg" class="text-success small fw-bold d-none">คัดลอกลิงก์เรียบร้อยแล้ว!</div>
                 </div>
             </div>
         </div>
