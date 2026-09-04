@@ -12,13 +12,13 @@
 
     <!-- Supabase Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="../../../../assets/js/supabaseClient.js"></script>
+    <script src="../../../assets/js/supabaseClient.js"></script>
 
     <!-- Shared Toast & PhotoZoom Modules -->
-    <link rel="stylesheet" href="../../../../assets/css/toast_shared.css">
-    <script src="../../../../assets/js/toast_shared.js"></script>
-    <link rel="stylesheet" href="../../../../assets/css/photozoom_shared.css">
-    <script src="../../../../assets/js/photozoom_shared.js"></script>
+    <link rel="stylesheet" href="../../../assets/css/toast_shared.css">
+    <script src="../../../assets/js/toast_shared.js"></script>
+    <link rel="stylesheet" href="../../../assets/css/photozoom_shared.css">
+    <script src="../../../assets/js/photozoom_shared.js"></script>
 
     <link rel="stylesheet" href="teacher_wheel_monitor.css">
 </head>
@@ -44,7 +44,7 @@
                 <a href="wheel_display.html" target="_blank" class="btn btn-cyan-glow btn-sm fw-bold shadow-sm">
                     <i class="bi bi-disc-fill me-1"></i>หน้าจอแสดงผล (Stage)
                 </a>
-                <a href="../../../../index.html" class="btn btn-outline-light btn-sm fw-bold">
+                <a href="../../../index.html" class="btn btn-outline-light btn-sm fw-bold">
                     <i class="bi bi-house-door-fill me-1"></i>หน้าหลัก
                 </a>
             </div>
@@ -79,7 +79,6 @@
                             <i class="bi bi-broadcast text-danger me-2"></i>บอร์ดควบคุมระยะไกล (Live Monitor)
                         </h4>
 
-                        <!-- 📍 ป้ายแจ้งขั้นตอนปัจจุบันฝั่งนักเรียน (วางตรงกลางระหว่างหัวข้อ และปุ่มสุ่มใหม่) -->
                         <div class="d-flex align-items-center gap-2 mx-auto mx-md-0 my-2 my-md-0">
                             <span class="text-subtle font-mono small d-none d-sm-inline">ขั้นตอนปัจจุบัน:</span>
                             <span class="badge bg-secondary px-3 py-2 font-mono fs-6 border border-light shadow-sm" id="monitor-step-badge">
@@ -99,18 +98,15 @@
                         <!-- 👈 ปุ่มควบคุมฝั่งซ้าย (พร้อม Mini Live Wheel บนสุด) -->
                         <div class="col-12 col-md-3 d-flex flex-column gap-2 font-mono align-items-center">
                             
-                            <!-- 🎡 Mini Live Wheel สำหรับคุณครู -->
                             <div class="wheel-mini-container mb-2 text-center">
                                 <div id="mini-wheel-pointer" class="wheel-mini-pointer"></div>
                                 <canvas id="mini-wheel-canvas" width="140" height="140"></canvas>
                             </div>
 
-                            <!-- 🎯 ปุ่มสั่งหมุนวงล้อ -->
                             <button id="remote-spin-btn" class="btn btn-pink-gradient w-100 py-3 fw-bold fs-5 shadow">
                                 <i class="bi bi-play-circle-fill me-2"></i>สั่งหมุนวงล้อ
                             </button>
 
-                            <!-- 🎯 เมนูล็อกเป้าผู้โชคดี -->
                             <div class="w-100 mb-1">
                                 <label class="text-danger fw-bold small font-mono d-block mb-1">
                                     <i class="bi bi-crosshair me-1"></i> ล็อกเป้าผู้โชคดี:
@@ -120,12 +116,10 @@
                                 </select>
                             </div>
 
-                            <!-- 🎯 ปุ่มสุ่มคำถาม -->
                             <button id="remote-quiz-btn" class="btn btn-cyan-glow w-100 py-3 fw-bold fs-5 shadow">
                                 <i class="bi bi-question-diamond-fill me-2"></i>สุ่มคำถาม
                             </button>
 
-                            <!-- 🎯 เลือกคำถามเจาะจง -->
                             <div class="w-100 mb-1">
                                 <label class="text-cyan fw-bold small font-mono d-block mb-1">
                                     <i class="bi bi-list-check me-1"></i> เลือกคำถามเจาะจง:
@@ -146,7 +140,6 @@
                         <!-- 👉 ฝั่งขวา: กล่องเลือกห้องเรียน + แผงแสดงผลผู้ชนะ + คำถาม -->
                         <div class="col-12 col-md-9">
                             
-                            <!-- ส่วนเลือกห้องเรียน และ วิชาที่ใช้ -->
                             <div class="p-3 mb-3 rounded-3 border border-secondary bg-dark-soft">
                                 <div class="row g-3 align-items-center">
                                     <div class="col-12 col-md-6">
@@ -162,7 +155,6 @@
                                 </div>
                             </div>
 
-                            <!-- แผงแสดงข้อมูลผลการสุ่มสด พร้อมปุ่ม +1 / -1 ให้คะแนนกรณีพิเศษ -->
                             <div class="row g-2 align-items-start mb-3">
                                 <div class="col-3 col-md-2 text-center">
                                     <div class="display-label font-mono">รูป</div>
@@ -180,7 +172,6 @@
                                     <div class="display-label text-center font-mono">แต้ม</div>
                                     <div id="live-winner-score" class="box-pink-display justify-content-center fs-5 font-mono mb-1">-</div>
                                     
-                                    <!-- ➕➖ ปุ่มปรับคะแนนด่วนสำหรับคนโดนสุ่ม -->
                                     <div class="btn-group btn-group-sm w-100 font-mono">
                                         <button class="btn btn-outline-danger fw-bold py-1" onclick="adjustCurrentWinnerScore(-1)" title="หัก 1 คะแนน">
                                             <i class="bi bi-dash-circle me-1"></i>-1
@@ -192,7 +183,6 @@
                                 </div>
                             </div>
 
-                            <!-- กล่องแสดงโจทย์คำถามและตัวเลือก 1-4 -->
                             <div class="display-label d-flex justify-content-between flex-wrap gap-1 font-mono">
                                 <span>คำถามที่สุ่มได้</span>
                                 <span id="monitor-active-subject-tag" class="text-warning fw-bold small"></span>
