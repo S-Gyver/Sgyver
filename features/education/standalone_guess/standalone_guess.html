@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gyver Number Guess - เกมทายตัวเลขปริศนา (มากไป / น้อยไป)</title>
+
+    <!-- Bootstrap 5, Icons & Google Fonts -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@600;700;800&family=Kanit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-dark: #070b14;
+            --cyber-card: rgba(15, 23, 42, 0.82);
+            --cyber-border: rgba(99, 102, 241, 0.25);
+            --cyan-glow: #06b6d4;
+            --rose-glow: #f43f5e;
+            --indigo-glow: #6366f1;
+            --gold-glow: #fbbf24;
+            --emerald-glow: #10b981;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            background-image: 
+                radial-gradient(circle at 50% 10%, rgba(99, 102, 241, 0.18) 0%, transparent 50%),
+                radial-gradient(circle at 15% 85%, rgba(6, 182, 212, 0.12) 0%, transparent 40%),
+                radial-gradient(circle at 85% 85%, rgba(244, 63, 94, 0.12) 0%, transparent 40%),
+                linear-gradient(to bottom, #070b14, #0b1120);
+            background-attachment: fixed;
+            font-family: 'Kanit', sans-serif;
+            min-height: 100vh;
+            color: #f1f5f9;
+        }
+
+        .font-mono {
+            font-family: 'Fira Code', monospace;
+        }
+
+        /* Glassmorphism Card */
+        .cyber-card {
+            background: var(--cyber-card);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border: 1px solid var(--cyber-border);
+            border-radius: 24px;
+            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6), 0 0 25px rgba(99, 102, 241, 0.08);
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .cyber-card:hover {
+            border-color: rgba(99, 102, 241, 0.4);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 35px rgba(99, 102, 241, 0.15);
+        }
+
+        /* Top Bar */
+        .top-navbar {
+            background: rgba(11, 17, 32, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #cbd5e1;
+            border-radius: 30px;
+            padding: 7px 18px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .nav-btn:hover {
+            background: rgba(99, 102, 241, 0.18);
+            border-color: #6366f1;
+            color: #ffffff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        }
+
+        /* Range Arena Box */
+        .range-arena-box {
+            background: radial-gradient(circle at 50% 50%, rgba(30, 27, 75, 0.65) 0%, rgba(15, 23, 42, 0.9) 100%);
+            border: 2px solid rgba(99, 102, 241, 0.35);
+            border-radius: 20px;
+            box-shadow: inset 0 0 25px rgba(99, 102, 241, 0.15), 0 8px 25px rgba(0, 0, 0, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .range-arena-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #6366f1, #06b6d4, #f43f5e, transparent);
+        }
+
+        .bound-badge-min {
+            background: rgba(6, 182, 212, 0.12);
+            border: 1.5px solid #06b6d4;
+            color: #38bdf8;
+            border-radius: 14px;
+            padding: 8px 18px;
+            text-shadow: 0 0 15px rgba(6, 182, 212, 0.6);
+        }
+
+        .bound-badge-max {
+            background: rgba(244, 63, 94, 0.12);
+            border: 1.5px solid #f43f5e;
+            color: #fb7185;
+            border-radius: 14px;
+            padding: 8px 18px;
+            text-shadow: 0 0 15px rgba(244, 63, 94, 0.6);
+        }
+
+        .target-mystery-pill {
+            background: linear-gradient(135deg, #312e81 0%, #4338ca 100%);
+            border: 1.5px solid #818cf8;
+            color: #ffffff;
+            border-radius: 14px;
+            padding: 8px 22px;
+            font-weight: 700;
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+            animation: pulse-glow 2.5s infinite;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.4); }
+            50% { box-shadow: 0 0 32px rgba(99, 102, 241, 0.8), 0 0 10px #c084fc; }
+        }
+
+        /* Range Visual Gauge Bar */
+        .range-gauge-track {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .range-gauge-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #06b6d4, #6366f1, #f43f5e);
+            border-radius: 10px;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 0 12px rgba(99, 102, 241, 0.7);
+        }
+
+        /* Hint Box Dynamic States */
+        .hint-card {
+            min-height: 105px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 18px;
+            padding: 16px 20px;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            text-align: center;
+        }
+
+        .hint-ready {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1.5px dashed rgba(255, 255, 255, 0.15);
+            color: #94a3b8;
+        }
+
+        .hint-too-high {
+            background: radial-gradient(circle at 50% 50%, rgba(225, 29, 72, 0.22) 0%, rgba(159, 18, 57, 0.08) 100%);
+            border: 2px solid #f43f5e;
+            color: #fda4af;
+            box-shadow: 0 0 25px rgba(244, 63, 94, 0.35);
+            animation: bounce-pulse-red 0.5s ease;
+        }
+
+        .hint-too-low {
+            background: radial-gradient(circle at 50% 50%, rgba(14, 165, 233, 0.22) 0%, rgba(2, 132, 199, 0.08) 100%);
+            border: 2px solid #06b6d4;
+            color: #7dd3fc;
+            box-shadow: 0 0 25px rgba(6, 182, 212, 0.35);
+            animation: bounce-pulse-blue 0.5s ease;
+        }
+
+        .hint-correct {
+            background: radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.28) 0%, rgba(5, 150, 105, 0.1) 100%);
+            border: 2px solid #10b981;
+            color: #6ee7b7;
+            box-shadow: 0 0 35px rgba(16, 185, 129, 0.5);
+            animation: win-pop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes bounce-pulse-red {
+            0% { transform: scale(0.95); }
+            50% { transform: scale(1.03); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes bounce-pulse-blue {
+            0% { transform: scale(0.95); }
+            50% { transform: scale(1.03); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes win-pop {
+            0% { transform: scale(0.9); }
+            60% { transform: scale(1.06); }
+            100% { transform: scale(1); }
+        }
+
+        /* Giant Numeric Input */
+        .input-number-giant {
+            font-size: 3.5rem !important;
+            height: 96px;
+            font-weight: 800;
+            text-align: center;
+            background: rgba(15, 23, 42, 0.95) !important;
+            color: #ffffff !important;
+            border-radius: 20px;
+            border: 2px solid rgba(99, 102, 241, 0.4);
+            letter-spacing: 4px;
+            box-shadow: inset 0 3px 15px rgba(0, 0, 0, 0.6), 0 0 20px rgba(99, 102, 241, 0.15);
+            transition: all 0.25s ease;
+        }
+
+        .input-number-giant::-webkit-inner-spin-button,
+        .input-number-giant::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .input-number-giant:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 5px rgba(99, 102, 241, 0.28), 0 0 35px rgba(99, 102, 241, 0.45);
+            outline: none;
+        }
+
+        /* Giant Submit Button */
+        .btn-guess {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #ec4899 100%);
+            border: none;
+            color: #ffffff;
+            border-radius: 18px;
+            padding: 16px;
+            font-size: 1.35rem;
+            font-weight: 700;
+            box-shadow: 0 10px 25px rgba(99, 102, 241, 0.35);
+            transition: all 0.25s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-guess:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 35px rgba(99, 102, 241, 0.55), 0 0 20px rgba(236, 72, 153, 0.4);
+            color: #ffffff;
+        }
+
+        .btn-guess:disabled {
+            opacity: 0.7;
+            background: #334155;
+            box-shadow: none;
+        }
+
+        /* Quick Tools Buttons */
+        .btn-quick-adjust {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #cbd5e1;
+            border-radius: 12px;
+            padding: 7px 14px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.15s ease;
+        }
+
+        .btn-quick-adjust:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+            border-color: rgba(255, 255, 255, 0.25);
+            transform: translateY(-1px);
+        }
+
+        .btn-midpoint {
+            background: rgba(99, 102, 241, 0.15);
+            border: 1px solid rgba(99, 102, 241, 0.4);
+            color: #a5b4fc;
+            border-radius: 12px;
+            padding: 7px 16px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.15s ease;
+        }
+
+        .btn-midpoint:hover {
+            background: rgba(99, 102, 241, 0.3);
+            color: #ffffff;
+            border-color: #818cf8;
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
+            transform: translateY(-1px);
+        }
+
+        /* History List Items */
+        .history-item {
+            border-radius: 14px;
+            padding: 12px 16px;
+            margin-bottom: 10px;
+            font-size: 0.95rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid transparent;
+            animation: slide-in 0.25s ease;
+        }
+
+        @keyframes slide-in {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .history-high {
+            background: rgba(244, 63, 94, 0.12);
+            border-color: rgba(244, 63, 94, 0.3);
+            color: #fecdd3;
+        }
+
+        .history-low {
+            background: rgba(6, 182, 212, 0.12);
+            border-color: rgba(6, 182, 212, 0.3);
+            color: #bae6fd;
+        }
+
+        .history-win {
+            background: rgba(16, 185, 129, 0.18);
+            border-color: rgba(16, 185, 129, 0.5);
+            color: #a7f3d0;
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+            font-weight: 700;
+        }
+
+        /* Modal styling */
+        .modal-content.cyber-modal {
+            background: #0f172a;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 35px rgba(99, 102, 241, 0.2);
+            border-radius: 24px;
+            color: #ffffff;
+        }
+
+        .preset-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #e2e8f0;
+            border-radius: 12px;
+            padding: 8px 12px;
+            font-size: 0.85rem;
+            transition: all 0.2s ease;
+        }
+
+        .preset-btn:hover {
+            background: rgba(99, 102, 241, 0.2);
+            border-color: #6366f1;
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body class="d-flex flex-column">
+
+    <!-- 🌐 Top Bar -->
+    <header class="top-navbar py-3 mb-4 sticky-top">
+        <div class="container d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-3">
+                <div class="d-flex align-items-center justify-content-center text-white rounded-4 shadow"
+                     style="width: 46px; height: 46px; background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); font-size: 1.4rem;">
+                    <i class="bi bi-123"></i>
+                </div>
+                <div>
+                    <div class="d-flex align-items-center gap-2">
+                        <h4 class="fw-bold text-white m-0 font-kanit">Gyver Number Guess</h4>
+                        <span class="badge bg-indigo text-white font-mono px-2 py-1 rounded-pill small" 
+                              style="background: #4f46e5; font-size: 0.75rem;">v2.0 Arcade</span>
+                    </div>
+                    <small class="text-secondary">เกมทายตัวเลขปริศนา (คำใบ้: มากไป / น้อยไป)</small>
+                </div>
+            </div>
+
+            <!-- Action controls -->
+            <div class="d-flex align-items-center gap-2">
+                <!-- ปุ่มเปิด-ปิดเสียง -->
+                <button id="btn-sound-toggle" class="nav-btn" onclick="toggleSound()" title="เปิด/ปิดเสียงเอฟเฟกต์">
+                    <i class="bi bi-volume-up-fill text-warning me-1" id="sound-icon"></i>
+                    <span id="sound-label" class="d-none d-sm-inline">เสียง: เปิด</span>
+                </button>
+
+                <!-- ตั้งค่าช่วงตัวเลข -->
+                <button class="nav-btn" onclick="openConfigModal()" title="ปรับแต่งขอบเขตตัวเลข">
+                    <i class="bi bi-sliders text-cyan me-1" style="color: #06b6d4;"></i>
+                    <span class="d-none d-sm-inline">ตั้งค่าช่วงตัวเลข</span>
+                </button>
+
+                <!-- กลับหน้าหลัก -->
+                <a href="../../../index.html" class="nav-btn" title="กลับสู่หน้าหลัก Gyver Portal">
+                    <i class="bi bi-house-door me-1"></i>
+                    <span class="d-none d-sm-inline">หน้าหลัก</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- 🎮 Main Game Content -->
+    <main class="container my-auto pb-5">
+        <div class="row g-4 justify-content-center align-items-stretch">
+
+            <!-- 👈 ฝั่งซ้าย: หน้าจอหลักทายตัวเลข -->
+            <div class="col-lg-7">
+                <div class="cyber-card p-4 p-md-5 text-center h-100 d-flex flex-column justify-content-between">
+
+                    <div>
+                        <!-- ขอบเขตตัวเลขที่แคบลงเรื่อยๆ (Range Arena Box) -->
+                        <div class="range-arena-box p-3 p-md-4 mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+                                <small class="text-uppercase fw-bold text-secondary font-mono small">
+                                    <i class="bi bi-bullseye me-1 text-warning"></i>ขอบเขตคำตอบที่เป็นไปได้ขณะนี้
+                                </small>
+                                <span id="span-gap-badge" class="badge bg-dark border border-secondary text-subtle font-mono small">
+                                    เหลืออีก <span id="span-gap-count" class="text-warning">98</span> ค่า
+                                </span>
+                            </div>
+
+                            <!-- ป้ายตัวเลข ขอบล่าง < คำตอบ < ขอบบน -->
+                            <div class="d-flex justify-content-center align-items-center gap-2 gap-md-3 font-mono mb-3">
+                                <span id="current-min-badge" class="display-6 fw-bold bound-badge-min">1</span>
+                                <span class="fs-2 text-secondary">&lt;</span>
+                                <span class="target-mystery-pill fs-5 font-kanit">
+                                    <i class="bi bi-question-diamond-fill me-1 text-warning"></i>คำตอบ
+                                </span>
+                                <span class="fs-2 text-secondary">&lt;</span>
+                                <span id="current-max-badge" class="display-6 fw-bold bound-badge-max">100</span>
+                            </div>
+
+                            <!-- แถบเกจเรดาร์แสดงการบีบขอบเขต (Range Gauge Bar) -->
+                            <div class="range-gauge-track mt-2">
+                                <div id="range-gauge-bar" class="range-gauge-fill" style="width: 100%;"></div>
+                            </div>
+                        </div>
+
+                        <!-- กล่องคำบอกใบ้แบบแอนิเมชันสด (Hint Status Box) -->
+                        <div id="hint-display" class="hint-card hint-ready mb-4">
+                            <div class="d-flex align-items-center justify-content-center gap-3">
+                                <i class="bi bi-dice-5-fill fs-1 text-warning"></i>
+                                <div class="text-start">
+                                    <h4 class="m-0 fw-bold font-kanit" id="hint-text">พร้อมแล้ว! ใส่ตัวเลขที่คาดเดาด้านล่าง</h4>
+                                    <small class="text-subtle text-secondary">พิมพ์ตัวเลขที่อยู่ระหว่างขอบเขตแล้วกดส่งคำตอบ</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ฟอร์มกรอกตัวเลข -->
+                        <form id="guess-form" onsubmit="handleGuessSubmit(event)" class="mb-3">
+                            <div class="mb-3">
+                                <input type="number" id="guess-input" class="form-control input-number-giant font-mono"
+                                       placeholder="?" autofocus autocomplete="off" required>
+                            </div>
+
+                            <!-- แถบปุ่มลัดช่วยทาย (Quick Strategy Bar) -->
+                            <div class="d-flex flex-wrap justify-content-center gap-2 mb-3">
+                                <button type="button" class="btn-midpoint" onclick="quickGuessMidpoint()" title="คำนวณและเลือกตัวเลขกึ่งกลางอัตโนมัติ">
+                                    <i class="bi bi-crosshair me-1"></i>🎯 ทายกึ่งกลาง (<span id="midpoint-preview">50</span>)
+                                </button>
+                                <button type="button" class="btn-quick-adjust font-mono" onclick="adjustInput(-5)">-5</button>
+                                <button type="button" class="btn-quick-adjust font-mono" onclick="adjustInput(-1)">-1</button>
+                                <button type="button" class="btn-quick-adjust font-mono" onclick="adjustInput(1)">+1</button>
+                                <button type="button" class="btn-quick-adjust font-mono" onclick="adjustInput(5)">+5</button>
+                                <button type="button" class="btn-quick-adjust" onclick="clearInput()" title="ล้างค่า">
+                                    <i class="bi bi-eraser"></i>
+                                </button>
+                            </div>
+
+                            <button type="submit" id="btn-submit-guess" class="btn btn-guess w-100 mb-2 font-kanit">
+                                <i class="bi bi-send-fill me-2"></i> ส่งคำตอบตรวจผล
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- แถบสถิติด้านล่าง -->
+                    <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top border-secondary border-opacity-25">
+                        <div class="text-start">
+                            <span class="text-secondary small d-block">จำนวนครั้งที่ทายในรอบนี้</span>
+                            <span class="font-mono fs-5 text-white fw-bold">
+                                <span id="attempt-count" class="text-warning">0</span> ครั้ง
+                            </span>
+                        </div>
+                        <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-3 fw-bold font-kanit" onclick="resetGame()">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i>เริ่มเกมใหม่
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- 👉 ฝั่งขวา: บันทึกประวัติการทาย (History Deck) -->
+            <div class="col-lg-5">
+                <div class="cyber-card p-4 h-100 d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-center border-bottom border-secondary border-opacity-25 pb-3 mb-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-clock-history fs-4 text-cyan" style="color: #06b6d4;"></i>
+                            <h5 class="fw-bold m-0 font-kanit text-white">ประวัติการทาย</h5>
+                        </div>
+                        <span id="history-count-badge" class="badge bg-dark border border-secondary text-subtle font-mono">0 รายการ</span>
+                    </div>
+
+                    <!-- แสดงสถิติดีที่สุด (Best Record) -->
+                    <div class="d-flex justify-content-between align-items-center p-2 px-3 mb-3 rounded-3" 
+                         style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06);">
+                        <span class="small text-secondary font-kanit">
+                            <i class="bi bi-trophy-fill text-warning me-1"></i>สถิติดีที่สุดของคุณ:
+                        </span>
+                        <span id="best-record-badge" class="font-mono fw-bold text-warning small">-</span>
+                    </div>
+
+                    <div id="history-list" class="flex-grow-1 overflow-auto pe-1 font-mono" style="max-height: 440px;">
+                        <div class="text-center text-muted py-5" id="history-empty-text">
+                            <i class="bi bi-chat-left-dots fs-1 d-block mb-3 text-secondary opacity-50"></i>
+                            <h6 class="font-kanit text-secondary">ยังไม่มีประวัติการทายในรอบนี้</h6>
+                            <small class="text-muted">เมื่อคุณทายตัวเลข บันทึกผลและคำใบ้จะปรากฏที่นี่</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- ⚙️ Modal สำหรับตั้งค่าขอบเขตตัวเลข -->
+    <div class="modal fade" id="configModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content cyber-modal">
+                <div class="modal-header border-bottom border-secondary border-opacity-25 py-3">
+                    <h5 class="modal-title fw-bold font-kanit text-white">
+                        <i class="bi bi-sliders text-cyan me-2" style="color: #06b6d4;"></i>ตั้งค่าช่วงตัวเลข
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4 font-mono">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-secondary font-kanit">เลขเริ่มต้น (ต่ำสุด)</label>
+                        <input type="number" id="cfg-min" class="form-control bg-dark text-white border-secondary" value="1" min="0">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-secondary font-kanit">เลขสิ้นสุด (สูงสุด)</label>
+                        <input type="number" id="cfg-max" class="form-control bg-dark text-white border-secondary" value="100" min="2">
+                    </div>
+
+                    <!-- แถบค่าเริ่มต้นด่วน (Presets) -->
+                    <div class="mb-3">
+                        <label class="form-label small text-secondary font-kanit mb-2">เลือกขนาดช่วงสำเร็จรูป:</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button type="button" class="preset-btn" onclick="applyPreset(1, 50)">1 - 50</button>
+                            <button type="button" class="preset-btn" onclick="applyPreset(1, 100)">1 - 100</button>
+                            <button type="button" class="preset-btn" onclick="applyPreset(1, 500)">1 - 500</button>
+                            <button type="button" class="preset-btn" onclick="applyPreset(1, 1000)">1 - 1000</button>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning py-2 px-3 small m-0 border-0 rounded-3 text-dark fw-bold font-kanit">
+                        <i class="bi bi-info-circle-fill me-1"></i>เมื่อบันทึก ระบบจะสุ่มเลขคำตอบปริศนาใหม่ทันที
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-3 pt-0">
+                    <button type="button" class="btn btn-warning w-100 fw-bold rounded-3 font-kanit text-dark py-2 shadow" onclick="saveConfigAndRestart()">
+                        <i class="bi bi-check-circle-fill me-1"></i>บันทึกและเริ่มเล่นใหม่
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap & Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        // ==========================================
+        // 🔊 Web Audio API Sound Engine (สังเคราะห์สด ไร้ดีเลย์)
+        // ==========================================
+        let audioCtx = null;
+        let isSoundEnabled = localStorage.getItem('gyver_guess_sound') !== 'false';
+
+        function initAudio() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) audioCtx = new AudioContext();
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function toggleSound() {
+            isSoundEnabled = !isSoundEnabled;
+            localStorage.setItem('gyver_guess_sound', isSoundEnabled);
+            updateSoundUI();
+            if (isSoundEnabled) {
+                initAudio();
+                playTone(523.25, 'sine', 0.1, 0.15); // C5 tick
+            }
+        }
+
+        function updateSoundUI() {
+            const icon = document.getElementById('sound-icon');
+            const label = document.getElementById('sound-label');
+            if (icon && label) {
+                if (isSoundEnabled) {
+                    icon.className = "bi bi-volume-up-fill text-warning me-1";
+                    label.innerText = "เสียง: เปิด";
+                } else {
+                    icon.className = "bi bi-volume-mute-fill text-secondary me-1";
+                    label.innerText = "เสียง: ปิด";
+                }
+            }
+        }
+
+        function playTone(freq, type = 'sine', duration = 0.12, gainVal = 0.15) {
+            if (!isSoundEnabled) return;
+            initAudio();
+            if (!audioCtx) return;
+
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+                gain.gain.setValueAtTime(gainVal, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) {
+                console.error("Audio error:", e);
+            }
+        }
+
+        // เสียงคำใบ้: มากเกินไป (Descending buzz)
+        function playTooHighSound() {
+            if (!isSoundEnabled) return;
+            initAudio();
+            if (!audioCtx) return;
+            playTone(440, 'sawtooth', 0.15, 0.12);
+            setTimeout(() => playTone(330, 'sawtooth', 0.22, 0.12), 110);
+        }
+
+        // เสียงคำใบ้: น้อยเกินไป (Ascending chime)
+        function playTooLowSound() {
+            if (!isSoundEnabled) return;
+            initAudio();
+            if (!audioCtx) return;
+            playTone(392, 'triangle', 0.15, 0.18);
+            setTimeout(() => playTone(587.33, 'sine', 0.22, 0.2), 110);
+        }
+
+        // เสียงเฉลยถูกต้อง! (Major Fanfare Chimes)
+        function playWinFanfare() {
+            if (!isSoundEnabled) return;
+            initAudio();
+            if (!audioCtx) return;
+            const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51]; // C5, E5, G5, C6, E6
+            notes.forEach((f, i) => {
+                setTimeout(() => playTone(f, 'sine', 0.35, 0.22), i * 90);
+            });
+        }
+
+        // เสียงรีเซ็ต / คลิกปุ่ม
+        function playClickSound() {
+            playTone(600, 'sine', 0.05, 0.08);
+        }
+
+        // ==========================================
+        // 🎯 Game Core Logic
+        // ==========================================
+        let minRange = 1;
+        let maxRange = 100;
+        let currentMin = 1;
+        let currentMax = 100;
+        let secretNumber = 0;
+        let attempts = 0;
+        let isGameOver = false;
+
+        const configModal = new bootstrap.Modal(document.getElementById('configModal'));
+        const hintDisplay = document.getElementById('hint-display');
+        const hintText = document.getElementById('hint-text');
+        const guessInput = document.getElementById('guess-input');
+        const currentMinBadge = document.getElementById('current-min-badge');
+        const currentMaxBadge = document.getElementById('current-max-badge');
+        const attemptCountEl = document.getElementById('attempt-count');
+        const historyList = document.getElementById('history-list');
+        const historyEmptyText = document.getElementById('history-empty-text');
+        const historyCountBadge = document.getElementById('history-count-badge');
+        const btnSubmit = document.getElementById('btn-submit-guess');
+        const midpointPreview = document.getElementById('midpoint-preview');
+        const spanGapCount = document.getElementById('span-gap-count');
+        const rangeGaugeBar = document.getElementById('range-gauge-bar');
+        const bestRecordBadge = document.getElementById('best-record-badge');
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateSoundUI();
+            loadBestRecord();
+            resetGame();
+        });
+
+        function loadBestRecord() {
+            const best = localStorage.getItem('gyver_guess_best');
+            if (best && bestRecordBadge) {
+                bestRecordBadge.innerText = `${best} ครั้ง`;
+            }
+        }
+
+        function updateGaugeAndMidpoint() {
+            const totalSpan = maxRange - minRange;
+            const currentSpan = Math.max(0, currentMax - currentMin - 1);
+            if (spanGapCount) spanGapCount.innerText = currentSpan;
+
+            // คำนวณเปอร์เซ็นต์ของช่วงที่เหลือ
+            if (rangeGaugeBar && totalSpan > 0) {
+                const pct = Math.min(100, Math.max(5, (currentSpan / totalSpan) * 100));
+                rangeGaugeBar.style.width = `${pct}%`;
+            }
+
+            // คำนวณกึ่งกลาง
+            const mid = Math.floor((currentMin + currentMax) / 2);
+            if (midpointPreview) midpointPreview.innerText = mid;
+        }
+
+        function resetGame() {
+            currentMin = minRange;
+            currentMax = maxRange;
+            attempts = 0;
+            isGameOver = false;
+            
+            // สุ่มเลขเป้าหมาย
+            secretNumber = Math.floor(Math.random() * (maxRange - minRange - 1)) + minRange + 1;
+            // Fallback เผื่อช่วงแคบ
+            if (secretNumber <= minRange || secretNumber >= maxRange) {
+                secretNumber = Math.floor((minRange + maxRange) / 2);
+            }
+
+            // รีเซ็ต UI
+            currentMinBadge.innerText = currentMin;
+            currentMaxBadge.innerText = currentMax;
+            attemptCountEl.innerText = attempts;
+            historyCountBadge.innerText = `0 รายการ`;
+            historyList.innerHTML = '';
+            if (historyEmptyText) historyList.appendChild(historyEmptyText);
+
+            updateGaugeAndMidpoint();
+
+            hintDisplay.className = 'hint-card hint-ready mb-4';
+            hintDisplay.innerHTML = `
+                <div class="d-flex align-items-center justify-content-center gap-3">
+                    <i class="bi bi-dice-5-fill fs-1 text-warning"></i>
+                    <div class="text-start">
+                        <h4 class="m-0 fw-bold font-kanit">พร้อมแล้ว! ใส่ตัวเลขที่คาดเดาด้านล่าง</h4>
+                        <small class="text-subtle text-secondary">พิมพ์ตัวเลขที่อยู่ระหว่าง ${currentMin} ถึง ${currentMax} แล้วกดส่งคำตอบ</small>
+                    </div>
+                </div>
+            `;
+
+            guessInput.disabled = false;
+            guessInput.value = '';
+            btnSubmit.disabled = false;
+            btnSubmit.className = "btn btn-guess w-100 mb-2 font-kanit";
+            btnSubmit.innerHTML = `<i class="bi bi-send-fill me-2"></i> ส่งคำตอบตรวจผล`;
+            guessInput.focus();
+        }
+
+        function quickGuessMidpoint() {
+            if (isGameOver) return;
+            const mid = Math.floor((currentMin + currentMax) / 2);
+            guessInput.value = mid;
+            playClickSound();
+            guessInput.focus();
+        }
+
+        function adjustInput(delta) {
+            if (isGameOver) return;
+            let current = parseInt(guessInput.value);
+            if (isNaN(current)) {
+                current = Math.floor((currentMin + currentMax) / 2);
+            } else {
+                current += delta;
+            }
+            // Clamping
+            current = Math.max(currentMin + 1, Math.min(currentMax - 1, current));
+            guessInput.value = current;
+            playClickSound();
+            guessInput.focus();
+        }
+
+        function clearInput() {
+            guessInput.value = '';
+            playClickSound();
+            guessInput.focus();
+        }
+
+        function handleGuessSubmit(e) {
+            e.preventDefault();
+            if (isGameOver) return;
+
+            const guess = parseInt(guessInput.value);
+            if (isNaN(guess)) return;
+
+            if (guess <= currentMin || guess >= currentMax) {
+                playTooHighSound();
+                alert(`กรุณากรอกตัวเลขที่อยู่ระหว่าง ${currentMin} ถึง ${currentMax} ครับ!`);
+                guessInput.value = '';
+                guessInput.focus();
+                return;
+            }
+
+            attempts++;
+            attemptCountEl.innerText = attempts;
+
+            if (historyEmptyText && historyEmptyText.parentNode) {
+                historyEmptyText.remove();
+            }
+
+            if (guess === secretNumber) {
+                // 🎉 ถูกต้อง!
+                isGameOver = true;
+                playWinFanfare();
+
+                hintDisplay.className = 'hint-card hint-correct mb-4';
+                hintDisplay.innerHTML = `
+                    <div class="d-flex flex-column align-items-center">
+                        <div class="display-6 fw-bold mb-1 font-kanit">🎉 ถูกต้องแม่นยำ! (${secretNumber})</div>
+                        <span class="fs-6">ยอดเยี่ยมมาก! คุณทายตัวเลขปริศนาสำเร็จใน <strong class="text-warning fs-5">${attempts}</strong> ครั้ง</span>
+                    </div>
+                `;
+
+                // Confetti blast
+                confetti({
+                    particleCount: 180,
+                    spread: 90,
+                    origin: { y: 0.6 }
+                });
+
+                // บันทึก Best record
+                const best = localStorage.getItem('gyver_guess_best');
+                if (!best || attempts < parseInt(best)) {
+                    localStorage.setItem('gyver_guess_best', attempts);
+                    loadBestRecord();
+                }
+
+                guessInput.disabled = true;
+                btnSubmit.disabled = true;
+                btnSubmit.className = "btn btn-success w-100 mb-2 font-kanit py-3 fw-bold fs-5 shadow";
+                btnSubmit.innerHTML = `<i class="bi bi-trophy-fill me-2"></i> ชนะเกมเรียบร้อย! กดเริ่มเกมใหม่เพื่อเล่นอีกรอบ`;
+
+                addHistory(attempts, guess, 'ถูกต้องแล้ว! 🎉', 'history-win');
+            } else if (guess > secretNumber) {
+                // ⬇️ มากเกินไป
+                playTooHighSound();
+                currentMax = Math.min(currentMax, guess);
+                currentMaxBadge.innerText = currentMax;
+
+                hintDisplay.className = 'hint-card hint-too-high mb-4';
+                hintDisplay.innerHTML = `
+                    <div class="d-flex align-items-center justify-content-center gap-3">
+                        <i class="bi bi-arrow-down-circle-fill display-5 text-danger"></i>
+                        <div class="text-start">
+                            <h4 class="m-0 fw-bold font-kanit">เลข ${guess} : มากเกินไป! ⬇️</h4>
+                            <small class="text-white opacity-75">คำตอบปริศนาน้อยกว่านี้ ลองทายตัวเลขที่ต่ำลง</small>
+                        </div>
+                    </div>
+                `;
+
+                addHistory(attempts, guess, 'มากเกินไป ⬇️', 'history-high');
+            } else {
+                // ⬆️ น้อยเกินไป
+                playTooLowSound();
+                currentMin = Math.max(currentMin, guess);
+                currentMinBadge.innerText = currentMin;
+
+                hintDisplay.className = 'hint-card hint-too-low mb-4';
+                hintDisplay.innerHTML = `
+                    <div class="d-flex align-items-center justify-content-center gap-3">
+                        <i class="bi bi-arrow-up-circle-fill display-5 text-cyan" style="color: #06b6d4;"></i>
+                        <div class="text-start">
+                            <h4 class="m-0 fw-bold font-kanit">เลข ${guess} : น้อยเกินไป! ⬆️</h4>
+                            <small class="text-white opacity-75">คำตอบปริศนามากกว่านี้ ลองทายตัวเลขที่สูงขึ้น</small>
+                        </div>
+                    </div>
+                `;
+
+                addHistory(attempts, guess, 'น้อยเกินไป ⬆️', 'history-low');
+            }
+
+            updateGaugeAndMidpoint();
+            guessInput.value = '';
+            if (!isGameOver) guessInput.focus();
+        }
+
+        function addHistory(round, val, resultLabel, styleClass) {
+            const item = document.createElement('div');
+            item.className = `history-item ${styleClass}`;
+            item.innerHTML = `
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-dark border border-secondary text-subtle font-mono">#${round}</span>
+                    <strong class="fs-5 font-mono text-white">${val}</strong>
+                </div>
+                <span class="fw-bold font-kanit small">${resultLabel}</span>
+            `;
+            historyList.insertBefore(item, historyList.firstChild);
+            historyCountBadge.innerText = `${attempts} รายการ`;
+        }
+
+        function openConfigModal() {
+            playClickSound();
+            document.getElementById('cfg-min').value = minRange;
+            document.getElementById('cfg-max').value = maxRange;
+            configModal.show();
+        }
+
+        function applyPreset(min, max) {
+            playClickSound();
+            document.getElementById('cfg-min').value = min;
+            document.getElementById('cfg-max').value = max;
+        }
+
+        function saveConfigAndRestart() {
+            playClickSound();
+            const nMin = parseInt(document.getElementById('cfg-min').value);
+            const nMax = parseInt(document.getElementById('cfg-max').value);
+
+            if (isNaN(nMin) || isNaN(nMax) || (nMax - nMin) < 2) {
+                alert('ตัวเลขเริ่มต้นต้องน้อยกว่าตัวเลขสิ้นสุดอย่างน้อย 2 ค่าครับ!');
+                return;
+            }
+
+            minRange = nMin;
+            maxRange = nMax;
+            configModal.hide();
+            resetGame();
+        }
+    </script>
+</body>
+</html>

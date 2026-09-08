@@ -17,6 +17,321 @@ let winnerCardModalInstance = null;
 let quizDisplayModalInstance = null;
 let answerResultModalInstance = null;
 
+// 🔊 ระบบเสียงสังเคราะห์ Web Audio API สำหรับวงล้อห้องเรียน
+let wheelAudioCtx = null;
+let isWheelSoundEnabled = true;
+
+function initWheelAudio() {
+    try {
+        if (!wheelAudioCtx) {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (AudioContextClass) {
+                wheelAudioCtx = new AudioContextClass();
+            }
+        }
+        if (wheelAudioCtx && wheelAudioCtx.state === 'suspended') {
+            wheelAudioCtx.resume();
+        }
+    } catch (e) {
+        console.warn("Audio init error:", e);
+    }
+}
+
+function toggleWheelSound() {
+    isWheelSoundEnabled = !isWheelSoundEnabled;
+    const icon = document.getElementById('wheel-sound-icon');
+    const label = document.getElementById('wheel-sound-label');
+    const btn = document.getElementById('wheel-sound-toggle-btn');
+    if (isWheelSoundEnabled) {
+        initWheelAudio();
+        if (icon) icon.className = 'bi bi-volume-up-fill me-1';
+        if (label) label.innerText = 'เสียง: เปิด';
+        if (btn) {
+            btn.classList.remove('btn-outline-secondary');
+            btn.classList.add('btn-outline-warning');
+        }
+        playWheelTick(1);
+    } else {
+        if (icon) icon.className = 'bi bi-volume-mute-fill me-1';
+        if (label) label.innerText = 'เสียง: ปิด';
+        if (btn) {
+            btn.classList.remove('btn-outline-warning');
+            btn.classList.add('btn-outline-secondary');
+        }
+    }
+}
+
+function playWheelTick(speedFactor = 1) {
+    if (!isWheelSoundEnabled) return;
+    try {
+        initWheelAudio();
+        if (!wheelAudioCtx) return;
+
+        const now = wheelAudioCtx.currentTime;
+        const osc = wheelAudioCtx.createOscillator();
+        const gain = wheelAudioCtx.createGain();
+
+        const pitchVariance = 0.93 + Math.random() * 0.14;
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(740 * pitchVariance, now);
+        osc.frequency.exponentialRampToValueAtTime(160, now + 0.032);
+
+        const volume = Math.min(0.35 * Math.max(0.35, speedFactor), 0.5);
+        gain.gain.setValueAtTime(volume, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.032);
+
+        osc.connect(gain);
+        gain.connect(wheelAudioCtx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.035);
+    } catch (e) {
+        // Ignore
+    }
+}
+
+function playWheelFanfare() {
+    if (!isWheelSoundEnabled) return;
+    try {
+        initWheelAudio();
+        if (!wheelAudioCtx) return;
+
+        const now = wheelAudioCtx.currentTime;
+        const notes = [
+            { freq: 523.25, time: 0.00, dur: 0.14 },
+            { freq: 659.25, time: 0.12, dur: 0.14 },
+            { freq: 783.99, time: 0.24, dur: 0.18 },
+            { freq: 1046.50, time: 0.38, dur: 0.70 }
+        ];
+
+        notes.forEach(note => {
+            const osc = wheelAudioCtx.createOscillator();
+            const gain = wheelAudioCtx.createGain();
+
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(note.freq, now + note.time);
+
+            gain.gain.setValueAtTime(0.001, now + note.time);
+            gain.gain.linearRampToValueAtTime(0.26, now + note.time + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + note.time + note.dur);
+
+            osc.connect(gain);
+            gain.connect(wheelAudioCtx.destination);
+
+            osc.start(now + note.time);
+            osc.stop(now + note.time + note.dur + 0.05);
+        });
+    } catch (e) {
+        // Ignore
+    }
+}
+
+// ❓ 1. เสียงกดสุ่มคำถาม / เปิดการ์ดโจทย์ (Quiz Draw Sparkle & Suspense)
+function playQuizDrawSound() {
+    if (!isWheelSoundEnabled) return;
+    try {
+        initWheelAudio();
+        if (!wheelAudioCtx) return;
+
+        const now = wheelAudioCtx.currentTime;
+        // บันไดเสียง arpeggio สดใสชวนลุ้นระทึก (D5 -> G5 -> B5 -> D6 -> G6)
+        const notes = [
+            { freq: 587.33, time: 0.00, dur: 0.09 },
+            { freq: 783.99, time: 0.07, dur: 0.09 },
+            { freq: 987.77, time: 0.14, dur: 0.11 },
+            { freq: 1174.66, time: 0.21, dur: 0.14 },
+            { freq: 1567.98, time: 0.28, dur: 0.35 }
+        ];
+
+        notes.forEach(note => {
+            const osc = wheelAudioCtx.createOscillator();
+            const gain = wheelAudioCtx.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(note.freq, now + note.time);
+
+            gain.gain.setValueAtTime(0.001, now + note.time);
+            gain.gain.linearRampToValueAtTime(0.22, now + note.time + 0.015);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + note.time + note.dur);
+
+            osc.connect(gain);
+            gain.connect(wheelAudioCtx.destination);
+
+            osc.start(now + note.time);
+            osc.stop(now + note.time + note.dur + 0.04);
+        });
+    } catch (e) {
+        // Ignore
+    }
+}
+
+// 🔘 2. เสียงคลิกเลือกตัวเลือกช้อยส์ (Choice Select Blip)
+function playChoiceSelectSound() {
+    if (!isWheelSoundEnabled) return;
+    try {
+        initWheelAudio();
+        if (!wheelAudioCtx) return;
+
+        const now = wheelAudioCtx.currentTime;
+        const osc = wheelAudioCtx.createOscillator();
+        const gain = wheelAudioCtx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(540, now);
+        osc.frequency.exponentialRampToValueAtTime(360, now + 0.04);
+
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+
+        osc.connect(gain);
+        gain.connect(wheelAudioCtx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.045);
+    } catch (e) {
+        // Ignore
+    }
+}
+
+// 🎉 3. เสียงตอบถูกต้อง! (Correct Answer Victory Chime)
+function playCorrectAnswerSound() {
+    if (!isWheelSoundEnabled) return;
+    try {
+        initWheelAudio();
+        if (!wheelAudioCtx) return;
+
+        const now = wheelAudioCtx.currentTime;
+        // คอร์ดเมเจอร์สดใสฉลองตอบถูก: C5, E5, G5, C6 (กังวานและประกาย)
+        const notes = [
+            { freq: 523.25, time: 0.00, dur: 0.12 }, // C5
+            { freq: 659.25, time: 0.10, dur: 0.14 }, // E5
+            { freq: 783.99, time: 0.20, dur: 0.18 }, // G5
+            { freq: 1046.50, time: 0.32, dur: 0.60 }, // C6
+            { freq: 1318.51, time: 0.40, dur: 0.55 }  // E6 (ประกายเสริม)
+        ];
+
+        notes.forEach(note => {
+            const osc = wheelAudioCtx.createOscillator();
+            const gain = wheelAudioCtx.createGain();
+
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(note.freq, now + note.time);
+
+            gain.gain.setValueAtTime(0.001, now + note.time);
+            gain.gain.linearRampToValueAtTime(0.28, now + note.time + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + note.time + note.dur);
+
+            osc.connect(gain);
+            gain.connect(wheelAudioCtx.destination);
+
+            osc.start(now + note.time);
+            osc.stop(now + note.time + note.dur + 0.05);
+        });
+    } catch (e) {
+        // Ignore
+    }
+}
+
+// ❌ 4. เสียงตอบผิด! (Wrong Answer Buzzer)
+function playWrongAnswerSound() {
+    if (!isWheelSoundEnabled) return;
+    try {
+        initWheelAudio();
+        if (!wheelAudioCtx) return;
+
+        const now = wheelAudioCtx.currentTime;
+        // เสียงบัซเซอร์ 2 จังหวะ "ตึ๊ด-ตึ๊ด" โทนต่ำสไตล์เกมโชว์
+        const pulses = [
+            { freq: 175, time: 0.00, dur: 0.18 },
+            { freq: 130, time: 0.22, dur: 0.32 }
+        ];
+
+        pulses.forEach(pulse => {
+            const osc = wheelAudioCtx.createOscillator();
+            const gain = wheelAudioCtx.createGain();
+
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(pulse.freq, now + pulse.time);
+            osc.frequency.linearRampToValueAtTime(pulse.freq * 0.85, now + pulse.time + pulse.dur);
+
+            gain.gain.setValueAtTime(0.001, now + pulse.time);
+            gain.gain.linearRampToValueAtTime(0.24, now + pulse.time + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + pulse.time + pulse.dur);
+
+            osc.connect(gain);
+            gain.connect(wheelAudioCtx.destination);
+
+            osc.start(now + pulse.time);
+            osc.stop(now + pulse.time + pulse.dur + 0.03);
+        });
+    } catch (e) {
+        // Ignore
+    }
+}
+
+// 💨 5. เสียงปุ่มข้าม / สละสิทธิ์ (Swoosh Transition)
+function playSwooshSound() {
+    if (!isWheelSoundEnabled) return;
+    try {
+        initWheelAudio();
+        if (!wheelAudioCtx) return;
+
+        const now = wheelAudioCtx.currentTime;
+        const osc = wheelAudioCtx.createOscillator();
+        const gain = wheelAudioCtx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(650, now);
+        osc.frequency.exponentialRampToValueAtTime(180, now + 0.15);
+
+        gain.gain.setValueAtTime(0.22, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+        osc.connect(gain);
+        gain.connect(wheelAudioCtx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.16);
+    } catch (e) {
+        // Ignore
+    }
+}
+
+// 🔄 6. เสียงเริ่มรอบใหม่ (Next Round Ready Chime)
+function playNextRoundSound() {
+    if (!isWheelSoundEnabled) return;
+    try {
+        initWheelAudio();
+        if (!wheelAudioCtx) return;
+
+        const now = wheelAudioCtx.currentTime;
+        const notes = [
+            { freq: 880, time: 0.00, dur: 0.08 },
+            { freq: 1320, time: 0.09, dur: 0.16 }
+        ];
+
+        notes.forEach(note => {
+            const osc = wheelAudioCtx.createOscillator();
+            const gain = wheelAudioCtx.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(note.freq, now + note.time);
+
+            gain.gain.setValueAtTime(0.001, now + note.time);
+            gain.gain.linearRampToValueAtTime(0.20, now + note.time + 0.015);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + note.time + note.dur);
+
+            osc.connect(gain);
+            gain.connect(wheelAudioCtx.destination);
+
+            osc.start(now + note.time);
+            osc.stop(now + note.time + note.dur + 0.03);
+        });
+    } catch (e) {
+        // Ignore
+    }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     initModals();
     await fetchDisplayClassrooms();
@@ -352,6 +667,7 @@ function startIdleSpinning() {
 
 async function spinRandomly() {
     if (isSpinning || studentsList.length === 0) return;
+    initWheelAudio();
     
     let randomIndex = -1;
 
@@ -389,6 +705,7 @@ async function spinRandomly() {
 
 async function spinWheelTo(winnerIndex, currentBaseAngle) {
     if (isSpinning || !studentsList[winnerIndex]) return;
+    initWheelAudio();
     isSpinning = true;
     currentWinnerIndex = winnerIndex;
     
@@ -422,6 +739,7 @@ async function spinWheelTo(winnerIndex, currentBaseAngle) {
     
     const rounds = 12 * Math.PI * 2; 
     const totalSpinAngle = rounds + (targetAngleOnWheel - (baseAngle % (Math.PI * 2)));
+    let lastTickSegment = -1;
 
     function animate(timestamp) {
         if (!startTime) startTime = timestamp;
@@ -433,6 +751,22 @@ async function spinWheelTo(winnerIndex, currentBaseAngle) {
 
         drawWheel();
         drawBigWheel();
+
+        if (studentsList.length > 0) {
+            const currentSegment = Math.floor(startAngle / arc);
+            if (currentSegment !== lastTickSegment) {
+                const speedFactor = Math.max(0.2, 1 - progress);
+                playWheelTick(speedFactor);
+                lastTickSegment = currentSegment;
+
+                const bigPointer = document.getElementById('big-wheel-pointer');
+                if (bigPointer) {
+                    bigPointer.classList.remove('pointer-wobble');
+                    void bigPointer.offsetWidth;
+                    bigPointer.classList.add('pointer-wobble');
+                }
+            }
+        }
 
         if (progress < 1) {
             requestAnimationFrame(animate);
@@ -449,6 +783,7 @@ async function spinWheelTo(winnerIndex, currentBaseAngle) {
 
             updateLeaderboardUI();
             showWinnerAnnouncement(winner);
+            playWheelFanfare();
 
             setTimeout(async () => {
                 if (bigWheelModalInstance) bigWheelModalInstance.hide();
@@ -525,11 +860,13 @@ function renderCard2WinnerData(winner) {
 }
 
 async function skipCurrentWinner() {
+    playSwooshSound();
     resetQuizData();
     await closeAllModals();
 }
 
 async function resignAndRespin() {
+    playSwooshSound();
     resetQuizData();
     await safeCloseAllModals();
 
@@ -556,6 +893,7 @@ async function openQuizModalFromCard1() {
         return;
     }
 
+    playQuizDrawSound();
     const randomIndex = Math.floor(Math.random() * questionsList.length);
     currentActiveQuiz = questionsList[randomIndex];
     selectedChoiceIdx = null;
@@ -612,6 +950,7 @@ function displayQuizDataInCard2(q) {
 }
 
 function selectChoice(idx) {
+    playChoiceSelectSound();
     selectedChoiceIdx = idx;
     const choiceEls = document.querySelectorAll('#card2-quiz-choices .choice-box-neon');
     choiceEls.forEach((el, i) => {
@@ -654,6 +993,7 @@ async function confirmAnswerAndProceed() {
     const detailText = document.getElementById('result-detail-text');
 
     if (isCorrect && currentWinnerIndex !== -1 && studentsList[currentWinnerIndex]) {
+        playCorrectAnswerSound();
         studentsList[currentWinnerIndex].score = (studentsList[currentWinnerIndex].score || 0) + 1;
 
         if (currentClassId && typeof supabaseClient !== 'undefined' && supabaseClient) {
@@ -677,6 +1017,7 @@ async function confirmAnswerAndProceed() {
             confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 } });
         }
     } else {
+        playWrongAnswerSound();
         const correctChoiceText = currentActiveQuiz.choices[currentActiveQuiz.correct] || '';
         if (iconZone) iconZone.innerHTML = `<i class="bi bi-x-circle-fill text-danger"></i>`;
         if (titleText) {
@@ -693,6 +1034,7 @@ async function confirmAnswerAndProceed() {
 }
 
 async function closeResultModalAndRespin() {
+    playNextRoundSound();
     await closeAllModals();
 }
 
@@ -856,6 +1198,7 @@ function listenRealtimeSignals() {
             }
         })
         .on('broadcast', { event: 'quiz' }, (payload) => {
+            playQuizDrawSound();
             if (payload && payload.payload && payload.payload.quiz) {
                 currentActiveQuiz = payload.payload.quiz;
                 selectedChoiceIdx = null;

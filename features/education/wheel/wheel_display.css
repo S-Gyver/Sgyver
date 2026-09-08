@@ -117,6 +117,17 @@ body.cyber-body {
     border-top: 50px solid #ff0055;
     filter: drop-shadow(0 0 25px #ff0055);
     z-index: 10;
+    transform-origin: 50% 0%;
+}
+
+@keyframes pointerWobble {
+    0% { transform: translateX(-50%) rotate(0deg); }
+    30% { transform: translateX(-50%) rotate(-12deg); }
+    100% { transform: translateX(-50%) rotate(0deg); }
+}
+
+.pointer-wobble {
+    animation: pointerWobble 0.08s ease-out;
 }
 
 /* ==========================================

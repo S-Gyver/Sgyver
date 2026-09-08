@@ -45,6 +45,7 @@
             z-index: 99;
             filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.4));
             --pointer-color: #dc3545;
+            transform-origin: 50% 0%;
         }
         .dynamic-pointer::after {
             content: "";
@@ -55,6 +56,16 @@
             border-right: 20px solid transparent;
             border-top: 32px solid var(--pointer-color) !important;
             transition: border-top-color 0.12s ease-out;
+        }
+
+        @keyframes pointerTickHop {
+            0% { transform: translateX(-50%) rotate(0deg); }
+            30% { transform: translateX(-50%) rotate(-14deg); }
+            100% { transform: translateX(-50%) rotate(0deg); }
+        }
+
+        .pointer-tick-anim {
+            animation: pointerTickHop 0.08s ease-out;
         }
 
         /* ปุ่มหมุนวงล้อ */
@@ -113,9 +124,14 @@
             <h1 class="fw-bold text-dark m-0 fs-2 d-flex align-items-center gap-2">
                 <i class="bi bi-disc-fill text-primary"></i> Gyver Wheel Lucky Draw (Instant)
             </h1>
-            <a href="../../../index.html" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
-                <i class="bi bi-house-door me-1"></i>กลับหน้าหลัก
-            </a>
+            <div class="d-flex align-items-center gap-2">
+                <button id="sound-toggle-btn" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold" onclick="toggleSound()">
+                    <i class="bi bi-volume-up-fill me-1" id="sound-icon"></i><span id="sound-label">เปิดเสียง</span>
+                </button>
+                <a href="../../../index.html" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                    <i class="bi bi-house-door me-1"></i>กลับหน้าหลัก
+                </a>
+            </div>
         </div>
     </div>
 
@@ -248,6 +264,117 @@
         const itemCountBadge = document.getElementById('item-count-badge');
         const pointer = document.getElementById('pointer');
 
+        // 🔊 ระบบเสียงสังเคราะห์ Web Audio API สำหรับวงล้อ
+        let audioCtx = null;
+        let isSoundEnabled = true;
+
+        function initAudio() {
+            try {
+                if (!audioCtx) {
+                    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContextClass) {
+                        audioCtx = new AudioContextClass();
+                    }
+                }
+                if (audioCtx && audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+            } catch (e) {
+                console.warn("Audio init error:", e);
+            }
+        }
+
+        function toggleSound() {
+            isSoundEnabled = !isSoundEnabled;
+            const icon = document.getElementById('sound-icon');
+            const label = document.getElementById('sound-label');
+            const btn = document.getElementById('sound-toggle-btn');
+            if (isSoundEnabled) {
+                initAudio();
+                if (icon) icon.className = 'bi bi-volume-up-fill me-1';
+                if (label) label.innerText = 'เปิดเสียง';
+                if (btn) {
+                    btn.classList.remove('btn-outline-secondary');
+                    btn.classList.add('btn-outline-primary');
+                }
+                playTickSound(1);
+            } else {
+                if (icon) icon.className = 'bi bi-volume-mute-fill me-1';
+                if (label) label.innerText = 'ปิดเสียง';
+                if (btn) {
+                    btn.classList.remove('btn-outline-primary');
+                    btn.classList.add('btn-outline-secondary');
+                }
+            }
+        }
+
+        function playTickSound(speedFactor = 1) {
+            if (!isSoundEnabled) return;
+            try {
+                initAudio();
+                if (!audioCtx) return;
+
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                // ปรับแต่งเสียงกึกๆ สลักหมุนไม้/พลาสติก ด้วยคลื่นเสียง triangle decay สั้นๆ
+                const pitchVariance = 0.93 + Math.random() * 0.14;
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(740 * pitchVariance, now);
+                osc.frequency.exponentialRampToValueAtTime(160, now + 0.032);
+
+                const volume = Math.min(0.35 * Math.max(0.35, speedFactor), 0.5);
+                gain.gain.setValueAtTime(volume, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.032);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.035);
+            } catch (e) {
+                // Ignore
+            }
+        }
+
+        function playWinnerFanfare() {
+            if (!isSoundEnabled) return;
+            try {
+                initAudio();
+                if (!audioCtx) return;
+
+                const now = audioCtx.currentTime;
+                // เสียงทำนองฉลองชัยชนะ สดใส กังวาน: C5, E5, G5, C6
+                const notes = [
+                    { freq: 523.25, time: 0.00, dur: 0.14 },
+                    { freq: 659.25, time: 0.12, dur: 0.14 },
+                    { freq: 783.99, time: 0.24, dur: 0.18 },
+                    { freq: 1046.50, time: 0.38, dur: 0.70 }
+                ];
+
+                notes.forEach(note => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(note.freq, now + note.time);
+
+                    gain.gain.setValueAtTime(0.001, now + note.time);
+                    gain.gain.linearRampToValueAtTime(0.26, now + note.time + 0.02);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + note.time + note.dur);
+
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+
+                    osc.start(now + note.time);
+                    osc.stop(now + note.time + note.dur + 0.05);
+                });
+            } catch (e) {
+                // Ignore
+            }
+        }
+
         let items = [];
         let startAngle = 0;
         let isSpinning = false;
@@ -346,6 +473,8 @@
         function spinWheel() {
             if (isSpinning || items.length === 0) return;
 
+            initAudio();
+
             isSpinning = true;
             spinBtn.disabled = true;
 
@@ -353,6 +482,7 @@
             const duration = 6000;
             const baseAngle = startAngle;
             const additionalSpin = 35 + Math.random() * 20 + Math.random() * Math.PI * 2;
+            let lastTickSegment = -1;
 
             function animate(timestamp) {
                 if (!startTime) startTime = timestamp;
@@ -361,6 +491,22 @@
 
                 startAngle = baseAngle + ((1 - Math.pow(1 - progress, 5)) * additionalSpin);
                 drawWheel();
+
+                if (items.length > 0) {
+                    const arc = (Math.PI * 2) / items.length;
+                    const currentSegment = Math.floor(startAngle / arc);
+                    if (currentSegment !== lastTickSegment) {
+                        const speedFactor = Math.max(0.2, 1 - progress);
+                        playTickSound(speedFactor);
+                        lastTickSegment = currentSegment;
+
+                        if (pointer) {
+                            pointer.classList.remove('pointer-tick-anim');
+                            void pointer.offsetWidth;
+                            pointer.classList.add('pointer-tick-anim');
+                        }
+                    }
+                }
 
                 if (progress < 1) {
                     requestAnimationFrame(animate);
@@ -374,6 +520,7 @@
                     winnerDisplay.innerText = items[currentWinnerIndex];
                     winnerModal.show();
 
+                    playWinnerFanfare();
                     confetti({ particleCount: 180, spread: 90, origin: { y: 0.6 } });
                 }
             }

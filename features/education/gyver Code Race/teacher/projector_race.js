@@ -1,13 +1,14 @@
 let roomCode = '';
 let classKey = '';
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     const urlParams = new URLSearchParams(window.location.search);
-    roomCode = urlParams.get('room') || 'RACE88';
+    roomCode = (urlParams.get('room') || 'RACE88').trim().toUpperCase();
     classKey = urlParams.get('classKey') || '5/10';
     const matchType = urlParams.get('type') || 'solo';
 
-    document.getElementById('proj-room-code').innerText = roomCode;
+    const roomEl = document.getElementById('proj-room-code');
+    if (roomEl) roomEl.innerText = roomCode;
     
     const cfgType = document.getElementById('cfg-match-type');
     if (cfgType) {
@@ -15,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     generateQRCode(roomCode);
+    await fetchInitialLobbyConfig();
     fetchAndRenderStudents();
     listenStudentJoinEvents();
     listenCombatLogsFeed();
@@ -28,14 +30,43 @@ function generateQRCode(code) {
 
     const joinUrl = `${window.location.origin}/features/education/gyver%20Code%20Race/student/student_lobby.html?room=${code}`;
 
-    new QRCode(container, {
-        text: joinUrl,
-        width: 130,
-        height: 130,
-        colorDark: "#020617",
-        colorLight: "#ffffff",
-        correctLevel: QRCode.CorrectLevel.H
-    });
+    try {
+        if (typeof QRCode !== 'undefined') {
+            new QRCode(container, {
+                text: joinUrl,
+                width: 130,
+                height: 130,
+                colorDark: "#020617",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+        }
+    } catch (e) {}
+}
+
+async function fetchInitialLobbyConfig() {
+    try {
+        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+            let { data } = await supabaseClient
+                .from('lobbies')
+                .select('*')
+                .eq('room_code', roomCode)
+                .maybeSingle();
+
+            if (data) {
+                updateProjectorUI(data);
+                const cfgType = document.getElementById('cfg-match-type');
+                if (cfgType && data.match_type) {
+                    cfgType.innerText = data.match_type === 'team' ? 'โหมดทีม (Team Race)' : 'โหมดเดี่ยว (Solo Race)';
+                }
+                if (data.status === 'IN_PROGRESS') {
+                    window.location.href = `projector_live.html?room=${roomCode}`;
+                }
+            }
+        }
+    } catch (e) {
+        console.warn("fetchInitialLobbyConfig error:", e);
+    }
 }
 
 function listenTeacherConfigRealtime() {
@@ -59,7 +90,7 @@ function listenTeacherConfigRealtime() {
 
         channel.on('broadcast', { event: 'start_game' }, () => {
             console.log("🚀 สัญญาณเริ่มแข่งมาแล้ว! เปลี่ยนไปหน้า Live...");
-            window.location.href = `projector_live.html?room=${roomCode}&classKey=${encodeURIComponent(classKey)}`;
+            window.location.href = `projector_live.html?room=${roomCode}`;
         });
 
         channel.subscribe();
@@ -108,41 +139,56 @@ function showFloatingEmojiEffect(emoji) {
 }
 
 function updateProjectorUI(cfg) {
+    if (!cfg) return;
+
+    // Time Limit
     const timeEl = document.getElementById('cfg-time-limit');
-    if (timeEl && cfg.timer) {
-        timeEl.innerText = cfg.timer.unlimited 
+    if (timeEl) {
+        const timerEnabled = cfg.timer_enabled ?? cfg.timer?.enabled ?? false;
+        const duration = cfg.timer_duration ?? cfg.timer?.duration ?? 180;
+        timeEl.innerText = !timerEnabled 
             ? 'ไม่จำกัดเวลา' 
-            : `${Math.floor(cfg.timer.duration / 60)} นาที (${cfg.timer.duration} วินาที)`;
+            : `${Math.floor(duration / 60)} นาที (${duration} วินาที)`;
     }
 
+    // Gold Rule
     const goldEl = document.getElementById('cfg-gold-rule');
-    if (goldEl && cfg.gold) {
-        goldEl.innerText = cfg.gold.enabled 
-            ? `${cfg.gold.amount} Gold / ทุก ${cfg.gold.milestone}` 
+    if (goldEl) {
+        const goldEnabled = cfg.gold_enabled ?? cfg.gold?.enabled ?? false;
+        const amount = cfg.gold_amount ?? cfg.gold?.amount ?? 3;
+        const milestone = cfg.gold_milestone ?? cfg.gold?.milestone ?? '10%';
+        goldEl.innerText = goldEnabled 
+            ? `${amount} Gold / ทุก ${milestone}` 
             : 'ปิดใช้งาน';
     }
 
+    // Quiz Rule
     const quizEl = document.getElementById('cfg-quiz-rule');
-    if (quizEl && cfg.quiz) {
-        quizEl.innerText = cfg.quiz.enabled 
-            ? `${cfg.quiz.stock_name} | +${cfg.quiz.reward_gold} Gold` 
-            : 'ปิดใช้งาน';
+    if (quizEl) {
+        const quizEnabled = cfg.quiz_enabled ?? cfg.quiz?.enabled ?? false;
+        quizEl.innerText = quizEnabled ? 'เปิดใช้งาน' : 'ปิดใช้งาน';
+        quizEl.className = quizEnabled ? 'text-danger fw-bold' : 'text-subtle';
     }
 
+    // Items List
     const itemContainer = document.getElementById('cfg-items-list');
-    if (itemContainer && cfg.items) {
-        if (!cfg.items.enabled) {
+    if (itemContainer) {
+        const shopEnabled = cfg.shop_enabled ?? cfg.items?.enabled ?? false;
+        if (!shopEnabled) {
             itemContainer.innerHTML = '<span class="text-subtle small">ปิดใช้งานร้านค้า</span>';
-            return;
-        }
+        } else {
+            const shield = cfg.item_shield ?? cfg.items?.shield;
+            const blind = cfg.item_blind ?? cfg.items?.blind;
+            const freeze = cfg.item_freeze ?? cfg.items?.freeze;
+            const boost = cfg.item_boost ?? cfg.items?.boost;
 
-        let itemsHtml = '';
-        if (cfg.items.shield) itemsHtml += `<span class="badge bg-secondary text-white" style="font-size: 0.65rem;">🛡️ โล่ป้องกัน (3G)</span> `;
-        if (cfg.items.blind) itemsHtml += `<span class="badge bg-secondary text-white" style="font-size: 0.65rem;">👁️ หน้าจอเบลอ (4G)</span> `;
-        if (cfg.items.freeze) itemsHtml += `<span class="badge bg-secondary text-white" style="font-size: 0.65rem;">❄️ แช่แข็งระบบ (5G)</span> `;
-        if (cfg.items.boost) itemsHtml += `<span class="badge bg-secondary text-white" style="font-size: 0.65rem;">⚡ สปีดบูสท์ (6G)</span> `;
-        
-        itemContainer.innerHTML = itemsHtml || '<span class="text-subtle small">ไม่มีไอเทมเปิดขาย</span>';
+            let itemsHtml = '';
+            if (shield) itemsHtml += `<span class="badge bg-secondary text-white" style="font-size: 0.65rem;">🛡️ โล่ป้องกัน</span> `;
+            if (blind) itemsHtml += `<span class="badge bg-secondary text-white" style="font-size: 0.65rem;">👁️ หน้าจอเบลอ</span> `;
+            if (freeze) itemsHtml += `<span class="badge bg-secondary text-white" style="font-size: 0.65rem;">❄️ แช่แข็งระบบ</span> `;
+            if (boost) itemsHtml += `<span class="badge bg-secondary text-white" style="font-size: 0.65rem;">⚡ สปีดบูสท์</span> `;
+            itemContainer.innerHTML = itemsHtml || '<span class="text-subtle small">ไม่มีไอเทมเปิดขาย</span>';
+        }
     }
 }
 
@@ -152,29 +198,42 @@ async function fetchAndRenderStudents() {
 
     try {
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-            let { data: classData } = await supabaseClient
-                .from('class_rooms')
-                .select('players')
-                .eq('class_key', classKey)
+            let { data: lobbyData } = await supabaseClient
+                .from('lobbies')
+                .select('players, status')
+                .eq('room_code', roomCode)
                 .maybeSingle();
 
-            if (classData && Array.isArray(classData.players) && classData.players.length > 0) {
-                const players = classData.players;
-                if (countEl) countEl.innerText = players.length;
+            if (lobbyData) {
+                if (lobbyData.status === 'IN_PROGRESS') {
+                    window.location.href = `projector_live.html?room=${roomCode}`;
+                    return;
+                }
 
-                grid.innerHTML = players.map(p => {
-                    const studentName = p.nickname_th || p.name;
-                    return `
-                        <div class="player-card-hover p-2 bg-dark rounded-3 border border-secondary d-flex align-items-center gap-2" style="width: 170px;" data-student-name="${studentName}">
-                            <img src="${p.image || 'https://api.dicebear.com/7.x/bottts/svg?seed=' + encodeURIComponent(studentName)}" class="peer-avatar-lg">
-                            <div class="font-mono overflow-hidden">
-                                <strong class="text-white d-block small text-truncate">${studentName}</strong>
-                                <small class="text-cyan d-block" style="font-size: 0.7rem;">เลขที่ ${p.number || '-'}</small>
-                                <span class="badge bg-success mt-1" style="font-size: 0.6rem;">พร้อมแข่ง</span>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
+                if (Array.isArray(lobbyData.players)) {
+                    const approvedPlayers = lobbyData.players.filter(p => p.status === 'approved' || !p.status);
+                    if (countEl) countEl.innerText = approvedPlayers.length;
+
+                    if (grid) {
+                        if (approvedPlayers.length === 0) {
+                            grid.innerHTML = `<div class="col-12 text-center text-subtle font-mono py-4">ยังไม่มีนักเรียนที่ได้รับการอนุมัติในห้องแข่ง</div>`;
+                        } else {
+                            grid.innerHTML = approvedPlayers.map(p => {
+                                const studentName = p.nickname_th || p.name;
+                                return `
+                                    <div class="player-card-hover p-2 bg-dark rounded-3 border border-secondary d-flex align-items-center gap-2" style="width: 170px;" data-student-name="${studentName}">
+                                        <img src="${p.image || p.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=' + encodeURIComponent(studentName)}" class="peer-avatar-lg">
+                                        <div class="font-mono overflow-hidden">
+                                            <strong class="text-white d-block small text-truncate">${studentName}</strong>
+                                            <small class="text-cyan d-block" style="font-size: 0.7rem;">เลขที่ ${p.number || '-'}</small>
+                                            <span class="badge bg-success mt-1" style="font-size: 0.6rem;">พร้อมแข่ง</span>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('');
+                        }
+                    }
+                }
             }
         }
     } catch (e) {
@@ -185,12 +244,12 @@ async function fetchAndRenderStudents() {
 function listenStudentJoinEvents() {
     if (typeof supabaseClient !== 'undefined' && supabaseClient) {
         supabaseClient
-            .channel(`class_rooms_sync_${classKey}`)
+            .channel(`lobbies_sync_projector_${roomCode}`)
             .on('postgres_changes', {
                 event: 'UPDATE',
                 schema: 'public',
-                table: 'class_rooms',
-                filter: `class_key=eq.${classKey}`
+                table: 'lobbies',
+                filter: `room_code=eq.${roomCode}`
             }, () => {
                 fetchAndRenderStudents();
             })

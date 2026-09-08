@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -6,9 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gyver Studio - Central Question Bank</title>
 
+    <!-- Bootstrap 5, Icons & Fonts -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@600;700&family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Supabase SDK & AuthGuard -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -34,131 +34,162 @@
 </head>
 <body class="py-3 py-md-4">
 
-    <div class="container px-3 px-md-4" style="max-width: 950px;">
+    <!-- Ambient Grid & Glow -->
+    <div class="bg-cyber-grid"></div>
+    <div class="bg-glow-blur glow-top"></div>
+    <div class="bg-glow-blur glow-bottom"></div>
+
+    <div class="container px-3 px-md-4" style="max-width: 1050px;">
         
-        <!-- Header ส่วนหัว -->
-        <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 border-bottom pb-3 border-secondary gap-3">
-            <div>
-                <h1 class="text-white fw-bold m-0 fs-3 fs-md-2">
-                    <i class="bi bi-patch-question-fill text-warning me-2"></i>Gyver Question Bank
-                </h1>
-                <p class="text-muted small m-0">ศูนย์รวมคลังคำถามคำตอบส่วนตัว (สำหรับ Gyver Wheel & Gyver Code Race)</p>
+        <!-- Header ส่วนบน -->
+        <header class="cyber-card mb-4 border-cyan d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="bg-dark border border-warning rounded-3 p-2 d-inline-flex justify-content-center align-items-center" style="width: 44px; height: 44px;">
+                    <i class="bi bi-patch-question-fill text-warning fs-4"></i>
+                </div>
+                <div>
+                    <h2 class="text-white fw-bold m-0 font-kanit fs-3">Gyver Question Bank</h2>
+                    <p class="text-subtle small m-0 font-mono">ศูนย์รวมคลังข้อสอบและคำถาม เชื่อมต่อกับ Gyver Wheel & Gyver Code Race</p>
+                </div>
             </div>
             
-            <div class="d-flex align-items-center gap-2 flex-wrap ms-auto">
-                <a href="../../../index.html" class="btn btn-outline-light btn-sm fw-bold">
-                    <i class="bi bi-house-door-fill me-1"></i>หน้าหลัก
+            <div class="d-flex align-items-center gap-2 flex-wrap ms-auto font-kanit">
+                <a href="../../../index.html" class="btn btn-outline-secondary btn-sm fw-bold px-3 py-2 rounded-3 text-white">
+                    <i class="bi bi-house-door-fill me-1"></i>กลับหน้าหลัก
                 </a>
-                <button onclick="logout()" class="btn btn-outline-danger btn-sm">
-                    <i class="bi bi-box-arrow-right me-1"></i>ออกจากระบบ
-                </button>
             </div>
-        </div>
+        </header>
 
-        <!-- กล่องเลือกและเพิ่มชุดวิชา -->
-        <div class="card card-custom p-3 mb-4 border border-success shadow-sm">
-            <div class="row align-items-end g-2">
+        <!-- 📚 การ์ดเลือกและจัดการชุดวิชา -->
+        <div class="cyber-card mb-4 border-warning-soft">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary gap-2">
+                <h5 class="text-warning fw-bold m-0 font-kanit">
+                    <i class="bi bi-tags-fill me-2"></i>ชุดรายวิชาที่กำลังจัดการ
+                </h5>
+                <div id="subject-badges-zone" class="d-flex gap-2 flex-wrap font-mono"></div>
+            </div>
+
+            <div class="row align-items-end g-3 font-mono">
                 <div class="col-12 col-md-4">
-                    <label class="form-label text-success fw-bold small m-0 mb-1">
-                        <i class="bi bi-tags-fill me-1"></i>ชุดวิชาคำถามที่ต้องการจัดการ
+                    <label class="form-label text-warning fw-bold small m-0 mb-1">
+                        <i class="bi bi-folder2-open me-1"></i>เลือกชุดวิชา:
                     </label>
-                    <select id="current-quiz-subject-select" class="form-select bg-dark text-white border-success fw-bold" onchange="changeQuizSubject(this.value)">
+                    <select id="current-quiz-subject-select" class="form-select bg-dark text-warning border-warning fw-bold" onchange="changeQuizSubject(this.value)">
                     </select>
                 </div>
+
                 <div class="col-12 col-md-5">
                     <div class="row g-2">
                         <input type="hidden" id="edit-subject-old-key" value="">
                         <div class="col-4">
-                            <label class="form-label text-white-50 small m-0 mb-1">1. วิชา</label>
-                            <input type="text" id="quiz-sub-name" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="เช่น คณิต" required>
+                            <label class="form-label text-subtle small m-0 mb-1">1. ชื่อวิชา</label>
+                            <input type="text" id="quiz-sub-name" class="form-control form-control-sm" placeholder="เช่น คณิต" required>
                         </div>
                         <div class="col-5">
-                            <label class="form-label text-white-50 small m-0 mb-1">2. บทเรียน</label>
-                            <input type="text" id="quiz-sub-content" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="เช่น แคลคูลัส" required>
+                            <label class="form-label text-subtle small m-0 mb-1">2. บทเรียน</label>
+                            <input type="text" id="quiz-sub-content" class="form-control form-control-sm" placeholder="เช่น แคลคูลัส" required>
                         </div>
                         <div class="col-3">
-                            <label class="form-label text-white-50 small m-0 mb-1">3. ชั้น</label>
-                            <input type="text" id="quiz-sub-room" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="เช่น ม.4/1" required>
+                            <label class="form-label text-subtle small m-0 mb-1">3. ห้อง</label>
+                            <input type="text" id="quiz-sub-room" class="form-control form-control-sm" placeholder="เช่น ม.4/1" required>
                         </div>
                     </div>
                 </div>
+
                 <div class="col-12 col-md-3 d-flex gap-1 justify-content-end mt-2 mt-md-0">
-                    <button id="quiz-sub-submit-btn" class="btn btn-success text-white fw-bold btn-sm flex-grow-1" type="button" onclick="handleQuizSubjectSubmit()">
-                        <i class="bi bi-plus-square me-1"></i>เพิ่มรายวิชา
+                    <button id="quiz-sub-submit-btn" class="btn btn-warning text-dark fw-bold btn-sm flex-grow-1 rounded-2 py-2" type="button" onclick="handleQuizSubjectSubmit()">
+                        <i class="bi bi-plus-square me-1"></i>เพิ่มวิชาใหม่
                     </button>
-                    <button id="quiz-sub-cancel-btn" class="btn btn-secondary text-white fw-bold btn-sm d-none" type="button" onclick="cancelEditQuizSubject()">
+                    <button id="quiz-sub-cancel-btn" class="btn btn-secondary text-white fw-bold btn-sm d-none rounded-2 px-2" type="button" onclick="cancelEditQuizSubject()">
                         ยกเลิก
                     </button>
-                    <button class="btn btn-sm btn-warning text-dark fw-bold btn-sm px-2" type="button" onclick="startEditQuizSubject()" title="แก้ไขชื่อวิชานี้">
+                    <button class="btn btn-sm btn-outline-warning px-3 rounded-2" type="button" onclick="startEditQuizSubject()" title="แก้ไขชื่อวิชานี้">
                         <i class="bi bi-pencil-fill"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-danger btn-sm px-2" type="button" onclick="deleteCurrentQuizSubject()" title="ลบวิชานี้">
+                    <button class="btn btn-sm btn-outline-danger px-3 rounded-2" type="button" onclick="deleteCurrentQuizSubject()" title="ลบวิชานี้">
                         <i class="bi bi-trash3"></i>
                     </button>
                 </div>
             </div>
+
         </div>
 
-        <!-- ฟอร์มสร้าง/แก้ไขคำถาม -->
-        <div class="card card-custom p-3 p-md-4 mb-4">
-            <h4 class="text-success fw-bold m-0 mb-3 fs-5 fs-md-4" id="quiz-form-title">
+        <!-- ✍️ ฟอร์มสร้าง / แก้ไขโจทย์คำถาม -->
+        <div class="cyber-card mb-4 border-secondary" id="quiz-form-card">
+            <h5 class="text-warning fw-bold mb-3 font-kanit" id="quiz-form-title">
                 <i class="bi bi-question-square-fill me-2"></i>สร้างโจทย์คำถามใหม่
-            </h4>
-            <form id="quiz-form">
+            </h5>
+            <form id="quiz-form" class="font-mono">
                 <input type="hidden" id="edit-quiz-index" value="">
                 
                 <div class="mb-3">
-                    <label class="form-label text-white-50 small">โจทย์คำถามหลัก</label>
-                    <textarea id="quiz-q" class="form-control bg-dark text-white border-secondary" rows="4" placeholder="พิมพ์คำถามที่ต้องการถาม..." required></textarea>
+                    <label class="form-label text-subtle small fw-bold font-kanit">โจทย์คำถามหลัก (รองรับหลายบรรทัด)</label>
+                    <textarea id="quiz-q" class="form-control" rows="3" placeholder="พิมพ์โจทย์คำถาม เช่น ข้อใดคือคำสั่งแสดงผลในภาษา Python..." required></textarea>
                 </div>
+
                 <div class="row g-3 mb-3">
                     <div class="col-12 col-md-6">
-                        <label class="text-white-50 small mb-1">ตัวเลือกที่ 1</label>
-                        <textarea id="choice-0" class="form-control bg-dark text-white border-secondary" rows="2" required></textarea>
+                        <label class="text-cyan small mb-1 fw-bold font-kanit">ตัวเลือกที่ 1</label>
+                        <textarea id="choice-0" class="form-control" rows="2" placeholder="คำตอบข้อที่ 1..." required></textarea>
                     </div>
                     <div class="col-12 col-md-6">
-                        <label class="text-white-50 small mb-1">ตัวเลือกที่ 2</label>
-                        <textarea id="choice-1" class="form-control bg-dark text-white border-secondary" rows="2" required></textarea>
+                        <label class="text-cyan small mb-1 fw-bold font-kanit">ตัวเลือกที่ 2</label>
+                        <textarea id="choice-1" class="form-control" rows="2" placeholder="คำตอบข้อที่ 2..." required></textarea>
                     </div>
                     <div class="col-12 col-md-6">
-                        <label class="text-white-50 small mb-1">ตัวเลือกที่ 3</label>
-                        <textarea id="choice-2" class="form-control bg-dark text-white border-secondary" rows="2" required></textarea>
+                        <label class="text-cyan small mb-1 fw-bold font-kanit">ตัวเลือกที่ 3</label>
+                        <textarea id="choice-2" class="form-control" rows="2" placeholder="คำตอบข้อที่ 3..." required></textarea>
                     </div>
                     <div class="col-12 col-md-6">
-                        <label class="text-white-50 small mb-1">ตัวเลือกที่ 4</label>
-                        <textarea id="choice-3" class="form-control bg-dark text-white border-secondary" rows="2" required></textarea>
+                        <label class="text-cyan small mb-1 fw-bold font-kanit">ตัวเลือกที่ 4</label>
+                        <textarea id="choice-3" class="form-control" rows="2" placeholder="คำตอบข้อที่ 4..." required></textarea>
                     </div>
                 </div>
+
                 <div class="mb-3">
-                    <label class="form-label text-white-50 small">คำตอบที่ถูกต้อง</label>
-                    <select id="correct-choice" class="form-select bg-dark text-white border-secondary">
-                        <option value="0">ตัวเลือกที่ 1</option>
-                        <option value="1">ตัวเลือกที่ 2</option>
-                        <option value="2">ตัวเลือกที่ 3</option>
-                        <option value="3">ตัวเลือกที่ 4</option>
+                    <label class="form-label text-warning small fw-bold font-kanit">
+                        <i class="bi bi-check-circle-fill me-1"></i>กำหนดตัวเลือกที่ถูกต้อง (เฉลย)
+                    </label>
+                    <select id="correct-choice" class="form-select text-warning border-warning fw-bold font-kanit">
+                        <option value="0">ข้อที่ 1 (ตัวเลือกที่ 1)</option>
+                        <option value="1">ข้อที่ 2 (ตัวเลือกที่ 2)</option>
+                        <option value="2">ข้อที่ 3 (ตัวเลือกที่ 3)</option>
+                        <option value="3">ข้อที่ 4 (ตัวเลือกที่ 4)</option>
                     </select>
                 </div>
+
                 <div class="d-flex gap-2">
-                    <button type="submit" id="quiz-submit-btn" class="btn btn-success w-100 fw-bold shadow">
+                    <button type="submit" id="quiz-submit-btn" class="btn btn-warning text-dark w-100 fw-bold shadow py-2 rounded-3 font-kanit">
                         <i class="bi bi-floppy-fill me-2"></i>บันทึกคำถามเข้าคลังของวิชานี้
                     </button>
-                    <button type="button" id="quiz-cancel-edit-btn" class="btn btn-secondary fw-bold text-white shadow d-none" onclick="cancelEditQuiz()">
+                    <button type="button" id="quiz-cancel-edit-btn" class="btn btn-secondary fw-bold text-white shadow d-none py-2 px-4 rounded-3 font-kanit" onclick="cancelEditQuiz()">
                         ยกเลิก
                     </button>
                 </div>
             </form>
         </div>
 
-        <!-- รายการโจทย์คำถามในชุดวิชานี้ -->
-        <div class="card card-custom p-3 p-md-4">
-            <h4 class="text-white fw-bold mb-3 fs-5 fs-md-4">
-                <i class="bi bi-database-fill text-success me-2"></i>รายการคำถามในชุดวิชานี้ (<span id="q-count">0</span> ข้อ)
-            </h4>
-            <div id="quiz-list" class="list-group gap-2" style="max-height: 400px; overflow-y: auto;"></div>
+        <!-- 🗂️ รายการคำถามในการ์ด Flashcards -->
+        <div class="cyber-card border-secondary">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary gap-2">
+                <h5 class="text-white fw-bold m-0 font-kanit">
+                    <i class="bi bi-database-fill text-warning me-2"></i>รายการคำถามในชุดวิชานี้ (<span id="q-count" class="font-mono text-warning">0</span> ข้อ)
+                </h5>
+
+                <!-- ช่องค้นหาโจทย์คำถาม -->
+                <div class="search-quiz-wrapper" style="min-width: 260px;">
+                    <i class="bi bi-search text-muted me-2"></i>
+                    <input type="text" id="search-quiz-input" placeholder="ค้นหาโจทย์ หรือคำตอบ..." oninput="filterQuestions(this.value)">
+                </div>
+            </div>
+
+            <!-- กล่องแสดงรายการคำถาม Flashcard -->
+            <div id="quiz-list"></div>
         </div>
 
     </div>
 
+    <!-- Bootstrap Bundle & Main Script -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="question_bank.js"></script>
 </body>

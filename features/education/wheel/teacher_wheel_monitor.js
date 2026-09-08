@@ -847,6 +847,13 @@ document.getElementById('player-form')?.addEventListener('submit', async functio
     loadData(); 
 });
 
+let monitorPlayerSearchQuery = '';
+
+function filterMonitorPlayers(val) {
+    monitorPlayerSearchQuery = (val || '').trim().toLowerCase();
+    renderPlayers();
+}
+
 function renderPlayers() {
     const players = getActivePlayers();
     const countEl = document.getElementById('player-count');
@@ -854,18 +861,40 @@ function renderPlayers() {
     
     const list = document.getElementById('player-list');
     if(!list) return;
+
     if(players.length === 0) {
-        list.innerHTML = `<li class="list-group-item text-center text-subtle list-item-cyber py-3">ยังไม่มีรายชื่อนักเรียนในห้องนี้</li>`;
+        list.innerHTML = `<li class="list-group-item text-center text-subtle list-item-cyber py-3 rounded-3">ยังไม่มีรายชื่อนักเรียนในห้องนี้</li>`;
         return;
     }
-    list.innerHTML = players.map((p, i) => {
+
+    // กรองรายชื่อตามคำค้นหา (ชื่อ / เลขที่)
+    let displayPlayers = players.map((p, originalIndex) => ({ ...p, originalIndex }));
+    if (monitorPlayerSearchQuery) {
+        displayPlayers = displayPlayers.filter(p => (p.name || '').toLowerCase().includes(monitorPlayerSearchQuery));
+    }
+
+    if (displayPlayers.length === 0) {
+        list.innerHTML = `
+            <li class="list-group-item text-center text-subtle list-item-cyber py-4 rounded-3 border border-secondary border-opacity-50">
+                <i class="bi bi-person-x fs-3 text-warning d-block mb-2"></i>
+                <div class="fw-bold text-white mb-1">ไม่พบรายชื่อที่ตรงกับ "${escapeHtml(monitorPlayerSearchQuery)}"</div>
+                <small class="text-secondary">ลองพิมพ์คำที่ใกล้เคียง หรือล้างข้อความในช่องค้นหา</small>
+            </li>`;
+        return;
+    }
+
+    list.innerHTML = displayPlayers.map((p) => {
         let avatarUrl = p.image || p.avatar || `https://api.dicebear.com/7.x/big-smile/svg?seed=${encodeURIComponent(p.name)}`;
+        const realIdx = p.originalIndex;
         return `
-            <li class="list-group-item list-item-cyber d-flex justify-content-between align-items-center p-3 rounded-3">
+            <li class="list-group-item list-item-cyber d-flex justify-content-between align-items-center p-3 rounded-3 border border-secondary border-opacity-25 mb-1">
                 <div class="d-flex align-items-center gap-3">
-                    <img src="${avatarUrl}" class="admin-avatar">
+                    <img src="${avatarUrl}" class="admin-avatar cursor-pointer" onclick="if(typeof openPhotoZoom==='function') openPhotoZoom('${avatarUrl}', '${escapeHtml(p.name)}')">
                     <div>
-                        <h5 class="m-0 fw-bold text-cyan">${p.name}</h5>
+                        <div class="d-flex align-items-center gap-2">
+                            <h5 class="m-0 fw-bold text-cyan">${highlightMatch(p.name, monitorPlayerSearchQuery)}</h5>
+                            ${monitorPlayerSearchQuery ? '<span class="badge bg-secondary text-white small">พบ</span>' : ''}
+                        </div>
                         <div class="mt-1">
                             <span class="badge bg-dark border border-secondary text-subtle me-1">โดนสุ่ม: <strong>${p.spunCount || p.spin_count || 0}</strong> ครั้ง</span>
                             <span class="badge bg-dark border border-warning text-warning">คะแนน: <strong>${p.score || 0}</strong> แต้ม</span>
@@ -874,11 +903,11 @@ function renderPlayers() {
                 </div>
                 <div class="d-flex align-items-center gap-2">
                     <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-danger px-2 py-1 fw-bold" type="button" onclick="adjustStat(${i}, 'score', -1)"><i class="bi bi-dash-circle"></i></button>
-                        <button class="btn btn-outline-success px-2 py-1 fw-bold" type="button" onclick="adjustStat(${i}, 'score', 1)"><i class="bi bi-plus-circle"></i></button>
+                        <button class="btn btn-outline-danger px-2 py-1 fw-bold" type="button" onclick="adjustStat(${realIdx}, 'score', -1)" title="ลด 1 คะแนน"><i class="bi bi-dash-circle"></i></button>
+                        <button class="btn btn-outline-success px-2 py-1 fw-bold" type="button" onclick="adjustStat(${realIdx}, 'score', 1)" title="เพิ่ม 1 คะแนน"><i class="bi bi-plus-circle"></i></button>
                     </div>
-                    <button class="btn btn-sm btn-warning px-3 ms-1 text-dark fw-bold" type="button" onclick="startEditPlayer(${i})"><i class="bi bi-pencil-fill"></i></button>
-                    <button class="btn btn-sm btn-danger px-3" type="button" onclick="deletePlayer(${i})"><i class="bi bi-trash-fill"></i></button>
+                    <button class="btn btn-sm btn-warning px-3 ms-1 text-dark fw-bold" type="button" onclick="startEditPlayer(${realIdx})" title="แก้ไขชื่อ"><i class="bi bi-pencil-fill"></i></button>
+                    <button class="btn btn-sm btn-danger px-3" type="button" onclick="deletePlayer(${realIdx})" title="ลบออกจากห้อง"><i class="bi bi-trash-fill"></i></button>
                 </div>
             </li>
         `;
@@ -935,38 +964,150 @@ document.getElementById('quiz-form')?.addEventListener('submit', async (e) => {
     loadData();
 });
 
+let monitorQuizSearchQuery = '';
+
+function filterMonitorQuizzes(val) {
+    monitorQuizSearchQuery = (val || '').trim().toLowerCase();
+    renderQuizzes();
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function highlightMatch(text, query) {
+    if (!text) return '';
+    const safeText = escapeHtml(text);
+    if (!query) return safeText;
+    const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escapedQuery})`, 'gi');
+    return safeText.replace(regex, '<mark class="bg-warning text-dark px-1 rounded fw-bold">$1</mark>');
+}
+
 function renderQuizzes() {
     const countEl = document.getElementById('q-count');
     if (countEl) countEl.innerText = questions.length;
 
     const list = document.getElementById('quiz-list');
     if(!list) return;
+
     if(questions.length === 0) {
-        list.innerHTML = `<div class="list-group-item text-center text-subtle list-item-cyber py-3">ยังไม่มีโจทย์คำถามในวิชานี้</div>`;
+        list.innerHTML = `<div class="list-group-item text-center text-subtle list-item-cyber py-3 rounded-3">ยังไม่มีโจทย์คำถามในวิชานี้</div>`;
         return;
     }
-    list.innerHTML = questions.map((q, i) => `
-        <div class="list-group-item list-item-cyber p-3 rounded-3">
-            <div class="d-flex justify-content-between align-items-start">
-                <div style="width: 80%;">
-                    <span class="badge bg-warning text-dark mb-2">ข้อที่ ${i+1}</span>
-                    <h5 class="fw-bold text-white mb-2">${q.q}</h5>
+
+    // กรองคำถามตามคำที่ค้นหา (โจทย์ หรือ ช้อยส์)
+    let displayList = questions.map((q, originalIndex) => ({ ...q, originalIndex }));
+    if (monitorQuizSearchQuery) {
+        displayList = displayList.filter(item => {
+            const inQ = (item.q || '').toLowerCase().includes(monitorQuizSearchQuery);
+            const inChoices = (item.choices || []).some(c => (c || '').toLowerCase().includes(monitorQuizSearchQuery));
+            return inQ || inChoices;
+        });
+    }
+
+    if(displayList.length === 0) {
+        list.innerHTML = `
+            <div class="list-group-item text-center text-subtle list-item-cyber py-4 rounded-3 border border-secondary border-opacity-50">
+                <i class="bi bi-search fs-3 text-warning d-block mb-2"></i>
+                <div class="fw-bold text-white mb-1">ไม่พบโจทย์ที่ตรงกับ "${escapeHtml(monitorQuizSearchQuery)}"</div>
+                <small class="text-secondary">ลองพิมพ์คำที่ใกล้เคียง หรือล้างข้อความในช่องค้นหา</small>
+            </div>`;
+        return;
+    }
+
+    list.innerHTML = displayList.map((q) => `
+        <div class="list-group-item list-item-cyber p-3 rounded-3 border border-secondary border-opacity-25 mb-2">
+            <div class="d-flex justify-content-between align-items-start gap-2">
+                <div style="flex: 1;">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span class="badge bg-warning text-dark fw-bold">ข้อที่ ${q.originalIndex + 1}</span>
+                        ${monitorQuizSearchQuery ? '<span class="badge bg-secondary text-white small">พบในผลค้นหา</span>' : ''}
+                    </div>
+                    <h5 class="fw-bold text-white mb-2 font-kanit lh-base" style="white-space: pre-wrap;">${highlightMatch(q.q, monitorQuizSearchQuery)}</h5>
                     <div class="row g-2 small text-subtle">
                         ${q.choices.map((c, idx) => `
-                            <div class="col-6 ${idx === q.correct ? 'text-cyan fw-bold' : ''}">
-                                ${idx + 1}. <span>${c}</span>
+                            <div class="col-12 col-md-6 ${idx === q.correct ? 'text-cyan fw-bold' : ''}">
+                                <span class="${idx === q.correct ? 'text-warning' : ''}">${idx + 1}.</span> 
+                                <span>${highlightMatch(c, monitorQuizSearchQuery)}</span>
+                                ${idx === q.correct ? '<span class="badge bg-success bg-opacity-75 text-white ms-1 py-0 px-1 font-kanit" style="font-size: 0.72rem;">เฉลย</span>' : ''}
                             </div>
                         `).join('')}
                     </div>
+                </div>
+                <div class="d-flex flex-column gap-1 ms-2">
+                    <button class="btn btn-sm btn-outline-warning p-1 px-2 rounded-2" onclick="editQuiz(${q.originalIndex})" title="แก้ไขข้อนี้">
+                        <i class="bi bi-pencil-square"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger p-1 px-2 rounded-2" onclick="deleteQuiz(${q.originalIndex})" title="ลบข้อนี้">
+                        <i class="bi bi-trash"></i>
+                    </button>
                 </div>
             </div>
         </div>
     `).join('');
 }
 
+function editQuiz(index) {
+    const q = questions[index];
+    if (!q) return;
+
+    const editIndexEl = document.getElementById('edit-quiz-index');
+    if (editIndexEl) editIndexEl.value = index;
+
+    const qEl = document.getElementById('quiz-q');
+    if (qEl) qEl.value = q.q;
+
+    q.choices.forEach((c, i) => {
+        const choiceEl = document.getElementById(`choice-${i}`);
+        if (choiceEl) choiceEl.value = c;
+    });
+
+    const correctEl = document.getElementById('correct-choice');
+    if (correctEl) correctEl.value = q.correct;
+
+    const formTitle = document.getElementById('quiz-form-title');
+    if (formTitle) formTitle.innerHTML = `<i class="bi bi-pencil-square me-2 text-warning"></i>แก้ไขโจทย์คำถามข้อที่ ${index + 1}`;
+
+    const cancelBtn = document.getElementById('quiz-cancel-edit-btn');
+    if (cancelBtn) cancelBtn.classList.remove('d-none');
+
+    const submitBtn = document.getElementById('quiz-submit-btn');
+    if (submitBtn) submitBtn.innerHTML = '<i class="bi bi-check2-circle me-2"></i>อัปเดตคำถามนี้';
+
+    // เลื่อนหน้าจอไปยังฟอร์มแก้ไข
+    document.getElementById('quiz-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    qEl?.focus();
+}
+
+async function deleteQuiz(index) {
+    if (!confirm(`ต้องการลบโจทย์คำถามข้อที่ ${index + 1} ใช่หรือไม่?`)) return;
+    questions.splice(index, 1);
+    await saveQuizData();
+    cancelEditQuiz();
+    loadData();
+}
+
 function cancelEditQuiz() {
-    document.getElementById('edit-quiz-index').value = "";
-    document.getElementById('quiz-form').reset();
+    const editIndexEl = document.getElementById('edit-quiz-index');
+    if (editIndexEl) editIndexEl.value = "";
+
+    document.getElementById('quiz-form')?.reset();
+
+    const formTitle = document.getElementById('quiz-form-title');
+    if (formTitle) formTitle.innerHTML = '<i class="bi bi-question-square-fill me-2"></i>สร้างโจทย์คำถามใหม่';
+
+    const cancelBtn = document.getElementById('quiz-cancel-edit-btn');
+    if (cancelBtn) cancelBtn.classList.add('d-none');
+
+    const submitBtn = document.getElementById('quiz-submit-btn');
+    if (submitBtn) submitBtn.innerHTML = '<i class="bi bi-floppy-fill me-2"></i>บันทึกคำถามเข้าคลังของวิชานี้';
 }
 
 // 📡 ฟัง Realtime Broadcast สัญญาณสด

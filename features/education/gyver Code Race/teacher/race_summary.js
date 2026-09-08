@@ -4,39 +4,43 @@ let playersList = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
     const urlParams = new URLSearchParams(window.location.search);
-    roomCode = urlParams.get('room') || 'RACE88';
-    classKey = urlParams.get('classKey') || '5/10';
+    roomCode = (urlParams.get('room') || 'RACE88').trim().toUpperCase();
+    classKey = urlParams.get('classKey') || urlParams.get('class') || '';
 
     const roomEl = document.getElementById('summary-room-code');
     const classEl = document.getElementById('summary-class-key');
     
     if (roomEl) roomEl.innerText = roomCode;
-    if (classEl) classEl.innerText = classKey;
+    if (classEl) {
+        classEl.innerText = classKey || roomCode;
+    }
 
     await fetchAndRenderSummaryData();
+    listenForSummaryUpdates();
 });
 
 async function fetchAndRenderSummaryData() {
     try {
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-            
-            // ดึงข้อมูลรายชื่อและคะแนนจากตาราง class_rooms
-            let { data } = await supabaseClient
-                .from('class_rooms')
-                .select('players')
-                .eq('class_key', classKey)
+            // ดึงข้อมูลรายชื่อและคะแนนจากตาราง lobbies
+            let { data, error } = await supabaseClient
+                .from('lobbies')
+                .select('players, match_type')
+                .eq('room_code', roomCode)
                 .maybeSingle();
 
-            if (data && Array.isArray(data.players)) {
+            if (!error && data && Array.isArray(data.players) && data.players.length > 0) {
                 // กรองเฉพาะผู้เล่นที่ได้รับอนุมัติ
-                playersList = data.players.filter(p => p.status !== 'pending');
+                playersList = data.players.filter(p => p.status !== 'pending' && p.status !== 'rejected');
                 
                 // เรียงลำดับจาก Progress % มากไปน้อย (ถ้าเท่ากันวัดจาก WPM)
                 playersList.sort((a, b) => {
-                    if ((b.progress || 0) === (a.progress || 0)) {
+                    const progB = b.progress || 0;
+                    const progA = a.progress || 0;
+                    if (progB === progA) {
                         return (b.wpm || 0) - (a.wpm || 0);
                     }
-                    return (b.progress || 0) - (a.progress || 0);
+                    return progB - progA;
                 });
 
                 renderPodium();
@@ -44,10 +48,28 @@ async function fetchAndRenderSummaryData() {
             } else {
                 showEmptyState();
             }
+        } else {
+            showEmptyState();
         }
     } catch (e) {
         console.error("Fetch Summary Error:", e);
         showEmptyState();
+    }
+}
+
+function listenForSummaryUpdates() {
+    if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+        supabaseClient
+            .channel(`summary_sync_${roomCode}`)
+            .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'lobbies',
+                filter: `room_code=eq.${roomCode}`
+            }, () => {
+                fetchAndRenderSummaryData();
+            })
+            .subscribe();
     }
 }
 
@@ -119,7 +141,7 @@ function renderLeaderboardTable() {
     if (!tbody) return;
 
     if (playersList.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-muted">ไม่พบข้อมูลผู้เข้าแข่งขัน</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-muted font-mono">ไม่พบข้อมูลผู้เข้าแข่งขัน</td></tr>`;
         return;
     }
 
@@ -131,7 +153,7 @@ function renderLeaderboardTable() {
         else if (rank === 2) rankBadge = `<span class="badge bg-secondary text-white font-mono fw-bold">🥈 2</span>`;
         else if (rank === 3) rankBadge = `<span class="badge bg-danger text-white font-mono fw-bold">🥉 3</span>`;
 
-        const isFinished = p.progress >= 100;
+        const isFinished = (p.progress || 0) >= 100;
 
         return `
             <tr>
@@ -152,7 +174,7 @@ function renderLeaderboardTable() {
                 <td class="text-center">
                     ${isFinished 
                         ? `<span class="badge bg-success font-mono">FINISH 🏁</span>` 
-                        : `<span class="badge bg-dark border border-secondary text-subtle font-mono">FINISHED</span>`
+                        : `<span class="badge bg-dark border border-secondary text-subtle font-mono">${p.progress || 0}%</span>`
                     }
                 </td>
             </tr>

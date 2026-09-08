@@ -4,9 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>จัดการห้องเรียน & นักเรียน - Gyver Workspace</title>
+    
+    <!-- Bootstrap 5, Icons & Kanit Font -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@600;700&family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="../../assets/css/index.css">
@@ -25,17 +27,21 @@
 </head>
 <body class="bg-light min-vh-100 d-flex flex-column">
 
+    <!-- Navbar Header -->
     <nav class="navbar py-3 bg-white border-bottom sticky-top">
         <div class="container">
             <a class="navbar-brand fw-bold fs-4 text-dark d-flex align-items-center gap-2" href="../../index.html">
                 <div class="bg-primary text-white rounded-3 p-1 px-2 fs-5"><i class="bi bi-grid-1x2-fill"></i></div> Gyver Workspace
             </a>
-            <a href="../../index.html" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-bold"><i class="bi bi-arrow-left me-1"></i>กลับหน้าหลัก</a>
+            <a href="../../index.html" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-bold">
+                <i class="bi bi-arrow-left me-1"></i>กลับหน้าหลัก
+            </a>
         </div>
     </nav>
 
-    <div class="container my-5">
+    <div class="container my-4 my-md-5">
         <div class="row g-4">
+            
             <!-- Sidebar Navigation -->
             <div class="col-lg-3">
                 <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
@@ -60,27 +66,29 @@
                 </div>
             </div>
 
-            <!-- Content Area -->
+            <!-- Content Area: รายการห้องเรียนทั้งหมด -->
             <div class="col-lg-9">
                 <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
-                    <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
-                        <h5 class="fw-bold text-dark m-0"><i class="bi bi-people text-primary me-2"></i>จัดการห้องเรียน และ รายชื่อนักเรียน</h5>
-                        <div class="d-flex gap-2">
-                            <button class="btn btn-sm btn-success fw-bold rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#addClassModal">
-                                <i class="bi bi-plus-lg me-1"></i>สร้างห้องเรียนใหม่
-                            </button>
+                    <div class="d-flex flex-wrap justify-content-between align-items-center border-bottom pb-3 mb-4 gap-2">
+                        <div>
+                            <h4 class="fw-bold text-dark m-0"><i class="bi bi-people text-primary me-2"></i>จัดการห้องเรียน และ รายชื่อนักเรียน</h4>
+                            <p class="text-muted small m-0">สร้างห้องเรียน เพิ่มรายชื่อนักเรียน คัดลอกรหัสห้อง และเปิดใช้งานกับ Gyver Wheel ได้ทันที</p>
                         </div>
+                        <button class="btn btn-primary fw-bold rounded-pill px-4 shadow-sm" data-bs-toggle="modal" data-bs-target="#addClassModal">
+                            <i class="bi bi-plus-circle-fill me-1"></i>สร้างห้องเรียนใหม่
+                        </button>
                     </div>
 
-                    <!-- รายการห้องเรียน -->
+                    <!-- การ์ดห้องเรียน (Dynamic Grid) -->
                     <div id="classroom-list-container" class="row g-3">
                         <div class="col-12 text-center py-5 bg-light rounded-4 border border-dashed">
-                            <i class="bi bi-journal-plus display-4 text-primary mb-2"></i>
-                            <h6 class="fw-bold text-dark">ยังไม่มีห้องเรียนในระบบ</h6>
+                            <div class="spinner-border text-primary mb-2" role="status"></div>
+                            <h6 class="fw-bold text-dark">กำลังโหลดข้อมูลห้องเรียน...</h6>
                         </div>
                     </div>
                 </div>
             </div>
+
         </div>
     </div>
 
@@ -96,12 +104,12 @@
                     <form id="form-create-class" onsubmit="handleCreateClassroom(event)">
                         <div class="mb-3">
                             <label class="form-label small fw-bold text-secondary">ชื่อห้องเรียน <span class="text-danger">*</span></label>
-                            <input type="text" id="class-title" class="form-control" placeholder="เช่น ชุมนุม python" required>
+                            <input type="text" id="class-title" class="form-control rounded-3" placeholder="เช่น ม.4/1 คอมพิวเตอร์, ชุมนุม Python..." required>
                         </div>
                         <div class="text-end gap-2 d-flex justify-content-end">
-                            <button type="button" class="btn btn-light rounded-3 font-mono" data-bs-dismiss="modal">ยกเลิก</button>
-                            <button type="submit" class="btn btn-primary rounded-3 font-mono fw-bold" id="btn-save-class">
-                                <i class="bi bi-check-circle-fill me-1"></i>บันทึกห้องเรียน
+                            <button type="button" class="btn btn-light rounded-3 px-3" data-bs-dismiss="modal">ยกเลิก</button>
+                            <button type="submit" class="btn btn-primary rounded-3 fw-bold px-4" id="btn-save-class">
+                                <i class="bi bi-check-circle-fill me-1"></i>สร้างห้องเรียนทันที
                             </button>
                         </div>
                     </form>
@@ -110,67 +118,151 @@
         </div>
     </div>
 
-    <!-- 👨‍🎓 MODAL 2: จัดการและเพิ่มนักเรียนเข้าห้อง -->
+    <!-- 👨‍🎓 MODAL 2: จัดการและเพิ่มนักเรียนเข้าห้อง (3 รูปแบบ: Bulk Paste / Auto-Gen / Single) -->
     <div class="modal fade" id="manageStudentsModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content rounded-4 border-0 shadow">
-                <div class="modal-header border-bottom-0 pb-0">
-                    <h5 class="modal-title fw-bold text-primary" id="student-modal-title">
-                        <i class="bi bi-person-plus-fill me-2"></i>จัดการนักเรียน
+                <div class="modal-header border-bottom pb-3">
+                    <h5 class="modal-title fw-bold text-dark" id="student-modal-title">
+                        <i class="bi bi-people-fill me-2 text-primary"></i>จัดการนักเรียน
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-4">
                     
-                    <!-- ฟอร์มเพิ่มนักเรียน -->
-                    <div class="p-3 bg-light rounded-3 border mb-4">
-                        <h6 class="fw-bold text-dark mb-2"><i class="bi bi-plus-lg text-success me-1"></i>เพิ่มนักเรียนเข้าห้อง</h6>
-                        <div class="row g-2 mb-2">
-                            <div class="col-md-7">
-                                <input type="text" id="input-student-names" class="form-control" placeholder="ชื่อนักเรียน (เช่น ณัฏฐชัย 1/2) หรือวางคั่นด้วย ,">
+                    <!-- ส่วนเลือกวิธีการเพิ่มนักเรียน -->
+                    <div class="card border bg-light rounded-3 p-3 mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-bold text-dark small"><i class="bi bi-person-plus-fill text-primary me-1"></i>เลือกวิธีเพิ่มนักเรียนเข้าห้อง:</span>
+                        </div>
+
+                        <!-- แท็บ 3 ทางเลือก -->
+                        <ul class="nav nav-pills gap-2 mb-3" id="addStudentTab" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="student-add-tab active" id="tab-bulk-btn" data-bs-toggle="pill" data-bs-target="#tab-bulk" type="button">
+                                    <i class="bi bi-clipboard-data me-1"></i>วางรายชื่อ Excel / Sheets
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="student-add-tab" id="tab-gen-btn" data-bs-toggle="pill" data-bs-target="#tab-gen" type="button">
+                                    <i class="bi bi-hash me-1"></i>สร้างเลขที่อัตโนมัติ
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="student-add-tab" id="tab-single-btn" data-bs-toggle="pill" data-bs-target="#tab-single" type="button">
+                                    <i class="bi bi-person-badge me-1"></i>เพิ่มทีละคน + รูปถ่าย
+                                </button>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content" id="addStudentTabContent">
+                            <!-- 1. คัดลอก-วางรายชื่อ Bulk Paste -->
+                            <div class="tab-pane fade show active" id="tab-bulk" role="tabpanel">
+                                <textarea id="bulk-student-textarea" class="form-control mb-2 rounded-3" rows="4" 
+                                    placeholder="คัดลอกรายชื่อจาก Excel หรือพิมพ์บรรทัดละ 1 คน เช่น:&#10;สมชาย ใจดี&#10;สมหญิง มั่งคั่ง&#10;อนันต์ ยอดเยี่ยม"></textarea>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">Tip: วางรายชื่อทีละหลายสิบคนได้ทันที</small>
+                                    <button class="btn btn-success fw-bold rounded-3 px-4" onclick="handleBulkAddStudents()">
+                                        <i class="bi bi-check2-all me-1"></i>เพิ่มรายชื่อชุดนี้
+                                    </button>
+                                </div>
                             </div>
-                            <div class="col-md-5">
-                                <input type="file" id="input-student-image" class="form-control" accept="image/*">
+
+                            <!-- 2. สร้างเลขที่อัตโนมัติ -->
+                            <div class="tab-pane fade" id="tab-gen" role="tabpanel">
+                                <div class="row g-2 align-items-end mb-2">
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-bold text-secondary mb-1">คำนำหน้า</label>
+                                        <select id="gen-num-prefix" class="form-select form-select-sm">
+                                            <option value="เลขที่ ">เลขที่ X (เช่น เลขที่ 1)</option>
+                                            <option value="">มีเฉพาะตัวเลข (เช่น 1)</option>
+                                            <option value="คนที่ ">คนที่ X (เช่น คนที่ 1)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-bold text-secondary mb-1">เลขเริ่มต้น</label>
+                                        <input type="number" id="gen-num-start" class="form-control form-control-sm" value="1" min="1">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-bold text-secondary mb-1">จำนวนคนทั้งหมด</label>
+                                        <input type="number" id="gen-num-total" class="form-control form-control-sm" value="35" min="1" max="100">
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <button class="btn btn-success fw-bold rounded-3 px-4" onclick="handleGenerateNumberStudents()">
+                                        <i class="bi bi-lightning-charge-fill me-1"></i>สร้างชุดตัวเลขทันที
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- 3. เพิ่มทีละคนพร้อมรูปถ่าย -->
+                            <div class="tab-pane fade" id="tab-single" role="tabpanel">
+                                <div class="row g-2 mb-2">
+                                    <div class="col-md-7">
+                                        <input type="text" id="single-student-name" class="form-control form-control-sm" placeholder="ชื่อ-นามสกุลนักเรียน">
+                                    </div>
+                                    <div class="col-md-5">
+                                        <input type="file" id="single-student-image" class="form-control form-control-sm" accept="image/*">
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <button class="btn btn-success fw-bold rounded-3 px-4" id="btn-add-single-student" onclick="handleAddSingleStudent()">
+                                        <i class="bi bi-person-plus-fill me-1"></i>บันทึกนักเรียน
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                        <div class="text-end">
-                            <button class="btn btn-success fw-bold font-mono px-4" id="btn-add-student" onclick="handleAddStudents()">
-                                <i class="bi bi-person-check-fill me-1"></i>เพิ่มนักเรียน
+
+                    </div>
+
+                    <!-- รายชื่อนักเรียนปัจจุบัน + ค้นหา + จัดการสถิติ -->
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-2 gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="fw-bold text-dark"><i class="bi bi-list-check text-primary me-1"></i>รายชื่อนักเรียน (<span id="student-count" class="text-primary fw-bold">0</span> คน)</span>
+                        </div>
+
+                        <!-- กล่องค้นหาชื่อนักเรียน -->
+                        <div class="search-wrapper-student flex-grow-1 flex-md-grow-0" style="min-width: 200px;">
+                            <i class="bi bi-search text-muted me-2"></i>
+                            <input type="text" id="search-student-input" placeholder="ค้นหาชื่อ..." oninput="filterStudentTable(this.value)">
+                        </div>
+
+                        <div class="d-flex gap-1">
+                            <button class="btn btn-outline-warning btn-sm fw-bold rounded-2 px-2" onclick="resetAllStudentScores()" title="รีเซ็ตคะแนนทุกคนเป็น 0">
+                                <i class="bi bi-arrow-counterclockwise me-1"></i>รีเซ็ตคะแนน
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm rounded-2 px-2" onclick="clearAllStudents()" title="ล้างรายชื่อทั้งหมด">
+                                <i class="bi bi-trash3 me-1"></i>ล้างห้อง
                             </button>
                         </div>
                     </div>
 
-                    <!-- รายชื่อนักเรียนปัจจุบันในห้อง -->
-                    <h6 class="fw-bold text-dark mb-2 d-flex justify-content-between align-items-center">
-                        <span><i class="bi bi-people-fill text-primary me-1"></i>รายชื่อนักเรียนในห้อง (<span id="student-count">0</span> คน)</span>
-                        <button class="btn btn-outline-danger btn-sm font-mono" onclick="clearAllStudents()"><i class="bi bi-trash me-1"></i>ล้างทั้งหมด</button>
-                    </h6>
-
-                    <div class="table-responsive border rounded-3 overflow-auto" style="max-height: 280px;">
+                    <!-- ตารางรายชื่อนักเรียน -->
+                    <div class="table-responsive border rounded-3 overflow-auto" style="max-height: 320px;">
                         <table class="table table-hover align-middle mb-0">
                             <thead class="table-light sticky-top">
                                 <tr>
-                                    <th style="width: 50px;">#</th>
-                                    <th style="width: 70px;">รูปภาพ</th>
-                                    <th>ชื่อนักเรียน (name)</th>
-                                    <th class="text-center" style="width: 80px;">Score</th>
-                                    <th class="text-center" style="width: 90px;">SpunCount</th>
+                                    <th class="text-center" style="width: 50px;">#</th>
+                                    <th style="width: 60px;">รูปภาพ</th>
+                                    <th>ชื่อนักเรียน</th>
+                                    <th class="text-center" style="width: 90px;">คะแนน</th>
+                                    <th class="text-center" style="width: 95px;">โดนสุ่ม</th>
                                     <th class="text-end" style="width: 70px;">จัดการ</th>
                                 </tr>
                             </thead>
                             <tbody id="student-table-body">
-                                <tr><td colspan="6" class="text-center text-muted py-3">ยังไม่มีนักเรียนในห้องนี้</td></tr>
+                                <tr><td colspan="6" class="text-center text-muted py-4">ยังไม่มีนักเรียนในห้องนี้</td></tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
                 
-                <!-- 🎯 ส่วน Footer: เพิ่มปุ่มกดเปิด QR Code และเลขห้อง -->
-                <div class="modal-footer border-top-0 pt-0 d-flex justify-content-between align-items-center">
-                    <button type="button" class="btn btn-outline-primary fw-bold font-mono rounded-pill px-3" onclick="openRoomQRModal()">
+                <!-- ส่วน Footer -->
+                <div class="modal-footer border-top d-flex justify-content-between align-items-center">
+                    <button type="button" class="btn btn-outline-primary fw-bold rounded-pill px-3" onclick="openRoomQRModal()">
                         <i class="bi bi-qr-code-scan me-1"></i> QR Code & รหัสเข้าห้อง
                     </button>
-                    <button type="button" class="btn btn-primary fw-bold font-mono px-4 rounded-3" data-bs-dismiss="modal">เสร็จสิ้น</button>
+                    <button type="button" class="btn btn-primary fw-bold px-4 rounded-3" data-bs-dismiss="modal">เสร็จสิ้น</button>
                 </div>
             </div>
         </div>
@@ -217,6 +309,7 @@
         </div>
     </div>
 
+    <!-- Bootstrap Bundle & Main Page Script -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="classroom_manage.js"></script>
 </body>

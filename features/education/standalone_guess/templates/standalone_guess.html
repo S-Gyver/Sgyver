@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gyver Number Guess - เกมทายตัวเลขปริศนา</title>
+
+    <!-- Bootstrap 5, Icons & Kanit Font -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@600;700;800&family=Kanit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            background-color: #f6f8fc;
+            font-family: 'Kanit', sans-serif;
+            min-height: 100vh;
+            color: #1e293b;
+        }
+
+        .font-mono {
+            font-family: 'Fira Code', monospace;
+        }
+
+        .game-card {
+            background: #ffffff;
+            border-radius: 28px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.05);
+        }
+
+        .range-badge-box {
+            background: linear-gradient(135deg, #eef2ff 0%, #f5f3ff 100%);
+            border: 2px dashed #6366f1;
+            border-radius: 20px;
+        }
+
+        .hint-box {
+            min-height: 110px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .hint-too-high {
+            background-color: #fef2f2;
+            border: 2px solid #ef4444;
+            color: #dc2626;
+            animation: pulse-red 0.4s ease;
+        }
+
+        .hint-too-low {
+            background-color: #eff6ff;
+            border: 2px solid #3b82f6;
+            color: #2563eb;
+            animation: pulse-blue 0.4s ease;
+        }
+
+        .hint-correct {
+            background-color: #ecfdf5;
+            border: 2px solid #10b981;
+            color: #059669;
+            animation: pulse-green 0.5s ease;
+        }
+
+        .hint-ready {
+            background-color: #f8fafc;
+            border: 2px dashed #cbd5e1;
+            color: #64748b;
+        }
+
+        @keyframes pulse-red {
+            0% { transform: scale(0.97); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes pulse-blue {
+            0% { transform: scale(0.97); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+
+        .input-number-giant {
+            font-size: 3rem !important;
+            height: 80px;
+            font-weight: 800;
+            text-align: center;
+            border-radius: 20px;
+            border: 3px solid #cbd5e1;
+            letter-spacing: 2px;
+        }
+
+        .input-number-giant:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 5px rgba(99, 102, 241, 0.2);
+        }
+
+        .btn-guess {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            border: none;
+            color: #fff;
+            border-radius: 18px;
+            padding: 16px;
+            font-size: 1.35rem;
+            font-weight: 700;
+            box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .btn-guess:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 25px rgba(99, 102, 241, 0.4);
+            color: #fff;
+        }
+
+        .history-item {
+            border-radius: 12px;
+            padding: 10px 14px;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .history-high {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+
+        .history-low {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+
+        .history-win {
+            background-color: #d1fae5;
+            color: #065f46;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body class="py-4">
+
+    <!-- Header -->
+    <div class="container mb-4">
+        <div class="d-flex justify-content-between align-items-center border-bottom pb-3">
+            <div class="d-flex align-items-center gap-2">
+                <div class="bg-primary text-white rounded-3 p-1 px-2 fs-4">
+                    <i class="bi bi-123"></i>
+                </div>
+                <div>
+                    <h3 class="fw-bold text-dark m-0">Gyver Number Guess</h3>
+                    <small class="text-secondary">เกมทายตัวเลขปริศนา (มากไป / น้อยไป)</small>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold" onclick="openConfigModal()">
+                    <i class="bi bi-sliders me-1"></i>ตั้งค่าช่วงตัวเลข
+                </button>
+                <a href="../../../index.html" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-bold">
+                    <i class="bi bi-house-door me-1"></i>กลับหน้าหลัก
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container my-auto">
+        <div class="row g-4 justify-content-center">
+
+            <!-- 👈 ฝั่งซ้าย: หน้าจอหลักทายตัวเลข -->
+            <div class="col-lg-7">
+                <div class="game-card p-4 p-md-5 text-center">
+
+                    <!-- ขอบเขตตัวเลขที่แคบลงเรื่อยๆ -->
+                    <div class="range-badge-box p-3 mb-4">
+                        <small class="text-uppercase fw-bold text-secondary font-mono d-block mb-1">
+                            ขอบเขตคำตอบที่เป็นไปได้ขณะนี้
+                        </small>
+                        <div class="d-flex justify-content-center align-items-center gap-3 font-mono">
+                            <span id="current-min-badge" class="display-6 fw-bold text-primary">1</span>
+                            <span class="fs-2 text-muted">&lt;</span>
+                            <span class="badge bg-dark text-white px-3 py-2 rounded-3 fs-5">คำตอบ</span>
+                            <span class="fs-2 text-muted">&lt;</span>
+                            <span id="current-max-badge" class="display-6 fw-bold text-danger">100</span>
+                        </div>
+                    </div>
+
+                    <!-- กล่องคำบอกใบ้ (Hint Status Box) -->
+                    <div id="hint-display" class="hint-box hint-ready mb-4">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-question-circle-fill fs-2"></i>
+                            <h4 class="m-0 fw-bold" id="hint-text">กรอกตัวเลขด้านล่างแล้วกดส่งคำตอบได้เลย!</h4>
+                        </div>
+                    </div>
+
+                    <!-- ฟอร์มกรอกตัวเลข -->
+                    <form id="guess-form" onsubmit="handleGuessSubmit(event)" class="mb-3">
+                        <div class="mb-3">
+                            <input type="number" id="guess-input" class="form-control input-number-giant font-mono"
+                                   placeholder="?" autofocus autocomplete="off" required>
+                        </div>
+                        <button type="submit" id="btn-submit-guess" class="btn btn-guess w-100 mb-2">
+                            <i class="bi bi-send-fill me-2"></i> ส่งคำตอบ
+                        </button>
+                    </form>
+
+                    <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+                        <span class="text-secondary small">
+                            ทายไปแล้ว: <strong id="attempt-count" class="text-dark font-mono fs-6">0</strong> ครั้ง
+                        </span>
+                        <button type="button" class="btn btn-sm btn-outline-danger fw-bold rounded-pill px-3" onclick="resetGame()">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i>เริ่มเกมใหม่
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- 👉 ฝั่งขวา: บันทึกประวัติการทาย -->
+            <div class="col-lg-5">
+                <div class="game-card p-4 h-100 d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-3">
+                        <h5 class="fw-bold m-0"><i class="bi bi-clock-history text-primary me-2"></i>ประวัติการทาย</h5>
+                        <span id="history-count-badge" class="badge bg-secondary rounded-pill font-mono">0 รายการ</span>
+                    </div>
+
+                    <div id="history-list" class="flex-grow-1 overflow-auto pe-1 font-mono" style="max-height: 420px;">
+                        <div class="text-center text-muted py-5" id="history-empty-text">
+                            <i class="bi bi-chat-left-dots display-4 d-block mb-2 text-light-emphasis"></i>
+                            ยังไม่มีการทายตัวเลข
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ⚙️ Modal สำหรับตั้งค่าขอบเขตตัวเลข -->
+    <div class="modal fade" id="configModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header bg-primary text-white py-3">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-sliders me-2"></i>ตั้งค่าเกม</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-secondary">เลขเริ่มต้น (ต่ำสุด)</label>
+                        <input type="number" id="cfg-min" class="form-control font-mono" value="1" min="0">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-secondary">เลขสิ้นสุด (สูงสุด)</label>
+                        <input type="number" id="cfg-max" class="form-control font-mono" value="100" min="2">
+                    </div>
+                    <div class="alert alert-info py-2 px-3 small m-0">
+                        เมื่อกดบันทึก ระบบจะสุ่มเลขคำตอบปริศนาใหม่ทันที
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-3 pt-0">
+                    <button type="button" class="btn btn-primary w-100 fw-bold rounded-3" onclick="saveConfigAndRestart()">
+                        <i class="bi bi-check-circle-fill me-1"></i>บันทึกและเริ่มเล่น
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap & Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        let minRange = 1;
+        let maxRange = 100;
+        let currentMin = 1;
+        let currentMax = 100;
+        let secretNumber = 0;
+        let attempts = 0;
+        let isGameOver = false;
+
+        const configModal = new bootstrap.Modal(document.getElementById('configModal'));
+        const hintDisplay = document.getElementById('hint-display');
+        const hintText = document.getElementById('hint-text');
+        const guessInput = document.getElementById('guess-input');
+        const currentMinBadge = document.getElementById('current-min-badge');
+        const currentMaxBadge = document.getElementById('current-max-badge');
+        const attemptCountEl = document.getElementById('attempt-count');
+        const historyList = document.getElementById('history-list');
+        const historyEmptyText = document.getElementById('history-empty-text');
+        const historyCountBadge = document.getElementById('history-count-badge');
+        const btnSubmit = document.getElementById('btn-submit-guess');
+
+        document.addEventListener('DOMContentLoaded', () => {
+            resetGame();
+        });
+
+        function resetGame() {
+            currentMin = minRange;
+            currentMax = maxRange;
+            attempts = 0;
+            isGameOver = false;
+            
+            // สุ่มเลขเป้าหมาย
+            secretNumber = Math.floor(Math.random() * (maxRange - minRange + 1)) + minRange;
+
+            // รีเซ็ต UI
+            currentMinBadge.innerText = currentMin;
+            currentMaxBadge.innerText = currentMax;
+            attemptCountEl.innerText = attempts;
+            historyCountBadge.innerText = `0 รายการ`;
+            historyList.innerHTML = '';
+            if (historyEmptyText) historyList.appendChild(historyEmptyText);
+
+            hintDisplay.className = 'hint-box hint-ready mb-4';
+            hintDisplay.innerHTML = `
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-question-circle-fill fs-2"></i>
+                    <h4 class="m-0 fw-bold">กรอกตัวเลขด้านล่างแล้วกดส่งคำตอบได้เลย!</h4>
+                </div>
+            `;
+
+            guessInput.disabled = false;
+            guessInput.value = '';
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = `<i class="bi bi-send-fill me-2"></i> ส่งคำตอบ`;
+            guessInput.focus();
+        }
+
+        function handleGuessSubmit(e) {
+            e.preventDefault();
+            if (isGameOver) return;
+
+            const guess = parseInt(guessInput.value);
+            if (isNaN(guess)) return;
+
+            if (guess <= currentMin || guess >= currentMax) {
+                alert(`กรุณากรอกเลขที่อยู่ระหว่าง ${currentMin} ถึง ${currentMax} ครับ!`);
+                guessInput.value = '';
+                guessInput.focus();
+                return;
+            }
+
+            attempts++;
+            attemptCountEl.innerText = attempts;
+
+            if (historyEmptyText && historyEmptyText.parentNode) {
+                historyEmptyText.remove();
+            }
+
+            if (guess === secretNumber) {
+                // 🎉 ถูกต้อง
+                isGameOver = true;
+                hintDisplay.className = 'hint-box hint-correct mb-4';
+                hintDisplay.innerHTML = `
+                    <div class="d-flex flex-column align-items-center">
+                        <div class="display-5 fw-bold mb-1">🎉 ถูกต้องแล้ว! (${secretNumber})</div>
+                        <span>ยินดีด้วย! คุณทายถูกโดยใช้จำนวน ${attempts} ครั้ง</span>
+                    </div>
+                `;
+
+                confetti({ particleCount: 220, spread: 100, origin: { y: 0.6 } });
+
+                guessInput.disabled = true;
+                btnSubmit.disabled = true;
+                btnSubmit.innerHTML = `<i class="bi bi-trophy-fill me-2"></i> ชนะเกมเรียบร้อย!`;
+
+                addHistory(attempts, guess, 'ถูกต้องแล้ว! 🎉', 'history-win');
+            } else if (guess > secretNumber) {
+                // ⬇️ มากเกินไป
+                currentMax = Math.min(currentMax, guess);
+                currentMaxBadge.innerText = currentMax;
+
+                hintDisplay.className = 'hint-box hint-too-high mb-4';
+                hintDisplay.innerHTML = `
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-arrow-down-circle-fill fs-2"></i>
+                        <h4 class="m-0 fw-bold">เลข ${guess} : มากเกินไป! (ลองเลขที่น้อยกว่านี้ ⬇️)</h4>
+                    </div>
+                `;
+
+                addHistory(attempts, guess, 'มากเกินไป ⬇️', 'history-high');
+            } else {
+                // ⬆️ น้อยเกินไป
+                currentMin = Math.max(currentMin, guess);
+                currentMinBadge.innerText = currentMin;
+
+                hintDisplay.className = 'hint-box hint-too-low mb-4';
+                hintDisplay.innerHTML = `
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-arrow-up-circle-fill fs-2"></i>
+                        <h4 class="m-0 fw-bold">เลข ${guess} : น้อยเกินไป! (ลองเลขที่มากกว่านี้ ⬆️)</h4>
+                    </div>
+                `;
+
+                addHistory(attempts, guess, 'น้อยเกินไป ⬆️', 'history-low');
+            }
+
+            guessInput.value = '';
+            if (!isGameOver) guessInput.focus();
+        }
+
+        function addHistory(round, val, resultLabel, styleClass) {
+            const item = document.createElement('div');
+            item.className = `history-item ${styleClass}`;
+            item.innerHTML = `
+                <div>
+                    <span class="badge bg-white text-dark me-2">ครั้งที่ ${round}</span>
+                    <strong class="fs-5">${val}</strong>
+                </div>
+                <span>${resultLabel}</span>
+            `;
+            historyList.insertBefore(item, historyList.firstChild);
+            historyCountBadge.innerText = `${attempts} รายการ`;
+        }
+
+        function openConfigModal() {
+            document.getElementById('cfg-min').value = minRange;
+            document.getElementById('cfg-max').value = maxRange;
+            configModal.show();
+        }
+
+        function saveConfigAndRestart() {
+            const nMin = parseInt(document.getElementById('cfg-min').value);
+            const nMax = parseInt(document.getElementById('cfg-max').value);
+
+            if (isNaN(nMin) || isNaN(nMax) || nMin >= nMax) {
+                alert('ตัวเลขเริ่มต้นต้องน้อยกว่าตัวเลขสิ้นสุดครับ!');
+                return;
+            }
+
+            minRange = nMin;
+            maxRange = nMax;
+            configModal.hide();
+            resetGame();
+        }
+    </script>
+</body>
+</html>
