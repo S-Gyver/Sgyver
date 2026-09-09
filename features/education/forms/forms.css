@@ -216,3 +216,15 @@ body {
     backdrop-filter: blur(16px);
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8) !important;
 }
+
+/* Quiz Mode & Gold Glow Elements */
+.text-warning-glow {
+    color: #facc15 !important;
+    text-shadow: 0 0 16px rgba(250, 204, 21, 0.6);
+}
+.border-warning {
+    border-color: rgba(234, 179, 8, 0.5) !important;
+}
+.quiz-setting-sub {
+    transition: all 0.3s ease;
+}

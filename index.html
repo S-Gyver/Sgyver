@@ -223,24 +223,7 @@
                         </div>
                     </a>
                 </div>
-                <!-- Gyver Forms (ระบบแบบสอบถามออนไลน์ Google Forms Clone) -->
-                <div class="col-md-6 col-lg-4" data-tool-card data-tool-category="quick"
-                    data-tool-title="Gyver Forms แบบสอบถามออนไลน์ Google Forms Clone"
-                    data-tool-desc="ระบบสร้างแบบสอบถามออนไลน์ สรุปผลด้วยกราฟและส่งออกไฟล์ CSV">
-                    <a href="features/education/forms/forms.html"
-                        class="action-card p-3 d-flex align-items-center gap-3 text-decoration-none h-100">
-                        <div class="icon-box text-white shadow-sm" style="background: linear-gradient(135deg, #8b5cf6, #ec4899) !important;">
-                            <i class="bi bi-ui-checks"></i>
-                        </div>
-                        <div class="flex-grow-1">
-                            <div class="d-flex align-items-center justify-content-between mb-1">
-                                <h6 class="fw-bold text-dark m-0 fs-5">Gyver Forms</h6>
-                                <span class="badge-ready"><i class="bi bi-check-circle-fill me-1"></i>พร้อมใช้งาน</span>
-                            </div>
-                            <p class="text-secondary small m-0">ระบบสร้างแบบสอบถามออนไลน์ สรุปผลด้วยกราฟและส่งออก CSV</p>
-                        </div>
-                    </a>
-                </div>
+
             </div>
         </div>
 
@@ -315,14 +298,157 @@
             </div>
         </div>
 
-        <!-- 📚 หมวดหมู่ที่ 3: คลังสื่อและระบบจัดการผู้สอน (ปลดล็อกเมื่อเป็น Lv.1) -->
+        <!-- 📝 หมวดหมู่ที่ 3: ระบบวัดผลและประเมินผู้เรียน (ปลดล็อกเมื่อเป็น Lv.1) -->
+        <div class="mb-5" data-tool-section data-tool-category="assessment">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="category-title m-0 fw-bold text-dark">Gyver Assessment & Evaluation
+                    (ระบบวัดผลและประเมินผู้เรียน)</h5>
+            </div>
+
+            <div class="row g-3">
+                <!-- 1. Gyver Quiz Engine -->
+                <div class="col-md-6 col-lg-4" data-tool-card data-tool-category="assessment"
+                    data-tool-title="Gyver Quiz Engine ระบบแบบทดสอบออนไลน์ ตรวจคะแนนอัตโนมัติ"
+                    data-tool-desc="ระบบสร้างแบบทดสอบออนไลน์ เฉลยและตรวจคะแนนให้อัตโนมัติ">
+                    <div id="assessment-quiz-card"
+                        class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100"
+                        style="cursor: pointer;"
+                        onclick="handleProtectedToolClick(event, 'features/education/forms/forms.html?type=quiz', 'Gyver Quiz Engine')">
+                        <div class="icon-box bg-secondary bg-gradient text-white">
+                            <i class="bi bi-lock-fill"></i>
+                        </div>
+                        <div>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <h6 class="fw-bold text-muted m-0">Gyver Quiz Engine</h6>
+                                <span
+                                    class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
+                            </div>
+                            <p class="text-muted small m-0">ระบบแบบทดสอบออนไลน์ & ตรวจคะแนนอัตโนมัติ</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Item Analysis -->
+                <div class="col-md-6 col-lg-4" data-tool-card data-tool-category="assessment"
+                    data-tool-title="Item Analysis ระบบวิเคราะห์คุณภาพข้อสอบ"
+                    data-tool-desc="ระบบวิเคราะห์คุณภาพข้อสอบ หาค่าความยากง่าย (p) และค่าอำนาจจำแนก (r)">
+                    <div id="assessment-analysis-card"
+                        class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100"
+                        style="cursor: pointer;"
+                        onclick="handleProtectedToolClick(event, 'features/education/forms/forms.html', 'Item Analysis')">
+                        <div class="icon-box bg-secondary bg-gradient text-white">
+                            <i class="bi bi-lock-fill"></i>
+                        </div>
+                        <div>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <h6 class="fw-bold text-muted m-0">Item Analysis</h6>
+                                <span
+                                    class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
+                            </div>
+                            <p class="text-muted small m-0">ระบบวิเคราะห์คุณภาพข้อสอบ (ค่า p และค่า r)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Auto-Certificate Generator -->
+                <div class="col-md-6 col-lg-4" data-tool-card data-tool-category="assessment"
+                    data-tool-title="Auto-Certificate Generator ระบบออกเกียรติบัตรอัตโนมัติ"
+                    data-tool-desc="ระบบออกเกียรติบัตรออนไลน์อัตโนมัติเมื่อผ่านเกณฑ์ ดาวน์โหลดไฟล์ PNG ทันที">
+                    <div id="assessment-cert-card"
+                        class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100"
+                        style="cursor: pointer;"
+                        onclick="handleProtectedToolClick(event, 'features/education/forms/forms.html', 'Auto-Certificate Generator')">
+                        <div class="icon-box bg-secondary bg-gradient text-white">
+                            <i class="bi bi-lock-fill"></i>
+                        </div>
+                        <div>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <h6 class="fw-bold text-muted m-0">Auto-Certificate Generator</h6>
+                                <span
+                                    class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
+                            </div>
+                            <p class="text-muted small m-0">ระบบออกเกียรติบัตรอัตโนมัติเมื่อสอบผ่านเกณฑ์</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Gyver Rubrics Evaluator -->
+                <div class="col-md-6 col-lg-4" data-tool-card data-tool-category="assessment"
+                    data-tool-title="Gyver Rubrics Evaluator แบบประเมินทักษะตามเกณฑ์รูบริก"
+                    data-tool-desc="แบบประเมินชิ้นงานและการนำเสนอตามเกณฑ์รูบริก สรุปคะแนนตามระดับความสามารถ">
+                    <div id="assessment-rubric-card"
+                        class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100"
+                        style="cursor: pointer;"
+                        onclick="handleProtectedToolClick(event, 'features/education/forms/forms.html', 'Gyver Rubrics Evaluator')">
+                        <div class="icon-box bg-secondary bg-gradient text-white">
+                            <i class="bi bi-lock-fill"></i>
+                        </div>
+                        <div>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <h6 class="fw-bold text-muted m-0">Gyver Rubrics Evaluator</h6>
+                                <span
+                                    class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
+                            </div>
+                            <p class="text-muted small m-0">แบบประเมินทักษะตามเกณฑ์รูบริก 4-5 ระดับ</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Student Gradebook -->
+                <div class="col-md-6 col-lg-4" data-tool-card data-tool-category="assessment"
+                    data-tool-title="Student Gradebook สมุดสรุปผลการเรียนและตัดเกรด"
+                    data-tool-desc="สมุดสรุปผลคะแนนตัดเกรดอัตโนมัติ รวบรวมคะแนนและส่งออกไฟล์ Excel">
+                    <div id="assessment-gradebook-card"
+                        class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100"
+                        style="cursor: pointer;"
+                        onclick="handleProtectedToolClick(event, 'features/education/forms/forms.html', 'Student Gradebook')">
+                        <div class="icon-box bg-secondary bg-gradient text-white">
+                            <i class="bi bi-lock-fill"></i>
+                        </div>
+                        <div>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <h6 class="fw-bold text-muted m-0">Student Gradebook</h6>
+                                <span
+                                    class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
+                            </div>
+                            <p class="text-muted small m-0">สมุดสรุปผลการเรียนและคำนวณตัดเกรดอัตโนมัติ</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 📚 หมวดหมู่ที่ 4: คลังสื่อและระบบจัดการผู้สอน (ปลดล็อกเมื่อเป็น Lv.1) -->
         <div class="mb-5" data-tool-section data-tool-category="teacher">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h5 class="category-title m-0 fw-bold text-dark">Gyver Teacher Studio (คลังสื่อและระบบจัดการผู้สอน)</h5>
             </div>
 
             <div class="row g-3">
-                <!-- 1. Gyver Question Bank (คลังคำถามและข้อสอบ) -->
+
+                <!-- 1. Gyver Forms (ระบบสร้างแบบสอบถาม & แบบประเมินออนไลน์) -->
+                <div class="col-md-6 col-lg-4" data-tool-card data-tool-category="teacher"
+                    data-tool-title="Gyver Forms แบบสอบถามและแบบประเมินออนไลน์"
+                    data-tool-desc="ระบบสร้างแบบสอบถามออนไลน์ สรุปผลด้วยกราฟและส่งออก CSV">
+                    <div id="teacher-forms-card"
+                        class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100"
+                        style="cursor: pointer;"
+                        onclick="handleProtectedToolClick(event, 'features/education/forms/forms.html?type=form', 'Gyver Forms')">
+                        <div class="icon-box bg-secondary bg-gradient text-white">
+                            <i class="bi bi-lock-fill"></i>
+                        </div>
+                        <div>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <h6 class="fw-bold text-muted m-0">Gyver Forms</h6>
+                                <span
+                                    class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
+                            </div>
+                            <p class="text-muted small m-0">ระบบสร้างแบบสอบถามออนไลน์ สรุปผลด้วยกราฟและส่งออก CSV</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Gyver Question Bank (คลังคำถามและข้อสอบ) -->
                 <div class="col-md-6 col-lg-4" data-tool-card data-tool-category="teacher"
                     data-tool-title="Gyver Question Bank คลังข้อสอบ คลังคำถาม"
                     data-tool-desc="คลังคำถามและข้อสอบ สำหรับเชื่อมต่อวงล้อและเกมพิมพ์โค้ด">
@@ -560,7 +686,8 @@
     </div>
 
     <!-- ⚠️ Modal แจ้งเตือนให้กรอกข้อมูลโปรไฟล์ให้ครบถ้วนก่อนใช้งานห้องเรียน -->
-    <div class="modal fade" id="profileIncompleteModal" tabindex="-1" aria-labelledby="profileIncompleteModalLabel" aria-hidden="true">
+    <div class="modal fade" id="profileIncompleteModal" tabindex="-1" aria-labelledby="profileIncompleteModalLabel"
+        aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" style="max-width: 460px;">
             <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
                 <div class="modal-header border-0 bg-warning bg-opacity-10 pb-0 pt-4 px-4 align-items-start">
@@ -570,21 +697,27 @@
                             <i class="bi bi-person-exclamation"></i>
                         </div>
                         <div>
-                            <h5 class="modal-title fw-bold text-dark mb-1" id="profileIncompleteModalLabel">กรุณากรอกโปรไฟล์ให้ครบ</h5>
-                            <div class="text-muted small" id="profile-modal-tool-name">สำหรับเริ่มใช้งานห้องเรียนอัจฉริยะ</div>
+                            <h5 class="modal-title fw-bold text-dark mb-1" id="profileIncompleteModalLabel">
+                                กรุณากรอกโปรไฟล์ให้ครบ</h5>
+                            <div class="text-muted small" id="profile-modal-tool-name">
+                                สำหรับเริ่มใช้งานห้องเรียนอัจฉริยะ</div>
                         </div>
                     </div>
                     <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-4">
                     <p class="text-secondary small mb-3">
-                        เพื่อความถูกต้องในการจัดเก็บสถิติ บันทึกคะแนนกิจกรรม และการจัดการห้องเรียน กรุณากรอกข้อมูลส่วนตัวในหน้าโปรไฟล์ให้ครบถ้วนก่อนเข้าใช้งาน:
+                        เพื่อความถูกต้องในการจัดเก็บสถิติ บันทึกคะแนนกิจกรรม และการจัดการห้องเรียน
+                        กรุณากรอกข้อมูลส่วนตัวในหน้าโปรไฟล์ให้ครบถ้วนก่อนเข้าใช้งาน:
                     </p>
 
                     <div class="p-3 bg-light rounded-3 border mb-3">
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="small fw-bold text-dark"><i class="bi bi-list-check me-1 text-primary"></i>ข้อมูลที่ยังไม่ได้ระบุ:</span>
-                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 small" id="missing-count-badge">ยังไม่ครบ</span>
+                            <span class="small fw-bold text-dark"><i
+                                    class="bi bi-list-check me-1 text-primary"></i>ข้อมูลที่ยังไม่ได้ระบุ:</span>
+                            <span
+                                class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 small"
+                                id="missing-count-badge">ยังไม่ครบ</span>
                         </div>
                         <div id="missing-profile-fields-list" class="d-flex flex-column gap-2">
                             <!-- Dynamic missing fields rendered via JS -->
@@ -592,10 +725,12 @@
                     </div>
 
                     <div class="d-flex flex-column gap-2 pt-1">
-                        <a href="auth/profile/profile.html?required=1" id="btn-go-to-profile" class="btn btn-primary py-2 fw-bold shadow-sm rounded-3 text-decoration-none text-center">
+                        <a href="auth/profile/profile.html?required=1" id="btn-go-to-profile"
+                            class="btn btn-primary py-2 fw-bold shadow-sm rounded-3 text-decoration-none text-center">
                             <i class="bi bi-pencil-square me-1"></i>ไปกรอกข้อมูลโปรไฟล์ทันที
                         </a>
-                        <button type="button" class="btn btn-light py-2 text-secondary fw-semibold rounded-3 border" data-bs-dismiss="modal">
+                        <button type="button" class="btn btn-light py-2 text-secondary fw-semibold rounded-3 border"
+                            data-bs-dismiss="modal">
                             ไว้คราวหลัง
                         </button>
                     </div>

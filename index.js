@@ -203,8 +203,14 @@ async function checkUserLevel() {
         const eduWheelCard = document.getElementById('education-wheel-card');
         const eduRaceCard = document.getElementById('education-race-card');
         const eduBankCard = document.getElementById('education-bank-card');
+        const teacherFormsCard = document.getElementById('teacher-forms-card');
         const teacherClassroomCard = document.getElementById('teacher-classroom-card');
         const teacherHistoryCard = document.getElementById('teacher-history-card');
+        const assessmentQuizCard = document.getElementById('assessment-quiz-card');
+        const assessmentAnalysisCard = document.getElementById('assessment-analysis-card');
+        const assessmentCertCard = document.getElementById('assessment-cert-card');
+        const assessmentRubricCard = document.getElementById('assessment-rubric-card');
+        const assessmentGradebookCard = document.getElementById('assessment-gradebook-card');
         const heroCtaZone = document.getElementById('hero-cta-zone');
 
         const navUserName = document.getElementById('nav-user-name');
@@ -305,6 +311,25 @@ async function checkUserLevel() {
                 `;
             }
 
+            if (teacherFormsCard) {
+                teacherFormsCard.className = "action-card p-3 h-100";
+                teacherFormsCard.onclick = null;
+                teacherFormsCard.innerHTML = `
+                    <a href="javascript:void(0)" onclick="handleProtectedToolClick(event, 'features/education/forms/forms.html?type=form', 'Gyver Forms')" class="d-flex align-items-center gap-3 text-decoration-none text-dark h-100">
+                        <div class="icon-box text-white shadow-sm" style="background: linear-gradient(135deg, #0ea5e9, #3b82f6) !important;">
+                            <i class="bi bi-ui-checks"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <h6 class="fw-bold text-dark m-0 fs-5">Gyver Forms</h6>
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-1 small">Lv.1 Member</span>
+                            </div>
+                            <p class="text-secondary small m-0">ระบบสร้างแบบสอบถามออนไลน์ สรุปผลด้วยกราฟและส่งออก CSV</p>
+                        </div>
+                    </a>
+                `;
+            }
+
             if (teacherClassroomCard) {
                 teacherClassroomCard.className = "action-card p-3 h-100";
                 teacherClassroomCard.onclick = null;
@@ -338,6 +363,101 @@ async function checkUserLevel() {
                                 <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2 py-1 small">Lv.1 Member</span>
                             </div>
                             <p class="text-secondary small m-0">ดูสถิติการเล่น ประวัติคะแนน และผลกิจกรรมย้อนหลัง</p>
+                        </div>
+                    </a>
+                `;
+            }
+
+            if (assessmentQuizCard) {
+                assessmentQuizCard.className = "action-card p-3 h-100";
+                assessmentQuizCard.onclick = null;
+                assessmentQuizCard.innerHTML = `
+                    <a href="javascript:void(0)" onclick="handleProtectedToolClick(event, 'features/education/forms/forms.html?type=quiz', 'Gyver Quiz Engine')" class="d-flex align-items-center gap-3 text-decoration-none text-dark h-100">
+                        <div class="icon-box text-white shadow-sm" style="background: linear-gradient(135deg, #8b5cf6, #ec4899) !important;">
+                            <i class="bi bi-patch-check-fill"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <h6 class="fw-bold text-dark m-0 fs-5">Gyver Quiz Engine</h6>
+                                <span class="badge bg-purple-subtle text-purple border border-purple rounded-pill px-2 py-1 small" style="background-color: #f3e8ff; color: #8b5cf6; border-color: #c084fc !important;">Lv.1 Member</span>
+                            </div>
+                            <p class="text-secondary small m-0">ระบบแบบทดสอบออนไลน์ & ตรวจคะแนนอัตโนมัติ</p>
+                        </div>
+                    </a>
+                `;
+            }
+
+            if (assessmentAnalysisCard) {
+                assessmentAnalysisCard.className = "action-card p-3 h-100";
+                assessmentAnalysisCard.onclick = null;
+                assessmentAnalysisCard.innerHTML = `
+                    <a href="javascript:void(0)" onclick="handleProtectedToolClick(event, 'features/education/forms/forms.html', 'Item Analysis')" class="d-flex align-items-center gap-3 text-decoration-none text-dark h-100">
+                        <div class="icon-box text-white shadow-sm" style="background: linear-gradient(135deg, #f59e0b, #ef4444) !important;">
+                            <i class="bi bi-calculator-fill"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <h6 class="fw-bold text-dark m-0 fs-5">Item Analysis</h6>
+                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2 py-1 small">Lv.1 Member</span>
+                            </div>
+                            <p class="text-secondary small m-0">ระบบวิเคราะห์คุณภาพข้อสอบ (ค่า p และค่า r)</p>
+                        </div>
+                    </a>
+                `;
+            }
+
+            if (assessmentCertCard) {
+                assessmentCertCard.className = "action-card p-3 h-100";
+                assessmentCertCard.onclick = null;
+                assessmentCertCard.innerHTML = `
+                    <a href="javascript:void(0)" onclick="handleProtectedToolClick(event, 'features/education/forms/forms.html', 'Auto-Certificate Generator')" class="d-flex align-items-center gap-3 text-decoration-none text-dark h-100">
+                        <div class="icon-box text-white shadow-sm" style="background: linear-gradient(135deg, #eab308, #f97316) !important;">
+                            <i class="bi bi-award-fill"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <h6 class="fw-bold text-dark m-0 fs-5">Auto-Certificate Generator</h6>
+                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2 py-1 small">Lv.1 Member</span>
+                            </div>
+                            <p class="text-secondary small m-0">ระบบออกเกียรติบัตรอัตโนมัติเมื่อสอบผ่านเกณฑ์</p>
+                        </div>
+                    </a>
+                `;
+            }
+
+            if (assessmentRubricCard) {
+                assessmentRubricCard.className = "action-card p-3 h-100";
+                assessmentRubricCard.onclick = null;
+                assessmentRubricCard.innerHTML = `
+                    <a href="javascript:void(0)" onclick="handleProtectedToolClick(event, 'features/education/forms/forms.html', 'Gyver Rubrics Evaluator')" class="d-flex align-items-center gap-3 text-decoration-none text-dark h-100">
+                        <div class="icon-box text-white shadow-sm" style="background: linear-gradient(135deg, #10b981, #06b6d4) !important;">
+                            <i class="bi bi-card-checklist"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <h6 class="fw-bold text-dark m-0 fs-5">Gyver Rubrics Evaluator</h6>
+                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 small">Lv.1 Member</span>
+                            </div>
+                            <p class="text-secondary small m-0">แบบประเมินทักษะตามเกณฑ์รูบริก 4-5 ระดับ</p>
+                        </div>
+                    </a>
+                `;
+            }
+
+            if (assessmentGradebookCard) {
+                assessmentGradebookCard.className = "action-card p-3 h-100";
+                assessmentGradebookCard.onclick = null;
+                assessmentGradebookCard.innerHTML = `
+                    <a href="javascript:void(0)" onclick="handleProtectedToolClick(event, 'features/education/forms/forms.html', 'Student Gradebook')" class="d-flex align-items-center gap-3 text-decoration-none text-dark h-100">
+                        <div class="icon-box text-white shadow-sm" style="background: linear-gradient(135deg, #6366f1, #a855f7) !important;">
+                            <i class="bi bi-journal-bookmark-fill"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <h6 class="fw-bold text-dark m-0 fs-5">Student Gradebook</h6>
+                                <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2 py-1 small">Lv.1 Member</span>
+                            </div>
+                            <p class="text-secondary small m-0">สมุดสรุปผลการเรียนและคำนวณตัดเกรดอัตโนมัติ</p>
                         </div>
                     </a>
                 `;
@@ -448,6 +568,114 @@ async function checkUserLevel() {
                             <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
                         </div>
                         <p class="text-muted small m-0">ดูสถิติการเล่น ประวัติคะแนน และผลกิจกรรมย้อนหลัง</p>
+                    </div>
+                `;
+            }
+
+            if (teacherFormsCard) {
+                teacherFormsCard.className = "action-card disabled-card p-3 d-flex align-items-center gap-3 h-100";
+                teacherFormsCard.style.cursor = "pointer";
+                teacherFormsCard.onclick = (e) => handleProtectedToolClick(e, 'features/education/forms/forms.html?type=form', 'Gyver Forms');
+                teacherFormsCard.innerHTML = `
+                    <div class="icon-box icon-gradient-soon text-white">
+                        <i class="bi bi-lock-fill"></i>
+                    </div>
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <h6 class="fw-bold text-muted m-0">Gyver Forms</h6>
+                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
+                        </div>
+                        <p class="text-muted small m-0">ระบบสร้างแบบสอบถามออนไลน์ สรุปผลด้วยกราฟและส่งออก CSV</p>
+                    </div>
+                `;
+            }
+
+            if (assessmentQuizCard) {
+                assessmentQuizCard.className = "action-card disabled-card p-3 d-flex align-items-center gap-3 h-100";
+                assessmentQuizCard.style.cursor = "pointer";
+                assessmentQuizCard.onclick = (e) => handleProtectedToolClick(e, 'features/education/forms/forms.html?type=quiz', 'Gyver Quiz Engine');
+                assessmentQuizCard.innerHTML = `
+                    <div class="icon-box icon-gradient-soon text-white">
+                        <i class="bi bi-lock-fill"></i>
+                    </div>
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <h6 class="fw-bold text-muted m-0">Gyver Quiz Engine</h6>
+                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
+                        </div>
+                        <p class="text-muted small m-0">ระบบแบบทดสอบออนไลน์ & ตรวจคะแนนอัตโนมัติ</p>
+                    </div>
+                `;
+            }
+
+            if (assessmentAnalysisCard) {
+                assessmentAnalysisCard.className = "action-card disabled-card p-3 d-flex align-items-center gap-3 h-100";
+                assessmentAnalysisCard.style.cursor = "pointer";
+                assessmentAnalysisCard.onclick = (e) => handleProtectedToolClick(e, 'features/education/forms/forms.html', 'Item Analysis');
+                assessmentAnalysisCard.innerHTML = `
+                    <div class="icon-box icon-gradient-soon text-white">
+                        <i class="bi bi-lock-fill"></i>
+                    </div>
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <h6 class="fw-bold text-muted m-0">Item Analysis</h6>
+                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
+                        </div>
+                        <p class="text-muted small m-0">ระบบวิเคราะห์คุณภาพข้อสอบ (ค่า p และค่า r)</p>
+                    </div>
+                `;
+            }
+
+            if (assessmentCertCard) {
+                assessmentCertCard.className = "action-card disabled-card p-3 d-flex align-items-center gap-3 h-100";
+                assessmentCertCard.style.cursor = "pointer";
+                assessmentCertCard.onclick = (e) => handleProtectedToolClick(e, 'features/education/forms/forms.html', 'Auto-Certificate Generator');
+                assessmentCertCard.innerHTML = `
+                    <div class="icon-box icon-gradient-soon text-white">
+                        <i class="bi bi-lock-fill"></i>
+                    </div>
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <h6 class="fw-bold text-muted m-0">Auto-Certificate Generator</h6>
+                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
+                        </div>
+                        <p class="text-muted small m-0">ระบบออกเกียรติบัตรอัตโนมัติเมื่อสอบผ่านเกณฑ์</p>
+                    </div>
+                `;
+            }
+
+            if (assessmentRubricCard) {
+                assessmentRubricCard.className = "action-card disabled-card p-3 d-flex align-items-center gap-3 h-100";
+                assessmentRubricCard.style.cursor = "pointer";
+                assessmentRubricCard.onclick = (e) => handleProtectedToolClick(e, 'features/education/forms/forms.html', 'Gyver Rubrics Evaluator');
+                assessmentRubricCard.innerHTML = `
+                    <div class="icon-box icon-gradient-soon text-white">
+                        <i class="bi bi-lock-fill"></i>
+                    </div>
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <h6 class="fw-bold text-muted m-0">Gyver Rubrics Evaluator</h6>
+                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
+                        </div>
+                        <p class="text-muted small m-0">แบบประเมินทักษะตามเกณฑ์รูบริก 4-5 ระดับ</p>
+                    </div>
+                `;
+            }
+
+            if (assessmentGradebookCard) {
+                assessmentGradebookCard.className = "action-card disabled-card p-3 d-flex align-items-center gap-3 h-100";
+                assessmentGradebookCard.style.cursor = "pointer";
+                assessmentGradebookCard.onclick = (e) => handleProtectedToolClick(e, 'features/education/forms/forms.html', 'Student Gradebook');
+                assessmentGradebookCard.innerHTML = `
+                    <div class="icon-box icon-gradient-soon text-white">
+                        <i class="bi bi-lock-fill"></i>
+                    </div>
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <h6 class="fw-bold text-muted m-0">Student Gradebook</h6>
+                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
+                        </div>
+                        <p class="text-muted small m-0">สมุดสรุปผลการเรียนและคำนวณตัดเกรดอัตโนมัติ</p>
                     </div>
                 `;
             }
