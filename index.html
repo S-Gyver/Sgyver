@@ -242,8 +242,8 @@
                         class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100"
                         style="cursor: pointer;"
                         onclick="handleProtectedToolClick(event, 'features/education/wheel/wheel_display.html', 'Gyver Wheel (Live)')">
-                        <div class="icon-box bg-secondary bg-gradient text-white">
-                            <i class="bi bi-lock-fill"></i>
+                        <div class="icon-box icon-gradient-wheel text-white shadow-sm">
+                            <i class="bi bi-disc-fill"></i>
                         </div>
                         <div>
                             <div class="d-flex align-items-center gap-2 mb-1">
@@ -264,8 +264,8 @@
                         class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100"
                         style="cursor: pointer;"
                         onclick="handleProtectedToolClick(event, 'features/education/gyver%20Code%20Race/race_home.html', 'Gyver Code Race')">
-                        <div class="icon-box bg-secondary bg-gradient text-white">
-                            <i class="bi bi-lock-fill"></i>
+                        <div class="icon-box icon-gradient-race text-white shadow-sm">
+                            <i class="bi bi-controller"></i>
                         </div>
                         <div>
                             <div class="d-flex align-items-center gap-2 mb-1">
@@ -283,7 +283,7 @@
                     data-tool-title="E-Learning Tools สื่อการเรียนการสอน"
                     data-tool-desc="คลังสื่อการเรียนการสอนและเครื่องมือคำนวณ">
                     <div class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100">
-                        <div class="icon-box bg-secondary bg-gradient text-white">
+                        <div class="icon-box icon-gradient-guess text-white shadow-sm">
                             <i class="bi bi-easel2-fill"></i>
                         </div>
                         <div>
@@ -306,112 +306,24 @@
             </div>
 
             <div class="row g-3">
-                <!-- 1. Gyver Quiz Engine -->
+                <!-- 1. Gyver Forms (ระบบสร้างแบบสอบถาม & แบบทดสอบออนไลน์) -->
                 <div class="col-md-6 col-lg-4" data-tool-card data-tool-category="assessment"
-                    data-tool-title="Gyver Quiz Engine ระบบแบบทดสอบออนไลน์ ตรวจคะแนนอัตโนมัติ"
-                    data-tool-desc="ระบบสร้างแบบทดสอบออนไลน์ เฉลยและตรวจคะแนนให้อัตโนมัติ">
-                    <div id="assessment-quiz-card"
+                    data-tool-title="Gyver Forms แบบสอบถามและแบบทดสอบออนไลน์"
+                    data-tool-desc="ระบบสร้างแบบสอบถามออนไลน์ สรุปผลด้วยกราฟและส่งออก CSV">
+                    <div id="teacher-forms-card"
                         class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100"
                         style="cursor: pointer;"
-                        onclick="handleProtectedToolClick(event, 'features/education/forms/forms.html?type=quiz', 'Gyver Quiz Engine')">
-                        <div class="icon-box bg-secondary bg-gradient text-white">
-                            <i class="bi bi-lock-fill"></i>
+                        onclick="handleProtectedToolClick(event, 'features/education/forms/forms.html', 'Gyver Forms')">
+                        <div class="icon-box icon-gradient-forms text-white shadow-sm">
+                            <i class="bi bi-file-earmark-text-fill"></i>
                         </div>
                         <div>
                             <div class="d-flex align-items-center gap-2 mb-1">
-                                <h6 class="fw-bold text-muted m-0">Gyver Quiz Engine</h6>
+                                <h6 class="fw-bold text-muted m-0">Gyver Forms</h6>
                                 <span
                                     class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
                             </div>
-                            <p class="text-muted small m-0">ระบบแบบทดสอบออนไลน์ & ตรวจคะแนนอัตโนมัติ</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 2. Item Analysis -->
-                <div class="col-md-6 col-lg-4" data-tool-card data-tool-category="assessment"
-                    data-tool-title="Item Analysis ระบบวิเคราะห์คุณภาพข้อสอบ"
-                    data-tool-desc="ระบบวิเคราะห์คุณภาพข้อสอบ หาค่าความยากง่าย (p) และค่าอำนาจจำแนก (r)">
-                    <div id="assessment-analysis-card"
-                        class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100"
-                        style="cursor: pointer;"
-                        onclick="handleProtectedToolClick(event, 'features/education/forms/forms.html', 'Item Analysis')">
-                        <div class="icon-box bg-secondary bg-gradient text-white">
-                            <i class="bi bi-lock-fill"></i>
-                        </div>
-                        <div>
-                            <div class="d-flex align-items-center gap-2 mb-1">
-                                <h6 class="fw-bold text-muted m-0">Item Analysis</h6>
-                                <span
-                                    class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
-                            </div>
-                            <p class="text-muted small m-0">ระบบวิเคราะห์คุณภาพข้อสอบ (ค่า p และค่า r)</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 3. Auto-Certificate Generator -->
-                <div class="col-md-6 col-lg-4" data-tool-card data-tool-category="assessment"
-                    data-tool-title="Auto-Certificate Generator ระบบออกเกียรติบัตรอัตโนมัติ"
-                    data-tool-desc="ระบบออกเกียรติบัตรออนไลน์อัตโนมัติเมื่อผ่านเกณฑ์ ดาวน์โหลดไฟล์ PNG ทันที">
-                    <div id="assessment-cert-card"
-                        class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100"
-                        style="cursor: pointer;"
-                        onclick="handleProtectedToolClick(event, 'features/education/forms/forms.html', 'Auto-Certificate Generator')">
-                        <div class="icon-box bg-secondary bg-gradient text-white">
-                            <i class="bi bi-lock-fill"></i>
-                        </div>
-                        <div>
-                            <div class="d-flex align-items-center gap-2 mb-1">
-                                <h6 class="fw-bold text-muted m-0">Auto-Certificate Generator</h6>
-                                <span
-                                    class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
-                            </div>
-                            <p class="text-muted small m-0">ระบบออกเกียรติบัตรอัตโนมัติเมื่อสอบผ่านเกณฑ์</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 4. Gyver Rubrics Evaluator -->
-                <div class="col-md-6 col-lg-4" data-tool-card data-tool-category="assessment"
-                    data-tool-title="Gyver Rubrics Evaluator แบบประเมินทักษะตามเกณฑ์รูบริก"
-                    data-tool-desc="แบบประเมินชิ้นงานและการนำเสนอตามเกณฑ์รูบริก สรุปคะแนนตามระดับความสามารถ">
-                    <div id="assessment-rubric-card"
-                        class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100"
-                        style="cursor: pointer;"
-                        onclick="handleProtectedToolClick(event, 'features/education/forms/forms.html', 'Gyver Rubrics Evaluator')">
-                        <div class="icon-box bg-secondary bg-gradient text-white">
-                            <i class="bi bi-lock-fill"></i>
-                        </div>
-                        <div>
-                            <div class="d-flex align-items-center gap-2 mb-1">
-                                <h6 class="fw-bold text-muted m-0">Gyver Rubrics Evaluator</h6>
-                                <span
-                                    class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
-                            </div>
-                            <p class="text-muted small m-0">แบบประเมินทักษะตามเกณฑ์รูบริก 4-5 ระดับ</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 5. Student Gradebook -->
-                <div class="col-md-6 col-lg-4" data-tool-card data-tool-category="assessment"
-                    data-tool-title="Student Gradebook สมุดสรุปผลการเรียนและตัดเกรด"
-                    data-tool-desc="สมุดสรุปผลคะแนนตัดเกรดอัตโนมัติ รวบรวมคะแนนและส่งออกไฟล์ Excel">
-                    <div id="assessment-gradebook-card"
-                        class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100"
-                        style="cursor: pointer;"
-                        onclick="handleProtectedToolClick(event, 'features/education/forms/forms.html', 'Student Gradebook')">
-                        <div class="icon-box bg-secondary bg-gradient text-white">
-                            <i class="bi bi-lock-fill"></i>
-                        </div>
-                        <div>
-                            <div class="d-flex align-items-center gap-2 mb-1">
-                                <h6 class="fw-bold text-muted m-0">Student Gradebook</h6>
-                                <span
-                                    class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
-                            </div>
-                            <p class="text-muted small m-0">สมุดสรุปผลการเรียนและคำนวณตัดเกรดอัตโนมัติ</p>
+                            <p class="text-muted small m-0">ระบบสร้างแบบสอบถามออนไลน์ สรุปผลด้วยกราฟและส่งออก CSV</p>
                         </div>
                     </div>
                 </div>
@@ -426,28 +338,6 @@
 
             <div class="row g-3">
 
-                <!-- 1. Gyver Forms (ระบบสร้างแบบสอบถาม & แบบประเมินออนไลน์) -->
-                <div class="col-md-6 col-lg-4" data-tool-card data-tool-category="teacher"
-                    data-tool-title="Gyver Forms แบบสอบถามและแบบประเมินออนไลน์"
-                    data-tool-desc="ระบบสร้างแบบสอบถามออนไลน์ สรุปผลด้วยกราฟและส่งออก CSV">
-                    <div id="teacher-forms-card"
-                        class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100"
-                        style="cursor: pointer;"
-                        onclick="handleProtectedToolClick(event, 'features/education/forms/forms.html?type=form', 'Gyver Forms')">
-                        <div class="icon-box bg-secondary bg-gradient text-white">
-                            <i class="bi bi-lock-fill"></i>
-                        </div>
-                        <div>
-                            <div class="d-flex align-items-center gap-2 mb-1">
-                                <h6 class="fw-bold text-muted m-0">Gyver Forms</h6>
-                                <span
-                                    class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
-                            </div>
-                            <p class="text-muted small m-0">ระบบสร้างแบบสอบถามออนไลน์ สรุปผลด้วยกราฟและส่งออก CSV</p>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- 2. Gyver Question Bank (คลังคำถามและข้อสอบ) -->
                 <div class="col-md-6 col-lg-4" data-tool-card data-tool-category="teacher"
                     data-tool-title="Gyver Question Bank คลังข้อสอบ คลังคำถาม"
@@ -456,8 +346,8 @@
                         class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100"
                         style="cursor: pointer;"
                         onclick="handleProtectedToolClick(event, 'features/education/question_bank/question_bank.html', 'Gyver Question Bank')">
-                        <div class="icon-box bg-secondary bg-gradient text-white">
-                            <i class="bi bi-lock-fill"></i>
+                        <div class="icon-box icon-gradient-bank text-white shadow-sm">
+                            <i class="bi bi-question-square-fill"></i>
                         </div>
                         <div>
                             <div class="d-flex align-items-center gap-2 mb-1">
@@ -478,8 +368,8 @@
                         class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100"
                         style="cursor: pointer;"
                         onclick="handleProtectedToolClick(event, 'auth/classroom_manage/classroom_manage.html', 'Classroom Management')">
-                        <div class="icon-box bg-secondary bg-gradient text-white">
-                            <i class="bi bi-lock-fill"></i>
+                        <div class="icon-box icon-gradient-classroom text-white shadow-sm">
+                            <i class="bi bi-people-fill"></i>
                         </div>
                         <div>
                             <div class="d-flex align-items-center gap-2 mb-1">
@@ -501,8 +391,8 @@
                         class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100"
                         style="cursor: pointer;"
                         onclick="handleProtectedToolClick(event, 'auth/history/history.html', 'Activity History')">
-                        <div class="icon-box bg-secondary bg-gradient text-white">
-                            <i class="bi bi-lock-fill"></i>
+                        <div class="icon-box icon-gradient-history text-white shadow-sm">
+                            <i class="bi bi-clock-history"></i>
                         </div>
                         <div>
                             <div class="d-flex align-items-center gap-2 mb-1">

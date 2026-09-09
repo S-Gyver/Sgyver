@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gyver Forms - ระบบแบบสอบถามออนไลน์</title>
+
+    <!-- Bootstrap 5, Icons & Fonts -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@600;700&family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Supabase SDK & Custom CSS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../../assets/js/supabaseClient.js"></script>
+    <link rel="stylesheet" href="forms.css">
+</head>
+<body class="py-3 py-md-4">
+
+    <!-- Ambient Cyber Background -->
+    <div class="bg-cyber-grid"></div>
+    <div class="bg-glow-blur glow-top"></div>
+    <div class="bg-glow-blur glow-bottom"></div>
+
+    <div class="container px-3 px-md-4" style="max-width: 1100px;">
+        
+        <!-- Header Bar -->
+        <header id="main-header-bar" class="cyber-card mb-4 border-purple d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <div id="header-icon-box" class="bg-dark border border-purple rounded-3 p-2 d-inline-flex justify-content-center align-items-center" style="width: 46px; height: 46px;">
+                    <i id="header-icon" class="bi bi-ui-checks text-purple fs-3"></i>
+                </div>
+                <div>
+                    <h2 id="header-title" class="text-white fw-bold m-0 font-kanit fs-3 d-flex align-items-center gap-2">
+                        Gyver Forms
+                        <span id="header-badge" class="badge bg-purple-subtle text-purple border border-purple fs-6">v1.0</span>
+                    </h2>
+                    <p id="header-desc" class="text-subtle small m-0 font-mono">ระบบสร้างแบบสอบถามและแบบประเมินออนไลน์</p>
+                </div>
+            </div>
+            
+            <div class="d-flex align-items-center gap-2 flex-wrap ms-auto font-kanit">
+                <a href="forms.html" id="btn-header-list" class="btn btn-outline-purple btn-sm fw-bold px-3 py-2 rounded-3 text-purple border-purple">
+                    <i class="bi bi-collection-fill me-1"></i>รายการแบบฟอร์ม
+                </a>
+                <a href="../../../index.html" class="btn btn-outline-secondary btn-sm fw-bold px-3 py-2 rounded-3 text-white">
+                    <i class="bi bi-house-door-fill me-1"></i>หน้าหลัก
+                </a>
+            </div>
+        </header>
+
+        <!-- ====================================================
+             1. List View (รายการแบบฟอร์มทั้งหมด)
+             ==================================================== -->
+        <div id="view-list-container">
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                <div>
+                    <h4 id="list-heading-text" class="fw-bold text-white mb-1"><i class="bi bi-folder-fill text-purple me-2"></i>รายการแบบสอบถามของคุณ</h4>
+                    <p id="list-subheading-text" class="text-subtle small m-0">จัดการฟอร์มที่คุณสร้างไว้ ส่งลิงก์ และเรียกดูสรุปผลการตอบ</p>
+                </div>
+                <button id="btn-create-form-action" class="btn btn-purple-glow px-4 py-2" onclick="createNewForm()">
+                    <i class="bi bi-plus-lg me-1"></i><span id="btn-create-form-text">สร้างแบบสอบถามใหม่</span>
+                </button>
+            </div>
+
+            <div class="row g-3" id="forms-grid">
+                <!-- Dynamic forms rendered via JS -->
+            </div>
+        </div>
+
+        <!-- ====================================================
+             2. Builder View (สร้าง & แก้ไขแบบฟอร์ม)
+             ==================================================== -->
+        <div id="view-builder-container" class="d-none">
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                <button class="btn btn-outline-secondary btn-sm text-white" onclick="renderFormsListView()">
+                    <i class="bi bi-arrow-left me-1"></i>กลับหน้ารายการ
+                </button>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-purple btn-sm text-purple border-purple" onclick="showQrCodeModal()">
+                        <i class="bi bi-share-fill me-1"></i>แชร์แบบสอบถาม
+                    </button>
+                    <button class="btn btn-outline-info btn-sm" onclick="viewAnalytics(currentForm ? currentForm.id : '')">
+                        <i class="bi bi-bar-chart-fill me-1"></i>ดูสรุปผล
+                    </button>
+                </div>
+            </div>
+
+            <!-- Form Header Editor -->
+            <div class="cyber-card border-purple-accent mb-4 p-4">
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-subtle">ชื่อแบบสอบถาม / หัวข้อ</label>
+                    <input type="text" id="form-title-input" class="form-control form-control-lg bg-dark text-white border-purple font-kanit fw-bold"
+                        placeholder="ตั้งชื่อแบบสอบถามของคุณ..." onchange="updateFormHeaderInfo()">
+                </div>
+                <div>
+                    <label class="form-label small fw-bold text-subtle">คำอธิบายรายละเอียด</label>
+                    <textarea id="form-desc-input" class="form-control bg-dark text-white border-purple" rows="2"
+                        placeholder="ระบุคำอธิบาย หรือวัตถุประสงค์ของแบบสอบถามนี้..." onchange="updateFormHeaderInfo()"></textarea>
+                </div>
+            </div>
+
+            <!-- Form Settings Card -->
+            <div class="cyber-card border-purple-accent mb-4 p-4">
+                <h5 class="fw-bold text-white mb-3"><i class="bi bi-gear-fill text-purple me-2"></i>การตั้งค่าแบบสอบถาม</h5>
+                
+                <!-- Response Limits & Edit Permissions -->
+                <div class="row g-3">
+                    <div class="col-12 col-md-6">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="setting-limit-one" onchange="updateFormSettings()" checked>
+                            <label class="form-check-label text-white fw-bold" for="setting-limit-one">
+                                <i class="bi bi-person-check-fill text-info me-1"></i>จำกัดให้ 1 คน ทำได้ 1 ครั้ง
+                            </label>
+                            <div class="text-subtle small mt-1">ผู้ตอบสามารถส่งคำตอบได้เพียงครั้งเดียวเท่านั้น</div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-12 col-md-6">
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="setting-allow-edit" onchange="toggleEditLimitUI()">
+                            <label class="form-check-label text-white fw-bold" for="setting-allow-edit">
+                                <i class="bi bi-pencil-square text-success me-1"></i>อนุญาตให้แก้ไขคำตอบได้
+                            </label>
+                            <div class="text-subtle small mt-1">ผู้ตอบสามารถกลับมาแก้ไขคำตอบเดิมหลังจากส่งแล้วได้</div>
+                        </div>
+                        <div id="edit-limit-sub" class="mt-2 d-none">
+                            <label class="form-label small fw-bold text-subtle">จำนวนครั้งสูงสุดที่แก้ไขได้:</label>
+                            <select id="setting-max-edit-limit" class="form-select form-select-sm bg-dark text-white border-purple" onchange="updateFormSettings()">
+                                <option value="1">1 ครั้ง</option>
+                                <option value="2">2 ครั้ง</option>
+                                <option value="3" selected>3 ครั้ง</option>
+                                <option value="5">5 ครั้ง</option>
+                                <option value="999">ไม่จำกัดจำนวนครั้ง</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Questions List Container -->
+            <div id="builder-questions-list">
+                <!-- Dynamic question cards rendered via JS -->
+            </div>
+
+            <div class="text-center my-4">
+                <button class="btn btn-purple-glow px-4 py-2 rounded-pill shadow-sm" onclick="addQuestion()">
+                    <i class="bi bi-plus-circle me-1"></i>เพิ่มข้อคำถาม (+ คำถาม)
+                </button>
+            </div>
+        </div>
+
+        <!-- ====================================================
+             3. Responder View (หน้าผู้เรียนตอบแบบสอบถาม)
+             ==================================================== -->
+        <div id="view-respond-container" class="d-none">
+            <div class="cyber-card border-purple-accent mb-4 p-4">
+                <h3 id="respond-title" class="fw-bold text-white font-kanit mb-2">ชื่อแบบสอบถาม</h3>
+                <p id="respond-desc" class="text-subtle mb-0">รายละเอียดคำอธิบายแบบสอบถาม</p>
+            </div>
+
+            <div class="cyber-card border-purple-accent mb-4 p-4">
+                <label class="form-label small fw-bold text-white">ชื่อ-นามสกุล ผู้ทำรายการ <span class="text-danger">*</span></label>
+                <input type="text" id="responder-name" class="form-control bg-dark text-white border-purple" placeholder="กรอกชื่อ-นามสกุล ของคุณเพื่อบันทึกผล">
+            </div>
+
+            <div id="respond-questions-list">
+                <!-- Dynamic response questions rendered via JS -->
+            </div>
+
+            <div class="text-center my-4">
+                <button class="btn btn-success fw-bold px-5 py-3 rounded-pill shadow-lg" onclick="submitResponse()">
+                    <i class="bi bi-send-fill me-2"></i>ส่งคำตอบ (Submit)
+                </button>
+            </div>
+        </div>
+
+        <!-- ====================================================
+             4. Responses / Analytics View (หน้าสรุปผลการตอบ)
+             ==================================================== -->
+        <div id="view-responses-container" class="d-none">
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                <button class="btn btn-outline-secondary btn-sm text-white" onclick="renderFormsListView()">
+                    <i class="bi bi-arrow-left me-1"></i>กลับหน้ารายการ
+                </button>
+                <button class="btn btn-outline-success btn-sm fw-bold" onclick="exportResponsesCSV()">
+                    <i class="bi bi-file-earmark-excel-fill me-1"></i>ส่งออก CSV (Excel)
+                </button>
+            </div>
+
+            <div class="cyber-card border-purple-accent mb-4 p-4">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div>
+                        <h3 id="analytics-form-title" class="fw-bold text-white font-kanit mb-1">สรุปผลการตอบ</h3>
+                        <p class="text-subtle small m-0">ข้อมูลสถิติและการวิเคราะห์ข้อสอบ (Item Analysis)</p>
+                    </div>
+                    <div class="badge bg-purple-subtle text-purple border border-purple fs-5 px-3 py-2">
+                        ผู้ตอบทั้งหมด: <span id="analytics-total-responses">0</span> คน
+                    </div>
+                </div>
+            </div>
+
+            <!-- Item Analysis Table -->
+            <div class="cyber-card border-purple-accent mb-4 p-4 overflow-auto">
+                <h5 class="fw-bold text-white mb-3"><i class="bi bi-calculator-fill text-warning me-2"></i>วิเคราะห์คุณภาพข้อสอบ (Item Analysis)</h5>
+                <table class="table table-dark table-hover align-middle mb-0 small">
+                    <thead>
+                        <tr class="table-dark text-subtle">
+                            <th>ข้อที่</th>
+                            <th>คำถาม</th>
+                            <th class="text-center">ตอบถูก</th>
+                            <th class="text-center">ตอบผิด</th>
+                            <th class="text-center">ความยากง่าย ($p$)</th>
+                            <th class="text-center">อำนาจจำแนก ($r$)</th>
+                            <th class="text-center">ประเมินคุณภาพ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="item-analysis-tbody">
+                        <!-- Dynamic analysis rows rendered via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 📱 QR Code Share Modal -->
+    <div class="modal fade" id="qrCodeModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-white border-purple rounded-4">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title fw-bold font-kanit"><i class="bi bi-qr-code-scan text-purple me-2"></i>แชร์แบบสอบถาม / QR Code</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center p-4">
+                    <div class="p-3 bg-white d-inline-block rounded-3 shadow-sm mb-3">
+                        <img id="qr-code-img" src="" alt="QR Code" style="width: 220px; height: 220px;">
+                    </div>
+                    <div class="input-group mb-3">
+                        <input type="text" id="share-url-input" class="form-control bg-dark text-white border-purple font-mono small" readonly>
+                        <button class="btn btn-outline-purple text-purple border-purple fw-bold" onclick="copyShareUrlFromModal()">
+                            <i class="bi bi-clipboard me-1"></i>คัดลอก
+                        </button>
+                    </div>
+                    <button class="btn btn-purple-glow w-100 py-2 fw-bold" onclick="downloadQrCodeImage()">
+                        <i class="bi bi-download me-1"></i>ดาวน์โหลดภาพ QR Code
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🎖️ Certificate Canvas Modal -->
+    <div class="modal fade" id="certificateModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content bg-dark text-white border-warning rounded-4 overflow-hidden">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title fw-bold text-warning font-kanit"><i class="bi bi-award-fill me-2"></i>เกียรติบัตรออนไลน์ (Certificate of Achievement)</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-3 text-center overflow-auto">
+                    <canvas id="certificateCanvas" width="1000" height="700" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);"></canvas>
+                </div>
+                <div class="modal-footer border-secondary justify-content-between">
+                    <div class="small text-subtle">คลิกดาวน์โหลดเพื่อรับไฟล์รูปภาพ PNG ความละเอียดสูง</div>
+                    <button class="btn btn-warning fw-bold px-4 py-2 rounded-pill shadow-sm" onclick="downloadCertificateImage()">
+                        <i class="bi bi-download me-1"></i>ดาวน์โหลดเกียรติบัตร (PNG)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🎯 Response Result Modal -->
+    <div class="modal fade" id="responseSuccessModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-white border-purple rounded-4">
+                <div class="modal-body p-4" id="response-result-content">
+                    <!-- Dynamic modal content rendered via JS -->
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-secondary text-white w-100" data-bs-dismiss="modal">ปิดหน้านี้</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap & Engine JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="forms.js"></script>
+</body>
+</html>
