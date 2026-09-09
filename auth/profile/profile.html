@@ -9,9 +9,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/index.css">
     <link rel="stylesheet" href="../sidebar_shared.css">
+    <link rel="stylesheet" href="../../assets/css/toast_shared.css">
     <link rel="stylesheet" href="profile.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../../assets/js/supabaseClient.js"></script>
+    <script src="../../assets/js/toast_shared.js"></script>
     <script src="../logout.js"></script>
 </head>
 <body class="bg-light min-vh-100 d-flex flex-column">
@@ -50,6 +52,20 @@
             <div class="col-lg-9">
                 <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
                     <h5 class="fw-bold text-dark border-bottom pb-3 mb-4"><i class="bi bi-person-gear text-primary me-2"></i>จัดการโปรไฟล์ส่วนตัว</h5>
+                    
+                    <!-- แจ้งเตือนกรณีโปรไฟล์ยังไม่ครบถ้วน -->
+                    <div id="profile-warning-alert" class="alert alert-warning border-0 rounded-3 shadow-sm d-none mb-4 p-3">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-warning text-dark d-flex align-items-center justify-content-center flex-shrink-0" style="width: 40px; height: 40px; font-size: 20px;">
+                                <i class="bi bi-exclamation-triangle-fill"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold text-dark">กรุณากรอกข้อมูลโปรไฟล์ให้ครบถ้วน</div>
+                                <div class="text-secondary small">โปรดระบุ <strong>ชื่อเล่น, ชื่อจริง, นามสกุล และเบอร์โทรศัพท์</strong> แล้วกดบันทึกเพื่อเข้าสู่เครื่องมือห้องเรียน</div>
+                            </div>
+                        </div>
+                    </div>
+
                     <form id="form-profile-info" onsubmit="handleSaveProfile(event)">
                         <div class="mb-4 p-3 bg-light rounded-3 border">
                             <label class="form-label small fw-bold text-secondary">รูปโปรไฟล์</label>
@@ -62,14 +78,14 @@
                             </div>
                         </div>
                         <div class="row g-3 mb-4">
-                            <div class="col-md-6"><label class="form-label small fw-bold text-secondary">ชื่อผู้ใช้งาน (Username)</label><input type="text" id="profile-username" class="form-control" required></div>
+                            <div class="col-md-6"><label class="form-label small fw-bold text-secondary">ชื่อผู้ใช้งาน (Username) <span class="text-danger">*</span></label><input type="text" id="profile-username" class="form-control" required></div>
                             <div class="col-md-6"><label class="form-label small fw-bold text-secondary">อีเมลผู้ใช้งาน (E-mail)</label><input type="email" id="profile-email" class="form-control bg-light" readonly disabled required></div>
                         </div>
                         <div class="row g-3 mb-4">
-                            <div class="col-md-3"><label class="form-label small fw-bold text-secondary">ชื่อเล่น</label><input type="text" id="profile-nickname" class="form-control"></div>
-                            <div class="col-md-3"><label class="form-label small fw-bold text-secondary">ชื่อจริง</label><input type="text" id="profile-firstname" class="form-control"></div>
-                            <div class="col-md-3"><label class="form-label small fw-bold text-secondary">นามสกุล</label><input type="text" id="profile-lastname" class="form-control"></div>
-                            <div class="col-md-3"><label class="form-label small fw-bold text-secondary">เบอร์โทรศัพท์</label><input type="tel" id="profile-phone" class="form-control"></div>
+                            <div class="col-md-3"><label class="form-label small fw-bold text-secondary">ชื่อเล่น <span class="text-danger">*</span></label><input type="text" id="profile-nickname" class="form-control" placeholder="เช่น นัท, บอส" required></div>
+                            <div class="col-md-3"><label class="form-label small fw-bold text-secondary">ชื่อจริง <span class="text-danger">*</span></label><input type="text" id="profile-firstname" class="form-control" placeholder="ชื่อจริงภาษาไทย" required></div>
+                            <div class="col-md-3"><label class="form-label small fw-bold text-secondary">นามสกุล <span class="text-danger">*</span></label><input type="text" id="profile-lastname" class="form-control" placeholder="นามสกุลภาษาไทย" required></div>
+                            <div class="col-md-3"><label class="form-label small fw-bold text-secondary">เบอร์โทรศัพท์ <span class="text-danger">*</span></label><input type="tel" id="profile-phone" class="form-control" placeholder="เช่น 0812345678" required></div>
                         </div>
                         <button type="submit" class="btn btn-primary fw-bold px-4 py-2 rounded-3 shadow-sm" id="btn-save-profile"><i class="bi bi-floppy-fill me-1"></i>บันทึกการเปลี่ยนแปลง</button>
                     </form>

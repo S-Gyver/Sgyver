@@ -238,7 +238,9 @@
                     data-tool-title="Gyver Wheel Live วงล้อสุ่มรายชื่อออนไลน์"
                     data-tool-desc="วงล้อสุ่มรายชื่อออนไลน์ บันทึกสถิติคะแนนสดลงฐานข้อมูล">
                     <div id="education-wheel-card"
-                        class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100">
+                        class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100"
+                        style="cursor: pointer;"
+                        onclick="handleProtectedToolClick(event, 'features/education/wheel/wheel_display.html', 'Gyver Wheel (Live)')">
                         <div class="icon-box bg-secondary bg-gradient text-white">
                             <i class="bi bi-lock-fill"></i>
                         </div>
@@ -258,7 +260,9 @@
                     data-tool-title="Gyver Code Race แข่งพิมพ์โค้ด Python"
                     data-tool-desc="เกมแข่งพิมพ์โค้ดภาษา Python ออนไลน์ สนุกตื่นเต้นแบบ Realtime">
                     <div id="education-race-card"
-                        class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100">
+                        class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100"
+                        style="cursor: pointer;"
+                        onclick="handleProtectedToolClick(event, 'features/education/gyver%20Code%20Race/race_home.html', 'Gyver Code Race')">
                         <div class="icon-box bg-secondary bg-gradient text-white">
                             <i class="bi bi-lock-fill"></i>
                         </div>
@@ -305,7 +309,9 @@
                     data-tool-title="Gyver Question Bank คลังข้อสอบ คลังคำถาม"
                     data-tool-desc="คลังคำถามและข้อสอบ สำหรับเชื่อมต่อวงล้อและเกมพิมพ์โค้ด">
                     <div id="education-bank-card"
-                        class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100">
+                        class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100"
+                        style="cursor: pointer;"
+                        onclick="handleProtectedToolClick(event, 'features/education/question_bank/question_bank.html', 'Gyver Question Bank')">
                         <div class="icon-box bg-secondary bg-gradient text-white">
                             <i class="bi bi-lock-fill"></i>
                         </div>
@@ -325,7 +331,9 @@
                     data-tool-title="Classroom Management จัดการห้องเรียน รายชื่อนักเรียน"
                     data-tool-desc="สร้างห้องเรียน จัดการรายชื่อนักเรียน และ QR Code เข้าร่วมกิจกรรม">
                     <div id="teacher-classroom-card"
-                        class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100">
+                        class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100"
+                        style="cursor: pointer;"
+                        onclick="handleProtectedToolClick(event, 'auth/classroom_manage/classroom_manage.html', 'Classroom Management')">
                         <div class="icon-box bg-secondary bg-gradient text-white">
                             <i class="bi bi-lock-fill"></i>
                         </div>
@@ -346,7 +354,9 @@
                     data-tool-title="Activity History ประวัติกิจกรรม คะแนนย้อนหลัง"
                     data-tool-desc="ดูสถิติการเล่น ประวัติคะแนน และผลกิจกรรมย้อนหลัง">
                     <div id="teacher-history-card"
-                        class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100">
+                        class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100"
+                        style="cursor: pointer;"
+                        onclick="handleProtectedToolClick(event, 'auth/history/history.html', 'Activity History')">
                         <div class="icon-box bg-secondary bg-gradient text-white">
                             <i class="bi bi-lock-fill"></i>
                         </div>
@@ -531,9 +541,51 @@
         </div>
     </div>
 
+    <!-- ⚠️ Modal แจ้งเตือนให้กรอกข้อมูลโปรไฟล์ให้ครบถ้วนก่อนใช้งานห้องเรียน -->
+    <div class="modal fade" id="profileIncompleteModal" tabindex="-1" aria-labelledby="profileIncompleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 460px;">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header border-0 bg-warning bg-opacity-10 pb-0 pt-4 px-4 align-items-start">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="d-flex align-items-center justify-content-center rounded-circle shadow-sm flex-shrink-0"
+                            style="width: 50px; height: 50px; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; font-size: 24px;">
+                            <i class="bi bi-person-exclamation"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold text-dark mb-1" id="profileIncompleteModalLabel">กรุณากรอกโปรไฟล์ให้ครบ</h5>
+                            <div class="text-muted small" id="profile-modal-tool-name">สำหรับเริ่มใช้งานห้องเรียนอัจฉริยะ</div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-secondary small mb-3">
+                        เพื่อความถูกต้องในการจัดเก็บสถิติ บันทึกคะแนนกิจกรรม และการจัดการห้องเรียน กรุณากรอกข้อมูลส่วนตัวในหน้าโปรไฟล์ให้ครบถ้วนก่อนเข้าใช้งาน:
+                    </p>
 
+                    <div class="p-3 bg-light rounded-3 border mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="small fw-bold text-dark"><i class="bi bi-list-check me-1 text-primary"></i>ข้อมูลที่ยังไม่ได้ระบุ:</span>
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 small" id="missing-count-badge">ยังไม่ครบ</span>
+                        </div>
+                        <div id="missing-profile-fields-list" class="d-flex flex-column gap-2">
+                            <!-- Dynamic missing fields rendered via JS -->
+                        </div>
+                    </div>
 
-    <!-- ส่วนท้ายหน้าเว็บ -->
+                    <div class="d-flex flex-column gap-2 pt-1">
+                        <a href="auth/profile/profile.html?required=1" id="btn-go-to-profile" class="btn btn-primary py-2 fw-bold shadow-sm rounded-3 text-decoration-none text-center">
+                            <i class="bi bi-pencil-square me-1"></i>ไปกรอกข้อมูลโปรไฟล์ทันที
+                        </a>
+                        <button type="button" class="btn btn-light py-2 text-secondary fw-semibold rounded-3 border" data-bs-dismiss="modal">
+                            ไว้คราวหลัง
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <footer class="py-4 navbar-custom text-center text-muted small mt-auto border-top bg-white">
         <div class="container d-flex flex-column flex-md-row justify-content-between align-items-center gap-2">
             <div>&copy; 2026 Gyver Home & Gyver Shop. All Rights Reserved.</div>

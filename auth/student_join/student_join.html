@@ -20,31 +20,107 @@
 <body>
 
     <div class="join-card">
-        <div class="mb-3 text-primary display-4">
-            <i class="bi bi-person-check-fill"></i>
-        </div>
-        <h4 class="fw-bold text-dark mb-1">ลงชื่อเข้าร่วมกิจกรรม</h4>
-        <p class="text-secondary small mb-4">กรอกชื่อ-นามสกุล หรือเลขที่ เพื่อเข้าร่วมวงล้อ</p>
-
-        <div class="alert alert-primary py-2 px-3 rounded-3 small fw-bold mb-3 d-flex justify-content-between align-items-center">
-            <span>ห้องเรียน: <span id="room-name-display">กำลังตรวจสอบ...</span></span>
-            <span class="badge bg-primary font-monospace fs-6" id="room-code-badge">------</span>
-        </div>
-
-        <form id="join-form" onsubmit="submitStudentName(event)">
-            <div class="mb-3 text-start">
-                <label class="form-label small fw-bold text-secondary">ชื่อ - นามสกุล หรือ เลขที่</label>
-                <input type="text" id="student-name" class="form-control form-control-lg rounded-3 fs-6" placeholder="เช่น เด็กชายแทนคุณ (เลขที่ 3)" required autofocus>
+        <!-- ⏳ สถานะกำลังตรวจสอบการล็อกอิน / สมัครสมาชิก -->
+        <div id="auth-checking-state" class="py-4">
+            <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">Loading...</span>
             </div>
-            <button type="submit" id="submit-btn" class="btn btn-primary btn-lg w-100 fw-bold rounded-3 shadow">
-                <i class="bi bi-send-fill me-1"></i> ยืนยันเข้าร่วมห้อง
-            </button>
-        </form>
+            <h5 class="fw-bold text-dark mb-1">กำลังตรวจสอบสถานะสมาชิก...</h5>
+            <p class="text-secondary small m-0" id="auth-checking-text">กรุณารอสักครู่ ระบบกำลังตรวจสอบบัญชีผู้ใช้ของคุณ</p>
+        </div>
 
-        <div id="result-success" class="mt-4 p-3 bg-success-subtle text-success rounded-4 d-none">
-            <i class="bi bi-check-circle-fill fs-2 d-block mb-1"></i>
-            <h5 class="fw-bold mb-1">ลงชื่อสำเร็จแล้ว!</h5>
-            <small>ชื่อของคุณถูกส่งไปยังห้องเรียนของครูเรียบร้อย</small>
+        <!-- 🟢 หน้าฟอร์มลงชื่อ (แสดงเฉพาะเมื่อล็อกอินแล้ว) -->
+        <div id="join-content" class="d-none">
+            <h4 class="fw-bold text-dark mb-1">ลงชื่อเข้าร่วมกิจกรรม</h4>
+            <p class="text-secondary small mb-3">ตรวจสอบหรือกรอกข้อมูลโปรไฟล์เพื่อเข้าร่วมห้องเรียน</p>
+
+            <!-- แถบแสดงบัญชีที่ล็อกอินอยู่ พร้อมปุ่มสลับบัญชี -->
+            <div id="auth-user-badge" class="alert alert-light border py-2 px-3 rounded-3 small mb-3 text-start d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-2 overflow-hidden">
+                    <div class="text-truncate">
+                        <span class="d-block text-dark fw-bold text-truncate" id="student-display-account">ผู้ใช้งาน</span>
+                        <small class="text-success" style="font-size: 0.72rem;"><i class="bi bi-patch-check-fill me-1"></i>สมาชิกผ่านการยืนยันแล้ว</small>
+                    </div>
+                </div>
+                <button type="button" id="btn-switch-account" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size: 0.75rem;" onclick="handleSwitchAccount(event)" title="ออกจากระบบเพื่อสลับบัญชี">เปลี่ยน</button>
+            </div>
+
+            <!-- กล่องแสดงห้องเรียน -->
+            <div class="alert alert-primary py-2 px-3 rounded-3 small fw-bold mb-3 d-flex justify-content-between align-items-center">
+                <span>ห้องเรียน: <span id="room-name-display">กำลังตรวจสอบ...</span></span>
+                <span class="badge bg-primary font-monospace fs-6" id="room-code-badge">------</span>
+            </div>
+
+            <form id="join-form" onsubmit="submitStudentName(event)">
+                
+                <!-- 1. รูปโปรไฟล์ (Profile Avatar) -->
+                <div class="d-flex flex-column align-items-center mb-3">
+                    <label class="form-label small fw-bold text-secondary mb-1">1. รูปโปรไฟล์</label>
+                    <div class="avatar-wrapper mb-2">
+                        <img id="profile-avatar-preview" src="https://api.dicebear.com/7.x/big-smile/svg?seed=Student" class="avatar-preview-img shadow-sm" alt="Avatar">
+                        <label for="custom-avatar-file" class="btn btn-sm btn-primary rounded-circle position-absolute bottom-0 end-0 p-1 shadow" style="width: 28px; height: 28px; line-height: 1; cursor: pointer;" title="เลือกรูปตัวเอง">
+                            <i class="bi bi-camera-fill" style="font-size: 0.75rem;"></i>
+                        </label>
+                        <input type="file" id="custom-avatar-file" class="d-none" accept="image/*" onchange="handleCustomAvatarSelect(event)">
+                    </div>
+                    <div class="d-flex gap-2 align-items-center">
+                        <button type="button" class="btn btn-sm btn-outline-success rounded-pill py-1 px-3 small fw-bold shadow-sm" onclick="document.getElementById('custom-avatar-file').click()">
+                            <i class="bi bi-image me-1"></i>เลือกรูปตัวเอง
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill py-1 px-3 small fw-bold shadow-sm" onclick="randomizeAvatar()">
+                            <i class="bi bi-dice-5 me-1"></i>สุ่มรูปอวตาร
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 2. ชื่อเล่น (Nickname) -->
+                <div class="mb-3 text-start">
+                    <label class="form-label small fw-bold text-secondary">
+                        <i class="bi bi-person-badge text-primary me-1"></i>2. ชื่อเล่น <span class="text-danger">*</span>
+                    </label>
+                    <input type="text" id="student-nickname" class="form-control rounded-3" placeholder="เช่น นาดี, มีน, ก้อง" required>
+                </div>
+
+                <!-- 3. ชื่อจริง และ นามสกุล (Firstname & Lastname) -->
+                <div class="row g-2 mb-3 text-start">
+                    <div class="col-6">
+                        <label class="form-label small fw-bold text-secondary">
+                            <i class="bi bi-person text-primary me-1"></i>3. ชื่อจริง <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" id="student-firstname" class="form-control rounded-3" placeholder="เช่น แทนคุณ" required>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-bold text-secondary">
+                            นามสกุล <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" id="student-lastname" class="form-control rounded-3" placeholder="เช่น ดีมาก" required>
+                    </div>
+                </div>
+
+                <!-- 4. เบอร์โทร (Phone) -->
+                <div class="mb-4 text-start">
+                    <label class="form-label small fw-bold text-secondary">
+                        <i class="bi bi-telephone text-primary me-1"></i>4. เบอร์โทรศัพท์ <span class="text-muted fw-normal">(ถ้ามี)</span>
+                    </label>
+                    <input type="tel" id="student-phone" class="form-control rounded-3" placeholder="เช่น 0812345678">
+                </div>
+
+                <button type="submit" id="submit-btn" class="btn btn-primary btn-lg w-100 fw-bold rounded-3 shadow">
+                    <i class="bi bi-send-fill me-1"></i> ยืนยันเข้าร่วมห้อง
+                </button>
+                <a href="../../index.html" class="btn btn-outline-secondary w-100 fw-bold rounded-3 mt-2 py-2">
+                    <i class="bi bi-house-door-fill me-1"></i>กลับหน้าหลัก
+                </a>
+            </form>
+
+            <div id="result-success" class="mt-4 p-3 bg-success-subtle text-success rounded-4 d-none">
+                <i class="bi bi-check-circle-fill fs-2 d-block mb-1"></i>
+                <h5 class="fw-bold mb-1">ลงชื่อและบันทึกโปรไฟล์สำเร็จแล้ว!</h5>
+                <small class="d-block mb-3">ข้อมูลของคุณถูกบันทึกและส่งไปยังห้องเรียนของครูเรียบร้อย</small>
+                <a href="../../index.html" class="btn btn-success fw-bold rounded-pill px-4 py-2 shadow-sm">
+                    <i class="bi bi-house-door-fill me-1"></i>กลับหน้าหลัก
+                </a>
+            </div>
         </div>
     </div>
 

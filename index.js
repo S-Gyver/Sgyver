@@ -57,6 +57,121 @@ async function uploadAvatarStorage(file) {
     return data.publicUrl;
 }
 
+// 👤 ตรวจสอบความครบถ้วนของข้อมูลโปรไฟล์ (ชื่อเล่น, ชื่อจริง, นามสกุล, เบอร์โทรศัพท์)
+async function checkProfileCompleteness() {
+    if (!window.supabaseClient) return { isLoggedIn: false, isComplete: false, missingFields: [] };
+
+    try {
+        const { data: { session } } = await window.supabaseClient.auth.getSession();
+        if (!session || !session.user) {
+            return { isLoggedIn: false, isComplete: false, missingFields: [] };
+        }
+
+        const { data: profile, error } = await window.supabaseClient
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .maybeSingle();
+
+        if (error) {
+            console.warn('Error fetching profile:', error.message);
+        }
+
+        const missing = [];
+        if (!profile || !profile.nickname || !profile.nickname.trim()) {
+            missing.push({ key: 'nickname', label: 'ชื่อเล่น', icon: 'bi-tag' });
+        }
+        if (!profile || !profile.first_name || !profile.first_name.trim()) {
+            missing.push({ key: 'first_name', label: 'ชื่อจริง', icon: 'bi-person' });
+        }
+        if (!profile || !profile.last_name || !profile.last_name.trim()) {
+            missing.push({ key: 'last_name', label: 'นามสกุล', icon: 'bi-person-badge' });
+        }
+        if (!profile || !profile.phone || !profile.phone.trim()) {
+            missing.push({ key: 'phone', label: 'เบอร์โทรศัพท์', icon: 'bi-telephone' });
+        }
+
+        return {
+            isLoggedIn: true,
+            isComplete: missing.length === 0,
+            missingFields: missing,
+            profile: profile
+        };
+    } catch (e) {
+        console.warn('Check profile completeness error:', e);
+        return { isLoggedIn: true, isComplete: true, missingFields: [] };
+    }
+}
+
+// 🛡️ จัดการการคลิกเครื่องมือที่ต้องใช้โปรไฟล์ครบ (Gyver Education & Gyver Teacher Studio)
+window.handleProtectedToolClick = async function(event, targetUrl, toolName = 'เครื่องมือห้องเรียน') {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+
+    if (!window.supabaseClient) {
+        window.location.href = targetUrl;
+        return;
+    }
+
+    const { data: { session } } = await window.supabaseClient.auth.getSession();
+    if (!session || !session.user) {
+        // ยังไม่ได้ล็อกอิน -> เปิดหน้าต่างล็อกอิน/สมัครสมาชิก
+        const authModalEl = document.getElementById('authModal');
+        if (authModalEl) {
+            const modal = bootstrap.Modal.getOrCreateInstance(authModalEl);
+            modal.show();
+        }
+        return;
+    }
+
+    // ตรวจสอบข้อมูลโปรไฟล์
+    const check = await checkProfileCompleteness();
+    if (!check.isComplete) {
+        // บันทึกเครื่องมือเป้าหมายไว้ใน sessionStorage เพื่อนำทางกลับหลังกรอกเสร็จ
+        sessionStorage.setItem('gyver_target_tool_url', targetUrl);
+
+        // อัปเดตข้อมูลใน Modal แจ้งเตือน
+        const toolNameEl = document.getElementById('profile-modal-tool-name');
+        if (toolNameEl) toolNameEl.innerText = `ก่อนเข้าใช้งาน ${toolName}`;
+
+        const badgeEl = document.getElementById('missing-count-badge');
+        if (badgeEl) badgeEl.innerText = `ยังขาด ${check.missingFields.length} รายการ`;
+
+        const missingListEl = document.getElementById('missing-profile-fields-list');
+        if (missingListEl) {
+            missingListEl.innerHTML = check.missingFields.map(f => `
+                <div class="d-flex align-items-center justify-content-between p-2 rounded-3 bg-white border border-danger-subtle text-danger small shadow-xs">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi ${f.icon || 'bi-exclamation-circle-fill'}"></i>
+                        <span>ยังไม่ได้ระบุ <strong>${f.label}</strong></span>
+                    </div>
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle">จำเป็น</span>
+                </div>
+            `).join('');
+        }
+
+        const btnGo = document.getElementById('btn-go-to-profile');
+        if (btnGo) {
+            btnGo.onclick = function() {
+                window.location.href = 'auth/profile/profile.html?required=1';
+            };
+        }
+
+        const profileModalEl = document.getElementById('profileIncompleteModal');
+        if (profileModalEl) {
+            const modal = bootstrap.Modal.getOrCreateInstance(profileModalEl);
+            modal.show();
+        }
+        return;
+    }
+
+    // หากโปรไฟล์ครบถ้วนแล้ว ให้ล้างค่าเป้าหมายและเปิดใช้งานตามปกติ
+    sessionStorage.removeItem('gyver_target_tool_url');
+    window.location.href = targetUrl;
+};
+
 // 🔍 เช็กสถานะสิทธิ์ User (Lv.0 vs Lv.1 vs Admin)
 async function checkUserLevel() {
     if (!window.supabaseClient) return;
@@ -135,8 +250,9 @@ async function checkUserLevel() {
 
             if (eduWheelCard) {
                 eduWheelCard.className = "action-card p-3 h-100";
+                eduWheelCard.onclick = null;
                 eduWheelCard.innerHTML = `
-                    <a href="features/education/wheel/wheel_display.html" class="d-flex align-items-center gap-3 text-decoration-none text-dark h-100">
+                    <a href="javascript:void(0)" onclick="handleProtectedToolClick(event, 'features/education/wheel/wheel_display.html', 'Gyver Wheel (Live)')" class="d-flex align-items-center gap-3 text-decoration-none text-dark h-100">
                         <div class="icon-box icon-gradient-live text-white shadow-sm">
                             <i class="bi bi-broadcast"></i>
                         </div>
@@ -153,8 +269,9 @@ async function checkUserLevel() {
 
             if (eduRaceCard) {
                 eduRaceCard.className = "action-card p-3 h-100";
+                eduRaceCard.onclick = null;
                 eduRaceCard.innerHTML = `
-                    <a href="features/education/gyver%20Code%20Race/race_home.html" class="d-flex align-items-center gap-3 text-decoration-none text-dark h-100">
+                    <a href="javascript:void(0)" onclick="handleProtectedToolClick(event, 'features/education/gyver%20Code%20Race/race_home.html', 'Gyver Code Race')" class="d-flex align-items-center gap-3 text-decoration-none text-dark h-100">
                         <div class="icon-box icon-gradient-race text-white shadow-sm">
                             <i class="bi bi-controller"></i>
                         </div>
@@ -171,8 +288,9 @@ async function checkUserLevel() {
 
             if (eduBankCard) {
                 eduBankCard.className = "action-card p-3 h-100";
+                eduBankCard.onclick = null;
                 eduBankCard.innerHTML = `
-                    <a href="features/education/question_bank/question_bank.html" class="d-flex align-items-center gap-3 text-decoration-none text-dark h-100">
+                    <a href="javascript:void(0)" onclick="handleProtectedToolClick(event, 'features/education/question_bank/question_bank.html', 'Gyver Question Bank')" class="d-flex align-items-center gap-3 text-decoration-none text-dark h-100">
                         <div class="icon-box icon-gradient-bank text-white shadow-sm">
                             <i class="bi bi-patch-question-fill"></i>
                         </div>
@@ -189,8 +307,9 @@ async function checkUserLevel() {
 
             if (teacherClassroomCard) {
                 teacherClassroomCard.className = "action-card p-3 h-100";
+                teacherClassroomCard.onclick = null;
                 teacherClassroomCard.innerHTML = `
-                    <a href="auth/classroom_manage/classroom_manage.html" class="d-flex align-items-center gap-3 text-decoration-none text-dark h-100">
+                    <a href="javascript:void(0)" onclick="handleProtectedToolClick(event, 'auth/classroom_manage/classroom_manage.html', 'Classroom Management')" class="d-flex align-items-center gap-3 text-decoration-none text-dark h-100">
                         <div class="icon-box icon-gradient-classroom text-white shadow-sm">
                             <i class="bi bi-people-fill"></i>
                         </div>
@@ -207,8 +326,9 @@ async function checkUserLevel() {
 
             if (teacherHistoryCard) {
                 teacherHistoryCard.className = "action-card p-3 h-100";
+                teacherHistoryCard.onclick = null;
                 teacherHistoryCard.innerHTML = `
-                    <a href="auth/history/history.html" class="d-flex align-items-center gap-3 text-decoration-none text-dark h-100">
+                    <a href="javascript:void(0)" onclick="handleProtectedToolClick(event, 'auth/history/history.html', 'Activity History')" class="d-flex align-items-center gap-3 text-decoration-none text-dark h-100">
                         <div class="icon-box icon-gradient-history text-white shadow-sm">
                             <i class="bi bi-clock-history"></i>
                         </div>
@@ -244,6 +364,8 @@ async function checkUserLevel() {
 
             if (eduWheelCard) {
                 eduWheelCard.className = "action-card disabled-card p-3 d-flex align-items-center gap-3 h-100";
+                eduWheelCard.style.cursor = "pointer";
+                eduWheelCard.onclick = (e) => handleProtectedToolClick(e, 'features/education/wheel/wheel_display.html', 'Gyver Wheel (Live)');
                 eduWheelCard.innerHTML = `
                     <div class="icon-box icon-gradient-soon text-white">
                         <i class="bi bi-lock-fill"></i>
@@ -260,6 +382,8 @@ async function checkUserLevel() {
 
             if (eduRaceCard) {
                 eduRaceCard.className = "action-card disabled-card p-3 d-flex align-items-center gap-3 h-100";
+                eduRaceCard.style.cursor = "pointer";
+                eduRaceCard.onclick = (e) => handleProtectedToolClick(e, 'features/education/gyver%20Code%20Race/race_home.html', 'Gyver Code Race');
                 eduRaceCard.innerHTML = `
                     <div class="icon-box icon-gradient-soon text-white">
                         <i class="bi bi-lock-fill"></i>
@@ -276,6 +400,8 @@ async function checkUserLevel() {
 
             if (eduBankCard) {
                 eduBankCard.className = "action-card disabled-card p-3 d-flex align-items-center gap-3 h-100";
+                eduBankCard.style.cursor = "pointer";
+                eduBankCard.onclick = (e) => handleProtectedToolClick(e, 'features/education/question_bank/question_bank.html', 'Gyver Question Bank');
                 eduBankCard.innerHTML = `
                     <div class="icon-box icon-gradient-soon text-white">
                         <i class="bi bi-lock-fill"></i>
@@ -292,6 +418,8 @@ async function checkUserLevel() {
 
             if (teacherClassroomCard) {
                 teacherClassroomCard.className = "action-card disabled-card p-3 d-flex align-items-center gap-3 h-100";
+                teacherClassroomCard.style.cursor = "pointer";
+                teacherClassroomCard.onclick = (e) => handleProtectedToolClick(e, 'auth/classroom_manage/classroom_manage.html', 'Classroom Management');
                 teacherClassroomCard.innerHTML = `
                     <div class="icon-box icon-gradient-soon text-white">
                         <i class="bi bi-lock-fill"></i>
@@ -308,6 +436,8 @@ async function checkUserLevel() {
 
             if (teacherHistoryCard) {
                 teacherHistoryCard.className = "action-card disabled-card p-3 d-flex align-items-center gap-3 h-100";
+                teacherHistoryCard.style.cursor = "pointer";
+                teacherHistoryCard.onclick = (e) => handleProtectedToolClick(e, 'auth/history/history.html', 'Activity History');
                 teacherHistoryCard.innerHTML = `
                     <div class="icon-box icon-gradient-soon text-white">
                         <i class="bi bi-lock-fill"></i>

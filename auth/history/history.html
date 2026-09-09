@@ -47,22 +47,68 @@
             </div>
 
             <div class="col-lg-9">
-                <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
-                    <h5 class="fw-bold text-dark border-bottom pb-3 mb-4"><i class="bi bi-clock-history text-primary me-2"></i>ประวัติการใช้งานและกิจกรรม</h5>
+                <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 border-bottom pb-3 mb-4">
+                        <div>
+                            <h5 class="fw-bold text-dark m-0"><i class="bi bi-clock-history text-primary me-2"></i>ประวัติการใช้งานและกิจกรรม</h5>
+                            <small class="text-secondary">สรุปข้อมูลการเข้าร่วมห้องเรียน คะแนนสะสม และประวัติกิจกรรมย้อนหลัง</small>
+                        </div>
+                        <button class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold" onclick="fetchActivityLogs()">
+                            <i class="bi bi-arrow-clockwise me-1"></i>รีเฟรช
+                        </button>
+                    </div>
+
+                    <!-- สรุปตัวเลขสถิติภาพรวม -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-sm-4">
+                            <div class="p-3 rounded-4 bg-primary bg-opacity-10 border border-primary-subtle text-center">
+                                <div class="text-primary fs-3 fw-bold font-mono" id="stat-classrooms-count">0</div>
+                                <div class="small fw-bold text-secondary">ห้องเรียนที่เข้าร่วม</div>
+                            </div>
+                        </div>
+                        <div class="col-sm-4">
+                            <div class="p-3 rounded-4 bg-success bg-opacity-10 border border-success-subtle text-center">
+                                <div class="text-success fs-3 fw-bold font-mono" id="stat-total-score">0</div>
+                                <div class="small fw-bold text-secondary">คะแนนสะสมรวม</div>
+                            </div>
+                        </div>
+                        <div class="col-sm-4">
+                            <div class="p-3 rounded-4 bg-warning bg-opacity-10 border border-warning-subtle text-center">
+                                <div class="text-warning-emphasis fs-3 fw-bold font-mono" id="stat-spin-count">0</div>
+                                <div class="small fw-bold text-secondary">ร่วมกิจกรรม / สุ่มชื่อ</div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle">
-                            <thead class="table-light"><tr><th>วันที่</th><th>กิจกรรม</th><th>คะแนน</th></tr></thead>
-                            <tbody id="history-list-body"><tr><td colspan="3" class="text-center text-muted py-4">ยังไม่มีประวัติกิจกรรมล่าสุด</td></tr></tbody>
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 170px;">วันที่ / เวลา</th>
+                                    <th>ประเภท</th>
+                                    <th>รายละเอียดห้องเรียน / กิจกรรม</th>
+                                    <th class="text-center" style="width: 130px;">คะแนน</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-list-body">
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">
+                                        <span class="spinner-border spinner-border-sm text-primary me-2"></span>กำลังโหลดประวัติ...
+                                    </td>
+                                </tr>
+                            </tbody>
                         </table>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <script src="history.js"></script>
+
+    <!-- Scripts (โหลด Supabase ก่อนเรียก history.js) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../../assets/js/supabaseClient.js"></script>
-    <script src="../sidebar_shared.js"></script> <!-- 👈 เพิ่มบรรทัดนี้ -->
+    <script src="../sidebar_shared.js"></script>
     <script src="../logout.js"></script>
+    <script src="history.js"></script>
 </body>
 </html>

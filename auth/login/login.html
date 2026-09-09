@@ -13,7 +13,7 @@
     
     <!-- นำเข้า Supabase SDK และ Supabase Client กลาง -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="../assets/js/supabaseClient.js"></script>
+    <script src="../../assets/js/supabaseClient.js"></script>
 </head>
 <body>
 
@@ -61,6 +61,10 @@
                 <!-- 2. ฟอร์มสมัครสมาชิก (Register) -->
                 <div class="tab-pane fade" id="panel-register" role="tabpanel">
                     <form id="form-register">
+                        <div class="form-floating mb-3">
+                            <input type="text" id="reg-username" class="form-control" placeholder="ชื่อ-นามสกุล หรือ ชื่อเล่น" required>
+                            <label for="reg-username"><i class="bi bi-person me-2"></i>ชื่อ-นามสกุล หรือ ชื่อเล่น (Username)</label>
+                        </div>
                         <div class="form-floating mb-3">
                             <input type="email" id="reg-email" class="form-control" placeholder="name@example.com" required>
                             <label for="reg-email"><i class="bi bi-envelope me-2"></i>ระบุอีเมลสมัครใช้งาน</label>

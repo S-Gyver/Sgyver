@@ -7,14 +7,43 @@ function showAlert(message, type = 'danger') {
     alertBox.classList.remove('d-none');
 }
 
-// 🔒 ระบบจดจำการล็อกอินถาวร: ถ้าตรวจพบเซสชันเดิมอยู่แล้ว ให้ผ่านเข้าสู่หน้าหลักโดยตรง
+// 🔒 ระบบจดจำการล็อกอินถาวร: ถ้าตรวจพบเซสชันเดิมอยู่แล้ว ให้ผ่านเข้าสู่เป้าหมายหรือหน้าหลัก
 async function checkExistingSession() {
-    const { data: { session } } = await window.supabaseClient.auth.getSession();
-    if (session) {
-        window.location.href = '../index.html';
+    if (!window.supabaseClient || !window.supabaseClient.auth) return;
+    try {
+        const { data: { session } } = await window.supabaseClient.auth.getSession();
+        if (session) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const redirectParam = urlParams.get('redirect');
+            const redirectUrl = redirectParam || sessionStorage.getItem('gyver_redirect_target') || '../index.html';
+            sessionStorage.removeItem('gyver_redirect_target');
+            window.location.href = redirectUrl;
+        }
+    } catch (e) {
+        console.warn("checkExistingSession error:", e);
     }
 }
 checkExistingSession();
+
+// 🎛️ ตรวจสอบการส่งพารามิเตอร์เปิดแท็บสมัครสมาชิกโดยตรง (เช่น มาจากหน้านักเรียนสแกน QR Code)
+document.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tab = urlParams.get('tab') || urlParams.get('mode');
+    const redirectParam = urlParams.get('redirect');
+
+    if (redirectParam) {
+        sessionStorage.setItem('gyver_redirect_target', redirectParam);
+    }
+
+    if (tab === 'register' || window.location.hash === '#register') {
+        const tabRegisterBtn = document.getElementById('tab-register');
+        if (tabRegisterBtn && typeof bootstrap !== 'undefined') {
+            const triggerEl = new bootstrap.Tab(tabRegisterBtn);
+            triggerEl.show();
+        }
+        showAlert('👋 กรุณาสมัครสมาชิกก่อนเข้าร่วมกิจกรรมห้องเรียนครับ (หากมีบัญชีอยู่แล้ว สามารถกดแท็บ "เข้าสู่ระบบ" ได้เลย)', 'info');
+    }
+});
 
 // 🔐 1. ระบบจัดการการเข้าสู่ระบบ (Login)
 document.getElementById('form-login').addEventListener('submit', async function(e) {
@@ -49,13 +78,14 @@ document.getElementById('form-login').addEventListener('submit', async function(
             const redirectUrl = sessionStorage.getItem('gyver_redirect_target') || '../index.html';
             sessionStorage.removeItem('gyver_redirect_target');
             window.location.href = redirectUrl;
-        }, 1200);
+        }, 1000);
     }
 });
 
 // 📝 2. ระบบจัดการการสมัครสมาชิก (Register)
 document.getElementById('form-register').addEventListener('submit', async function(e) {
     e.preventDefault();
+    const username = document.getElementById('reg-username')?.value?.trim() || '';
     const email = document.getElementById('reg-email').value.trim();
     const password = document.getElementById('reg-pass').value;
     const confirmPassword = document.getElementById('reg-confirm-pass').value;
@@ -69,11 +99,18 @@ document.getElementById('form-register').addEventListener('submit', async functi
     btnSubmit.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>กำลังสมัครสมาชิก...`;
     alertBox.classList.add('d-none');
 
+    const avatarDefault = `https://api.dicebear.com/7.x/big-smile/svg?seed=${encodeURIComponent(username || email)}`;
+
     const { data, error } = await window.supabaseClient.auth.signUp({
         email: email,
         password: password,
         options: {
-            data: { role: 'user' }
+            data: { 
+                username: username,
+                nickname: username,
+                avatar_url: avatarDefault,
+                role: 'user' 
+            }
         }
     });
 
@@ -82,11 +119,26 @@ document.getElementById('form-register').addEventListener('submit', async functi
         btnSubmit.disabled = false;
         btnSubmit.innerHTML = `<i class="bi bi-person-plus me-2"></i>ยืนยันการสมัครสมาชิก`;
     } else {
+        if (data.user) {
+            try {
+                await window.supabaseClient.from('profiles').upsert([{
+                    id: data.user.id,
+                    username: username,
+                    nickname: username,
+                    avatar_url: avatarDefault
+                }]);
+            } catch (err) {}
+        }
+
         if (data.user && data.session === null) {
             showAlert('✉️ สมัครสมาชิกเรียบร้อย! กรุณาเช็กกล่องข้อความในอีเมลของคุณเพื่อกดยืนยันตัวตนก่อนล็อกอินครับ', 'warning');
         } else {
-            showAlert('🎉 สมัครสมาชิกและล็อกอินสำเร็จเรียบร้อย!', 'success');
-            setTimeout(() => { window.location.href = '../index.html'; }, 1500);
+            showAlert('🎉 สมัครสมาชิกและเข้าสู่ระบบเรียบร้อยแล้ว!', 'success');
+            setTimeout(() => {
+                const redirectUrl = sessionStorage.getItem('gyver_redirect_target') || '../index.html';
+                sessionStorage.removeItem('gyver_redirect_target');
+                window.location.href = redirectUrl;
+            }, 1200);
         }
         document.getElementById('form-register').reset();
         btnSubmit.disabled = false;
