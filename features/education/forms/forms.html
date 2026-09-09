@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gyver Forms - ระบบแบบสอบถามออนไลน์</title>
+
+    <!-- Bootstrap 5, Icons & Fonts -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@600;700&family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Supabase SDK & Stylesheet -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../../assets/js/supabaseClient.js"></script>
+    <link rel="stylesheet" href="forms.css">
+</head>
+<body class="py-3 py-md-4">
+
+    <!-- Ambient Cyber Grid & Glow -->
+    <div class="bg-cyber-grid"></div>
+    <div class="bg-glow-blur glow-top"></div>
+    <div class="bg-glow-blur glow-bottom"></div>
+
+    <div class="container px-3 px-md-4" style="max-width: 1100px;">
+        
+        <!-- Header Bar -->
+        <header class="cyber-card mb-4 border-purple d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="bg-dark border border-purple rounded-3 p-2 d-inline-flex justify-content-center align-items-center" style="width: 46px; height: 46px;">
+                    <i class="bi bi-ui-checks text-purple fs-3"></i>
+                </div>
+                <div>
+                    <h2 class="text-white fw-bold m-0 font-kanit fs-3 d-flex align-items-center gap-2">
+                        Gyver Forms
+                        <span class="badge bg-purple-subtle text-purple border border-purple fs-6">v1.0</span>
+                    </h2>
+                    <p class="text-subtle small m-0 font-mono">ระบบสร้างแบบสอบถามออนไลน์สไตล์ Google Forms</p>
+                </div>
+            </div>
+            
+            <div class="d-flex align-items-center gap-2 flex-wrap ms-auto font-kanit">
+                <button class="btn btn-outline-warning btn-sm fw-bold px-3 py-2 rounded-3 text-warning border-warning" data-bs-toggle="modal" data-bs-target="#sqlSetupModal">
+                    <i class="bi bi-database-fill-gear me-1"></i>SQL Setup (Supabase)
+                </button>
+                <a href="forms.html" class="btn btn-outline-purple btn-sm fw-bold px-3 py-2 rounded-3 text-purple border-purple">
+                    <i class="bi bi-collection-fill me-1"></i>รายการแบบฟอร์ม
+                </a>
+                <a href="../../../index.html" class="btn btn-outline-secondary btn-sm fw-bold px-3 py-2 rounded-3 text-white">
+                    <i class="bi bi-house-door-fill me-1"></i>หน้าหลัก
+                </a>
+            </div>
+        </header>
+
+        <!-- ====================================================
+             1. List View (รายการแบบฟอร์มทั้งหมด)
+             ==================================================== -->
+        <div id="view-list-container">
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                <div>
+                    <h4 class="fw-bold text-white mb-1"><i class="bi bi-folder-fill text-purple me-2"></i>รายการแบบสอบถามของคุณ</h4>
+                    <p class="text-subtle small m-0">จัดการฟอร์มที่คุณสร้างไว้ ส่งลิงก์ และเรียกดูสรุปผลการตอบ</p>
+                </div>
+                <button class="btn btn-purple-glow px-4 py-2" onclick="createNewForm()">
+                    <i class="bi bi-plus-lg me-1"></i>สร้างแบบสอบถามใหม่
+                </button>
+            </div>
+
+            <div class="row g-3" id="forms-grid">
+                <!-- JSจะมา Render รายการการ์ดตรงนี้ -->
+            </div>
+        </div>
+
+        <!-- ====================================================
+             2. Builder View (หน้าสร้าง / แก้ไขแบบฟอร์ม)
+             ==================================================== -->
+        <div id="view-builder-container" class="d-none">
+            <!-- Navigation Action Bar -->
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                <button class="btn btn-outline-secondary btn-sm text-white" onclick="renderFormsListView()">
+                    <i class="bi bi-arrow-left me-1"></i>กลับไปหน้ารายการ
+                </button>
+
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-info btn-sm" onclick="viewAnalytics(currentForm.id)">
+                        <i class="bi bi-bar-chart-line-fill me-1"></i>ดูสรุปผลลัพธ์
+                    </button>
+                    <button class="btn btn-outline-light btn-sm" onclick="copyShareLink(currentForm.id)">
+                        <i class="bi bi-link-45deg me-1"></i>คัดลอกลิงก์ผู้ตอบ
+                    </button>
+                    <button class="btn btn-purple-glow btn-sm px-3" onclick="saveFormAndNotify()">
+                        <i class="bi bi-floppy-fill me-1"></i>บันทึกฟอร์ม
+                    </button>
+                </div>
+            </div>
+
+            <!-- Form Header Info Card -->
+            <div class="cyber-card mb-4 border-purple-accent">
+                <div class="mb-3">
+                    <label class="form-label text-purple fw-bold small"><i class="bi bi-fonts me-1"></i>ชื่อแบบสอบถาม:</label>
+                    <input type="text" id="builder-form-title" class="form-control form-control-cyber form-control-lg fw-bold" 
+                        placeholder="ชื่อแบบสอบถาม..." onchange="updateBuilderHeader()">
+                </div>
+                <div>
+                    <label class="form-label text-subtle small"><i class="bi bi-card-text me-1"></i>คำอธิบายแบบสอบถาม / คำชี้แจง:</label>
+                    <textarea id="builder-form-desc" class="form-control form-control-cyber" rows="2" 
+                        placeholder="ระบุรายละเอียดหรือคำแนะนำสำหรับผู้ตอบ..." onchange="updateBuilderHeader()"></textarea>
+                </div>
+            </div>
+
+            <!-- Questions List Editor -->
+            <div id="questions-editor-list">
+                <!-- Dynamic Questions Block Rendered by JS -->
+            </div>
+
+            <!-- Bottom Add Question Button -->
+            <div class="text-center py-3">
+                <button class="btn btn-purple-glow px-4 py-2 rounded-pill shadow-lg" onclick="addQuestion()">
+                    <i class="bi bi-plus-circle-fill me-2 fs-5 align-middle"></i>เพิ่มคำถามใหม่
+                </button>
+            </div>
+        </div>
+
+        <!-- ====================================================
+             3. Responder View (หน้าสำหรับผู้ตอบแบบสอบถาม)
+             ==================================================== -->
+        <div id="view-responder-container" class="d-none" style="max-width: 800px; margin: 0 auto;">
+            
+            <div id="responder-form-box">
+                <!-- Title Card -->
+                <div class="responder-card mb-4">
+                    <h2 class="fw-bold text-white mb-2" id="responder-form-title">ชื่อแบบสอบถาม</h2>
+                    <p class="text-subtle m-0" id="responder-form-desc">รายละเอียดแบบสอบถาม</p>
+
+                    <hr class="border-secondary my-3">
+
+                    <div class="row g-3">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label text-purple fw-bold small"><i class="bi bi-person-fill me-1"></i>ชื่อผู้ตอบ / รหัสนักเรียน (ระบุหรือไม่ก็ได้):</label>
+                            <input type="text" id="responder-name" class="form-control form-control-cyber" placeholder="เช่น ด.ช.สมชาย ใจดี">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label text-subtle small"><i class="bi bi-envelope-fill me-1"></i>อีเมล (ถ้ามี):</label>
+                            <input type="email" id="responder-email" class="form-control form-control-cyber" placeholder="name@example.com">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Questions List -->
+                <div id="responder-questions-list">
+                    <!-- JS Render Questions Card -->
+                </div>
+
+                <!-- Submit Button -->
+                <div class="text-center py-4">
+                    <button class="btn btn-purple-glow btn-lg px-5 rounded-pill shadow-lg" onclick="submitResponse()">
+                        <i class="bi bi-send-fill me-2"></i>ส่งคำตอบแบบสอบถาม
+                    </button>
+                </div>
+            </div>
+
+            <!-- Success Box Screen -->
+            <div id="responder-success-box" class="cyber-card text-center py-5 d-none">
+                <i class="bi bi-check-circle-fill display-1 text-success mb-3"></i>
+                <h3 class="fw-bold text-white mb-2">ส่งคำตอบเรียบร้อยแล้ว!</h3>
+                <p class="text-subtle mb-4">ขอบคุณที่ร่วมตอบแบบสอบถามนี้ ระบบได้บันทึกคำตอบของคุณเป็นที่เรียบร้อยแล้ว</p>
+                <button class="btn btn-outline-purple text-purple border-purple px-4 py-2" onclick="renderResponderView()">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i>ตอบแบบสอบถามอีกครั้ง
+                </button>
+            </div>
+        </div>
+
+        <!-- ====================================================
+             4. Analytics & Responses View (หน้าดูผลลัพธ์)
+             ==================================================== -->
+        <div id="view-analytics-container" class="d-none">
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                <button class="btn btn-outline-secondary btn-sm text-white" onclick="renderFormsListView()">
+                    <i class="bi bi-arrow-left me-1"></i>กลับไปหน้ารายการ
+                </button>
+
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-purple border-purple text-purple btn-sm" onclick="editForm(currentForm.id)">
+                        <i class="bi bi-pencil-square me-1"></i>แก้ไขฟอร์ม
+                    </button>
+                    <button class="btn btn-success btn-sm" onclick="exportResponsesToCSV()">
+                        <i class="bi bi-file-earmark-spreadsheet-fill me-1"></i>ส่งออก CSV (Excel)
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm" onclick="clearAllResponses()">
+                        <i class="bi bi-trash-fill me-1"></i>ล้างผลการตอบ
+                    </button>
+                </div>
+            </div>
+
+            <!-- Analytics Overview Banner -->
+            <div class="cyber-card mb-4 border-purple">
+                <div class="row align-items-center">
+                    <div class="col-md-8 mb-3 mb-md-0">
+                        <span class="badge bg-purple-subtle text-purple border border-purple px-3 py-1 mb-2">Form Analytics</span>
+                        <h3 class="fw-bold text-white mb-1" id="analytics-form-title">ชื่อแบบสอบถาม</h3>
+                        <p class="text-subtle m-0 small">สรุปสถิติและผลการตอบคำถามทั้งหมด</p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <div class="stat-badge d-inline-block text-start">
+                            <div class="small text-subtle"><i class="bi bi-people-fill me-1"></i>จำนวนผู้ตอบทั้งหมด</div>
+                            <div class="fs-2 fw-bold text-purple-glow" id="analytics-total-count">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Questions Summary Cards -->
+            <h5 class="fw-bold text-white mb-3"><i class="bi bi-pie-chart-fill text-purple me-2"></i>สรุปคำตอบรายข้อ</h5>
+            <div id="analytics-questions-summary" class="mb-5">
+                <!-- JS Render Charts/Breakdown -->
+            </div>
+
+            <!-- Responses Data Table -->
+            <h5 class="fw-bold text-white mb-3"><i class="bi bi-table me-2"></i>ตารางข้อมูลคำตอบทั้งหมด</h5>
+            <div class="cyber-card p-0 overflow-hidden mb-4 border-secondary">
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover m-0 align-middle">
+                        <thead>
+                            <tr class="border-secondary text-purple">
+                                <th style="width: 60px;">#</th>
+                                <th>ชื่อผู้ตอบ</th>
+                                <th>อีเมล</th>
+                                <th>เวลาที่ส่ง</th>
+                                <th>รายละเอียดคำตอบ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="analytics-responses-tbody">
+                            <!-- JS Render Table Rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 🛠️ Supabase SQL Setup Modal -->
+    <div class="modal fade" id="sqlSetupModal" tabindex="-1" aria-labelledby="sqlSetupModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content bg-dark text-white border-warning">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-header-title text-warning fw-bold m-0" id="sqlSetupModalLabel">
+                        <i class="bi bi-database-fill-gear me-2"></i>การตั้งค่าตาราง Supabase (สำหรับซิงค์ข้ามเครื่อง)
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body font-kanit">
+                    <p class="small text-subtle">
+                        ปัจจุบันระบบ Gyver Forms สามารถทำงานได้อย่างสมบูรณ์แบบบนเครื่องนี้ผ่าน <strong>LocalStorage Engine</strong> 
+                        แต่หากต้องการให้ข้อมูลแบบสอบถามซิงค์กับฐานข้อมูลออนไลน์ของ Supabase สามารถนำ SQL ด้านล่างนี้ไปวางใน 
+                        <strong>Supabase Dashboard -> SQL Editor</strong> แล้วกด Run ได้เลยครับ:
+                    </p>
+
+                    <div class="position-relative mb-3">
+                        <textarea id="sql-code-box" class="form-control bg-black text-warning font-mono small border-secondary" rows="12" readonly>-- 1. สร้างตารางแบบสอบถาม (forms)
+CREATE TABLE IF NOT EXISTS gyver_forms (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT,
+    schema JSONB NOT NULL,
+    created_by UUID,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 2. สร้างตารางบันทึกการตอบ (responses)
+CREATE TABLE IF NOT EXISTS gyver_form_responses (
+    id TEXT PRIMARY KEY,
+    form_id TEXT REFERENCES gyver_forms(id) ON DELETE CASCADE,
+    respondent_name TEXT,
+    respondent_email TEXT,
+    answers JSONB NOT NULL,
+    submitted_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 3. เปิดสิทธิ์ RLS Access
+ALTER TABLE gyver_forms ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gyver_form_responses ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Public access forms" ON gyver_forms FOR ALL USING (true);
+CREATE POLICY "Public access responses" ON gyver_form_responses FOR ALL USING (true);</textarea>
+                    </div>
+
+                    <div class="text-end">
+                        <button class="btn btn-warning fw-bold px-4" onclick="navigator.clipboard.writeText(document.getElementById('sql-code-box').value); alert('📋 คัดลอก SQL Script เรียบร้อยแล้ว!');">
+                            <i class="bi bi-copy me-1"></i>คัดลอก SQL Code
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 Bundle JS & Engine JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="forms.js"></script>
+</body>
+</html>
