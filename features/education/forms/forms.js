@@ -60,14 +60,27 @@ async function initDataStorage() {
                 isSupabaseTableAvailable = false;
                 console.info('ℹ️ Supabase table "gyver_forms" not ready. Operating on LocalStorage engine.');
             } else if (data) {
-                formsList = data.map(item => ({
-                    id: item.id,
-                    title: item.title,
-                    description: item.description,
-                    questions: item.schema || [],
-                    createdAt: item.created_at,
-                    updatedAt: item.updated_at
-                }));
+                formsList = data.map(item => {
+                    let qList = [];
+                    let setObj = { limitOneResponse: true, allowEdit: true, maxEditLimit: 3 };
+
+                    if (Array.isArray(item.schema)) {
+                        qList = item.schema;
+                    } else if (item.schema && typeof item.schema === 'object') {
+                        qList = item.schema.questions || [];
+                        if (item.schema.settings) setObj = item.schema.settings;
+                    }
+
+                    return {
+                        id: item.id,
+                        title: item.title,
+                        description: item.description,
+                        questions: qList,
+                        settings: setObj,
+                        createdAt: item.created_at,
+                        updatedAt: item.updated_at
+                    };
+                });
                 saveLocalForms(formsList);
             }
         } catch (e) {
@@ -106,8 +119,13 @@ function getLocalResponses(formId) {
 
 function saveLocalResponse(responseObj) {
     try {
-        const all = JSON.parse(localStorage.getItem('gyver_form_responses_db') || '[]');
-        all.push(responseObj);
+        let all = JSON.parse(localStorage.getItem('gyver_form_responses_db') || '[]');
+        const idx = all.findIndex(r => r.id === responseObj.id);
+        if (idx !== -1) {
+            all[idx] = responseObj;
+        } else {
+            all.push(responseObj);
+        }
         localStorage.setItem('gyver_form_responses_db', JSON.stringify(all));
     } catch (e) {
         console.error('Error saving local response:', e);
@@ -117,7 +135,7 @@ function saveLocalResponse(responseObj) {
 async function loadFormResponses(formId) {
     responsesList = getLocalResponses(formId);
 
-    if (window.supabaseClient) {
+    if (window.supabaseClient && isSupabaseTableAvailable) {
         try {
             const { data, error } = await window.supabaseClient
                 .from('gyver_form_responses')
@@ -132,6 +150,7 @@ async function loadFormResponses(formId) {
                     respondentName: r.respondent_name,
                     respondentEmail: r.respondent_email,
                     answers: r.answers || {},
+                    editCount: r.edit_count || r.editCount || 0,
                     submittedAt: r.submitted_at
                 }));
             }
@@ -142,10 +161,14 @@ async function loadFormResponses(formId) {
 }
 
 /**
- * 📋 1. List View (หน้าซอยรายการแบบฟอร์มทั้งหมด)
+ * 📋 1. List View (หน้าแสดงรายการแบบฟอร์มทั้งหมด)
  */
 function renderFormsListView() {
     currentMode = 'list';
+    currentForm = null;
+    window.activeFormId = null;
+    updateUrlQuery('', 'list');
+
     document.getElementById('view-list-container').classList.remove('d-none');
     document.getElementById('view-builder-container').classList.add('d-none');
     document.getElementById('view-responder-container').classList.add('d-none');
@@ -202,10 +225,10 @@ function renderFormsListView() {
                             </button>
                         </div>
                         <div class="d-flex gap-1">
-                            <button class="btn btn-sm btn-outline-light" onclick="copyShareLink('${form.id}')" title="คัดลอกลิงก์แชร์">
-                                <i class="bi bi-link-45deg"></i>
+                            <button class="btn btn-sm btn-outline-purple text-purple border-purple" onclick="showQrCodeModal('${form.id}')" title="คัดลอกลิงก์ & ดู QR Code">
+                                <i class="bi bi-qr-code-scan me-1"></i>QR / แชร์
                             </button>
-                            <button class="btn btn-sm btn-outline-danger" onclick="deleteForm('${form.id}')" title="ลบแบบฟอร์ม">
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteForm('${form.id}')" title="ลบแบบสอบถาม">
                                 <i class="bi bi-trash-fill"></i>
                             </button>
                         </div>
@@ -222,6 +245,11 @@ function createNewForm() {
         id: generateId(),
         title: 'แบบสอบถามใหม่',
         description: 'กรุณากรอกรายละเอียดของแบบสอบถามที่นี่',
+        settings: {
+            limitOneResponse: true,  // จำกัด 1 คนตอบได้ 1 ครั้ง
+            allowEdit: true,        // อนุญาตให้แก้ไขคำตอบได้
+            maxEditLimit: 3         // แก้ไขได้สูงสุด 3 ครั้ง
+        },
         questions: [
             {
                 id: generateId(),
@@ -267,7 +295,8 @@ function viewAnalytics(formId) {
 
 function updateUrlQuery(formId, mode) {
     try {
-        const query = formId ? `?id=${formId}&mode=${mode}` : 'forms.html';
+        const pathName = window.location.pathname.split('/').pop() || 'forms.html';
+        const query = (mode === 'list' || !formId) ? pathName : `${pathName}?id=${formId}&mode=${mode}`;
         if (window.location.protocol !== 'file:') {
             history.pushState(null, '', query);
         } else {
@@ -276,25 +305,37 @@ function updateUrlQuery(formId, mode) {
             } catch (e) {}
         }
     } catch (e) {
-        // Safe catch for local file:// security origin restriction
+        // Safe catch
     }
 }
 
-async function deleteForm(formId) {
-    if (!confirm('คุณต้องการลบแบบสอบถามนี้ใช่หรือไม่? (ข้อมูลคำตอบทั้งหมดจะถูกลบด้วย)')) return;
+function deleteForm(formId) {
+    showCyberConfirm({
+        title: 'ยืนยันการลบแบบสอบถาม',
+        message: 'คุณต้องการลบแบบสอบถามนี้ใช่หรือไม่? ข้อมูลคำตอบทั้งหมดในระบบจะถูกลบไปด้วยและไม่สามารถกู้คืนได้',
+        icon: 'bi-trash-fill text-danger',
+        confirmText: 'ลบแบบสอบถาม',
+        confirmClass: 'btn-danger',
+        onConfirm: async () => {
+            formsList = formsList.filter(f => f.id !== formId);
+            saveLocalForms(formsList);
 
-    formsList = formsList.filter(f => f.id !== formId);
-    saveLocalForms(formsList);
+            if (window.supabaseClient && isSupabaseTableAvailable) {
+                try {
+                    await window.supabaseClient.from('gyver_forms').delete().eq('id', formId);
+                } catch (e) {
+                    console.warn('Error deleting from supabase:', e);
+                }
+            }
 
-    if (window.supabaseClient) {
-        try {
-            await window.supabaseClient.from('gyver_forms').delete().eq('id', formId);
-        } catch (e) {
-            console.warn('Error deleting from supabase:', e);
+            showCyberToast({
+                title: 'ลบแบบสอบถามเรียบร้อยแล้ว',
+                type: 'warning'
+            });
+
+            renderFormsListView();
         }
-    }
-
-    renderFormsListView();
+    });
 }
 
 /**
@@ -307,8 +348,24 @@ function renderBuilderView() {
     document.getElementById('view-responder-container').classList.add('d-none');
     document.getElementById('view-analytics-container').classList.add('d-none');
 
+    if (!currentForm.settings) {
+        currentForm.settings = {
+            limitOneResponse: true,
+            allowEdit: true,
+            maxEditLimit: 3
+        };
+    }
+
     document.getElementById('builder-form-title').value = currentForm.title || '';
     document.getElementById('builder-form-desc').value = currentForm.description || '';
+    document.getElementById('setting-limit-one').checked = currentForm.settings.limitOneResponse !== false;
+    document.getElementById('setting-allow-edit').checked = currentForm.settings.allowEdit !== false;
+    document.getElementById('setting-max-edit').value = currentForm.settings.maxEditLimit || 3;
+
+    const maxBox = document.getElementById('setting-max-edit-box');
+    if (maxBox) {
+        maxBox.style.display = currentForm.settings.allowEdit ? 'block' : 'none';
+    }
 
     renderQuestionsEditorList();
 }
@@ -429,6 +486,21 @@ function updateBuilderHeader() {
     if (!currentForm) return;
     currentForm.title = document.getElementById('builder-form-title').value.trim() || 'แบบสอบถามไม่มีชื่อ';
     currentForm.description = document.getElementById('builder-form-desc').value.trim();
+
+    if (!currentForm.settings) currentForm.settings = {};
+    const limitOneEl = document.getElementById('setting-limit-one');
+    const allowEditEl = document.getElementById('setting-allow-edit');
+    const maxEditEl = document.getElementById('setting-max-edit');
+
+    if (limitOneEl) currentForm.settings.limitOneResponse = limitOneEl.checked;
+    if (allowEditEl) currentForm.settings.allowEdit = allowEditEl.checked;
+    if (maxEditEl) currentForm.settings.maxEditLimit = parseInt(maxEditEl.value) || 3;
+
+    const maxBox = document.getElementById('setting-max-edit-box');
+    if (maxBox && allowEditEl) {
+        maxBox.style.display = allowEditEl.checked ? 'block' : 'none';
+    }
+
     saveCurrentFormState();
 }
 
@@ -550,8 +622,130 @@ async function saveFormAndNotify() {
     saveCurrentFormState();
     await syncFormToSupabase(currentForm);
 
-    const shareUrl = getShareableUrl(currentForm.id, 'respond');
-    alert(`✅ บันทึกแบบสอบถามเรียบร้อยแล้ว!\n\nลิงก์สำหรับส่งให้ผู้ตอบ:\n${shareUrl}`);
+    showCyberToast({
+        title: 'บันทึกแบบสอบถามเรียบร้อยแล้ว!',
+        message: 'ข้อมูลถูกบันทึกเรียบร้อย สามารถส่งลิงก์ให้ผู้ตอบได้ทันที',
+        type: 'success',
+        duration: 4000,
+        actionBtnText: '📋 คัดลอกลิงก์แชร์',
+        onAction: () => {
+            copyShareLink(currentForm.id);
+        }
+    });
+}
+
+/**
+ * 🔔 Cyber Toast Notification
+ */
+function showCyberToast(options) {
+    const title = options.title || 'แจ้งเตือนระบบ';
+    const message = options.message || '';
+    const type = options.type || 'success';
+    const duration = options.duration || 3500;
+
+    let container = document.getElementById('cyber-toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'cyber-toast-container';
+        document.body.appendChild(container);
+    }
+
+    const iconMap = {
+        success: 'bi-check-circle-fill text-success',
+        info: 'bi-info-circle-fill text-info',
+        warning: 'bi-exclamation-triangle-fill text-warning',
+        danger: 'bi-x-circle-fill text-danger'
+    };
+
+    const toast = document.createElement('div');
+    toast.className = `cyber-toast cyber-toast-${type}`;
+
+    let actionBtnHtml = '';
+    if (options.actionBtnText && options.onAction) {
+        actionBtnHtml = `<button class="btn btn-sm btn-outline-light mt-2 py-1 px-3 rounded-pill text-xs fw-bold" id="toast-action-btn">${escapeHtml(options.actionBtnText)}</button>`;
+    }
+
+    toast.innerHTML = `
+        <i class="bi ${iconMap[type] || 'bi-bell-fill'} fs-3 flex-shrink-0 mt-1"></i>
+        <div class="flex-grow-1 font-kanit">
+            <div class="fw-bold text-white fs-6">${escapeHtml(title)}</div>
+            ${message ? `<div class="text-subtle small mt-1" style="word-break: break-word;">${message}</div>` : ''}
+            ${actionBtnHtml}
+        </div>
+        <button type="button" class="btn-close btn-close-white ms-2 me-0 p-1 opacity-75" onclick="this.parentElement.remove()"></button>
+    `;
+
+    if (options.onAction) {
+        const btn = toast.querySelector('#toast-action-btn');
+        if (btn) {
+            btn.onclick = () => {
+                options.onAction();
+                toast.remove();
+            };
+        }
+    }
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add('toast-hiding');
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
+}
+
+/**
+ * ⚠️ Cyber Confirmation Modal
+ */
+let cyberConfirmCallback = null;
+
+function showCyberConfirm(options) {
+    const title = options.title || 'ยืนยันการทำรายการ';
+    const message = options.message || 'คุณแน่ใจหรือไม่ว่าต้องการดำเนินการต่อ?';
+    const confirmText = options.confirmText || 'ตกลง';
+    const confirmClass = options.confirmClass || 'btn-danger';
+    const icon = options.icon || 'bi-exclamation-triangle-fill text-warning';
+
+    cyberConfirmCallback = options.onConfirm || null;
+
+    let modalEl = document.getElementById('cyberConfirmModal');
+    if (!modalEl) {
+        modalEl = document.createElement('div');
+        modalEl.id = 'cyberConfirmModal';
+        modalEl.className = 'modal fade';
+        modalEl.setAttribute('tabindex', '-1');
+        modalEl.innerHTML = `
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content modal-content-cyber text-white">
+                    <div class="modal-body p-4 text-center font-kanit">
+                        <div id="cyber-confirm-icon-box" class="mb-3 display-4"></div>
+                        <h4 class="fw-bold text-white mb-2" id="cyber-confirm-title"></h4>
+                        <p class="text-subtle mb-4" id="cyber-confirm-message"></p>
+                        <div class="d-flex gap-2 justify-content-center">
+                            <button type="button" class="btn btn-outline-secondary text-white px-4 rounded-pill" data-bs-dismiss="modal">ยกเลิก</button>
+                            <button type="button" class="btn rounded-pill px-4" id="cyber-confirm-btn">ตกลง</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modalEl);
+    }
+
+    document.getElementById('cyber-confirm-icon-box').innerHTML = `<i class="bi ${icon}"></i>`;
+    document.getElementById('cyber-confirm-title').innerText = title;
+    document.getElementById('cyber-confirm-message').innerText = message;
+
+    const btn = document.getElementById('cyber-confirm-btn');
+    btn.className = `btn rounded-pill px-4 fw-bold ${confirmClass}`;
+    btn.innerText = confirmText;
+    btn.onclick = () => {
+        const bsModal = bootstrap.Modal.getInstance(modalEl);
+        if (bsModal) bsModal.hide();
+        if (cyberConfirmCallback) cyberConfirmCallback();
+    };
+
+    const bsModal = new bootstrap.Modal(modalEl);
+    bsModal.show();
 }
 
 async function syncFormToSupabase(formObj) {
@@ -563,10 +757,14 @@ async function syncFormToSupabase(formObj) {
                 id: formObj.id,
                 title: formObj.title,
                 description: formObj.description,
-                schema: formObj.questions,
+                schema: {
+                    questions: formObj.questions || [],
+                    settings: formObj.settings || { limitOneResponse: true, allowEdit: true, maxEditLimit: 3 }
+                },
                 updated_at: formObj.updatedAt
             });
         if (error) {
+            console.warn('Error syncing form to Supabase:', error);
             isSupabaseTableAvailable = false;
         }
     } catch (e) {
@@ -574,11 +772,15 @@ async function syncFormToSupabase(formObj) {
     }
 }
 
+let existingRespondentRecord = null;
+
 /**
  * 📝 3. Form Responder View (หน้าสำหรับผู้กรอกแบบสอบถาม)
  */
 function renderResponderView() {
     currentMode = 'respond';
+    existingRespondentRecord = null;
+
     document.getElementById('view-list-container').classList.add('d-none');
     document.getElementById('view-builder-container').classList.add('d-none');
     document.getElementById('view-responder-container').classList.remove('d-none');
@@ -589,6 +791,17 @@ function renderResponderView() {
     const qListEl = document.getElementById('responder-questions-list');
     const successBox = document.getElementById('responder-success-box');
     const formBox = document.getElementById('responder-form-box');
+
+    const banner = document.getElementById('responder-status-banner');
+    if (banner) banner.classList.add('d-none');
+
+    const nameInput = document.getElementById('responder-name');
+    const emailInput = document.getElementById('responder-email');
+    if (nameInput) nameInput.value = '';
+    if (emailInput) emailInput.value = '';
+
+    const submitBtn = document.getElementById('responder-submit-btn');
+    if (submitBtn) submitBtn.disabled = false;
 
     successBox.classList.add('d-none');
     formBox.classList.remove('d-none');
@@ -650,6 +863,100 @@ function renderResponderView() {
     });
 }
 
+function checkExistingRespondent() {
+    const banner = document.getElementById('responder-status-banner');
+    const submitBtn = document.getElementById('responder-submit-btn');
+    if (!banner || !currentForm) return;
+
+    const name = (document.getElementById('responder-name').value || '').trim().toLowerCase();
+    const email = (document.getElementById('responder-email').value || '').trim().toLowerCase();
+
+    existingRespondentRecord = null;
+    banner.classList.add('d-none');
+    banner.className = 'alert d-none mb-4 font-kanit';
+    if (submitBtn) submitBtn.disabled = false;
+
+    if (!name && !email) return;
+
+    const settings = currentForm.settings || { limitOneResponse: true, allowEdit: true, maxEditLimit: 3 };
+
+    // Find if this respondent already submitted a response to this form
+    const existing = responsesList.find(r => {
+        const rName = (r.respondentName || '').trim().toLowerCase();
+        const rEmail = (r.respondentEmail || '').trim().toLowerCase();
+        return (name && rName === name) || (email && rEmail === email);
+    });
+
+    if (!existing) return; // First time answering!
+
+    existingRespondentRecord = existing;
+    const editCount = existing.editCount || 0;
+    const maxLimit = settings.maxEditLimit || 3;
+
+    if (settings.limitOneResponse) {
+        if (!settings.allowEdit) {
+            banner.className = 'alert alert-danger d-block mb-4 border-danger border-2 font-kanit';
+            banner.innerHTML = `
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-x-circle-fill fs-4 text-danger"></i>
+                    <div>
+                        <div class="fw-bold">⚠️ คุณ (${escapeHtml(existing.respondentName)}) เคยตอบแบบสอบถามนี้ไปแล้ว</div>
+                        <div class="small">แบบสอบถามนี้ตั้งค่าห้ามแก้ไขคำตอบย้อนหลัง</div>
+                    </div>
+                </div>
+            `;
+            if (submitBtn) submitBtn.disabled = true;
+        } else if (editCount >= maxLimit && maxLimit < 99) {
+            banner.className = 'alert alert-warning d-block mb-4 border-warning border-2 font-kanit';
+            banner.innerHTML = `
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-exclamation-triangle-fill fs-4 text-warning"></i>
+                    <div>
+                        <div class="fw-bold">⚠️ คุณใช้สิทธิ์แก้ไขคำตอบครบกำหนดแล้ว (${editCount}/${maxLimit} ครั้ง)</div>
+                        <div class="small">ไม่อนุญาตให้แก้ไขคำตอบเพิ่มเติมอีก</div>
+                    </div>
+                </div>
+            `;
+            if (submitBtn) submitBtn.disabled = true;
+        } else {
+            const limitText = maxLimit >= 99 ? 'ไม่จำกัดจำนวนครั้ง' : `${editCount}/${maxLimit} ครั้ง`;
+            banner.className = 'alert alert-info d-block mb-4 border-info border-2 font-kanit';
+            banner.innerHTML = `
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-pencil-square fs-4 text-info"></i>
+                    <div>
+                        <div class="fw-bold">✏️ พบข้อมูลคำตอบเดิมของคุณ! กำลังเข้าสู่โหมดแก้ไขคำตอบ</div>
+                        <div class="small">ระบบดึงคำตอบเดิมมาให้คุณแก้ไขแล้ว เมื่อกดส่ง ข้อมูลใหม่จะถูกบันทึกทับของเดิมทันที (ใช้สิทธิ์แก้ไขไปแล้ว ${limitText})</div>
+                    </div>
+                </div>
+            `;
+            fillExistingAnswers(existing.answers);
+        }
+    }
+}
+
+function fillExistingAnswers(answersObj) {
+    if (!answersObj || !currentForm) return;
+
+    currentForm.questions.forEach(q => {
+        const val = answersObj[q.id];
+        if (val === undefined || val === null) return;
+
+        if (q.type === 'radio' || q.type === 'rating') {
+            const rad = document.querySelector(`input[name="resp_q_${q.id}"][value="${val}"]`);
+            if (rad) rad.checked = true;
+        } else if (q.type === 'checkbox' && Array.isArray(val)) {
+            val.forEach(v => {
+                const cb = document.querySelector(`input[name="resp_q_${q.id}"][value="${v}"]`);
+                if (cb) cb.checked = true;
+            });
+        } else if (q.type === 'text' || q.type === 'paragraph' || q.type === 'date') {
+            const inp = document.getElementById(`resp_q_${q.id}`);
+            if (inp) inp.value = val;
+        }
+    });
+}
+
 async function submitResponse() {
     const respondentName = document.getElementById('responder-name').value.trim() || 'ผู้ตอบทั่วไป';
     const respondentEmail = document.getElementById('responder-email').value.trim();
@@ -683,29 +990,52 @@ async function submitResponse() {
     }
 
     if (missingRequired) {
-        alert('⚠️ กรุณากรอกข้อมูลในข้อบังคับ (ที่มีเครื่องหมาย *) ให้ครบถ้วน');
+        showCyberToast({
+            title: 'กรอกข้อมูลไม่ครบถ้วน',
+            message: 'กรุณากรอกข้อมูลในข้อบังคับ (ที่มีเครื่องหมาย *) ให้ครบถ้วนก่อนกดส่งคำตอบ',
+            type: 'danger'
+        });
         return;
     }
 
-    const responseObj = {
-        id: generateId(),
-        formId: currentForm.id,
-        respondentName: respondentName,
-        respondentEmail: respondentEmail,
-        answers: answers,
-        submittedAt: new Date().toISOString()
-    };
+    let responseObj;
+    const isEditMode = !!existingRespondentRecord;
+
+    if (isEditMode) {
+        responseObj = {
+            ...existingRespondentRecord,
+            respondentName: respondentName,
+            respondentEmail: respondentEmail,
+            answers: answers,
+            editCount: (existingRespondentRecord.editCount || 0) + 1,
+            submittedAt: new Date().toISOString()
+        };
+        const idx = responsesList.findIndex(r => r.id === responseObj.id);
+        if (idx !== -1) responsesList[idx] = responseObj;
+    } else {
+        responseObj = {
+            id: generateId(),
+            formId: currentForm.id,
+            respondentName: respondentName,
+            respondentEmail: respondentEmail,
+            answers: answers,
+            editCount: 0,
+            submittedAt: new Date().toISOString()
+        };
+        responsesList.unshift(responseObj);
+    }
 
     saveLocalResponse(responseObj);
 
-    if (window.supabaseClient) {
+    if (window.supabaseClient && isSupabaseTableAvailable) {
         try {
-            await window.supabaseClient.from('gyver_form_responses').insert({
+            await window.supabaseClient.from('gyver_form_responses').upsert({
                 id: responseObj.id,
                 form_id: responseObj.formId,
                 respondent_name: responseObj.respondentName,
                 respondent_email: responseObj.respondentEmail,
                 answers: responseObj.answers,
+                edit_count: responseObj.editCount,
                 submitted_at: responseObj.submittedAt
             });
         } catch (e) {
@@ -713,8 +1043,18 @@ async function submitResponse() {
         }
     }
 
+    const successBox = document.getElementById('responder-success-box');
+    if (successBox) {
+        successBox.querySelector('h3').innerText = isEditMode 
+            ? `แก้ไขและอัปเดตคำตอบเรียบร้อยแล้ว!` 
+            : `ส่งคำตอบเรียบร้อยแล้ว!`;
+        successBox.querySelector('p').innerText = isEditMode
+            ? `ขอบคุณที่อัปเดตข้อมูล ระบบได้บันทึกคำตอบใหม่ทับของเดิมเป็นที่เรียบร้อย (แก้ไขครั้งที่ ${responseObj.editCount})`
+            : `ขอบคุณที่ร่วมตอบแบบสอบถามนี้ ระบบได้บันทึกคำตอบของคุณเป็นที่เรียบร้อยแล้ว`;
+    }
+
     document.getElementById('responder-form-box').classList.add('d-none');
-    document.getElementById('responder-success-box').classList.remove('d-none');
+    successBox.classList.remove('d-none');
 }
 
 /**
@@ -881,7 +1221,11 @@ function renderAnalyticsTable() {
 
 function exportResponsesToCSV() {
     if (!responsesList || responsesList.length === 0) {
-        alert('⚠️ ไม่พบข้อมูลคำตอบสำหรับส่งออก');
+        showCyberToast({
+            title: 'ไม่พบข้อมูลคำตอบ',
+            message: 'ยังไม่มีผู้ตอบแบบสอบถามนี้ จึงไม่สามารถส่งออกไฟล์ CSV ได้',
+            type: 'warning'
+        });
         return;
     }
 
@@ -917,21 +1261,47 @@ function exportResponsesToCSV() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+
+    showCyberToast({
+        title: 'ดาวน์โหลดไฟล์ CSV สำเร็จ!',
+        message: `ส่งออกคำตอบจำนวน ${responsesList.length} รายการแล้ว`,
+        type: 'success'
+    });
 }
 
 function clearAllResponses() {
-    if (!confirm('⚠️ คุณแน่ใจหรือไม่ว่าต้องการลบคำตอบทั้งหมดของแบบสอบถามนี้?')) return;
+    showCyberConfirm({
+        title: 'ยืนยันการล้างข้อมูลคำตอบ',
+        message: 'คุณแน่ใจหรือไม่ว่าต้องการลบคำตอบทั้งหมดของแบบสอบถามนี้? ข้อมูลสถิติกราฟจะถูกรีเซ็ตเป็น 0 และไม่สามารถกู้คืนได้',
+        icon: 'bi-exclamation-triangle-fill text-warning',
+        confirmText: 'ล้างข้อมูลทั้งหมด',
+        confirmClass: 'btn-warning text-dark fw-bold',
+        onConfirm: async () => {
+            responsesList = [];
+            try {
+                const all = JSON.parse(localStorage.getItem('gyver_form_responses_db') || '[]');
+                const filtered = all.filter(r => r.formId !== currentForm.id);
+                localStorage.setItem('gyver_form_responses_db', JSON.stringify(filtered));
+            } catch (e) {
+                console.error('Error clearing local responses:', e);
+            }
 
-    responsesList = [];
-    try {
-        const all = JSON.parse(localStorage.getItem('gyver_form_responses_db') || '[]');
-        const filtered = all.filter(r => r.formId !== currentForm.id);
-        localStorage.setItem('gyver_form_responses_db', JSON.stringify(filtered));
-    } catch (e) {
-        console.error('Error clearing local responses:', e);
-    }
+            if (window.supabaseClient && isSupabaseTableAvailable) {
+                try {
+                    await window.supabaseClient.from('gyver_form_responses').delete().eq('form_id', currentForm.id);
+                } catch (e) {
+                    console.warn('Error clearing responses from Supabase:', e);
+                }
+            }
 
-    renderAnalyticsView();
+            showCyberToast({
+                title: 'ล้างข้อมูลคำตอบเรียบร้อยแล้ว',
+                type: 'info'
+            });
+
+            renderAnalyticsView();
+        }
+    });
 }
 
 /**
@@ -943,12 +1313,79 @@ function getShareableUrl(formId, mode = 'respond') {
 }
 
 function copyShareLink(formId) {
-    const url = getShareableUrl(formId, 'respond');
-    navigator.clipboard.writeText(url).then(() => {
-        alert('📋 คัดลอกลิงก์แบบสอบถามแล้ว!\n\nส่งลิงก์นี้ให้นักเรียนหรือผู้ตอบได้ทันที');
+    showQrCodeModal(formId);
+}
+
+/**
+ * 📱 QR Code & Sharing Functions
+ */
+function showQrCodeModal(formId) {
+    const targetForm = (formsList && formsList.find(f => f.id === formId)) || currentForm;
+    if (!targetForm) return;
+
+    const url = getShareableUrl(targetForm.id, 'respond');
+    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}`;
+
+    const titleEl = document.getElementById('qr-modal-title');
+    const urlInput = document.getElementById('qr-modal-url');
+    const openBtn = document.getElementById('qr-open-btn');
+    const qrImg = document.getElementById('qr-code-img');
+
+    if (titleEl) titleEl.textContent = targetForm.title || 'แบบสอบถาม';
+    if (urlInput) urlInput.value = url;
+    if (openBtn) openBtn.href = url;
+    if (qrImg) qrImg.src = qrApiUrl;
+
+    const modalEl = document.getElementById('qrCodeModal');
+    if (modalEl && window.bootstrap) {
+        const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        bsModal.show();
+    }
+}
+
+function copyShareUrlFromModal() {
+    const urlInput = document.getElementById('qr-modal-url');
+    if (!urlInput || !urlInput.value) return;
+
+    navigator.clipboard.writeText(urlInput.value).then(() => {
+        showCyberToast({
+            title: 'คัดลอกลิงก์สำเร็จ!',
+            message: 'คัดลอกลิงก์แบบสอบถามลงคลิปบอร์ดแล้ว',
+            type: 'success',
+            duration: 2500
+        });
     }).catch(() => {
-        prompt('คัดลอกลิงก์ด้านล่างนี้:', url);
+        showCyberToast({
+            title: 'ลิงก์แบบสอบถาม',
+            message: urlInput.value,
+            type: 'info'
+        });
     });
+}
+
+async function downloadQrCodeImage() {
+    const qrImg = document.getElementById('qr-code-img');
+    if (!qrImg || !qrImg.src) return;
+
+    try {
+        const response = await fetch(qrImg.src);
+        const blob = await response.blob();
+        const downloadUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = `QR_Code_${currentForm ? currentForm.id : 'form'}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(downloadUrl);
+        showCyberToast({
+            title: 'ดาวน์โหลดรูป QR Code เรียบร้อย!',
+            type: 'success',
+            duration: 2500
+        });
+    } catch (e) {
+        window.open(qrImg.src, '_blank');
+    }
 }
 
 function generateId() {

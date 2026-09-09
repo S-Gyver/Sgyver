@@ -40,9 +40,6 @@
             </div>
             
             <div class="d-flex align-items-center gap-2 flex-wrap ms-auto font-kanit">
-                <button class="btn btn-outline-warning btn-sm fw-bold px-3 py-2 rounded-3 text-warning border-warning" data-bs-toggle="modal" data-bs-target="#sqlSetupModal">
-                    <i class="bi bi-database-fill-gear me-1"></i>SQL Setup (Supabase)
-                </button>
                 <a href="forms.html" class="btn btn-outline-purple btn-sm fw-bold px-3 py-2 rounded-3 text-purple border-purple">
                     <i class="bi bi-collection-fill me-1"></i>รายการแบบฟอร์ม
                 </a>
@@ -108,6 +105,43 @@
                 </div>
             </div>
 
+            <!-- ⚙️ Form Settings Card (ตั้งค่าสิทธิ์การตอบ และการแก้ไข) -->
+            <div class="cyber-card mb-4 border-warning">
+                <h6 class="fw-bold text-warning mb-3">
+                    <i class="bi bi-gear-fill me-2"></i>ตั้งค่าสิทธิ์การตอบ และการแก้ไขคำตอบย้อนหลัง
+                </h6>
+                <div class="row g-3 align-items-center">
+                    <div class="col-12 col-md-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="setting-limit-one" onchange="updateBuilderHeader()">
+                            <label class="form-check-label text-white fw-semibold small" for="setting-limit-one">
+                                <i class="bi bi-person-check-fill me-1 text-info"></i>จำกัด 1 คน ตอบได้ 1 ครั้ง
+                            </label>
+                        </div>
+                        <div class="text-subtle text-xs mt-1" style="font-size: 0.75rem;">(ตรวจสอบจากชื่อ/รหัสนักเรียน หรืออีเมลของผู้ตอบ)</div>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="setting-allow-edit" onchange="updateBuilderHeader()">
+                            <label class="form-check-label text-white fw-semibold small" for="setting-allow-edit">
+                                <i class="bi bi-pencil-square me-1 text-warning"></i>อนุญาตให้แก้ไขคำตอบย้อนหลังได้
+                            </label>
+                        </div>
+                        <div class="text-subtle text-xs mt-1" style="font-size: 0.75rem;">(ส่งใหม่เพื่ออัปเดตทับคำตอบเดิมของตนเอง)</div>
+                    </div>
+                    <div class="col-12 col-md-4" id="setting-max-edit-box">
+                        <label class="form-label text-subtle small mb-1"><i class="bi bi-arrow-repeat me-1"></i>จำกัดรอบแก้ไขคำตอบ:</label>
+                        <select id="setting-max-edit" class="form-select form-select-cyber form-select-sm" onchange="updateBuilderHeader()">
+                            <option value="1">แก้ไขได้สูงสุด 1 ครั้ง</option>
+                            <option value="2">แก้ไขได้สูงสุด 2 ครั้ง</option>
+                            <option value="3" selected>แก้ไขได้สูงสุด 3 ครั้ง</option>
+                            <option value="5">แก้ไขได้สูงสุด 5 ครั้ง</option>
+                            <option value="99">แก้ไขได้ไม่จำกัดจำนวนครั้ง</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
             <!-- Questions List Editor -->
             <div id="questions-editor-list">
                 <!-- Dynamic Questions Block Rendered by JS -->
@@ -127,6 +161,9 @@
         <div id="view-responder-container" class="d-none" style="max-width: 800px; margin: 0 auto;">
             
             <div id="responder-form-box">
+                <!-- Status Banner for Edit / Duplicate Warning -->
+                <div id="responder-status-banner" class="alert d-none mb-4 font-kanit"></div>
+
                 <!-- Title Card -->
                 <div class="responder-card mb-4">
                     <h2 class="fw-bold text-white mb-2" id="responder-form-title">ชื่อแบบสอบถาม</h2>
@@ -136,12 +173,12 @@
 
                     <div class="row g-3">
                         <div class="col-12 col-md-6">
-                            <label class="form-label text-purple fw-bold small"><i class="bi bi-person-fill me-1"></i>ชื่อผู้ตอบ / รหัสนักเรียน (ระบุหรือไม่ก็ได้):</label>
-                            <input type="text" id="responder-name" class="form-control form-control-cyber" placeholder="เช่น ด.ช.สมชาย ใจดี">
+                            <label class="form-label text-purple fw-bold small"><i class="bi bi-person-fill me-1"></i>ชื่อผู้ตอบ / รหัสนักเรียน:</label>
+                            <input type="text" id="responder-name" class="form-control form-control-cyber" placeholder="เช่น ด.ช.สมชาย ใจดี" oninput="checkExistingRespondent()">
                         </div>
                         <div class="col-12 col-md-6">
                             <label class="form-label text-subtle small"><i class="bi bi-envelope-fill me-1"></i>อีเมล (ถ้ามี):</label>
-                            <input type="email" id="responder-email" class="form-control form-control-cyber" placeholder="name@example.com">
+                            <input type="email" id="responder-email" class="form-control form-control-cyber" placeholder="name@example.com" oninput="checkExistingRespondent()">
                         </div>
                     </div>
                 </div>
@@ -153,7 +190,7 @@
 
                 <!-- Submit Button -->
                 <div class="text-center py-4">
-                    <button class="btn btn-purple-glow btn-lg px-5 rounded-pill shadow-lg" onclick="submitResponse()">
+                    <button id="responder-submit-btn" class="btn btn-purple-glow btn-lg px-5 rounded-pill shadow-lg" onclick="submitResponse()">
                         <i class="bi bi-send-fill me-2"></i>ส่งคำตอบแบบสอบถาม
                     </button>
                 </div>
@@ -239,57 +276,40 @@
 
     </div>
 
-    <!-- 🛠️ Supabase SQL Setup Modal -->
-    <div class="modal fade" id="sqlSetupModal" tabindex="-1" aria-labelledby="sqlSetupModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content bg-dark text-white border-warning">
+    <!-- 📱 QR Code & Share Modal -->
+    <div class="modal fade" id="qrCodeModal" tabindex="-1" aria-labelledby="qrCodeModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content modal-content-cyber text-white">
                 <div class="modal-header border-secondary">
-                    <h5 class="modal-header-title text-warning fw-bold m-0" id="sqlSetupModalLabel">
-                        <i class="bi bi-database-fill-gear me-2"></i>การตั้งค่าตาราง Supabase (สำหรับซิงค์ข้ามเครื่อง)
+                    <h5 class="modal-header-title text-purple fw-bold m-0" id="qrCodeModalLabel">
+                        <i class="bi bi-qr-code-scan me-2 text-purple-glow"></i>QR Code แบบสอบถาม
                     </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body font-kanit">
-                    <p class="small text-subtle">
-                        ปัจจุบันระบบ Gyver Forms สามารถทำงานได้อย่างสมบูรณ์แบบบนเครื่องนี้ผ่าน <strong>LocalStorage Engine</strong> 
-                        แต่หากต้องการให้ข้อมูลแบบสอบถามซิงค์กับฐานข้อมูลออนไลน์ของ Supabase สามารถนำ SQL ด้านล่างนี้ไปวางใน 
-                        <strong>Supabase Dashboard -> SQL Editor</strong> แล้วกด Run ได้เลยครับ:
-                    </p>
+                <div class="modal-body p-4 text-center font-kanit">
+                    <h5 class="fw-bold text-white mb-1" id="qr-modal-title">ชื่อแบบสอบถาม</h5>
+                    <p class="text-subtle small mb-3">สแกนด้วยกล้องมือถือเพื่อเข้าตอบแบบสอบถามได้ทันที</p>
 
-                    <div class="position-relative mb-3">
-                        <textarea id="sql-code-box" class="form-control bg-black text-warning font-mono small border-secondary" rows="12" readonly>-- 1. สร้างตารางแบบสอบถาม (forms)
-CREATE TABLE IF NOT EXISTS gyver_forms (
-    id TEXT PRIMARY KEY,
-    title TEXT NOT NULL,
-    description TEXT,
-    schema JSONB NOT NULL,
-    created_by UUID,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now()
-);
-
--- 2. สร้างตารางบันทึกการตอบ (responses)
-CREATE TABLE IF NOT EXISTS gyver_form_responses (
-    id TEXT PRIMARY KEY,
-    form_id TEXT REFERENCES gyver_forms(id) ON DELETE CASCADE,
-    respondent_name TEXT,
-    respondent_email TEXT,
-    answers JSONB NOT NULL,
-    submitted_at TIMESTAMPTZ DEFAULT now()
-);
-
--- 3. เปิดสิทธิ์ RLS Access
-ALTER TABLE gyver_forms ENABLE ROW LEVEL SECURITY;
-ALTER TABLE gyver_form_responses ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Public access forms" ON gyver_forms FOR ALL USING (true);
-CREATE POLICY "Public access responses" ON gyver_form_responses FOR ALL USING (true);</textarea>
+                    <!-- QR Code Render Box -->
+                    <div class="d-inline-block p-3 bg-white rounded-4 shadow-lg mb-3" style="border: 4px solid #8b5cf6;">
+                        <img id="qr-code-img" src="" alt="QR Code" style="width: 220px; height: 220px; display: block;" crossorigin="anonymous">
                     </div>
 
-                    <div class="text-end">
-                        <button class="btn btn-warning fw-bold px-4" onclick="navigator.clipboard.writeText(document.getElementById('sql-code-box').value); alert('📋 คัดลอก SQL Script เรียบร้อยแล้ว!');">
-                            <i class="bi bi-copy me-1"></i>คัดลอก SQL Code
+                    <!-- Share URL Input -->
+                    <div class="input-group mb-3">
+                        <input type="text" id="qr-modal-url" class="form-control form-control-cyber font-mono small text-center" readonly>
+                        <button class="btn btn-purple-glow px-3" onclick="copyShareUrlFromModal()">
+                            <i class="bi bi-copy me-1"></i>คัดลอก
                         </button>
+                    </div>
+
+                    <div class="d-flex gap-2 justify-content-center flex-wrap">
+                        <button class="btn btn-outline-purple text-purple border-purple rounded-pill px-3 py-2 btn-sm fw-bold" onclick="downloadQrCodeImage()">
+                            <i class="bi bi-download me-1"></i>ดาวน์โหลดรูป QR Code
+                        </button>
+                        <a id="qr-open-btn" href="#" target="_blank" class="btn btn-outline-light rounded-pill px-3 py-2 btn-sm">
+                            <i class="bi bi-box-arrow-up-right me-1"></i>ลองเปิดลิงก์
+                        </a>
                     </div>
                 </div>
             </div>
