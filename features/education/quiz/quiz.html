@@ -77,6 +77,9 @@
                     <i class="bi bi-arrow-left me-1"></i>กลับหน้ารายการ
                 </button>
                 <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <button class="btn btn-outline-info btn-sm fw-bold" onclick="openBatchImportModal()">
+                        <i class="bi bi-file-earmark-code-fill me-1"></i>วางข้อสอบทั้งชุด (Quick Import)
+                    </button>
                     <button class="btn btn-outline-warning btn-sm" onclick="generate20Variants()">
                         <i class="bi bi-shuffle me-1"></i>สุ่มสร้าง 20 ชุด (Anti-Cheating)
                     </button>
@@ -179,6 +182,9 @@
 
             <!-- Add Question Bar -->
             <div class="text-center my-4">
+                <button class="btn btn-outline-info px-4 py-2 me-2 fw-bold" onclick="openBatchImportModal()">
+                    <i class="bi bi-file-earmark-code-fill me-1"></i>วางข้อสอบทั้งชุด (Quick Import โค้ด & ช้อยส์)
+                </button>
                 <button class="btn btn-outline-quiz px-4 py-2 me-2" onclick="addQuestion('radio')">
                     <i class="bi bi-ui-radios me-1"></i>เพิ่มคำถาม ปรนัย (ข้อเดียว)
                 </button>
@@ -427,6 +433,88 @@
                 <div class="modal-footer border-secondary justify-content-center">
                     <button class="btn btn-warning fw-bold px-4" onclick="downloadCertificateImage()">
                         <i class="bi bi-download me-1"></i>ดาวน์โหลดเกียรติบัตร (PNG)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====================================================
+         Modal: Batch / Quick Import Questions
+         ==================================================== -->
+    <div class="modal fade" id="batchImportModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content cyber-card border-quiz text-white">
+                <div class="modal-header border-secondary">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="bg-info bg-opacity-25 border border-info rounded-circle p-2 d-inline-flex">
+                            <i class="bi bi-file-earmark-code-fill text-info fs-5"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold m-0 font-kanit">วางข้อสอบทั้งชุด (Quick / Batch Import)</h5>
+                            <p class="text-subtle small m-0">วางโจทย์คำถามและตัวเลือกที่มีโค้ด หรือสัญลักษณ์ต่างๆ ได้ทันที ระบบจะแยกข้อ, ช้อยส์ A-D และเฉลยให้อัตโนมัติ</p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body py-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                        <span class="text-subtle small">
+                            <i class="bi bi-info-circle me-1 text-info"></i>รองรับโจทย์หลายบรรทัด, โค้ด Python (Indent เว้นวรรค), ตัวเลือก A, B, C, D และตารางเฉลยท้ายชุด
+                        </span>
+                        <button type="button" class="btn btn-sm btn-outline-warning fw-bold" onclick="loadPythonPresetQuestions()">
+                            <i class="bi bi-magic me-1"></i>โหลดตัวอย่างข้อสอบ Python 20 ข้อนี้
+                        </button>
+                    </div>
+
+                    <textarea id="batch-import-textarea" class="form-control form-control-cyber font-mono small" rows="15" 
+                        placeholder="วางข้อความข้อสอบที่นี่ เช่น:
+ข้อที่ 1 ⭐
+คำสั่งใดใช้สำหรับแสดงข้อความบนหน้าจอ?
+A. input()
+B. print()
+C. int()
+D. if
+
+ข้อที่ 5 ⭐
+ผลลัพธ์ของโค้ดนี้คืออะไร?
+price = 100
+qty = 3
+total = price * qty
+print(total)
+A. 103
+B. 97
+C. 300
+D. 30
+
+✅ เฉลย
+ข้อ คำตอบ เรื่อง
+1 B print()
+5 C *
+..."></textarea>
+
+                    <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="form-check form-check-inline m-0">
+                                <input class="form-check-input" type="radio" name="importMode" id="import-mode-replace" value="replace" checked>
+                                <label class="form-check-label text-white small fw-bold" for="import-mode-replace">แทนที่ข้อสอบเดิมทั้งหมด</label>
+                            </div>
+                            <div class="form-check form-check-inline m-0">
+                                <input class="form-check-input" type="radio" name="importMode" id="import-mode-append" value="append">
+                                <label class="form-check-label text-white small fw-bold" for="import-mode-append">เพิ่มต่อท้ายข้อสอบเดิม</label>
+                            </div>
+                        </div>
+
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="text-subtle small">คะแนนต่อข้อ:</span>
+                            <input type="number" id="import-default-points" class="form-control form-control-cyber form-control-sm text-center font-mono" style="width: 70px;" value="1" min="1">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary justify-content-between">
+                    <button type="button" class="btn btn-outline-secondary text-white" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="button" class="btn btn-quiz-glow px-4 fw-bold" onclick="executeBatchImport()">
+                        <i class="bi bi-lightning-charge-fill me-1"></i>นำเข้าข้อสอบเข้าสู่ชุดนี้
                     </button>
                 </div>
             </div>

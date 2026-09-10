@@ -503,16 +503,19 @@ function renderLiveQuestions() {
         card.className = 'cyber-card mb-4 border-quiz';
         card.id = `exam-q-card-${q.id}`;
 
+        const isMultiline = (q.options || []).some(opt => (opt || '').includes('\n') || (opt || '').length > 35);
+        const colClass = isMultiline ? 'col-12' : 'col-12 col-md-6';
+
         let choicesHtml = '';
         if (q.type === 'radio') {
             choicesHtml = `
                 <div class="row g-2 mt-2">
                     ${(q.options || []).map((opt, oIdx) => `
-                        <div class="col-12 col-md-6">
-                            <div class="quiz-choice-card" onclick="selectStudentRadio('${q.id}', '${escapeHtml(opt)}', this)">
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="badge bg-dark border border-secondary text-white">${String.fromCharCode(65 + oIdx)}</span>
-                                    <span class="text-white">${escapeHtml(opt)}</span>
+                        <div class="${colClass}">
+                            <div class="quiz-choice-card" onclick="selectStudentRadioByIdx('${q.id}', ${oIdx}, this)">
+                                <div class="d-flex align-items-start gap-2">
+                                    <span class="badge bg-dark border border-secondary text-white mt-1">${String.fromCharCode(65 + oIdx)}</span>
+                                    <div class="quiz-choice-text text-white flex-grow-1">${escapeHtml(opt)}</div>
                                 </div>
                             </div>
                         </div>
@@ -523,11 +526,11 @@ function renderLiveQuestions() {
             choicesHtml = `
                 <div class="row g-2 mt-2">
                     ${(q.options || []).map((opt, oIdx) => `
-                        <div class="col-12 col-md-6">
-                            <div class="quiz-choice-card" onclick="toggleStudentCheckbox('${q.id}', '${escapeHtml(opt)}', this)">
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="badge bg-dark border border-secondary text-white">${oIdx + 1}</span>
-                                    <span class="text-white">${escapeHtml(opt)}</span>
+                        <div class="${colClass}">
+                            <div class="quiz-choice-card" onclick="toggleStudentCheckboxByIdx('${q.id}', ${oIdx}, this)">
+                                <div class="d-flex align-items-start gap-2">
+                                    <span class="badge bg-dark border border-secondary text-white mt-1">${oIdx + 1}</span>
+                                    <div class="quiz-choice-text text-white flex-grow-1">${escapeHtml(opt)}</div>
                                 </div>
                             </div>
                         </div>
@@ -537,7 +540,7 @@ function renderLiveQuestions() {
         } else if (q.type === 'text') {
             choicesHtml = `
                 <div class="mt-3">
-                    <textarea class="form-control form-control-cyber" rows="2" 
+                    <textarea class="form-control form-control-cyber font-mono" rows="2" 
                         placeholder="พิมพ์คำตอบของคุณที่นี่..."
                         oninput="studentAnswers['${q.id}'] = this.value"></textarea>
                 </div>
@@ -546,14 +549,28 @@ function renderLiveQuestions() {
 
         card.innerHTML = `
             <div class="d-flex justify-content-between align-items-start mb-2">
-                <h5 class="fw-bold text-white mb-1"><span class="text-quiz me-2">ข้อ ${idx + 1}.</span>${escapeHtml(q.title)}</h5>
-                <span class="badge bg-secondary text-white">${q.points || 10} คะแนน</span>
+                <div class="fw-bold text-white mb-1 flex-grow-1"><span class="text-quiz me-2">ข้อ ${idx + 1}.</span>${formatQuizTitleHtml(q.title)}</div>
+                <span class="badge bg-secondary text-white ms-2">${q.points || 10} คะแนน</span>
             </div>
             ${choicesHtml}
         `;
 
         container.appendChild(card);
     });
+}
+
+function selectStudentRadioByIdx(qId, oIdx, el) {
+    const questions = assignedVariant?.questions || [];
+    const q = questions.find(x => x.id === qId);
+    if (!q || !q.options || oIdx >= q.options.length) return;
+    selectStudentRadio(qId, q.options[oIdx], el);
+}
+
+function toggleStudentCheckboxByIdx(qId, oIdx, el) {
+    const questions = assignedVariant?.questions || [];
+    const q = questions.find(x => x.id === qId);
+    if (!q || !q.options || oIdx >= q.options.length) return;
+    toggleStudentCheckbox(qId, q.options[oIdx], el);
 }
 
 function selectStudentRadio(qId, val, el) {
@@ -797,21 +814,23 @@ function renderStudentResultUI() {
         reviewList.innerHTML = (res.questionResults || []).map((q, idx) => `
             <div class="question-block border-${q.isCorrect ? 'success' : 'danger'} mb-3">
                 <div class="d-flex justify-content-between align-items-start mb-2">
-                    <h6 class="fw-bold text-white mb-0">ข้อ ${idx + 1}. ${escapeHtml(q.title)}</h6>
-                    <span class="badge bg-${q.isCorrect ? 'success' : 'danger'}">
+                    <div class="fw-bold text-white mb-1 flex-grow-1"><span class="text-quiz me-2">ข้อ ${idx + 1}.</span>${formatQuizTitleHtml(q.title)}</div>
+                    <span class="badge bg-${q.isCorrect ? 'success' : 'danger'} ms-2">
                         ${q.isCorrect ? `+${q.points} คะแนน` : '0 คะแนน'}
                     </span>
                 </div>
                 <div class="small mb-1">
                     <span class="text-subtle">คำตอบของคุณ: </span>
-                    <span class="fw-bold ${q.isCorrect ? 'text-success' : 'text-danger'}">
+                    <div class="fw-bold quiz-choice-text ${q.isCorrect ? 'text-success' : 'text-danger'} mt-1">
                         ${escapeHtml(Array.isArray(q.givenAnswer) ? q.givenAnswer.join(', ') : (q.givenAnswer || '(ไม่ได้ตอบ)'))}
-                    </span>
+                    </div>
                 </div>
                 ${!q.isCorrect ? `
-                    <div class="small text-success mb-1">
+                    <div class="small mb-1 mt-2">
                         <span class="text-subtle">เฉลยที่ถูกต้อง: </span>
-                        <span class="fw-bold">${escapeHtml(Array.isArray(q.correctAnswer) ? q.correctAnswer.join(', ') : q.correctAnswer)}</span>
+                        <div class="fw-bold quiz-choice-text text-success mt-1">
+                            ${escapeHtml(Array.isArray(q.correctAnswer) ? q.correctAnswer.join(', ') : q.correctAnswer)}
+                        </div>
                     </div>
                 ` : ''}
                 ${q.explanation ? `
@@ -1009,3 +1028,52 @@ function escapeHtml(str) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
 }
+
+/**
+ * 🎨 จัดรูปแบบโจทย์คำถาม: แยกบรรทัดโค้ดใส่กล่อง Code Block และจัดข้อความภาษาไทย
+ */
+function formatQuizTitleHtml(title) {
+    if (!title) return '';
+    const lines = title.split('\n');
+    if (lines.length === 1) {
+        return `<span class="quiz-formatted-content">${escapeHtml(title)}</span>`;
+    }
+
+    let html = '';
+    let codeBuffer = [];
+
+    const flushCode = () => {
+        if (codeBuffer.length > 0) {
+            html += `<pre class="quiz-code-block">${escapeHtml(codeBuffer.join('\n'))}</pre>`;
+            codeBuffer = [];
+        }
+    };
+
+    lines.forEach((line) => {
+        const trimmed = line.trim();
+        const isCode = trimmed && (
+            line.startsWith('    ') || line.startsWith('\t') ||
+            /^(print|input|if|elif|else:|while|for|def|return|import|from|class)\b/.test(trimmed) ||
+            /^[a-zA-Z_]\w*\s*(=|\+=|-=|\*=|\/\/=)\s*/.test(trimmed) ||
+            /\b(==|!=|<=|>=|\/\/|\*\*|%)\b/.test(trimmed)
+        );
+
+        if (isCode) {
+            codeBuffer.push(line);
+        } else {
+            if (codeBuffer.length > 0 && trimmed === '') {
+                codeBuffer.push('');
+            } else {
+                flushCode();
+                if (trimmed) {
+                    html += `<div class="quiz-formatted-content mb-1">${escapeHtml(line)}</div>`;
+                } else {
+                    html += `<div class="mb-1">&nbsp;</div>`;
+                }
+            }
+        }
+    });
+    flushCode();
+    return html || `<div class="quiz-formatted-content">${escapeHtml(title)}</div>`;
+}
+

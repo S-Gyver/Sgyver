@@ -125,6 +125,32 @@ async function initQuizStorage() {
         }
     }
 
+    // Auto-seed Python 20 exam if not present
+    const hasPythonQuiz = quizzesList.some(q => q.id === 'quiz_python_20' || (q.title && q.title.includes('Python')));
+    if (!hasPythonQuiz && typeof parseRawQuizText === 'function' && typeof getPythonExamPresetText === 'function') {
+        const pythonQuestions = parseRawQuizText(getPythonExamPresetText(), 1);
+        if (pythonQuestions && pythonQuestions.length >= 20) {
+            const pythonQuiz = {
+                id: 'quiz_python_20',
+                title: 'แบบทดสอบภาษา Python พื้นฐาน (20 ข้อ)',
+                description: 'ทดสอบความรู้ภาษา Python: คำสั่งพื้นฐาน ตัวแปร โอเปอเรเตอร์ if-else และลูป while พร้อมโจทย์วิเคราะห์โค้ด',
+                settings: {
+                    passingScore: 70,
+                    timeLimit: 20,
+                    certEnabled: true,
+                    showAnswers: true,
+                    poolEnabled: true,
+                    poolCount: 20
+                },
+                questions: pythonQuestions,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            quizzesList.unshift(pythonQuiz);
+            saveLocalQuizzes(quizzesList);
+        }
+    }
+
     // Set currentQuiz if ID present
     if (window.activeQuizId) {
         currentQuiz = quizzesList.find(q => q.id === window.activeQuizId) || null;
@@ -447,23 +473,27 @@ function renderQuestionsBuilder() {
         if (q.type === 'radio' || q.type === 'checkbox') {
             optionsHtml = `
                 <div class="mt-3">
-                    <label class="form-label text-subtle small fw-bold">ตัวเลือกและเฉลยข้อที่ถูกต้อง (ติ๊กเลือกข้อที่ถูก)</label>
+                    <label class="form-label text-subtle small fw-bold">ตัวเลือกและเฉลยข้อที่ถูกต้อง (ติ๊กเลือกข้อที่ถูก - สามารถใส่โค้ดหลายบรรทัดได้)</label>
                     <div id="options-container-${q.id}">
                         ${(q.options || []).map((opt, optIdx) => {
                             const isCorrect = q.type === 'checkbox'
                                 ? (Array.isArray(q.correctAnswer) && q.correctAnswer.includes(opt))
                                 : (q.correctAnswer === opt);
+                            const lineCount = (opt || '').split('\n').length;
+                            const rows = Math.min(Math.max(lineCount, 1), 6);
 
                             return `
-                                <div class="choice-row d-flex align-items-center gap-2 ${isCorrect ? 'is-correct' : ''}">
-                                    <input class="form-check-input" type="${q.type}" name="correct_${q.id}" 
+                                <div class="choice-row d-flex align-items-start gap-2 ${isCorrect ? 'is-correct' : ''}">
+                                    <input class="form-check-input mt-2" type="${q.type}" name="correct_${q.id}" 
                                         ${isCorrect ? 'checked' : ''} 
-                                        onchange="setQuestionCorrectAnswer('${q.id}', '${escapeHtml(opt)}', this.checked)">
-                                    <input type="text" class="form-control form-control-cyber form-control-sm" 
-                                        value="${escapeHtml(opt)}" 
-                                        placeholder="ตัวเลือก ${optIdx + 1}"
-                                        oninput="updateOptionText('${q.id}', ${optIdx}, this.value)">
-                                    <button class="btn btn-sm btn-link text-danger p-0" onclick="removeOption('${q.id}', ${optIdx})" title="ลบตัวเลือก">
+                                        onchange="setQuestionCorrectAnswerByIdx('${q.id}', ${optIdx}, this.checked)"
+                                        title="ติ๊กให้ข้อนี้เป็นคำตอบที่ถูกต้อง">
+                                    <div class="flex-grow-1">
+                                        <textarea class="form-control form-control-cyber form-control-sm choice-textarea" rows="${rows}" 
+                                            placeholder="ตัวเลือก ${optIdx + 1} (รองรับโค้ดและขึ้นบรรทัดใหม่)"
+                                            oninput="updateOptionText('${q.id}', ${optIdx}, this.value)">${escapeHtml(opt)}</textarea>
+                                    </div>
+                                    <button class="btn btn-sm btn-link text-danger p-0 mt-1" onclick="removeOption('${q.id}', ${optIdx})" title="ลบตัวเลือก">
                                         <i class="bi bi-x-circle fs-5"></i>
                                     </button>
                                 </div>
@@ -479,22 +509,25 @@ function renderQuestionsBuilder() {
             optionsHtml = `
                 <div class="mt-3">
                     <label class="form-label text-subtle small fw-bold">คีย์เวิร์ดเฉลย / คำตอบที่ถูกต้อง (ไม่บังคับ)</label>
-                    <input type="text" class="form-control form-control-cyber" 
-                        value="${escapeHtml(q.correctAnswer || '')}" 
+                    <textarea class="form-control form-control-cyber font-mono" rows="2" 
                         placeholder="ระบุคำตอบที่ถูกต้อง..."
-                        oninput="q_setAnswer('${q.id}', this.value)">
+                        oninput="q_setAnswer('${q.id}', this.value)">${escapeHtml(q.correctAnswer || '')}</textarea>
                 </div>
             `;
         }
 
+        const titleLineCount = (q.title || '').split('\n').length;
+        const titleRows = Math.min(Math.max(titleLineCount, 2), 8);
+
         block.innerHTML = `
             <div class="d-flex justify-content-between align-items-start gap-2 mb-2 flex-wrap">
-                <div class="d-flex align-items-center gap-2 flex-grow-1">
-                    <span class="badge bg-quiz-accent text-white px-2 py-1" style="background: #ec4899;">ข้อ ${idx + 1}</span>
-                    <input type="text" class="form-control form-control-cyber fw-bold" 
-                        value="${escapeHtml(q.title || '')}" 
-                        placeholder="พิมพ์คำถามข้อที่ ${idx + 1}..."
-                        oninput="updateQuestionTitle('${q.id}', this.value)">
+                <div class="d-flex align-items-start gap-2 flex-grow-1">
+                    <span class="badge bg-quiz-accent text-white px-2 py-1 mt-1" style="background: #ec4899;">ข้อ ${idx + 1}</span>
+                    <div class="flex-grow-1">
+                        <textarea class="form-control form-control-cyber fw-bold font-mono" rows="${titleRows}" 
+                            placeholder="พิมพ์คำถามข้อที่ ${idx + 1}... (กด Enter ขึ้นบรรทัดใหม่ และวางโค้ด Python ได้)"
+                            oninput="updateQuestionTitle('${q.id}', this.value)">${escapeHtml(q.title || '')}</textarea>
+                    </div>
                 </div>
                 <div class="d-flex align-items-center gap-2">
                     <div class="input-group input-group-sm" style="width: 130px;">
@@ -515,7 +548,7 @@ function renderQuestionsBuilder() {
                 <label class="form-label text-subtle small"><i class="bi bi-info-circle me-1"></i>คำอธิบายเฉลยเหตุผล (แสดงให้นักเรียนดูหลังส่งข้อสอบ)</label>
                 <input type="text" class="form-control form-control-cyber form-control-sm" 
                     value="${escapeHtml(q.explanation || '')}" 
-                    placeholder="เช่น เนื่องจากเป็นข้อเท็จจริงตามกฎหมาย หรือ สูตรการคำนวณ..."
+                    placeholder="เช่น เรื่อง print(), เรื่อง while loop หรือ สูตรการคำนวณ..."
                     oninput="updateQuestionExplanation('${q.id}', this.value)">
             </div>
         `;
@@ -613,6 +646,13 @@ function setQuestionCorrectAnswer(qId, optionVal, isChecked) {
         }
     }
     renderQuestionsBuilder();
+}
+
+function setQuestionCorrectAnswerByIdx(qId, optIdx, isChecked) {
+    const q = currentQuiz.questions.find(x => x.id === qId);
+    if (!q || !q.options || optIdx >= q.options.length) return;
+    const optionVal = q.options[optIdx];
+    setQuestionCorrectAnswer(qId, optionVal, isChecked);
 }
 
 function q_setAnswer(qId, val) {
@@ -923,16 +963,19 @@ function renderTakerQuestions() {
         card.className = 'cyber-card mb-4 border-quiz';
         card.id = `exam-q-${q.id}`;
 
+        const isMultiline = (q.options || []).some(opt => (opt || '').includes('\n') || (opt || '').length > 35);
+        const colClass = isMultiline ? 'col-12' : 'col-12 col-md-6';
+
         let choicesHtml = '';
         if (q.type === 'radio') {
             choicesHtml = `
                 <div class="row g-2 mt-2">
                     ${(q.options || []).map((opt, oIdx) => `
-                        <div class="col-12 col-md-6">
-                            <div class="quiz-choice-card" onclick="selectRadioChoice('${q.id}', '${escapeHtml(opt)}', this)">
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="badge bg-dark border border-secondary text-white">${String.fromCharCode(65 + oIdx)}</span>
-                                    <span class="text-white">${escapeHtml(opt)}</span>
+                        <div class="${colClass}">
+                            <div class="quiz-choice-card" onclick="selectRadioChoiceByIdx('${q.id}', ${oIdx}, this)">
+                                <div class="d-flex align-items-start gap-2">
+                                    <span class="badge bg-dark border border-secondary text-white mt-1">${String.fromCharCode(65 + oIdx)}</span>
+                                    <div class="quiz-choice-text text-white flex-grow-1">${escapeHtml(opt)}</div>
                                 </div>
                             </div>
                         </div>
@@ -943,11 +986,11 @@ function renderTakerQuestions() {
             choicesHtml = `
                 <div class="row g-2 mt-2">
                     ${(q.options || []).map((opt, oIdx) => `
-                        <div class="col-12 col-md-6">
-                            <div class="quiz-choice-card" onclick="toggleCheckboxChoice('${q.id}', '${escapeHtml(opt)}', this)">
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="badge bg-dark border border-secondary text-white">${oIdx + 1}</span>
-                                    <span class="text-white">${escapeHtml(opt)}</span>
+                        <div class="${colClass}">
+                            <div class="quiz-choice-card" onclick="toggleCheckboxChoiceByIdx('${q.id}', ${oIdx}, this)">
+                                <div class="d-flex align-items-start gap-2">
+                                    <span class="badge bg-dark border border-secondary text-white mt-1">${oIdx + 1}</span>
+                                    <div class="quiz-choice-text text-white flex-grow-1">${escapeHtml(opt)}</div>
                                 </div>
                             </div>
                         </div>
@@ -957,7 +1000,7 @@ function renderTakerQuestions() {
         } else if (q.type === 'text') {
             choicesHtml = `
                 <div class="mt-3">
-                    <textarea class="form-control form-control-cyber" rows="2" 
+                    <textarea class="form-control form-control-cyber font-mono" rows="2" 
                         placeholder="พิมพ์คำตอบของคุณที่นี่..."
                         oninput="studentAnswers['${q.id}'] = this.value"></textarea>
                 </div>
@@ -966,14 +1009,28 @@ function renderTakerQuestions() {
 
         card.innerHTML = `
             <div class="d-flex justify-content-between align-items-start mb-2">
-                <h5 class="fw-bold text-white mb-1"><span class="text-quiz me-2">ข้อ ${idx + 1}.</span>${escapeHtml(q.title)}</h5>
-                <span class="badge bg-secondary text-white">${q.points ?? 1} คะแนน</span>
+                <div class="fw-bold text-white mb-1 flex-grow-1"><span class="text-quiz me-2">ข้อ ${idx + 1}.</span>${formatQuizTitleHtml(q.title)}</div>
+                <span class="badge bg-secondary text-white ms-2">${q.points ?? 1} คะแนน</span>
             </div>
             ${choicesHtml}
         `;
 
         listEl.appendChild(card);
     });
+}
+
+function selectRadioChoiceByIdx(qId, oIdx, el) {
+    const questionsToRender = (activeExamQuestions && activeExamQuestions.length > 0) ? activeExamQuestions : (currentQuiz?.questions || []);
+    const q = questionsToRender.find(x => x.id === qId);
+    if (!q || !q.options || oIdx >= q.options.length) return;
+    selectRadioChoice(qId, q.options[oIdx], el);
+}
+
+function toggleCheckboxChoiceByIdx(qId, oIdx, el) {
+    const questionsToRender = (activeExamQuestions && activeExamQuestions.length > 0) ? activeExamQuestions : (currentQuiz?.questions || []);
+    const q = questionsToRender.find(x => x.id === qId);
+    if (!q || !q.options || oIdx >= q.options.length) return;
+    toggleCheckboxChoice(qId, q.options[oIdx], el);
 }
 
 function selectRadioChoice(qId, val, el) {
@@ -1174,21 +1231,23 @@ function renderResultView() {
         reviewList.innerHTML = (lastExamResult.questionResults || []).map((r, idx) => `
             <div class="question-block border-${r.isCorrect ? 'success' : 'danger'} mb-3">
                 <div class="d-flex justify-content-between align-items-start mb-2">
-                    <h6 class="fw-bold text-white mb-0">ข้อ ${idx + 1}. ${escapeHtml(r.title)}</h6>
-                    <span class="badge bg-${r.isCorrect ? 'success' : 'danger'}">
+                    <div class="fw-bold text-white mb-1 flex-grow-1"><span class="text-quiz me-2">ข้อ ${idx + 1}.</span>${formatQuizTitleHtml(r.title)}</div>
+                    <span class="badge bg-${r.isCorrect ? 'success' : 'danger'} ms-2">
                         ${r.isCorrect ? `+${r.points} คะแนน` : '0 คะแนน'}
                     </span>
                 </div>
                 <div class="small mb-1">
                     <span class="text-subtle">คำตอบของคุณ: </span>
-                    <span class="fw-bold ${r.isCorrect ? 'text-success' : 'text-danger'}">
+                    <div class="fw-bold quiz-choice-text ${r.isCorrect ? 'text-success' : 'text-danger'} mt-1">
                         ${escapeHtml(Array.isArray(r.givenAnswer) ? r.givenAnswer.join(', ') : (r.givenAnswer || '(ไม่ได้ตอบ)'))}
-                    </span>
+                    </div>
                 </div>
                 ${!r.isCorrect ? `
-                    <div class="small text-success mb-1">
+                    <div class="small mb-1 mt-2">
                         <span class="text-subtle">เฉลยที่ถูกต้อง: </span>
-                        <span class="fw-bold">${escapeHtml(Array.isArray(r.correctAnswer) ? r.correctAnswer.join(', ') : r.correctAnswer)}</span>
+                        <div class="fw-bold quiz-choice-text text-success mt-1">
+                            ${escapeHtml(Array.isArray(r.correctAnswer) ? r.correctAnswer.join(', ') : r.correctAnswer)}
+                        </div>
                     </div>
                 ` : ''}
                 ${r.explanation ? `
@@ -1541,3 +1600,551 @@ function escapeHtml(str) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
 }
+
+/**
+ * 🎨 จัดรูปแบบโจทย์คำถาม: แยกบรรทัดโค้ดใส่กล่อง Code Block และจัดข้อความภาษาไทย
+ */
+function formatQuizTitleHtml(title) {
+    if (!title) return '';
+    const lines = title.split('\n');
+    if (lines.length === 1) {
+        return `<span class="quiz-formatted-content">${escapeHtml(title)}</span>`;
+    }
+
+    let html = '';
+    let codeBuffer = [];
+
+    const flushCode = () => {
+        if (codeBuffer.length > 0) {
+            html += `<pre class="quiz-code-block">${escapeHtml(codeBuffer.join('\n'))}</pre>`;
+            codeBuffer = [];
+        }
+    };
+
+    lines.forEach((line) => {
+        const trimmed = line.trim();
+        const isCode = trimmed && (
+            line.startsWith('    ') || line.startsWith('\t') ||
+            /^(print|input|if|elif|else:|while|for|def|return|import|from|class)\b/.test(trimmed) ||
+            /^[a-zA-Z_]\w*\s*(=|\+=|-=|\*=|\/\/=)\s*/.test(trimmed) ||
+            /\b(==|!=|<=|>=|\/\/|\*\*|%)\b/.test(trimmed)
+        );
+
+        if (isCode) {
+            codeBuffer.push(line);
+        } else {
+            if (codeBuffer.length > 0 && trimmed === '') {
+                codeBuffer.push('');
+            } else {
+                flushCode();
+                if (trimmed) {
+                    html += `<div class="quiz-formatted-content mb-1">${escapeHtml(line)}</div>`;
+                } else {
+                    html += `<div class="mb-1">&nbsp;</div>`;
+                }
+            }
+        }
+    });
+    flushCode();
+    return html || `<div class="quiz-formatted-content">${escapeHtml(title)}</div>`;
+}
+
+// ====================================================
+// 📥 Quick / Batch Import System
+// ====================================================
+
+function openBatchImportModal() {
+    const modalEl = document.getElementById('batchImportModal');
+    if (modalEl && typeof bootstrap !== 'undefined') {
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+    }
+}
+
+function loadPythonPresetQuestions() {
+    const textarea = document.getElementById('batch-import-textarea');
+    if (textarea) {
+        textarea.value = PYTHON_EXAM_PRESET_TEXT;
+        textarea.focus();
+    }
+}
+
+function executeBatchImport() {
+    const textarea = document.getElementById('batch-import-textarea');
+    const text = textarea ? textarea.value.trim() : '';
+
+    if (!text) {
+        const swal = getCyberSwal();
+        if (swal) {
+            swal.fire({
+                icon: 'warning',
+                title: 'กรุณาวางข้อความข้อสอบ',
+                text: 'โปรดวางเนื้อหาข้อสอบที่มีคำถาม ตัวเลือก A-D และเฉลยลงในกล่องข้อความก่อนกดนำเข้าครับ'
+            });
+        } else {
+            alert('กรุณาวางข้อความข้อสอบ');
+        }
+        return;
+    }
+
+    const defaultPoints = Number(document.getElementById('import-default-points')?.value) || 1;
+    const isReplace = document.getElementById('import-mode-replace')?.checked ?? true;
+
+    const parsedQuestions = parseRawQuizText(text, defaultPoints);
+
+    if (!parsedQuestions || parsedQuestions.length === 0) {
+        const swal = getCyberSwal();
+        if (swal) {
+            swal.fire({
+                icon: 'error',
+                title: 'ไม่สามารถแยกข้อสอบได้',
+                text: 'กรุณาตรวจสอบว่ามีรูปแบบ "ข้อที่ 1 ... A. ... B. ... C. ... D." และตารางเฉลยท้ายชุดหรือไม่'
+            });
+        } else {
+            alert('ไม่สามารถแยกข้อสอบได้');
+        }
+        return;
+    }
+
+    if (!currentQuiz) {
+        createNewQuiz();
+    }
+
+    if (isReplace) {
+        currentQuiz.questions = parsedQuestions;
+        if (text.includes('Python') || text.includes('print(') || text.includes('while')) {
+            currentQuiz.title = 'แบบทดสอบภาษา Python พื้นฐาน (20 ข้อ)';
+            currentQuiz.description = 'ทดสอบความรู้ภาษา Python: คำสั่งพื้นฐาน ตัวแปร โอเปอเรเตอร์ if-else และลูป while พร้อมโจทย์วิเคราะห์โค้ด';
+            document.getElementById('builder-quiz-title').value = currentQuiz.title;
+            document.getElementById('builder-quiz-desc').value = currentQuiz.description;
+        }
+    } else {
+        if (!currentQuiz.questions) currentQuiz.questions = [];
+        currentQuiz.questions = currentQuiz.questions.concat(parsedQuestions);
+    }
+
+    saveCurrentQuiz();
+    renderQuestionsBuilder();
+
+    // Hide modal
+    const modalEl = document.getElementById('batchImportModal');
+    if (modalEl && typeof bootstrap !== 'undefined') {
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+    }
+
+    const swal = getCyberSwal();
+    if (swal) {
+        swal.fire({
+            icon: 'success',
+            title: `นำเข้าข้อสอบสำเร็จ ${parsedQuestions.length} ข้อ! 🎉`,
+            html: `ระบบแยกโจทย์โค้ด ตัวเลือกโค้ดหลายบรรทัด และเฉลยเรียบร้อยแล้ว<br><span class="text-subtle small">คุณสามารถแก้ไขเพิ่มเติม หรือกด "สุ่มสร้าง 20 ชุด" เพื่อเปิดห้องสอบได้ทันที</span>`,
+            timer: 2600,
+            showConfirmButton: false
+        });
+    }
+}
+
+/**
+ * 🧩 Parser แยกข้อความข้อสอบดิบ -> Object คำถามและตัวเลือก
+ */
+function parseRawQuizText(text, defaultPoints = 1) {
+    let questionsText = text;
+    let answersText = '';
+
+    const answerSplitMatch = text.match(/(?:✅\s*เฉลย|เฉลยคำตอบ|เฉลย)([\s\S]*)$/i);
+    if (answerSplitMatch) {
+        answersText = answerSplitMatch[1];
+        questionsText = text.substring(0, answerSplitMatch.index);
+    }
+
+    // 1. Parse Answers
+    const answersMap = {};
+    if (answersText) {
+        const lines = answersText.split('\n');
+        for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed.startsWith('ข้อ')) continue;
+            // Match "1 B print()" or "1\tB\tprint()"
+            const m = trimmed.match(/^(\d+)\s+([A-Dก-ง])(?:\s+(.*))?$/i);
+            if (m) {
+                const qNum = parseInt(m[1], 10);
+                const letter = m[2].toUpperCase().replace('ก', 'A').replace('ข', 'B').replace('ค', 'C').replace('ง', 'D');
+                const topic = (m[3] || '').trim();
+                answersMap[qNum] = { letter, topic };
+            }
+        }
+    }
+
+    // 2. Split questions
+    const qBlocks = questionsText.split(/(?=(?:^|\n)\s*ข้อที่\s*\d+|(?:^|\n)\s*ข้อ\s*\d+)/i)
+        .map(b => b.trim())
+        .filter(b => b.length > 0);
+
+    const questions = [];
+
+    qBlocks.forEach((block, idx) => {
+        const headerMatch = block.match(/^(?:ข้อที่|ข้อ)\s*(\d+)[^\n]*/i);
+        const qNum = headerMatch ? parseInt(headerMatch[1], 10) : (idx + 1);
+
+        let content = block;
+        if (headerMatch) {
+            content = content.substring(headerMatch[0].length).trim();
+        }
+
+        // Find choices: Look for A., B., C., D. or A), B), etc.
+        const choiceMarkerRegex = /(?:^|\n)\s*([A-Dก-ง])[\.\)]\s*/gi;
+        const matches = [...content.matchAll(choiceMarkerRegex)];
+
+        if (matches.length >= 2) {
+            const firstChoiceIdx = matches[0].index;
+            const questionTitle = content.substring(0, firstChoiceIdx).trim();
+
+            const options = [];
+            for (let i = 0; i < matches.length; i++) {
+                const start = matches[i].index + matches[i][0].length;
+                const end = (i + 1 < matches.length) ? matches[i + 1].index : content.length;
+                const optText = content.substring(start, end).trim();
+                options.push({
+                    letter: matches[i][1].toUpperCase().replace('ก', 'A').replace('ข', 'B').replace('ค', 'C').replace('ง', 'D'),
+                    text: optText
+                });
+            }
+
+            const ansInfo = answersMap[qNum];
+            let correctAnswer = '';
+            if (ansInfo && ansInfo.letter) {
+                const targetOpt = options.find(o => o.letter === ansInfo.letter);
+                if (targetOpt) correctAnswer = targetOpt.text;
+            }
+            if (!correctAnswer && options.length > 0) {
+                correctAnswer = options[0].text;
+            }
+
+            questions.push({
+                id: 'q_' + Math.random().toString(36).substr(2, 9),
+                title: questionTitle,
+                type: 'radio',
+                points: defaultPoints,
+                options: options.map(o => o.text),
+                correctAnswer: correctAnswer,
+                explanation: ansInfo?.topic ? `เรื่อง ${ansInfo.topic}` : ''
+            });
+        }
+    });
+
+    return questions;
+}
+
+function getPythonExamPresetText() {
+    return `ข้อที่ 1 ⭐
+
+คำสั่งใดใช้สำหรับแสดงข้อความบนหน้าจอ?
+
+A. input()
+B. print()
+C. int()
+D. if
+
+ข้อที่ 2 ⭐
+
+คำสั่งใดใช้รับข้อมูลจากผู้ใช้?
+
+A. print()
+B. if()
+C. input()
+D. while()
+
+ข้อที่ 3 ⭐
+
+ข้อใดเป็นการกำหนดค่าตัวแปรที่ถูกต้อง?
+
+A. 399 = price
+B. price == 399
+C. price = 399
+D. price : 399
+
+ข้อที่ 4 ⭐
+
+ถ้าร้านครูปุ่นมีหมู 50 ชิ้น และใช้ไป 20 ชิ้น โค้ดใดใช้คำนวณหมูที่เหลือ?
+
+A. 50 + 20
+B. 50 - 20
+C. 50 * 20
+D. 50 / 20
+
+ข้อที่ 5 ⭐
+
+ผลลัพธ์ของโค้ดนี้คืออะไร?
+
+price = 100
+qty = 3
+total = price * qty
+
+print(total)
+
+A. 103
+B. 97
+C. 300
+D. 30
+
+ข้อที่ 6 ⭐⭐
+
+ผลลัพธ์ของโค้ดนี้คืออะไร?
+
+print(17 // 5)
+
+A. 2
+B. 3
+C. 3.4
+D. 5
+
+ข้อที่ 7 ⭐⭐
+
+ผลลัพธ์ของโค้ดนี้คืออะไร?
+
+print(17 % 5)
+
+A. 2
+B. 3
+C. 3.4
+D. 5
+
+ข้อที่ 8 ⭐⭐
+
+ผลลัพธ์ของโค้ดนี้คืออะไร?
+
+print(2 ** 3)
+
+A. 5
+B. 6
+C. 8
+D. 9
+
+ข้อที่ 9 ⭐⭐
+
+ถ้า
+
+price = 399
+
+เงื่อนไขใดเป็น True?
+
+A. price < 399
+B. price > 399
+C. price == 399
+D. price != 399
+
+ข้อที่ 10 ⭐⭐
+
+ผลลัพธ์ของโค้ดนี้คืออะไร?
+
+money = 500
+
+if money >= 399:
+    print("กินบุฟเฟต์ได้")
+else:
+    print("เงินไม่พอ")
+
+A. เงินไม่พอ
+B. กินบุฟเฟต์ได้
+C. 500
+D. Error
+
+ข้อที่ 11 ⭐⭐
+
+ถ้าต้องการตรวจสอบ 2 กรณี เช่น ผ่าน / ไม่ผ่าน ควรใช้คำสั่งใด?
+
+A. if-else
+B. while
+C. print
+D. input
+
+ข้อที่ 12 ⭐⭐⭐
+
+ผลลัพธ์ของโค้ดนี้คืออะไร?
+
+score = 75
+
+if score >= 80:
+    print("เกรด A")
+elif score >= 70:
+    print("เกรด B")
+else:
+    print("เกรด C")
+
+A. เกรด A
+B. เกรด B
+C. เกรด C
+D. Error
+
+ข้อที่ 13 ⭐⭐⭐
+
+ร้านครูปุ่นให้ส่วนลดเมื่อลูกค้าเป็นสมาชิก และ ซื้ออาหารครบ 500 บาท
+
+ควรใช้ operator ใด?
+
+A. or
+B. not
+C. and
+D. %
+
+ข้อที่ 14 ⭐⭐⭐
+
+กำหนดว่า
+
+member = True
+money = 600
+
+ผลลัพธ์ของโค้ดคืออะไร?
+
+if member and money >= 500:
+    print("ได้รับส่วนลด")
+else:
+    print("ไม่ได้รับส่วนลด")
+
+A. ได้รับส่วนลด
+B. ไม่ได้รับส่วนลด
+C. True
+D. Error
+
+ข้อที่ 15 ⭐⭐⭐
+
+ร้านครูปุ่นจะให้ส่วนลด ถ้าลูกค้า เป็นสมาชิก หรือ ใช้จ่ายตั้งแต่ 1,000 บาทขึ้นไป
+
+ควรใช้ operator ใด?
+
+A. and
+B. or
+C. not
+D. ==
+
+ข้อที่ 16 ⭐⭐⭐
+
+ถ้าต้องการเพิ่มค่าตัวแปร total อีก 100 บาท ข้อใดถูกต้อง?
+
+A. total =+ 100
+B. total += 100
+C. total == 100
+D. total ++ 100
+
+ข้อที่ 17 ⭐⭐⭐
+
+คำสั่ง while มีหน้าที่หลักคืออะไร?
+
+A. รับข้อมูล
+B. แสดงข้อความ
+C. ทำงานซ้ำตามเงื่อนไข
+D. คำนวณเปอร์เซ็นต์
+
+ข้อที่ 18 ⭐⭐⭐⭐
+
+ผลลัพธ์ของโค้ดนี้คืออะไร?
+
+count = 1
+
+while count <= 3:
+    print(count)
+    count += 1
+
+A.
+
+1
+2
+3
+
+B.
+
+1
+2
+3
+4
+
+C.
+
+0
+1
+2
+
+D. โปรแกรมไม่หยุด
+
+ข้อที่ 19 ⭐⭐⭐⭐
+
+จากโค้ดต่อไปนี้ มีปัญหาอะไร?
+
+count = 1
+
+while count <= 5:
+    print(count)
+
+A. print() ใช้ไม่ได้
+B. while ใช้ไม่ได้
+C. count ไม่ถูกเพิ่มค่า ทำให้เกิด Loop ไม่รู้จบ
+D. ต้องใช้ if แทน
+
+ข้อที่ 20 ⭐⭐⭐⭐⭐
+
+ร้านครูปุ่นมีหมู 30 ชิ้น ลูกค้าหยิบครั้งละ 4 ชิ้น จนกว่าหมูจะเหลือน้อยกว่า 4 ชิ้น
+
+โค้ดใดถูกต้อง?
+
+A.
+
+pork = 30
+
+while pork >= 4:
+    pork -= 4
+
+B.
+
+pork = 30
+
+while pork <= 4:
+    pork -= 4
+
+C.
+
+pork = 30
+
+while pork >= 4:
+    pork += 4
+
+D.
+
+pork = 30
+
+if pork >= 4:
+    pork -= 4
+
+✅ เฉลย
+ข้อ	คำตอบ	เรื่อง
+1	B	print()
+2	C	input()
+3	C	ตัวแปร
+4	B	-
+5	C	*
+6	B	//
+7	A	%
+8	C	**
+9	C	==
+10	B	if-else
+11	A	if-else
+12	B	elif
+13	C	and
+14	A	and
+15	B	or
+16	B	+=
+17	C	while
+18	A	while + +=
+19	C	Infinite Loop
+20	A	while + -=`;
+}
+
+const PYTHON_EXAM_PRESET_TEXT = getPythonExamPresetText();
+
+// Expose globals for HTML onclick handlers
+window.getPythonExamPresetText = getPythonExamPresetText;
+window.PYTHON_EXAM_PRESET_TEXT = PYTHON_EXAM_PRESET_TEXT;
+window.openBatchImportModal = openBatchImportModal;
+window.loadPythonPresetQuestions = loadPythonPresetQuestions;
+window.executeBatchImport = executeBatchImport;
+window.parseRawQuizText = parseRawQuizText;
