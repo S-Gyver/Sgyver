@@ -220,6 +220,19 @@ async function checkAndLaunchExam(freshLobby) {
         };
     }
 
+    // Safety Guarantee: If questions in variant > 20, clamp to pool count (default 20)
+    let questions = assignedVariant.questions || [];
+    const poolLimit = (currentLobby.quiz_settings?.poolCount && Number(currentLobby.quiz_settings.poolCount) > 0)
+        ? Number(currentLobby.quiz_settings.poolCount)
+        : 20;
+    if (questions.length > poolLimit) {
+        questions = questions.slice(0, poolLimit);
+        questions.forEach((q, idx) => {
+            q.title = q.title.replace(/^ข้อที่\s*\d+[:.]?\s*/, `ข้อที่ ${idx + 1}: `);
+        });
+        assignedVariant.questions = questions;
+    }
+
     // Launch Student Exam Screen
     document.getElementById('view-student-waiting').classList.add('d-none');
     document.getElementById('view-student-exam').classList.remove('d-none');

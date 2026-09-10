@@ -82,25 +82,28 @@ async function loadQuizData(quizId) {
             id: 'demo_quiz',
             title: 'แบบทดสอบทั่วไป',
             description: 'แบบทดสอบสำหรับ Live Lobby',
-            settings: { passingScore: 70, timeLimit: 15 },
+            settings: { passingScore: 70, timeLimit: 15, poolEnabled: true, poolCount: 20 },
             questions: [
-                { id: 'q1', title: 'เมืองหลวงของไทยคือเมืองใด?', type: 'radio', points: 10, correctAnswer: 'กรุงเทพฯ', options: ['กรุงเทพฯ', 'เชียงใหม่', 'ภูเก็ต', 'ขอนแก่น'] },
-                { id: 'q2', title: '2 + 2 เท่ากับเท่าใด?', type: 'radio', points: 10, correctAnswer: '4', options: ['3', '4', '5', '6'] }
+                { id: 'q1', title: 'เมืองหลวงของไทยคือเมืองใด?', type: 'radio', points: 1, correctAnswer: 'กรุงเทพฯ', options: ['กรุงเทพฯ', 'เชียงใหม่', 'ภูเก็ต', 'ขอนแก่น'] },
+                { id: 'q2', title: '2 + 2 เท่ากับเท่าใด?', type: 'radio', points: 1, correctAnswer: '4', options: ['3', '4', '5', '6'] }
             ]
         };
     }
 
     // Ensure 20 variants exist (Support Question Pool)
-    const isPool = currentQuiz.settings?.poolEnabled && currentQuiz.settings?.poolCount > 0;
-    const poolCount = isPool ? Math.min(currentQuiz.settings.poolCount, (currentQuiz.questions || []).length) : null;
+    const totalQ = (currentQuiz.questions || []).length;
+    // Auto-enable pool when total questions > 20 unless explicitly turned off
+    const isPool = (currentQuiz.settings?.poolEnabled === false) ? false : (totalQ > 20 || !!currentQuiz.settings?.poolEnabled);
+    const poolCount = isPool 
+        ? (Number(currentQuiz.settings?.poolCount) > 0 ? Math.min(Number(currentQuiz.settings.poolCount), totalQ) : Math.min(20, totalQ))
+        : totalQ;
 
-    if (!currentQuiz.variants || currentQuiz.variants.length < 20 || (isPool && currentQuiz.variants[0]?.questions?.length !== poolCount)) {
+    if (!currentQuiz.variants || currentQuiz.variants.length < 20 || (currentQuiz.variants[0]?.questions?.length !== poolCount)) {
         currentQuiz.variants = autoGenerate20Variants(currentQuiz.questions, poolCount);
     }
 
     // Update Header UI
-    const totalQ = (currentQuiz.questions || []).length;
-    const qCountBadge = isPool ? `สุ่ม ${poolCount}/${totalQ} ข้อ (20 SETS)` : `20 SETS READY`;
+    const qCountBadge = isPool ? `สุ่ม ${poolCount}/${totalQ} ข้อ (20 SETS)` : `${totalQ} ข้อ (20 SETS READY)`;
     document.getElementById('lobby-quiz-title').innerHTML = `
         ${escapeHtml(currentQuiz.title)}
         <span class="badge bg-warning text-dark fs-6 font-mono"><i class="bi bi-shield-lock-fill me-1"></i>${qCountBadge}</span>
@@ -518,7 +521,17 @@ async function startLiveExam() {
     if (!confirm || !confirm.isConfirmed) return;
 
     // 🎲 Distribution Algorithm (1 to 1 Unique Assignment)
-    const variants = currentQuiz.variants || autoGenerate20Variants(currentQuiz.questions);
+    const totalQ = (currentQuiz.questions || []).length;
+    const isPool = (currentQuiz.settings?.poolEnabled === false) ? false : (totalQ > 20 || !!currentQuiz.settings?.poolEnabled);
+    const poolCount = isPool 
+        ? (Number(currentQuiz.settings?.poolCount) > 0 ? Math.min(Number(currentQuiz.settings.poolCount), totalQ) : Math.min(20, totalQ))
+        : totalQ;
+
+    let variants = currentQuiz.variants;
+    if (!variants || variants.length < 20 || (variants[0]?.questions?.length !== poolCount)) {
+        variants = autoGenerate20Variants(currentQuiz.questions, poolCount);
+        currentQuiz.variants = variants;
+    }
     
     // Create an array of variant indices [1..20] and shuffle it
     let availableVariantIndices = variants.map(v => v.variantIndex);

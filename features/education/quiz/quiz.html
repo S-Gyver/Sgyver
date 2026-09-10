@@ -76,6 +76,7 @@
                 <button class="btn btn-outline-secondary btn-sm text-white" onclick="renderQuizListView()">
                     <i class="bi bi-arrow-left me-1"></i>กลับหน้ารายการ
                 </button>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
                     <button class="btn btn-outline-warning btn-sm" onclick="generate20Variants()">
                         <i class="bi bi-shuffle me-1"></i>สุ่มสร้าง 20 ชุด (Anti-Cheating)
                     </button>
@@ -147,7 +148,7 @@
                             <div class="row align-items-center g-3">
                                 <div class="col-12 col-md-6">
                                     <div class="form-check form-switch m-0">
-                                        <input class="form-check-input" type="checkbox" id="setting-pool-enabled" onchange="togglePoolCountInput()">
+                                        <input class="form-check-input" type="checkbox" id="setting-pool-enabled" onchange="togglePoolCountInput()" checked>
                                         <label class="form-check-label text-white fw-bold" for="setting-pool-enabled">
                                             <i class="bi bi-shuffle text-info me-1"></i>สุ่มดึงคำถามจากคลังข้อสอบ (Question Pool)
                                         </label>
@@ -157,7 +158,7 @@
                                     </div>
                                 </div>
                                 <div class="col-12 col-md-6">
-                                    <div id="pool-count-container" class="input-group input-group-sm d-none">
+                                    <div id="pool-count-container" class="input-group input-group-sm">
                                         <span class="input-group-text bg-dark text-white border-secondary fw-bold">สุ่มดึงเพียง</span>
                                         <input type="number" id="setting-pool-count" class="form-control form-control-cyber font-mono fw-bold text-center" value="20" min="1">
                                         <span class="input-group-text bg-dark text-white border-secondary">

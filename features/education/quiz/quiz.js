@@ -216,7 +216,7 @@ function renderQuizListView() {
     quizzesList.forEach(quiz => {
         const responses = getLocalQuizResponses(quiz.id);
         const respCount = responses.length;
-        const totalPoints = (quiz.questions || []).reduce((sum, q) => sum + (Number(q.points) || 10), 0);
+        const totalPoints = (quiz.questions || []).reduce((sum, q) => sum + (q.points !== undefined ? Number(q.points) : 1), 0);
         const timeLimit = quiz.settings?.timeLimit ? `${quiz.settings.timeLimit} นาที` : 'ไม่จำกัดเวลา';
 
         const hasVariants = Array.isArray(quiz.variants) && quiz.variants.length > 0;
@@ -291,14 +291,16 @@ function createNewQuiz() {
             passingScore: 70,
             timeLimit: 15,
             certEnabled: true,
-            showAnswers: true
+            showAnswers: true,
+            poolEnabled: true,
+            poolCount: 20
         },
         questions: [
             {
                 id: generateId(),
                 title: 'ข้อที่ 1: เมืองหลวงของประเทศไทยคือเมืองใด?',
                 type: 'radio',
-                points: 10,
+                points: 1,
                 correctAnswer: 'กรุงเทพมหานคร',
                 explanation: 'กรุงเทพมหานครเป็นเมืองหลวงและศูนย์กลางการปกครองของประเทศไทย',
                 options: ['เชียงใหม่', 'กรุงเทพมหานคร', 'ภูเก็ต', 'ขอนแก่น']
@@ -307,7 +309,7 @@ function createNewQuiz() {
                 id: generateId(),
                 title: 'ข้อที่ 2: แม่สีปฐมภูมิประกอบด้วยสีใดบ้าง? (เลือกได้หลายข้อ)',
                 type: 'checkbox',
-                points: 10,
+                points: 1,
                 correctAnswer: ['สีแดง', 'สีเหลือง', 'สีน้ำเงิน'],
                 explanation: 'แม่สีปฐมภูมิได้แก่ สีแดง สีเหลือง และสีน้ำเงิน',
                 options: ['สีแดง', 'สีเขียว', 'สีเหลือง', 'สีน้ำเงิน']
@@ -395,11 +397,15 @@ function renderBuilderView() {
     document.getElementById('setting-cert-enabled').checked = currentQuiz.settings?.certEnabled ?? true;
     document.getElementById('setting-show-answers').checked = currentQuiz.settings?.showAnswers ?? true;
 
-    // Question Pool setting
+    // Question Pool setting (Default to true / enabled!)
+    const totalQ = (currentQuiz.questions || []).length;
+    const isPoolActive = (currentQuiz.settings?.poolEnabled !== undefined) ? currentQuiz.settings.poolEnabled : true;
+    const poolCountVal = Number(currentQuiz.settings?.poolCount) > 0 ? currentQuiz.settings.poolCount : 20;
+
     const poolEnabledEl = document.getElementById('setting-pool-enabled');
     const poolCountEl = document.getElementById('setting-pool-count');
-    if (poolEnabledEl) poolEnabledEl.checked = !!currentQuiz.settings?.poolEnabled;
-    if (poolCountEl) poolCountEl.value = currentQuiz.settings?.poolCount || 20;
+    if (poolEnabledEl) poolEnabledEl.checked = isPoolActive;
+    if (poolCountEl) poolCountEl.value = poolCountVal;
     togglePoolCountInput();
     updatePoolTotalLabel();
 
@@ -494,7 +500,7 @@ function renderQuestionsBuilder() {
                     <div class="input-group input-group-sm" style="width: 130px;">
                         <span class="input-group-text bg-dark text-white border-secondary">คะแนน</span>
                         <input type="number" class="form-control form-control-cyber text-center" 
-                            value="${q.points ?? 10}" min="1" max="100"
+                            value="${q.points ?? 1}" min="1" max="100"
                             onchange="updateQuestionPoints('${q.id}', this.value)">
                     </div>
                     <button class="btn btn-sm btn-outline-danger" onclick="removeQuestion('${q.id}')" title="ลบข้อนี้">
@@ -526,7 +532,7 @@ function addQuestion(type = 'radio') {
         id: generateId(),
         title: `ข้อที่ ${currentQuiz.questions.length + 1}: พิมพ์คำถาม...`,
         type: type,
-        points: 10,
+        points: 1,
         correctAnswer: type === 'radio' ? 'ตัวเลือกที่ 1' : (type === 'checkbox' ? ['ตัวเลือกที่ 1'] : ''),
         explanation: '',
         options: type === 'text' ? [] : ['ตัวเลือกที่ 1', 'ตัวเลือกที่ 2', 'ตัวเลือกที่ 3', 'ตัวเลือกที่ 4']
@@ -693,8 +699,11 @@ function generate20Variants() {
 
     const baseQuestions = currentQuiz.questions;
     const variants = [];
-    const isPool = currentQuiz.settings?.poolEnabled && currentQuiz.settings?.poolCount > 0;
-    const poolCount = isPool ? Math.min(currentQuiz.settings.poolCount, baseQuestions.length) : baseQuestions.length;
+    const totalQ = (baseQuestions || []).length;
+    const isPool = (currentQuiz.settings?.poolEnabled === false) ? false : (totalQ > 20 || !!currentQuiz.settings?.poolEnabled);
+    const poolCount = isPool 
+        ? (Number(currentQuiz.settings?.poolCount) > 0 ? Math.min(Number(currentQuiz.settings.poolCount), totalQ) : Math.min(20, totalQ))
+        : totalQ;
 
     for (let i = 1; i <= 20; i++) {
         const cloned = JSON.parse(JSON.stringify(baseQuestions));
@@ -777,9 +786,12 @@ function renderTakerView() {
     document.getElementById('gate-quiz-title').textContent = currentQuiz.title || 'แบบทดสอบ';
     document.getElementById('gate-quiz-desc').textContent = currentQuiz.description || 'ไม่มีคำชี้แจง';
     
-    const isPool = currentQuiz.settings?.poolEnabled && currentQuiz.settings?.poolCount > 0;
     const totalQ = (currentQuiz.questions || []).length;
-    const displayCount = isPool ? Math.min(currentQuiz.settings.poolCount, totalQ) : totalQ;
+    const isPool = (currentQuiz.settings?.poolEnabled === false) ? false : (totalQ > 20 || !!currentQuiz.settings?.poolEnabled);
+    const displayCount = isPool 
+        ? (Number(currentQuiz.settings?.poolCount) > 0 ? Math.min(Number(currentQuiz.settings.poolCount), totalQ) : Math.min(20, totalQ))
+        : totalQ;
+
     document.getElementById('gate-total-questions').textContent = isPool 
         ? `${displayCount} ข้อ (สุ่มจาก ${totalQ} ข้อ)` 
         : `${displayCount} ข้อ`;
@@ -823,13 +835,17 @@ function startTakingQuiz() {
     document.getElementById('active-student-badge').textContent = `ผู้เข้าสอบ: ${name} ${room ? `(${room})` : ''}`;
 
     // Prepare Active Exam Questions (Random subset if Question Pool enabled)
-    const isPool = currentQuiz.settings?.poolEnabled && currentQuiz.settings?.poolCount > 0;
+    const totalQ = (currentQuiz.questions || []).length;
+    const isPool = (currentQuiz.settings?.poolEnabled === false) ? false : (totalQ > 20 || !!currentQuiz.settings?.poolEnabled);
+    const poolCount = isPool 
+        ? (Number(currentQuiz.settings?.poolCount) > 0 ? Math.min(Number(currentQuiz.settings.poolCount), totalQ) : Math.min(20, totalQ))
+        : totalQ;
+
     const allQ = JSON.parse(JSON.stringify(currentQuiz.questions || []));
 
-    if (isPool) {
+    if (isPool && poolCount < allQ.length) {
         shuffleArray(allQ);
-        const count = Math.min(currentQuiz.settings.poolCount, allQ.length);
-        activeExamQuestions = allQ.slice(0, count);
+        activeExamQuestions = allQ.slice(0, poolCount);
         activeExamQuestions.forEach((q, idx) => {
             q.title = q.title.replace(/^ข้อที่\s*\d+[:.]?\s*/, `ข้อที่ ${idx + 1}: `);
             if (Array.isArray(q.options) && q.options.length > 1) {
@@ -951,7 +967,7 @@ function renderTakerQuestions() {
         card.innerHTML = `
             <div class="d-flex justify-content-between align-items-start mb-2">
                 <h5 class="fw-bold text-white mb-1"><span class="text-quiz me-2">ข้อ ${idx + 1}.</span>${escapeHtml(q.title)}</h5>
-                <span class="badge bg-secondary text-white">${q.points || 10} คะแนน</span>
+                <span class="badge bg-secondary text-white">${q.points ?? 1} คะแนน</span>
             </div>
             ${choicesHtml}
         `;
@@ -1019,7 +1035,7 @@ function autoSubmitQuiz() {
     const questionsToGrade = (activeExamQuestions && activeExamQuestions.length > 0) ? activeExamQuestions : (currentQuiz.questions || []);
 
     questionsToGrade.forEach(q => {
-        const qPts = Number(q.points) || 10;
+        const qPts = (q.points !== undefined && !isNaN(Number(q.points))) ? Number(q.points) : 1;
         totalPoints += qPts;
 
         const given = studentAnswers[q.id];
