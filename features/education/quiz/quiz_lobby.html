@@ -40,14 +40,38 @@
             </div>
 
             <div class="d-flex align-items-center gap-2">
-                <span id="connection-status-badge" class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2">
-                    <i class="bi bi-wifi me-1"></i>ระบบออนไลน์
+                <span id="connection-status-badge" class="badge bg-secondary text-white px-3 py-2 cursor-pointer" onclick="openSqlSetupModal()">
+                    <i class="bi bi-arrow-repeat spin me-1"></i>กำลังเชื่อมต่อ Supabase...
                 </span>
+                <button id="btn-header-sql" class="btn btn-warning btn-sm d-none fw-bold" onclick="openSqlSetupModal()">
+                    <i class="bi bi-database-exclamation me-1"></i>ตั้งค่า SQL
+                </button>
                 <a href="quiz.html" class="btn btn-outline-secondary btn-sm px-3 py-2 text-white">
                     <i class="bi bi-arrow-left me-1"></i>กลับหน้าควิซ
                 </a>
             </div>
         </header>
+
+        <!-- Missing Supabase Table Notice Banner -->
+        <div id="missing-table-banner" class="alert alert-danger border border-danger-subtle d-none mb-4 d-flex justify-content-between align-items-center flex-wrap gap-3 shadow-lg p-3 rounded-3" style="background: rgba(220, 53, 69, 0.15); backdrop-filter: blur(8px);">
+            <div class="d-flex align-items-center gap-3">
+                <div class="bg-danger text-white rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">
+                    <i class="bi bi-database-exclamation fs-4"></i>
+                </div>
+                <div>
+                    <div class="fw-bold text-white fs-6">ตรวจพบ: ยังไม่ได้สร้างตาราง <code>lobbies</code> ในฐานข้อมูล Supabase</div>
+                    <div class="text-white-50 small">นักเรียนที่แสกน QR Code จากมือถือหรืออุปกรณ์อื่นจะยังไม่พบห้องสอบ กรุณากดปุ่มด้านขวาเพื่อนำคำสั่ง SQL ไปรันใน Supabase เพียง 1 ครั้ง</div>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-warning btn-sm fw-bold px-3 py-2 shadow-sm" onclick="openSqlSetupModal()">
+                    <i class="bi bi-code-square me-1"></i>ดูคำสั่ง SQL และวิธีแก้
+                </button>
+                <button class="btn btn-outline-light btn-sm px-3 py-2" onclick="recheckSupabaseConnection()">
+                    <i class="bi bi-arrow-clockwise me-1"></i>ตรวจสอบอีกครั้ง
+                </button>
+            </div>
+        </div>
 
         <!-- ====================================================
              1. Waiting Lobby Screen (หน้ารอนักเรียนเข้าห้อง)
@@ -223,6 +247,110 @@
             </div>
         </div>
 
+    </div>
+
+    <!-- SQL Setup Modal -->
+    <div class="modal fade" id="sqlSetupModal" tabindex="-1" aria-labelledby="sqlSetupModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content bg-dark text-white border border-warning shadow-lg">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title fw-bold text-warning d-flex align-items-center gap-2" id="sqlSetupModalLabel">
+                        <i class="bi bi-database-fill-gear fs-4"></i>
+                        ตั้งค่าตารางฐานข้อมูล Supabase สำหรับห้องสอบสด (Live Lobby)
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning border-0 bg-warning bg-opacity-10 text-warning mb-3">
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        เพื่อให้ระบบสามารถให้นักเรียนแสกน QR Code จากมือถือหรืออุปกรณ์เครื่องอื่นได้ คุณครูจำเป็นต้องรันคำสั่ง SQL สร้างตาราง <code>lobbies</code> ใน Supabase เพียง 1 ครั้งครับ
+                    </div>
+
+                    <div class="card bg-black border-secondary mb-3">
+                        <div class="card-header bg-secondary bg-opacity-25 d-flex justify-content-between align-items-center py-2">
+                            <span class="small font-mono text-white-50"><i class="bi bi-terminal me-1"></i>supabase_schema.sql</span>
+                            <button id="btn-copy-sql" class="btn btn-warning btn-sm fw-bold" onclick="copySqlScript()">
+                                <i class="bi bi-clipboard-check me-1"></i>คัดลอกคำสั่ง SQL ทั้งหมด
+                            </button>
+                        </div>
+                        <div class="card-body p-0">
+                            <pre class="m-0 p-3 font-mono small text-light" style="max-height: 280px; overflow-y: auto; background: #0f172a;" id="sql-code-display"><code>-- 1. สร้างตาราง lobbies (ห้องสอบสด 20 ชุด & Gyver Race)
+CREATE TABLE IF NOT EXISTS public.lobbies (
+    room_code TEXT PRIMARY KEY,
+    game_mode TEXT DEFAULT 'quiz',
+    match_type TEXT DEFAULT 'solo',
+    status TEXT DEFAULT 'WAITING',
+    players JSONB DEFAULT '[]'::jsonb,
+    quiz_id TEXT,
+    quiz_title TEXT,
+    quiz_variants JSONB DEFAULT '[]'::jsonb,
+    quiz_settings JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 2. อนุญาตให้เข้าถึงได้สมบูรณ์ (RLS)
+ALTER TABLE public.lobbies ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all access to lobbies" ON public.lobbies;
+CREATE POLICY "Allow all access to lobbies" ON public.lobbies FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+-- 3. ตาราง gyver_quizzes & gyver_quiz_responses
+CREATE TABLE IF NOT EXISTS public.gyver_quizzes (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT,
+    schema JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE public.gyver_quizzes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all access to gyver_quizzes" ON public.gyver_quizzes;
+CREATE POLICY "Allow all access to gyver_quizzes" ON public.gyver_quizzes FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+CREATE TABLE IF NOT EXISTS public.gyver_quiz_responses (
+    id BIGSERIAL PRIMARY KEY,
+    quiz_id TEXT NOT NULL,
+    student_name TEXT NOT NULL,
+    student_room TEXT,
+    score NUMERIC DEFAULT 0,
+    total NUMERIC DEFAULT 0,
+    percentage NUMERIC DEFAULT 0,
+    is_passed BOOLEAN DEFAULT false,
+    answers JSONB DEFAULT '[]'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE public.gyver_quiz_responses ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all access to gyver_quiz_responses" ON public.gyver_quiz_responses;
+CREATE POLICY "Allow all access to gyver_quiz_responses" ON public.gyver_quiz_responses FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+-- 4. เปิด Realtime สำหรับตาราง lobbies
+ALTER PUBLICATION supabase_realtime ADD TABLE public.lobbies;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.gyver_quiz_responses;</code></pre>
+                        </div>
+                    </div>
+
+                    <h6 class="fw-bold text-white mb-2"><i class="bi bi-list-ol me-1"></i>ขั้นตอนวิธีรันคำสั่ง:</h6>
+                    <ol class="small text-subtle mb-0 ps-3">
+                        <li class="mb-1">กดปุ่มสีเหลือง <b>"คัดลอกคำสั่ง SQL ทั้งหมด"</b> ด้านบน</li>
+                        <li class="mb-1">เปิดหน้า <a href="https://supabase.com/dashboard" target="_blank" class="text-info fw-bold text-decoration-underline"><i class="bi bi-box-arrow-up-right me-1"></i>Supabase Dashboard</a> แล้วเลือกโปรเจกต์ของคุณ</li>
+                        <li class="mb-1">กดที่แท็บเมนูด้านซ้าย <b>SQL Editor</b> จากนั้นคลิก <b>New query</b></li>
+                        <li class="mb-1">วาง (Paste) โค้ดที่คัดลอกมา แล้วกดปุ่มเขียว <b>Run</b> ที่มุมขวาล่าง</li>
+                        <li>กลับมาที่หน้านี้ แล้วกดปุ่ม <b>"ตรวจสอบการเชื่อมต่ออีกครั้ง"</b> ด้านล่างนี้ได้ทันทีครับ!</li>
+                    </ol>
+                </div>
+                <div class="modal-footer border-secondary justify-content-between">
+                    <a href="https://supabase.com/dashboard" target="_blank" class="btn btn-outline-info btn-sm">
+                        <i class="bi bi-box-arrow-up-right me-1"></i>เปิด Supabase Dashboard
+                    </a>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">ปิดหน้าต่าง</button>
+                        <button type="button" class="btn btn-warning btn-sm fw-bold" onclick="recheckSupabaseConnection()">
+                            <i class="bi bi-arrow-clockwise me-1"></i>ตรวจสอบการเชื่อมต่ออีกครั้ง
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Bootstrap 5 JS & SweetAlert2 -->

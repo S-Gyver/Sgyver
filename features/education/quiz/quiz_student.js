@@ -20,6 +20,7 @@ let studentExamResult = null;
 let pollInterval = null;
 let examTimerInterval = null;
 let remainingExamSeconds = 0;
+let lastFetchError = null;
 
 // SweetAlert Cyber Helper
 const CyberSwal = typeof Swal !== 'undefined' ? Swal.mixin({
@@ -88,11 +89,20 @@ async function joinLiveLobby() {
     // Verify lobby exists
     const lobby = await fetchLobbyData(roomPin);
     if (!lobby) {
-        CyberSwal?.fire({
-            icon: 'error',
-            title: 'ไม่พบห้องสอบ',
-            text: `ไม่พบห้องสอบรหัส PIN: ${roomPin} หรือห้องสอบอาจถูกปิดไปแล้ว`
-        });
+        if (lastFetchError && (lastFetchError.code === 'PGRST205' || String(lastFetchError.message || '').includes('lobbies') || lastFetchError.code === '42P01')) {
+            CyberSwal?.fire({
+                icon: 'warning',
+                title: 'ยังไม่ได้สร้างตารางในฐานข้อมูล',
+                html: `ระบบตรวจพบว่ายังไม่มีตาราง <code>lobbies</code> ในฐานข้อมูล Supabase<br><br><span class="text-warning">โปรดแจ้งคุณครูผู้คุมสอบให้เปิดหน้าจอคุมสอบ แล้วกดปุ่ม <b>"ตั้งค่า SQL"</b> เพื่อรันคำสั่งติดตั้งตารางใน Supabase ก่อนครับ</span>`,
+                confirmButtonText: 'รับทราบ'
+            });
+        } else {
+            CyberSwal?.fire({
+                icon: 'error',
+                title: 'ไม่พบห้องสอบ',
+                text: `ไม่พบห้องสอบรหัส PIN: ${roomPin} หรือห้องสอบอาจถูกปิดไปแล้ว (โปรดตรวจสอบรหัส PIN ให้ถูกต้อง)`
+            });
+        }
         return;
     }
 
@@ -459,6 +469,20 @@ async function submitLiveExamAnswers() {
                 }
                 await window.supabaseClient.from('lobbies').update({ players: data.players }).eq('room_code', roomPin);
             }
+
+            // Also record response to gyver_quiz_responses if available
+            try {
+                await window.supabaseClient.from('gyver_quiz_responses').insert({
+                    quiz_id: currentLobby.quiz_id || 'live_quiz',
+                    student_name: studentProfile.name,
+                    student_room: studentProfile.room,
+                    score: earnedPoints,
+                    total: totalPoints,
+                    percentage: percent,
+                    is_passed: isPassed,
+                    answers: studentExamResult.questionResults
+                });
+            } catch (ignoreErr) {}
         } catch (e) {}
     }
 
@@ -633,16 +657,24 @@ function downloadStudentCertPNG() {
 
 // Data Helpers
 async function fetchLobbyData(pin) {
+    lastFetchError = null;
     if (window.supabaseClient) {
         try {
-            const { data } = await window.supabaseClient
+            const { data, error } = await window.supabaseClient
                 .from('lobbies')
                 .select('*')
                 .eq('room_code', pin)
                 .maybeSingle();
 
+            if (error) {
+                console.warn('Supabase fetchLobbyData error:', error);
+                lastFetchError = error;
+            }
+
             if (data) return data;
-        } catch (e) {}
+        } catch (e) {
+            lastFetchError = e;
+        }
     }
     return getLocalLobby(pin);
 }

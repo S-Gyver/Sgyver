@@ -200,12 +200,114 @@ async function createOrRegisterLobby() {
 
     saveLocalLobby(lobbyData);
 
+    const badge = document.getElementById('connection-status-badge');
+    const banner = document.getElementById('missing-table-banner');
+    const btnSql = document.getElementById('btn-header-sql');
+
     if (window.supabaseClient) {
         try {
-            await window.supabaseClient.from('lobbies').upsert([lobbyData], { onConflict: 'room_code' });
+            const { error } = await window.supabaseClient.from('lobbies').upsert([lobbyData], { onConflict: 'room_code' });
+            if (error) {
+                console.warn('Supabase lobbies upsert error:', error);
+                // ตรวจสอบว่าตารางยังไม่ได้สร้างใน Supabase หรือไม่
+                if (error.code === 'PGRST205' || String(error.message || '').includes('lobbies') || error.code === '42P01') {
+                    setMissingTableState(true);
+                    return;
+                }
+            }
+            // เชื่อมต่อสำเร็จ
+            setMissingTableState(false);
         } catch (e) {
             console.warn('Lobby sync to Supabase skipped, using local fallback', e);
+            setMissingTableState(true);
         }
+    } else {
+        if (badge) {
+            badge.className = 'badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-2';
+            badge.innerHTML = '<i class="bi bi-hdd me-1"></i>โหมดออฟไลน์ (LocalStorage)';
+        }
+    }
+}
+
+function setMissingTableState(isMissing) {
+    const badge = document.getElementById('connection-status-badge');
+    const banner = document.getElementById('missing-table-banner');
+    const btnSql = document.getElementById('btn-header-sql');
+
+    if (isMissing) {
+        if (badge) {
+            badge.className = 'badge bg-danger text-white px-3 py-2 cursor-pointer shadow-sm animate-pulse';
+            badge.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-1"></i>ยังไม่มีตารางใน Supabase';
+        }
+        if (banner) banner.classList.remove('d-none');
+        if (btnSql) btnSql.classList.remove('d-none');
+    } else {
+        if (badge) {
+            badge.className = 'badge bg-success-subtle text-success border border-success-subtle px-3 py-2';
+            badge.innerHTML = '<i class="bi bi-wifi me-1"></i>ระบบออนไลน์ (Supabase พร้อมใช้งาน)';
+        }
+        if (banner) banner.classList.add('d-none');
+        if (btnSql) btnSql.classList.add('d-none');
+    }
+}
+
+function openSqlSetupModal() {
+    const modalEl = document.getElementById('sqlSetupModal');
+    if (modalEl && typeof bootstrap !== 'undefined') {
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+    }
+}
+
+function copySqlScript() {
+    const sqlCode = document.getElementById('sql-code-display')?.innerText || '';
+    if (!sqlCode) return;
+
+    navigator.clipboard.writeText(sqlCode).then(() => {
+        CyberSwal?.fire({
+            icon: 'success',
+            title: 'คัดลอกคำสั่ง SQL เรียบร้อย!',
+            text: 'นำไปวางใน Supabase Dashboard > SQL Editor แล้วกด Run ได้เลยครับ',
+            timer: 2000,
+            showConfirmButton: false
+        });
+    }).catch(() => {
+        prompt('คัดลอกคำสั่ง SQL ด้านล่างนี้:', sqlCode);
+    });
+}
+
+async function recheckSupabaseConnection() {
+    const badge = document.getElementById('connection-status-badge');
+    if (badge) {
+        badge.className = 'badge bg-info text-dark px-3 py-2';
+        badge.innerHTML = '<i class="bi bi-arrow-repeat spin me-1"></i>กำลังตรวจสอบ...';
+    }
+
+    await createOrRegisterLobby();
+
+    const banner = document.getElementById('missing-table-banner');
+    if (!banner || banner.classList.contains('d-none')) {
+        // Modal instance close
+        const modalEl = document.getElementById('sqlSetupModal');
+        if (modalEl && typeof bootstrap !== 'undefined') {
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+        }
+
+        CyberSwal?.fire({
+            icon: 'success',
+            title: 'เชื่อมต่อตาราง Supabase สำเร็จ!',
+            text: 'ห้องสอบออนไลน์พร้อมแล้ว นักเรียนสามารถสแกน QR Code หรือใส่รหัส PIN เข้าห้องสอบได้ทันที',
+            timer: 2500,
+            showConfirmButton: false
+        });
+    } else {
+        CyberSwal?.fire({
+            icon: 'error',
+            title: 'ยังไม่พบตาราง lobbies',
+            text: 'ยังไม่พบตารางใน Supabase กรุณาตรวจสอบว่าได้วางโค้ดและกดปุ่ม Run ใน SQL Editor สำเร็จหรือไม่',
+            confirmButtonText: 'รับทราบ'
+        });
     }
 }
 
