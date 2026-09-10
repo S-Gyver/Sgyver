@@ -11,6 +11,41 @@ let responsesList = [];
 let currentMode = 'list'; // 'list', 'builder', 'respond', 'responses'
 let isSupabaseTableAvailable = true;
 
+// 🌟 SweetAlert2 Cyber Dialog Helpers
+function getCyberSwal() {
+    if (typeof Swal !== 'undefined') {
+        return Swal.mixin({
+            background: 'rgba(15, 23, 42, 0.96)',
+            color: '#f8fafc',
+            customClass: {
+                popup: 'cyber-swal-popup border-purple',
+                confirmButton: 'btn btn-purple-glow px-4 py-2 fw-bold',
+                cancelButton: 'btn btn-outline-secondary px-4 py-2 text-white me-2'
+            },
+            buttonsStyling: false
+        });
+    }
+    return null;
+}
+
+function getCyberToast() {
+    if (typeof Swal !== 'undefined') {
+        return Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 2400,
+            timerProgressBar: true,
+            background: 'rgba(15, 23, 42, 0.96)',
+            color: '#f8fafc',
+            customClass: {
+                popup: 'cyber-swal-popup border-purple'
+            }
+        });
+    }
+    return null;
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     parseUrlParams();
     await initDataStorage();
@@ -356,12 +391,39 @@ function viewAnalytics(formId) {
     }
 }
 
-function deleteForm(formId) {
-    if (confirm('คุณแน่ใจหรือไม่ที่จะลบแบบสอบถามนี้? ข้อมูลคำตอบทั้งหมดจะถูกลบออก')) {
-        formsList = formsList.filter(f => f.id !== formId);
-        saveLocalForms(formsList);
-        renderFormsListView();
+async function deleteForm(formId) {
+    const swal = getCyberSwal();
+    if (swal) {
+        const result = await swal.fire({
+            title: 'ยืนยันการลบแบบสอบถาม?',
+            text: 'ข้อมูลคำตอบและประวัติทั้งหมดจะถูกลบถาวร',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: '<i class="bi bi-trash-fill me-1"></i> ลบแบบฟอร์ม',
+            cancelButtonText: 'ยกเลิก',
+            customClass: {
+                popup: 'cyber-swal-popup border-purple',
+                confirmButton: 'btn btn-danger px-4 py-2 fw-bold me-2',
+                cancelButton: 'btn btn-outline-secondary px-4 py-2 text-white'
+            }
+        });
+        if (!result.isConfirmed) return;
+    } else if (!confirm('คุณแน่ใจหรือไม่ที่จะลบแบบสอบถามนี้? ข้อมูลคำตอบทั้งหมดจะถูกลบออก')) {
+        return;
     }
+
+    formsList = formsList.filter(f => f.id !== formId);
+    saveLocalForms(formsList);
+
+    const toast = getCyberToast();
+    if (toast) {
+        toast.fire({
+            icon: 'success',
+            title: 'ลบแบบสอบถามเรียบร้อยแล้ว'
+        });
+    }
+
+    renderFormsListView();
 }
 
 // ====================================================
@@ -462,7 +524,7 @@ function renderQuestionsList() {
     currentForm.questions.forEach((q, idx) => {
         const card = document.createElement('div');
         card.className = 'cyber-card border-purple-accent mb-3 p-3 p-md-4';
-        
+
         let optionsHtml = '';
         if (['radio', 'checkbox', 'select'].includes(q.type)) {
             optionsHtml = `
@@ -504,15 +566,15 @@ function renderQuestionsList() {
                 keyControl = `
                     <div class="d-flex flex-wrap gap-2">
                         ${(q.options || []).map(opt => {
-                            const isChecked = Array.isArray(q.answerKey) && q.answerKey.includes(opt);
-                            return `
+                    const isChecked = Array.isArray(q.answerKey) && q.answerKey.includes(opt);
+                    return `
                                 <label class="form-check-label text-white small border rounded px-2 py-1 ${isChecked ? 'bg-warning text-dark fw-bold border-warning' : 'border-secondary'}">
                                     <input type="checkbox" class="form-check-input me-1 d-none" ${isChecked ? 'checked' : ''} 
                                         onchange="toggleCheckboxAnswerKey('${q.id}', '${escapeHtml(opt)}')">
                                     ${escapeHtml(opt)}
                                 </label>
                             `;
-                        }).join('')}
+                }).join('')}
                     </div>
                 `;
             } else {
@@ -798,7 +860,17 @@ function submitResponse() {
         }
 
         if (q.required && (!userVal || (Array.isArray(userVal) && userVal.length === 0))) {
-            alert(`กรุณาตอบคำถามข้อ "${q.title}" ให้ครบถ้วน`);
+            const swal = getCyberSwal();
+            if (swal) {
+                swal.fire({
+                    icon: 'warning',
+                    title: 'กรุณาตอบคำถามให้ครบ',
+                    text: `คำถามข้อ "${q.title}" เป็นข้อบังคับ`,
+                    confirmButtonText: 'เข้าใจแล้ว'
+                });
+            } else {
+                alert(`กรุณาตอบคำถามข้อ "${q.title}" ให้ครบถ้วน`);
+            }
             return;
         }
 
@@ -979,7 +1051,17 @@ function renderItemAnalysis() {
 
 function exportResponsesCSV() {
     if (!currentForm || responsesList.length === 0) {
-        alert('ไม่มีข้อมูลคำตอบให้ส่งออก CSV');
+        const swal = getCyberSwal();
+        if (swal) {
+            swal.fire({
+                icon: 'info',
+                title: 'ยังไม่มีข้อมูล',
+                text: 'ไม่มีข้อมูลคำตอบสำหรับส่งออก CSV',
+                confirmButtonText: 'เข้าใจแล้ว'
+            });
+        } else {
+            alert('ไม่มีข้อมูลคำตอบให้ส่งออก CSV');
+        }
         return;
     }
 
@@ -1156,7 +1238,16 @@ function copyShareUrlFromModal() {
     if (!inputEl) return;
     inputEl.select();
     document.execCommand('copy');
-    alert('คัดลอกลิงก์เรียบร้อยแล้ว!');
+
+    const toast = getCyberToast();
+    if (toast) {
+        toast.fire({
+            icon: 'success',
+            title: 'คัดลอกลิงก์เรียบร้อยแล้ว!'
+        });
+    } else {
+        alert('คัดลอกลิงก์เรียบร้อยแล้ว!');
+    }
 }
 
 function downloadQrCodeImage() {

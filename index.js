@@ -198,6 +198,7 @@ function unlockProtectedCards(isLoggedIn) {
         'education-wheel-card',
         'education-race-card',
         'teacher-forms-card',
+        'teacher-quiz-card',
         'education-bank-card',
         'teacher-classroom-card',
         'teacher-history-card'
@@ -282,7 +283,7 @@ async function handlePopupLoginSubmit(e) {
             if (prof && prof.email) {
                 targetEmail = prof.email;
             }
-        } catch (err) {}
+        } catch (err) { }
     }
 
     try {
@@ -297,11 +298,11 @@ async function handlePopupLoginSubmit(e) {
             submitBtn.innerHTML = `<i class="bi bi-box-arrow-in-right me-1"></i>ลงชื่อเข้าใช้งาน`;
         } else {
             setAlert(alertBox, 'alert-success', '🎉 ล็อกอินสำเร็จ! กำลังโหลดหน้าจอของคุณ...');
-            
+
             if (targetEmail === 's.gyver36@gmail.com') {
                 try {
                     await window.supabaseClient.auth.updateUser({ data: { role: 'admin' } });
-                } catch (e) {}
+                } catch (e) { }
             }
 
             currentUser = data.user;
@@ -386,7 +387,7 @@ async function handlePopupRegisterSubmit(e) {
                         avatar_url: avatarUrl,
                         level: 1
                     }]);
-                } catch (err) {}
+                } catch (err) { }
             }
 
             if (data.user && data.session === null) {
@@ -491,7 +492,7 @@ function previewAvatar(event) {
     if (!file || !preview) return;
 
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = function (e) {
         preview.src = e.target.result;
     };
     reader.readAsDataURL(file);

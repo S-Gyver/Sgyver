@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gyver Quiz - ห้องสอบสด Live Lobby (Anti-Cheating 20 ชุด)</title>
+
+    <!-- Bootstrap 5, Icons & Google Fonts -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@600;700;800&family=Kanit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Supabase SDK & Custom Theme -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../../assets/js/supabaseClient.js"></script>
+    <link rel="stylesheet" href="quiz_lobby.css">
+</head>
+<body class="py-3 py-md-4">
+
+    <!-- Ambient Cyber Background -->
+    <div class="bg-cyber-grid"></div>
+    <div class="bg-glow-blur glow-top"></div>
+    <div class="bg-glow-blur glow-bottom"></div>
+
+    <div class="container-fluid px-3 px-md-5" style="max-width: 1400px;">
+        
+        <!-- Header Bar -->
+        <header class="cyber-card mb-4 border-quiz d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="bg-dark border border-quiz rounded-3 p-2 d-inline-flex justify-content-center align-items-center" style="width: 48px; height: 48px;">
+                    <i class="bi bi-broadcast text-quiz fs-3"></i>
+                </div>
+                <div>
+                    <h3 id="lobby-quiz-title" class="text-white fw-bold m-0 font-kanit fs-4 d-flex align-items-center gap-2">
+                        ห้องสอบสด Gyver Quiz
+                        <span class="badge bg-warning text-dark fs-6 font-mono"><i class="bi bi-shield-lock-fill me-1"></i>ANTI-CHEATING 20 SETS</span>
+                    </h3>
+                    <p id="lobby-quiz-desc" class="text-subtle small m-0">ระบบสุ่มแจกจ่ายข้อสอบ 20 ชุดย่อย ไม่ซ้ำกัน 1 คนต่อ 1 ชุด</p>
+                </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-2">
+                <span id="connection-status-badge" class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2">
+                    <i class="bi bi-wifi me-1"></i>ระบบออนไลน์
+                </span>
+                <a href="quiz.html" class="btn btn-outline-secondary btn-sm px-3 py-2 text-white">
+                    <i class="bi bi-arrow-left me-1"></i>กลับหน้าควิซ
+                </a>
+            </div>
+        </header>
+
+        <!-- ====================================================
+             1. Waiting Lobby Screen (หน้ารอนักเรียนเข้าห้อง)
+             ==================================================== -->
+        <div id="view-lobby-waiting">
+            <div class="row g-4">
+                <!-- Left Column: PIN & QR Code Box for Projector -->
+                <div class="col-12 col-lg-5">
+                    <div class="cyber-card border-quiz text-center h-100 d-flex flex-column justify-content-between py-4">
+                        <div>
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-1 mb-3" style="background: rgba(236,72,153,0.15) !important; color: #f472b6 !important;">
+                                <i class="bi bi-qr-code-scan me-1"></i>สแกนเข้าห้องสอบ
+                            </span>
+                            <h4 class="text-white fw-bold mb-2">สแกน QR Code หรือใส่รหัส PIN</h4>
+                            <p class="text-subtle small mb-3">เข้าสู่ระบบห้องสอบผ่านสมาร์ตโฟน แท็บเล็ต หรือคอมพิวเตอร์</p>
+
+                            <!-- Big PIN Code -->
+                            <div class="mb-4">
+                                <div class="text-subtle small mb-1">รหัสเข้าห้อง (ROOM PIN)</div>
+                                <div id="display-room-pin" class="pin-code-display font-mono">----</div>
+                            </div>
+
+                            <!-- QR Code Box -->
+                            <div class="p-3 bg-white d-inline-block rounded-4 shadow-lg mb-3">
+                                <img id="lobby-qr-code-img" src="" alt="Lobby QR Code" style="width: 200px; height: 200px; object-fit: contain;">
+                            </div>
+
+                            <div class="small text-subtle font-mono text-truncate px-2" id="display-join-url">
+                                ...
+                            </div>
+                        </div>
+
+                        <div class="mt-4 pt-3 border-top border-secondary">
+                            <button class="btn btn-outline-quiz btn-sm" onclick="copyJoinLink()">
+                                <i class="bi bi-clipboard me-1"></i>คัดลอกลิงก์ให้นักเรียน
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Live Student Grid & Control -->
+                <div class="col-12 col-lg-7">
+                    <div class="cyber-card border-quiz h-100 d-flex flex-column justify-content-between">
+                        <div>
+                            <!-- Top Lobby Bar -->
+                            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <h4 class="text-white fw-bold m-0"><i class="bi bi-people-fill text-quiz me-2"></i>นักเรียนในห้องรอ</h4>
+                                    <span id="student-count-badge" class="badge bg-quiz-accent text-white px-3 py-2 fs-6" style="background: #ec4899;">0 คน</span>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span id="variants-capacity-badge" class="badge bg-warning text-dark px-3 py-2 font-mono">
+                                        <i class="bi bi-shield-lock-fill me-1"></i>พร้อมแจก 20 ชุดไม่ซ้ำกัน
+                                    </span>
+                                </div>
+                            </div>
+
+                            <p class="text-subtle small mb-3">
+                                เมื่อครูกดเริ่มสอบ ระบบจะทำการสุ่มแจกจ่ายข้อสอบ 20 ชุดย่อยให้ทุกคน คนละ 1 ชุดไม่ซ้ำกันทันที
+                            </p>
+
+                            <!-- Student Cards Live Grid -->
+                            <div id="lobby-students-grid" class="row g-2 overflow-auto" style="max-height: 420px;">
+                                <!-- Dynamic Student Cards -->
+                                <div class="col-12 text-center py-5 text-subtle" id="lobby-empty-hint">
+                                    <div class="spinner-grow text-quiz mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
+                                    <h5>กำลังรอนักเรียนสแกนเข้าร่วม...</h5>
+                                    <p class="small text-subtle m-0">ให้นักเรียนสแกน QR Code ฝั่งซ้าย หรือเปิดเบราว์เซอร์แล้วใส่ PIN</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Start Action Bar -->
+                        <div class="pt-3 mt-3 border-top border-secondary">
+                            <button id="btn-start-exam" class="btn btn-quiz-glow btn-lg w-100 py-3 fw-bold fs-5" onclick="startLiveExam()">
+                                <i class="bi bi-play-circle-fill me-2"></i>เริ่มการสอบทันที (สุ่มแจก 1 คนต่อ 1 ชุด)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====================================================
+             2. Live Exam Monitoring Dashboard (ขณะกำลังสอบ)
+             ==================================================== -->
+        <div id="view-lobby-active" class="d-none">
+            <!-- Active Top Bar -->
+            <div class="cyber-card mb-4 border-quiz d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div class="d-flex align-items-center gap-3">
+                    <span class="badge bg-danger text-white px-3 py-2 fs-6 pulse-badge">
+                        <i class="bi bi-record-circle-fill me-1"></i>กำลังสอบสด
+                    </span>
+                    <h4 class="text-white fw-bold m-0" id="active-quiz-header-title">แบบทดสอบ</h4>
+                </div>
+                <div class="d-flex align-items-center gap-3 flex-wrap">
+                    <div class="stat-badge px-3 py-2">
+                        <span class="small text-subtle">เวลาสอบ:</span>
+                        <span id="active-timer-display" class="fw-bold text-white fs-5 ms-1 font-mono">15:00</span>
+                    </div>
+                    <div class="stat-badge px-3 py-2">
+                        <span class="small text-subtle">ส่งแล้ว:</span>
+                        <span id="active-submitted-count" class="fw-bold text-quiz fs-5 ms-1 font-mono">0 / 0</span>
+                    </div>
+                    <button class="btn btn-outline-danger btn-sm fw-bold px-3 py-2" onclick="confirmEndExamEarly()">
+                        <i class="bi bi-stop-circle-fill me-1"></i>ยุติการสอบ / หมดเวลา
+                    </button>
+                </div>
+            </div>
+
+            <!-- Student Monitor Cards Grid -->
+            <div class="cyber-card border-quiz mb-4">
+                <h5 class="text-white fw-bold mb-3"><i class="bi bi-grid-fill text-quiz me-2"></i>สถานะผู้เข้าสอบรายบุคคล (ชุดข้อสอบเฉพาะตัว)</h5>
+                <div id="monitor-students-grid" class="row g-3">
+                    <!-- Dynamic live cards -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ====================================================
+             3. Final Exam Summary & Leaderboard (หลังสอบเสร็จ)
+             ==================================================== -->
+        <div id="view-lobby-summary" class="d-none">
+            <div class="cyber-card border-quiz mb-4 text-center">
+                <h2 class="text-white fw-bold mb-2">🎉 การสอบเสร็จสิ้นเรียบร้อย!</h2>
+                <p class="text-subtle mb-4">สรุปผลการทดสอบแบบ Anti-Cheating กระจายชุดข้อสอบรายบุคคล</p>
+
+                <div class="d-flex justify-content-center gap-3 mb-4 flex-wrap">
+                    <div class="stat-badge px-4 py-3">
+                        <div class="small text-subtle">ผู้เข้าสอบทั้งหมด</div>
+                        <div id="summary-total-students" class="fs-2 fw-bold text-white font-mono">0 คน</div>
+                    </div>
+                    <div class="stat-badge px-4 py-3">
+                        <div class="small text-subtle">คะแนนเฉลี่ย</div>
+                        <div id="summary-avg-score" class="fs-2 fw-bold text-info font-mono">0%</div>
+                    </div>
+                    <div class="stat-badge px-4 py-3">
+                        <div class="small text-subtle">อัตราการผ่านเกณฑ์</div>
+                        <div id="summary-pass-rate" class="fs-2 fw-bold text-quiz font-mono">0%</div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-center gap-2 flex-wrap mb-4">
+                    <button class="btn btn-outline-success px-4 py-2 fw-bold" onclick="exportLobbyResultsCSV()">
+                        <i class="bi bi-file-earmark-excel-fill me-1"></i>ส่งออกผลคะแนน (Excel/CSV)
+                    </button>
+                    <a href="quiz.html" class="btn btn-outline-secondary px-4 py-2 text-white">
+                        <i class="bi bi-house-door-fill me-1"></i>กลับหน้ารายการควิซ
+                    </a>
+                </div>
+
+                <div class="text-start">
+                    <h5 class="text-white fw-bold mb-3"><i class="bi bi-trophy-fill text-warning me-2"></i>ตารางคะแนนรวมทุกชุดข้อสอบ</h5>
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover align-middle border-secondary">
+                            <thead>
+                                <tr class="text-subtle small">
+                                    <th>อันดับ</th>
+                                    <th>ชื่อนักเรียน</th>
+                                    <th>ห้อง/ชั้น</th>
+                                    <th>ชุดข้อสอบที่ได้รับ</th>
+                                    <th>คะแนน</th>
+                                    <th>ร้อยละ</th>
+                                    <th>สถานะ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="summary-leaderboard-tbody">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Bootstrap 5 JS & SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="quiz_lobby.js"></script>
+</body>
+</html>

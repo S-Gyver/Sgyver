@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gyver Quiz - ระบบสอบสดสำหรับนักเรียน</title>
+
+    <!-- Bootstrap 5, Icons & Google Fonts -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@600;700;800&family=Kanit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Supabase SDK & Custom CSS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../../assets/js/supabaseClient.js"></script>
+    <link rel="stylesheet" href="quiz.css">
+    <link rel="stylesheet" href="quiz_lobby.css">
+</head>
+<body class="py-3 py-md-4">
+
+    <!-- Ambient Cyber Glow -->
+    <div class="bg-cyber-grid"></div>
+    <div class="bg-glow-blur glow-top"></div>
+    <div class="bg-glow-blur glow-bottom"></div>
+
+    <div class="container px-3 px-md-4" style="max-width: 800px;">
+        
+        <!-- Header Bar -->
+        <header class="cyber-card mb-4 border-quiz d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-3">
+                <div class="bg-dark border border-quiz rounded-3 p-2 d-inline-flex justify-content-center align-items-center" style="width: 44px; height: 44px;">
+                    <i class="bi bi-person-badge-fill text-quiz fs-4"></i>
+                </div>
+                <div>
+                    <h5 class="text-white fw-bold m-0 font-kanit">Gyver Quiz Live Exam</h5>
+                    <span id="student-pin-badge" class="badge bg-warning text-dark font-mono small">PIN: ----</span>
+                </div>
+            </div>
+            <div>
+                <a href="../../../index.html" class="btn btn-outline-secondary btn-sm text-white">
+                    <i class="bi bi-house-door me-1"></i>หน้าหลัก
+                </a>
+            </div>
+        </header>
+
+        <!-- ====================================================
+             1. Student Join Gate (กรอกชื่อและ PIN)
+             ==================================================== -->
+        <div id="view-student-join" class="cyber-card border-quiz text-center py-4">
+            <div class="bg-dark border border-quiz rounded-circle p-3 d-inline-flex mb-3">
+                <i class="bi bi-door-open-fill text-quiz fs-1"></i>
+            </div>
+            <h3 class="text-white fw-bold mb-2">เข้าร่วมห้องสอบสด</h3>
+            <p class="text-subtle small mb-4">ระบบป้องกันการลอกข้อสอบแบบสุ่มชุดคำถามรายบุคคล (Anti-Cheating)</p>
+
+            <div class="text-start mx-auto" style="max-width: 450px;">
+                <div class="mb-3">
+                    <label class="form-label text-subtle small fw-bold">รหัสห้องสอบ (PIN 4 หลัก) <span class="text-danger">*</span></label>
+                    <input type="text" id="join-pin-input" class="form-control form-control-cyber form-control-lg text-center font-mono fs-3 fw-bold" placeholder="เช่น 4892" maxlength="6">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label text-subtle small fw-bold">ชื่อ - นามสกุล หรือชื่อเล่น <span class="text-danger">*</span></label>
+                    <input type="text" id="join-name-input" class="form-control form-control-cyber" placeholder="เช่น ด.ช. ธีรภัทร หรือ ธีร์">
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label text-subtle small fw-bold">ห้องเรียน / เลขที่ (ถ้ามี)</label>
+                    <input type="text" id="join-room-input" class="form-control form-control-cyber" placeholder="เช่น ม.3/1 เลขที่ 12">
+                </div>
+
+                <button class="btn btn-quiz-glow btn-lg w-100 py-3 fw-bold" onclick="joinLiveLobby()">
+                    <i class="bi bi-box-arrow-in-right me-2"></i>เข้าสู่ห้องรอสอบ
+                </button>
+            </div>
+        </div>
+
+        <!-- ====================================================
+             2. Waiting Room (ห้องรอคุณครูกดเริ่ม)
+             ==================================================== -->
+        <div id="view-student-waiting" class="cyber-card border-quiz text-center py-5 d-none">
+            <div class="spinner-grow text-quiz mb-4" role="status" style="width: 4.5rem; height: 4.5rem;"></div>
+            <h3 class="text-white fw-bold mb-2">คุณอยู่ในห้องสอบเรียบร้อยแล้ว! 🎉</h3>
+            <p id="waiting-student-name" class="text-quiz fw-bold fs-5 mb-3"></p>
+            <p class="text-subtle mb-4">กรุณารอคุณครูกดปุ่ม <strong>"เริ่มสอบ"</strong> บนหน้าจอโปรเจกเตอร์<br>เมื่อครูกดเริ่ม ระบบจะสุ่มข้อสอบชุดเฉพาะตัวของคุณขึ้นหน้าจอทันที</p>
+
+            <div class="p-3 bg-dark border border-secondary rounded-3 d-inline-block text-start mb-4">
+                <div class="small text-subtle"><i class="bi bi-shield-check text-success me-2"></i>สถานะ: <span class="text-white">เชื่อมต่อห้องสำเร็จ</span></div>
+                <div class="small text-subtle"><i class="bi bi-shuffle text-warning me-2"></i>ข้อสอบ: <span class="text-white">ระบบกำลังเตรียม 20 ชุดสลับคำถาม</span></div>
+            </div>
+        </div>
+
+        <!-- ====================================================
+             3. Active Exam View (หน้าทำข้อสอบชุดเฉพาะตัว)
+             ==================================================== -->
+        <div id="view-student-exam" class="d-none">
+            <!-- Exam Banner Sticky -->
+            <div class="cyber-card mb-4 border-quiz sticky-top py-2 d-flex justify-content-between align-items-center">
+                <div>
+                    <span id="exam-variant-badge" class="badge bg-warning text-dark font-mono me-1">
+                        <i class="bi bi-shield-lock-fill me-1"></i>ชุดที่ -
+                    </span>
+                    <span id="exam-student-label" class="text-white small fw-bold"></span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <div id="exam-timer-box" class="timer-badge">
+                        <i class="bi bi-stopwatch-fill me-1"></i><span id="exam-timer-text">15:00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Question Cards Container -->
+            <div id="exam-questions-container">
+                <!-- Dynamic questions -->
+            </div>
+
+            <div class="text-center my-4">
+                <button class="btn btn-quiz-glow btn-lg px-5 py-3 fw-bold" onclick="confirmSubmitLiveExam()">
+                    <i class="bi bi-send-fill me-2"></i>ตรวจคำตอบ & ส่งข้อสอบ
+                </button>
+            </div>
+        </div>
+
+        <!-- ====================================================
+             4. Result & Certificate View (ผลคะแนน)
+             ==================================================== -->
+        <div id="view-student-result" class="d-none">
+            <div class="cyber-card border-quiz text-center py-4 mb-4">
+                <div id="student-result-icon" class="mb-3">
+                    <!-- Icon pass / fail -->
+                </div>
+                <h3 id="student-result-title" class="fw-bold mb-2">ผลการสอบของคุณ</h3>
+                <p id="student-result-name-text" class="text-subtle mb-4 fs-5"></p>
+
+                <div class="score-circle mb-3">
+                    <div id="student-result-score" class="fs-1 fw-bold text-white">0</div>
+                    <div id="student-result-total" class="small text-subtle">/ 100 คะแนน</div>
+                </div>
+
+                <div class="d-flex justify-content-center gap-3 mb-4">
+                    <div class="stat-badge px-3 py-2">
+                        <div class="small text-subtle">ร้อยละ</div>
+                        <div id="student-result-percent" class="fs-4 fw-bold text-quiz">0%</div>
+                    </div>
+                    <div class="stat-badge px-3 py-2">
+                        <div class="small text-subtle">สถานะ</div>
+                        <div id="student-result-status" class="fs-5 fw-bold">ผ่าน</div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-center gap-2 flex-wrap">
+                    <button id="btn-student-cert" class="btn btn-warning fw-bold px-4 py-2 d-none" onclick="openStudentCertModal()">
+                        <i class="bi bi-award-fill me-1"></i>รับเกียรติบัตรออนไลน์
+                    </button>
+                    <a href="../../../index.html" class="btn btn-outline-secondary px-4 py-2 text-white">
+                        <i class="bi bi-house-door-fill me-1"></i>กลับหน้าหลัก
+                    </a>
+                </div>
+            </div>
+
+            <!-- Review Answers -->
+            <div id="student-review-section" class="cyber-card border-quiz mb-4">
+                <h5 class="fw-bold text-white mb-3"><i class="bi bi-journal-check text-quiz me-2"></i>ทบทวนคำตอบของคุณ</h5>
+                <div id="student-review-list">
+                    <!-- Dynamic review cards -->
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Certificate Modal -->
+    <div class="modal fade" id="studentCertModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content cyber-card border-quiz text-white">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-award-fill text-warning me-2"></i>เกียรติบัตรออนไลน์</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center py-3">
+                    <canvas id="student-cert-canvas" width="1000" height="650" class="w-100"></canvas>
+                </div>
+                <div class="modal-footer border-secondary justify-content-center">
+                    <button class="btn btn-warning fw-bold px-4" onclick="downloadStudentCertPNG()">
+                        <i class="bi bi-download me-1"></i>ดาวน์โหลดเกียรติบัตร (PNG)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS & SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="quiz_student.js"></script>
+</body>
+</html>

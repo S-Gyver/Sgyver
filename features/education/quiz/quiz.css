@@ -1,0 +1,227 @@
+/* ====================================================
+   🎯 Gyver Quiz - Cyber Pink/Magenta Theme
+   ==================================================== */
+body {
+    background-color: #0b0e14 !important;
+    color: #f8fafc !important;
+    font-family: 'Kanit', sans-serif !important;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+}
+
+.font-kanit { font-family: 'Kanit', sans-serif; }
+.font-mono { font-family: 'Fira Code', monospace; }
+
+/* Cyber Background Grid & Glow */
+.bg-cyber-grid {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image: linear-gradient(rgba(236, 72, 153, 0.04) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(217, 70, 239, 0.04) 1px, transparent 1px);
+    background-size: 36px 36px;
+    z-index: -1;
+    pointer-events: none;
+}
+
+.bg-glow-blur {
+    position: fixed;
+    width: 450px;
+    height: 450px;
+    border-radius: 50%;
+    filter: blur(140px);
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.25;
+}
+.glow-top { top: -100px; left: -80px; background: #ec4899; }
+.glow-bottom { bottom: -100px; right: -80px; background: #d946ef; }
+
+/* Cyber Card Containers */
+.cyber-card {
+    background: rgba(15, 23, 42, 0.88) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: 16px !important;
+    backdrop-filter: blur(14px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+    padding: 22px;
+}
+
+.border-quiz { border-color: rgba(236, 72, 153, 0.45) !important; }
+.border-quiz-accent { border-left: 5px solid #ec4899 !important; }
+.text-quiz { color: #f472b6 !important; }
+.text-quiz-glow { color: #f472b6; text-shadow: 0 0 12px rgba(244, 114, 182, 0.6); }
+.text-subtle { color: #94a3b8 !important; }
+
+/* Buttons */
+.btn-quiz-glow {
+    background: linear-gradient(135deg, #ec4899 0%, #d946ef 100%);
+    color: #ffffff;
+    font-weight: 600;
+    border: none;
+    transition: all 0.2s ease;
+}
+.btn-quiz-glow:hover {
+    background: linear-gradient(135deg, #f472b6 0%, #e879f9 100%);
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(236, 72, 153, 0.45);
+}
+
+.btn-outline-quiz {
+    color: #f472b6 !important;
+    border: 1px solid rgba(236, 72, 153, 0.5) !important;
+    background: rgba(236, 72, 153, 0.08) !important;
+    transition: all 0.2s ease;
+}
+.btn-outline-quiz:hover {
+    color: #ffffff !important;
+    background: rgba(236, 72, 153, 0.3) !important;
+    border-color: #ec4899 !important;
+}
+
+/* Question Editor Block */
+.question-block {
+    background: rgba(30, 41, 59, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 20px;
+    transition: all 0.2s ease;
+}
+.question-block:hover, .question-block.active {
+    border-color: rgba(236, 72, 153, 0.5);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Choice Row in Editor */
+.choice-row {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    transition: all 0.2s ease;
+}
+.choice-row.is-correct {
+    border-color: rgba(16, 185, 129, 0.6);
+    background: rgba(16, 185, 129, 0.08);
+}
+
+/* Form Option Pills & Inputs */
+.form-control-cyber, .form-select-cyber {
+    background-color: #0f172a !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    color: #f8fafc !important;
+    border-radius: 10px !important;
+}
+.form-control-cyber:focus, .form-select-cyber:focus {
+    border-color: #ec4899 !important;
+    box-shadow: 0 0 0 0.25rem rgba(236, 72, 153, 0.25) !important;
+}
+
+/* Interactive Choices for Quiz Taker */
+.quiz-choice-card {
+    background: rgba(30, 41, 59, 0.75);
+    border: 2px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    padding: 14px 18px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+.quiz-choice-card:hover {
+    border-color: rgba(236, 72, 153, 0.6);
+    background: rgba(236, 72, 153, 0.1);
+    transform: translateY(-2px);
+}
+.quiz-choice-card.selected {
+    border-color: #ec4899 !important;
+    background: rgba(236, 72, 153, 0.2) !important;
+    box-shadow: 0 0 15px rgba(236, 72, 153, 0.35);
+}
+.quiz-choice-card.correct-highlight {
+    border-color: #10b981 !important;
+    background: rgba(16, 185, 129, 0.2) !important;
+}
+.quiz-choice-card.wrong-highlight {
+    border-color: #ef4444 !important;
+    background: rgba(239, 68, 68, 0.2) !important;
+}
+
+/* Timer Badge */
+.timer-badge {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.5);
+    color: #fca5a5;
+    font-size: 1.1rem;
+    font-weight: 700;
+    padding: 6px 14px;
+    border-radius: 30px;
+    animation: pulseGlow 2s infinite;
+}
+@keyframes pulseGlow {
+    0%, 100% { box-shadow: 0 0 5px rgba(239, 68, 68, 0.3); }
+    50% { box-shadow: 0 0 15px rgba(239, 68, 68, 0.7); }
+}
+
+/* Stat Badge */
+.stat-badge {
+    background: rgba(236, 72, 153, 0.15);
+    border: 1px solid rgba(236, 72, 153, 0.3);
+    border-radius: 12px;
+    padding: 14px;
+    text-align: center;
+}
+
+/* Score Circle */
+.score-circle {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    background: radial-gradient(circle, rgba(236, 72, 153, 0.2) 0%, rgba(15, 23, 42, 0.8) 70%);
+    border: 4px solid #ec4899;
+    box-shadow: 0 0 25px rgba(236, 72, 153, 0.5);
+}
+
+/* Certificate Canvas Modal */
+#cert-preview-canvas {
+    max-width: 100%;
+    height: auto;
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+}
+
+/* SweetAlert2 Cyber Customization */
+.swal2-popup.cyber-swal-popup {
+    background: rgba(15, 23, 42, 0.96) !important;
+    border: 1px solid rgba(236, 72, 153, 0.45) !important;
+    border-radius: 18px !important;
+    backdrop-filter: blur(16px) !important;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.7), 0 0 25px rgba(236, 72, 153, 0.25) !important;
+    color: #f8fafc !important;
+    font-family: 'Kanit', sans-serif !important;
+}
+.swal2-popup.cyber-swal-popup .swal2-title {
+    color: #ffffff !important;
+    font-family: 'Kanit', sans-serif !important;
+    font-weight: 700 !important;
+}
+.swal2-popup.cyber-swal-popup .swal2-html-container {
+    color: #cbd5e1 !important;
+    font-family: 'Kanit', sans-serif !important;
+}
+.swal2-popup.swal2-toast {
+    background: rgba(15, 23, 42, 0.95) !important;
+    border: 1px solid rgba(236, 72, 153, 0.5) !important;
+    border-radius: 12px !important;
+    color: #ffffff !important;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5) !important;
+    font-family: 'Kanit', sans-serif !important;
+}
+

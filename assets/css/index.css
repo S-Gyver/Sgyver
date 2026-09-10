@@ -78,6 +78,11 @@ body {
     color: #ffffff !important;
 }
 
+.icon-gradient-quiz {
+    background: linear-gradient(135deg, #ec4899 0%, #d946ef 100%) !important;
+    color: #ffffff !important;
+}
+
 .icon-gradient-classroom {
     background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
     color: #ffffff !important;
