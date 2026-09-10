@@ -92,36 +92,38 @@ async function loadQuizData(quizId) {
         };
     }
 
-    // Ensure 20 variants exist (Support Question Pool)
+    // Ensure variants exist (Support Question Pool & Dynamic Set Count)
     const totalQ = (currentQuiz.questions || []).length;
-    // Auto-enable pool when total questions > 20 unless explicitly turned off
     const isPool = (currentQuiz.settings?.poolEnabled === false) ? false : (totalQ > 20 || !!currentQuiz.settings?.poolEnabled);
     const poolCount = isPool 
         ? (Number(currentQuiz.settings?.poolCount) > 0 ? Math.min(Number(currentQuiz.settings.poolCount), totalQ) : Math.min(20, totalQ))
         : totalQ;
 
-    if (!currentQuiz.variants || currentQuiz.variants.length < 20 || (currentQuiz.variants[0]?.questions?.length !== poolCount)) {
-        currentQuiz.variants = autoGenerate20Variants(currentQuiz.questions, poolCount);
+    if (!currentQuiz.variants || currentQuiz.variants.length === 0 || (currentQuiz.variants[0]?.questions?.length !== poolCount)) {
+        const existingCount = (currentQuiz.variants && currentQuiz.variants.length > 0) ? currentQuiz.variants.length : 20;
+        currentQuiz.variants = autoGenerate20Variants(currentQuiz.questions, poolCount, existingCount);
     }
 
+    const varCount = currentQuiz.variants.length;
     // Update Header UI
-    const qCountBadge = isPool ? `สุ่ม ${poolCount}/${totalQ} ข้อ (20 SETS)` : `${totalQ} ข้อ (20 SETS READY)`;
+    const qCountBadge = isPool ? `สุ่ม ${poolCount}/${totalQ} ข้อ (${varCount} SETS)` : `${totalQ} ข้อ (${varCount} SETS READY)`;
     document.getElementById('lobby-quiz-title').innerHTML = `
         ${escapeHtml(currentQuiz.title)}
         <span class="badge bg-warning text-dark fs-6 font-mono"><i class="bi bi-shield-lock-fill me-1"></i>${qCountBadge}</span>
     `;
     document.getElementById('lobby-quiz-desc').textContent = isPool 
-        ? `ระบบสุ่มดึงข้อสอบคนละ ${poolCount} ข้อ จากคลังทั้งหมด ${totalQ} ข้อ แจกจ่าย 1 คนต่อ 1 ชุดไม่ซ้ำกัน` 
-        : (currentQuiz.description || 'สุ่มแจกจ่ายข้อสอบ 20 ชุด ไม่ซ้ำกัน 1 คนต่อ 1 ชุด');
+        ? `ระบบสุ่มดึงข้อสอบคนละ ${poolCount} ข้อ จากคลังทั้งหมด ${totalQ} ข้อ แจกจ่าย 1 คนต่อ 1 ชุดไม่ซ้ำกัน (${varCount} ชุด)` 
+        : (currentQuiz.description || `สุ่มแจกจ่ายข้อสอบ ${varCount} ชุด ไม่ซ้ำกัน 1 คนต่อ 1 ชุด`);
 }
 
-function autoGenerate20Variants(baseQuestions, poolCount) {
+function autoGenerate20Variants(baseQuestions, poolCount, targetCount = 20) {
     const variants = [];
     const count = (poolCount && poolCount > 0 && poolCount < (baseQuestions || []).length)
         ? poolCount
         : (baseQuestions || []).length;
+    const maxGen = Math.max(1, targetCount || 20);
 
-    for (let i = 1; i <= 20; i++) {
+    for (let i = 1; i <= maxGen; i++) {
         const cloned = JSON.parse(JSON.stringify(baseQuestions || []));
         shuffleArray(cloned);
         const selected = cloned.slice(0, count);
@@ -676,8 +678,9 @@ async function startLiveExam() {
         : totalQ;
 
     let variants = currentQuiz.variants;
-    if (!variants || variants.length < 20 || (variants[0]?.questions?.length !== poolCount)) {
-        variants = autoGenerate20Variants(currentQuiz.questions, poolCount);
+    if (!variants || variants.length === 0 || (variants[0]?.questions?.length !== poolCount)) {
+        const existingCount = (variants && variants.length > 0) ? variants.length : 20;
+        variants = autoGenerate20Variants(currentQuiz.questions, poolCount, existingCount);
         currentQuiz.variants = variants;
     }
     

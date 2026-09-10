@@ -700,7 +700,7 @@ function previewCurrentQuizAsStudent() {
     startQuizFromList(currentQuiz.id);
 }
 
-// 🎲 20 Variants Anti-Cheating Generator
+// 🎲 Custom Variants Anti-Cheating Generator
 function renderVariantsBadge() {
     const badge = document.getElementById('variants-count-badge');
     const text = document.getElementById('variants-status-text');
@@ -709,12 +709,12 @@ function renderVariantsBadge() {
     const count = (currentQuiz?.variants || []).length;
     if (count > 0) {
         badge.className = 'badge bg-success text-white px-2 py-1';
-        badge.innerHTML = `<i class="bi bi-shield-check me-1"></i>พร้อมใช้งาน ${count} / 20 ชุด`;
+        badge.innerHTML = `<i class="bi bi-shield-check me-1"></i>พร้อมใช้งาน ${count} ชุด`;
         text.textContent = `ระบบได้สลับลำดับข้อสอบและช้อยส์คำตอบเรียบร้อยแล้ว (${count} ชุด ไม่ซ้ำกัน)`;
     } else {
         badge.className = 'badge bg-warning text-dark px-2 py-1';
-        badge.innerHTML = `<i class="bi bi-shield-lock-fill me-1"></i>0 / 20 ชุด`;
-        text.textContent = 'ยังไม่ได้สร้างชุดข้อสอบสลับช้อยส์ 20 ชุด (กดปุ่มสุ่มสร้างด้านบน)';
+        badge.innerHTML = `<i class="bi bi-shield-lock-fill me-1"></i>ยังไม่มีชุดสลับข้อสอบ`;
+        text.textContent = 'ยังไม่ได้สร้างชุดข้อสอบสลับช้อยส์ (กดปุ่มสุ่มสร้างชุดข้อสอบ)';
     }
 
     const lobbyLink = document.getElementById('btn-builder-lobby-link');
@@ -723,20 +723,87 @@ function renderVariantsBadge() {
     }
 }
 
-function generate20Variants() {
+async function promptGenerateVariants() {
     if (!currentQuiz || !currentQuiz.questions || currentQuiz.questions.length === 0) {
         const swal = getCyberSwal();
         if (swal) {
             swal.fire({
                 icon: 'warning',
                 title: 'ยังไม่มีคำถาม',
-                text: 'กรุณาสร้างคำถามในแบบทดสอบอย่างน้อย 1 ข้อก่อนสร้าง 20 ชุดคำถาม',
+                text: 'กรุณาสร้างคำถามในแบบทดสอบอย่างน้อย 1 ข้อก่อนสร้างชุดข้อสอบ',
                 confirmButtonText: 'เข้าใจแล้ว'
             });
         }
         return;
     }
 
+    const currentCount = (currentQuiz.variants || []).length || 20;
+
+    const swal = getCyberSwal();
+    if (swal) {
+        const { value: selectedCount } = await swal.fire({
+            title: '🎲 กำหนดจำนวนชุดข้อสอบ (Anti-Cheating)',
+            html: `
+                <div class="text-start mb-2">
+                    <p class="text-subtle small mb-3">ระบุจำนวนชุดข้อสอบสลับคำถามและช้อยส์ที่ต้องการสร้าง (ระบบจะสลับลำดับโจทย์และสลับตัวเลือกไม่ซ้ำกันตามจำนวนชุดที่กำหนด):</p>
+                    <div class="d-flex flex-wrap justify-content-center gap-2 mb-3">
+                        <button type="button" class="btn btn-outline-info btn-sm px-3 fw-bold" onclick="document.getElementById('swal-variant-count-input').value = 5">5 ชุด</button>
+                        <button type="button" class="btn btn-outline-info btn-sm px-3 fw-bold" onclick="document.getElementById('swal-variant-count-input').value = 10">10 ชุด</button>
+                        <button type="button" class="btn btn-outline-info btn-sm px-3 fw-bold" onclick="document.getElementById('swal-variant-count-input').value = 20">20 ชุด</button>
+                        <button type="button" class="btn btn-outline-info btn-sm px-3 fw-bold" onclick="document.getElementById('swal-variant-count-input').value = 30">30 ชุด</button>
+                        <button type="button" class="btn btn-outline-info btn-sm px-3 fw-bold" onclick="document.getElementById('swal-variant-count-input').value = 50">50 ชุด</button>
+                    </div>
+                    <label class="form-label text-white-50 small fw-bold">ระบุจำนวนชุด (1 - 100 ชุด):</label>
+                </div>
+            `,
+            input: 'number',
+            inputValue: currentCount,
+            inputAttributes: {
+                id: 'swal-variant-count-input',
+                min: 1,
+                max: 100,
+                step: 1,
+                class: 'form-control form-control-cyber text-center fs-4 fw-bold'
+            },
+            showCancelButton: true,
+            confirmButtonText: '⚡ สุ่มสร้างชุดข้อสอบทันที',
+            cancelButtonText: 'ยกเลิก',
+            inputValidator: (value) => {
+                const num = parseInt(value, 10);
+                if (!num || num < 1 || num > 100) {
+                    return 'กรุณาระบุจำนวนชุดข้อสอบระหว่าง 1 ถึง 100 ชุด';
+                }
+            }
+        });
+
+        if (selectedCount) {
+            generate20Variants(parseInt(selectedCount, 10));
+        }
+    } else {
+        generate20Variants(20);
+    }
+}
+
+function generate20Variants(targetCount = 20) {
+    if (typeof targetCount !== 'number' || isNaN(targetCount)) {
+        promptGenerateVariants();
+        return;
+    }
+
+    if (!currentQuiz || !currentQuiz.questions || currentQuiz.questions.length === 0) {
+        const swal = getCyberSwal();
+        if (swal) {
+            swal.fire({
+                icon: 'warning',
+                title: 'ยังไม่มีคำถาม',
+                text: 'กรุณาสร้างคำถามในแบบทดสอบอย่างน้อย 1 ข้อก่อนสร้างชุดข้อสอบ',
+                confirmButtonText: 'เข้าใจแล้ว'
+            });
+        }
+        return;
+    }
+
+    const countToGenerate = Math.max(1, Math.min(100, targetCount));
     const baseQuestions = currentQuiz.questions;
     const variants = [];
     const totalQ = (baseQuestions || []).length;
@@ -745,7 +812,7 @@ function generate20Variants() {
         ? (Number(currentQuiz.settings?.poolCount) > 0 ? Math.min(Number(currentQuiz.settings.poolCount), totalQ) : Math.min(20, totalQ))
         : totalQ;
 
-    for (let i = 1; i <= 20; i++) {
+    for (let i = 1; i <= countToGenerate; i++) {
         const cloned = JSON.parse(JSON.stringify(baseQuestions));
         shuffleArray(cloned);
         const selected = cloned.slice(0, poolCount);
@@ -772,10 +839,10 @@ function generate20Variants() {
     if (swal) {
         swal.fire({
             icon: 'success',
-            title: 'สร้าง 20 ชุดสำเร็จ! 🎉',
+            title: `สร้าง ${countToGenerate} ชุดสำเร็จ! 🎉`,
             text: isPool 
-                ? `ระบบได้สุ่มดึงคำถามคนละ ${poolCount} ข้อ จากคลังทั้งหมด ${baseQuestions.length} ข้อ พร้อมสลับช้อยส์ 20 ชุดเรียบร้อย` 
-                : 'ระบบได้สลับลำดับข้อและสลับตัวเลือกเป็น 20 ชุดเรียบร้อย พร้อมสำหรับแจกนักเรียน 1 คนต่อ 1 ชุดในห้องสอบสด',
+                ? `ระบบได้สุ่มดึงคำถามคนละ ${poolCount} ข้อ จากคลังทั้งหมด ${baseQuestions.length} ข้อ พร้อมสลับช้อยส์ ${countToGenerate} ชุดเรียบร้อย` 
+                : `ระบบได้สลับลำดับข้อและสลับตัวเลือกเป็น ${countToGenerate} ชุดเรียบร้อย พร้อมสำหรับแจกนักเรียน 1 คนต่อ 1 ชุดในห้องสอบสด`,
             timer: 2500,
             showConfirmButton: false
         });

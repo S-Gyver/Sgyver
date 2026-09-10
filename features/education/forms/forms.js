@@ -548,6 +548,20 @@ function renderQuestionsList() {
                     </button>
                 </div>
             `;
+        } else if (q.type === 'rating') {
+            optionsHtml = `
+                <div class="mt-3 p-3 bg-dark bg-opacity-50 border border-warning border-opacity-50 rounded-3">
+                    <label class="form-label small fw-bold text-warning mb-1"><i class="bi bi-star-fill me-1"></i>ตัวอย่างการแสดงผลแบบประเมินดาว (1-5 ดาว):</label>
+                    <div class="d-flex align-items-center gap-2 text-warning fs-3 my-1">
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <span class="fs-6 text-subtle ms-2">(ผู้ตอบจะเห็นดาว 5 ดวงสำหรับคลิกเลือก 1-5 คะแนน)</span>
+                    </div>
+                </div>
+            `;
         }
 
         let quizHtml = '';
@@ -560,6 +574,17 @@ function renderQuestionsList() {
                         ${(q.options || []).map(opt => `
                             <option value="${escapeHtml(opt)}" ${q.answerKey === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>
                         `).join('')}
+                    </select>
+                `;
+            } else if (q.type === 'rating') {
+                keyControl = `
+                    <select class="form-select form-select-sm bg-dark text-white border-warning" onchange="updateAnswerKey('${q.id}', this.value)">
+                        <option value="">-- เลือกดาวที่ถูกต้อง (1-5) --</option>
+                        <option value="5" ${q.answerKey === '5' ? 'selected' : ''}>5 ดาว ⭐⭐⭐⭐⭐</option>
+                        <option value="4" ${q.answerKey === '4' ? 'selected' : ''}>4 ดาว ⭐⭐⭐⭐</option>
+                        <option value="3" ${q.answerKey === '3' ? 'selected' : ''}>3 ดาว ⭐⭐⭐</option>
+                        <option value="2" ${q.answerKey === '2' ? 'selected' : ''}>2 ดาว ⭐⭐</option>
+                        <option value="1" ${q.answerKey === '1' ? 'selected' : ''}>1 ดาว ⭐</option>
                     </select>
                 `;
             } else if (q.type === 'checkbox') {
@@ -603,9 +628,18 @@ function renderQuestionsList() {
             `;
         }
 
+        const typeBadgeTextMap = {
+            radio: '<i class="bi bi-ui-radios me-1"></i>ข้อที่ ' + (idx + 1) + ' (หลายตัวเลือก)',
+            checkbox: '<i class="bi bi-ui-checks me-1"></i>ข้อที่ ' + (idx + 1) + ' (หลายคำตอบ)',
+            select: '<i class="bi bi-menu-button-wide-fill me-1"></i>ข้อที่ ' + (idx + 1) + ' (เลือกลิสต์)',
+            rating: '<i class="bi bi-star-fill text-warning me-1"></i>ข้อที่ ' + (idx + 1) + ' (ให้คะแนนดาว)',
+            text: '<i class="bi bi-input-cursor-text me-1"></i>ข้อที่ ' + (idx + 1) + ' (ข้อความสั้น)',
+            textarea: '<i class="bi bi-blockquote-left me-1"></i>ข้อที่ ' + (idx + 1) + ' (ข้อความยาว)'
+        };
+
         card.innerHTML = `
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="badge bg-purple-subtle text-purple border border-purple">ข้อที่ ${idx + 1}</span>
+                <span class="badge bg-purple-subtle text-purple border border-purple">${typeBadgeTextMap[q.type] || ('ข้อที่ ' + (idx + 1))}</span>
                 <div class="d-flex align-items-center gap-2">
                     <div class="form-check form-switch mb-0 me-2">
                         <input class="form-check-input" type="checkbox" id="req-${q.id}" ${q.required ? 'checked' : ''} onchange="toggleQuestionRequired('${q.id}')">
@@ -618,18 +652,19 @@ function renderQuestionsList() {
             </div>
             
             <div class="row g-2 mb-2">
-                <div class="col-12 col-md-8">
+                <div class="col-12 col-md-7">
                     <input type="text" class="form-control bg-dark text-white border-purple" 
                         placeholder="ชื่อคำถาม..." value="${escapeHtml(q.title)}" 
                         onchange="updateQuestionTitle('${q.id}', this.value)">
                 </div>
-                <div class="col-12 col-md-4">
-                    <select class="form-select bg-dark text-white border-purple" onchange="updateQuestionType('${q.id}', this.value)">
-                        <option value="radio" ${q.type === 'radio' ? 'selected' : ''}>หลายตัวเลือก (Radio)</option>
-                        <option value="checkbox" ${q.type === 'checkbox' ? 'selected' : ''}>หลายคำตอบ (Checkbox)</option>
-                        <option value="select" ${q.type === 'select' ? 'selected' : ''}>เลือกลิสต์ (Dropdown)</option>
-                        <option value="text" ${q.type === 'text' ? 'selected' : ''}>ข้อความสั้น (Short Text)</option>
-                        <option value="textarea" ${q.type === 'textarea' ? 'selected' : ''}>ข้อความยาว (Long Text)</option>
+                <div class="col-12 col-md-5">
+                    <select class="form-select bg-dark text-white border-purple font-kanit" onchange="updateQuestionType('${q.id}', this.value)">
+                        <option value="radio" ${q.type === 'radio' ? 'selected' : ''}>🔘 หลายตัวเลือก (Radio)</option>
+                        <option value="checkbox" ${q.type === 'checkbox' ? 'selected' : ''}>☑️ หลายคำตอบ (Checkbox)</option>
+                        <option value="select" ${q.type === 'select' ? 'selected' : ''}>🔽 เลือกลิสต์ (Dropdown)</option>
+                        <option value="rating" ${q.type === 'rating' ? 'selected' : ''}>⭐ ให้คะแนนดาว (Star Rating)</option>
+                        <option value="text" ${q.type === 'text' ? 'selected' : ''}>📝 ข้อความสั้น (Short Text)</option>
+                        <option value="textarea" ${q.type === 'textarea' ? 'selected' : ''}>📄 ข้อความยาว (Long Text)</option>
                     </select>
                 </div>
             </div>
@@ -816,6 +851,23 @@ function renderResponderView() {
                     ${(q.options || []).map(opt => `<option value="${escapeHtml(opt)}">${escapeHtml(opt)}</option>`).join('')}
                 </select>
             `;
+        } else if (q.type === 'rating') {
+            inputHtml = `
+                <div class="star-rating-box py-2" id="star-box-${q.id}">
+                    <input type="hidden" name="ans-${q.id}" id="ans-${q.id}" value="">
+                    <div class="d-flex align-items-center gap-2 fs-2 text-warning">
+                        ${[1, 2, 3, 4, 5].map(star => `
+                            <i class="bi bi-star star-btn-${q.id}" style="cursor: pointer;" 
+                               data-star="${star}" 
+                               onclick="setFormStarRating('${q.id}', ${star})"
+                               onmouseover="hoverFormStarRating('${q.id}', ${star})"
+                               onmouseout="resetFormStarRating('${q.id}')"
+                               title="${star} ดาว"></i>
+                        `).join('')}
+                        <span id="star-label-${q.id}" class="text-warning fw-bold ms-2 fs-6"></span>
+                    </div>
+                </div>
+            `;
         } else if (q.type === 'textarea') {
             inputHtml = `<textarea class="form-control bg-dark text-white border-purple" name="ans-${q.id}" rows="3" placeholder="พิมพ์คำตอบของคุณ..."></textarea>`;
         } else {
@@ -833,6 +885,47 @@ function renderResponderView() {
         `;
         qList.appendChild(card);
     });
+}
+
+function setFormStarRating(qId, rating) {
+    const input = document.getElementById(`ans-${qId}`);
+    if (input) input.value = rating;
+
+    const stars = document.querySelectorAll(`.star-btn-${qId}`);
+    stars.forEach((star, idx) => {
+        if (idx < rating) {
+            star.className = 'bi bi-star-fill text-warning star-btn-' + qId;
+        } else {
+            star.className = 'bi bi-star text-warning star-btn-' + qId;
+        }
+    });
+
+    const label = document.getElementById(`star-label-${qId}`);
+    if (label) {
+        const labels = ['', '1 ดาว (ต้องปรับปรุง)', '2 ดาว (พอใช้)', '3 ดาว (ปานกลาง)', '4 ดาว (ดี)', '5 ดาว (ดีมาก)'];
+        label.textContent = labels[rating] || `${rating} / 5 ดาว`;
+    }
+}
+
+function hoverFormStarRating(qId, rating) {
+    const input = document.getElementById(`ans-${qId}`);
+    const currentVal = input ? Number(input.value) : 0;
+    if (currentVal > 0) return;
+
+    const stars = document.querySelectorAll(`.star-btn-${qId}`);
+    stars.forEach((star, idx) => {
+        if (idx < rating) {
+            star.className = 'bi bi-star-fill text-warning star-btn-' + qId;
+        } else {
+            star.className = 'bi bi-star text-warning star-btn-' + qId;
+        }
+    });
+}
+
+function resetFormStarRating(qId) {
+    const input = document.getElementById(`ans-${qId}`);
+    const currentVal = input ? Number(input.value) : 0;
+    setFormStarRating(qId, currentVal);
 }
 
 function submitResponse() {
@@ -854,7 +947,7 @@ function submitResponse() {
         } else if (q.type === 'checkbox') {
             const checkedBoxes = document.querySelectorAll(`input[name="ans-${q.id}"]:checked`);
             userVal = Array.from(checkedBoxes).map(cb => cb.value);
-        } else if (q.type === 'select' || q.type === 'text' || q.type === 'textarea') {
+        } else if (q.type === 'select' || q.type === 'rating' || q.type === 'text' || q.type === 'textarea') {
             const input = document.querySelector(`[name="ans-${q.id}"]`);
             userVal = input ? input.value.trim() : '';
         }

@@ -80,8 +80,8 @@
                     <button class="btn btn-outline-info btn-sm fw-bold" onclick="openBatchImportModal()">
                         <i class="bi bi-file-earmark-code-fill me-1"></i>วางข้อสอบทั้งชุด (Quick Import)
                     </button>
-                    <button class="btn btn-outline-warning btn-sm" onclick="generate20Variants()">
-                        <i class="bi bi-shuffle me-1"></i>สุ่มสร้าง 20 ชุด (Anti-Cheating)
+                    <button class="btn btn-outline-warning btn-sm" onclick="promptGenerateVariants()">
+                        <i class="bi bi-shuffle me-1"></i>สุ่มสร้างชุดข้อสอบ (Anti-Cheating)
                     </button>
                     <a id="btn-builder-lobby-link" href="#" class="btn btn-outline-info btn-sm" onclick="openLobbyForCurrentQuiz(event)">
                         <i class="bi bi-broadcast-pin me-1"></i>เปิดห้องสอบสด
@@ -95,14 +95,14 @@
                 </div>
             </div>
 
-            <!-- 20 Variants Anti-Cheating Banner -->
+            <!-- Variants Anti-Cheating Banner -->
             <div id="variants-status-bar" class="cyber-card mb-3 border-quiz py-2 px-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div class="d-flex align-items-center gap-2">
-                    <span id="variants-count-badge" class="badge bg-warning text-dark px-2 py-1"><i class="bi bi-shield-lock-fill me-1"></i>0 / 20 ชุด</span>
-                    <span id="variants-status-text" class="text-subtle small">ยังไม่ได้สร้างชุดข้อสอบสลับช้อยส์ 20 ชุด (กดปุ่มสุ่มสร้างด้านบน)</span>
+                    <span id="variants-count-badge" class="badge bg-warning text-dark px-2 py-1"><i class="bi bi-shield-lock-fill me-1"></i>ยังไม่มีชุดสลับข้อสอบ</span>
+                    <span id="variants-status-text" class="text-subtle small">ยังไม่ได้สร้างชุดข้อสอบสลับช้อยส์ (กดปุ่มสุ่มสร้างชุดข้อสอบ)</span>
                 </div>
-                <button class="btn btn-sm btn-outline-warning" onclick="generate20Variants()">
-                    <i class="bi bi-arrow-repeat me-1"></i>สร้าง 20 ชุดเดี๋ยวนี้
+                <button class="btn btn-sm btn-outline-warning" onclick="promptGenerateVariants()">
+                    <i class="bi bi-gear-fill me-1"></i>สร้าง / ปรับจำนวนชุดข้อสอบ
                 </button>
             </div>
 
@@ -180,20 +180,35 @@
                 <!-- Dynamic question blocks -->
             </div>
 
-            <!-- Add Question Bar -->
-            <div class="text-center my-4">
-                <button class="btn btn-outline-info px-4 py-2 me-2 fw-bold" onclick="openBatchImportModal()">
-                    <i class="bi bi-file-earmark-code-fill me-1"></i>วางข้อสอบทั้งชุด (Quick Import โค้ด & ช้อยส์)
-                </button>
-                <button class="btn btn-outline-quiz px-4 py-2 me-2" onclick="addQuestion('radio')">
-                    <i class="bi bi-ui-radios me-1"></i>เพิ่มคำถาม ปรนัย (ข้อเดียว)
-                </button>
-                <button class="btn btn-outline-quiz px-4 py-2 me-2" onclick="addQuestion('checkbox')">
-                    <i class="bi bi-ui-checks me-1"></i>เพิ่มคำถาม ปรนัย (หลายข้อ)
-                </button>
-                <button class="btn btn-outline-quiz px-4 py-2" onclick="addQuestion('text')">
-                    <i class="bi bi-textarea-t me-1"></i>เพิ่มคำถาม อัตนัย (ข้อเขียน)
-                </button>
+            <!-- Add Question & Tools Bar -->
+            <div class="cyber-card my-4 p-3 border-quiz rounded-4 shadow-lg">
+                <div class="d-flex flex-column flex-lg-row align-items-stretch align-items-lg-center justify-content-between gap-3">
+                    <!-- Quick Import Action -->
+                    <button class="btn btn-outline-info-quiz py-2.5 px-3.5 fw-bold d-flex align-items-center justify-content-center gap-2 rounded-3 text-nowrap" onclick="openBatchImportModal()">
+                        <i class="bi bi-file-earmark-code-fill fs-5"></i>
+                        <span>วางข้อสอบทั้งชุด (Quick Import โค้ด & ช้อยส์)</span>
+                    </button>
+
+                    <!-- Divider for desktop view -->
+                    <div class="vr bg-secondary opacity-25 d-none d-lg-block" style="height: 32px;"></div>
+                    <hr class="w-100 m-0 d-lg-none opacity-25">
+
+                    <!-- Question Type Action Buttons -->
+                    <div class="d-flex flex-wrap flex-grow-1 align-items-center justify-content-center justify-content-lg-end gap-2">
+                        <button class="btn btn-outline-quiz py-2.5 px-3 flex-fill flex-md-grow-0 d-flex align-items-center justify-content-center gap-2 rounded-3 text-nowrap" onclick="addQuestion('radio')">
+                            <i class="bi bi-ui-radios fs-5"></i>
+                            <span>เพิ่มคำถาม ปรนัย (ข้อเดียว)</span>
+                        </button>
+                        <button class="btn btn-outline-quiz py-2.5 px-3 flex-fill flex-md-grow-0 d-flex align-items-center justify-content-center gap-2 rounded-3 text-nowrap" onclick="addQuestion('checkbox')">
+                            <i class="bi bi-ui-checks fs-5"></i>
+                            <span>เพิ่มคำถาม ปรนัย (หลายข้อ)</span>
+                        </button>
+                        <button class="btn btn-outline-quiz py-2.5 px-3 flex-fill flex-md-grow-0 d-flex align-items-center justify-content-center gap-2 rounded-3 text-nowrap" onclick="addQuestion('text')">
+                            <i class="bi bi-textarea-t fs-5"></i>
+                            <span>เพิ่มคำถาม อัตนัย (ข้อเขียน)</span>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 

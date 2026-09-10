@@ -78,6 +78,20 @@ body {
     color: #ffffff !important;
     background: rgba(236, 72, 153, 0.3) !important;
     border-color: #ec4899 !important;
+    box-shadow: 0 4px 15px rgba(236, 72, 153, 0.35);
+}
+
+.btn-outline-info-quiz {
+    color: #38bdf8 !important;
+    border: 1px solid rgba(56, 189, 248, 0.45) !important;
+    background: rgba(56, 189, 248, 0.08) !important;
+    transition: all 0.2s ease;
+}
+.btn-outline-info-quiz:hover {
+    color: #ffffff !important;
+    background: rgba(56, 189, 248, 0.25) !important;
+    border-color: #38bdf8 !important;
+    box-shadow: 0 4px 15px rgba(56, 189, 248, 0.35);
 }
 
 /* Question Editor Block */

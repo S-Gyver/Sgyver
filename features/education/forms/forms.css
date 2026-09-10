@@ -94,6 +94,14 @@ body {
     box-shadow: 0 0 0 0.25rem rgba(139, 92, 246, 0.25) !important;
 }
 
+/* Star Rating Component */
+.star-rating-box i {
+    transition: transform 0.15s ease, color 0.15s ease;
+}
+.star-rating-box i:hover {
+    transform: scale(1.25);
+}
+
 /* Response Stat Cards */
 .stat-badge {
     background: rgba(139, 92, 246, 0.15);
