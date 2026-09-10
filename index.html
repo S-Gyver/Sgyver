@@ -38,6 +38,12 @@
                     <span id="current-time-display">กำลังโหลดเวลา...</span>
                 </div>
 
+                <!-- 🎮 ปุ่มด่วนเข้าห้องด้วย PIN -->
+                <button type="button" class="btn btn-sm btn-outline-danger fw-bold px-3 d-flex align-items-center gap-1 shadow-sm rounded-pill"
+                    onclick="openJoinRoomModal()">
+                    <i class="bi bi-broadcast"></i><span>เข้าห้อง (PIN)</span>
+                </button>
+
                 <!-- 🔑 สถานะ Level 0: ปุ่มกดเปิด Popup Login -->
                 <button class="btn btn-sm btn-primary fw-bold px-3 shadow-sm" id="auth-login-btn" data-bs-toggle="modal"
                     data-bs-target="#authModal">
@@ -652,6 +658,77 @@
         </div>
     </div>
 
+    <!-- 🎮 Modal สำหรับใส่ PIN หรือเปิดกล้องมือถือสแกน QR Code เพื่อเข้าห้อง -->
+    <div class="modal fade" id="joinRoomModal" tabindex="-1" aria-labelledby="joinRoomModalLabel" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden" style="background: #0f172a; color: #f8fafc; border: 1px solid rgba(255, 255, 255, 0.15) !important;">
+                <div class="modal-header border-secondary border-opacity-25 pb-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="rounded-3 p-2 text-white shadow-sm" style="background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%); font-size: 1.25rem;">
+                            <i class="bi bi-door-open-fill"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold text-white mb-0" id="joinRoomModalLabel">เข้าสู่ห้องสอบ / กิจกรรม</h5>
+                            <div class="small text-subtle" style="font-size: 0.78rem; color: #94a3b8;">ใส่รหัส PIN หรือสแกน QR Code จากหน้าจอคุณครู</div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" onclick="stopCameraScanner()"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <!-- วิธีที่ 1: พิมพ์เลขห้อง PIN -->
+                    <div class="mb-3">
+                        <label for="modal-join-pin" class="form-label text-white-50 small fw-bold mb-2">
+                            <i class="bi bi-key-fill text-warning me-1"></i> วิธีที่ 1: พิมพ์รหัสห้อง (ROOM PIN)
+                        </label>
+                        <form id="modal-join-form" onsubmit="handleModalJoinRoom(event)" class="d-flex flex-column gap-2 m-0">
+                            <input type="text" id="modal-join-pin" 
+                                class="form-control form-control-lg text-center fw-bold text-uppercase rounded-3" 
+                                placeholder="ใส่เลขห้อง เช่น 842109" 
+                                maxlength="10" 
+                                autocomplete="off"
+                                style="background: rgba(255, 255, 255, 0.08); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.25); letter-spacing: 3px; font-family: monospace; font-size: 1.3rem;">
+                            <button type="submit" id="modal-btn-join" 
+                                class="btn btn-lg fw-bold text-white rounded-3 shadow mt-1 d-flex align-items-center justify-content-center gap-2"
+                                style="background: linear-gradient(135deg, #ec4899 0%, #a855f7 100%); border: none;">
+                                <span>เข้าห้องสอบทันที</span>
+                                <i class="bi bi-arrow-right-circle-fill"></i>
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- เส้นคั่น หรือ -->
+                    <div class="d-flex align-items-center my-3">
+                        <hr class="flex-grow-1 border-secondary border-opacity-50 m-0">
+                        <span class="px-3 text-secondary small fw-semibold">หรือ</span>
+                        <hr class="flex-grow-1 border-secondary border-opacity-50 m-0">
+                    </div>
+
+                    <!-- วิธีที่ 2: สแกน QR Code ด้วยกล้องมือถือ -->
+                    <div>
+                        <label class="form-label text-white-50 small fw-bold mb-2">
+                            <i class="bi bi-camera-fill text-info me-1"></i> วิธีที่ 2: สแกน QR Code ด้วยกล้องมือถือ
+                        </label>
+                        <button type="button" id="btn-toggle-qr-cam" class="btn btn-outline-info w-100 py-2 fw-bold d-flex align-items-center justify-content-center gap-2 rounded-3" onclick="toggleCameraScanner()">
+                            <i class="bi bi-qr-code-scan fs-5"></i>
+                            <span id="btn-toggle-qr-text">เปิดกล้องเพื่อสแกน QR Code</span>
+                        </button>
+
+                        <!-- พื้นที่แสดงกล้องสแกน -->
+                        <div id="modal-qr-box" class="d-none mt-3 p-2 bg-black rounded-3 border border-info border-opacity-50 text-center">
+                            <div id="modal-qr-reader" style="width: 100%; min-height: 250px;" class="rounded-2 overflow-hidden"></div>
+                            <div class="small text-info mt-2">
+                                <i class="bi bi-broadcast me-1"></i> ส่องกล้องไปที่ QR Code บนหน้าจอของคุณครู
+                            </div>
+                            <button type="button" class="btn btn-outline-secondary btn-sm text-white-50 w-100 mt-2" onclick="stopCameraScanner()">
+                                <i class="bi bi-x-circle me-1"></i> ปิดกล้อง
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <footer class="py-4 navbar-custom text-center text-muted small mt-auto border-top bg-white">
         <div class="container d-flex flex-column flex-md-row justify-content-between align-items-center gap-2">
             <div>&copy; 2026 Gyver Home & Gyver Shop. All Rights Reserved.</div>
@@ -660,6 +737,8 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="index.js"></script>
 </body>
 

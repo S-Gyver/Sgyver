@@ -543,3 +543,199 @@ function initSearchAndFilter() {
         });
     }
 }
+
+/**
+ * 🎮 ระบบเข้าห้องสอบ / กิจกรรมผ่าน Modal (พิมพ์ PIN หรือเปิดกล้องสแกน QR Code)
+ */
+let html5QrScanner = null;
+
+function prepareJoinModal() {
+    stopCameraScanner();
+    setTimeout(() => {
+        const pinInput = document.getElementById('modal-join-pin');
+        if (pinInput) {
+            pinInput.value = '';
+            pinInput.focus();
+        }
+    }, 350);
+}
+
+function openJoinRoomModal() {
+    prepareJoinModal();
+    const modalEl = document.getElementById('joinRoomModal');
+    if (modalEl && typeof bootstrap !== 'undefined') {
+        const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        bsModal.show();
+    }
+}
+
+// เมื่อกด Submit ใน Modal
+async function handleModalJoinRoom(event) {
+    if (event) event.preventDefault();
+    const pinInput = document.getElementById('modal-join-pin');
+    if (!pinInput) return;
+
+    let pin = pinInput.value.trim().toUpperCase();
+    if (!pin) {
+        alert('กรุณากรอกเลขห้อง (PIN)');
+        pinInput.focus();
+        return;
+    }
+
+    stopCameraScanner();
+
+    // ปิด Modal
+    const modalEl = document.getElementById('joinRoomModal');
+    if (modalEl && typeof bootstrap !== 'undefined') {
+        const bsModal = bootstrap.Modal.getInstance(modalEl);
+        if (bsModal) bsModal.hide();
+    }
+
+    // Direct เข้าสู่หน้าสอบนักเรียนพร้อม PIN ทันที
+    window.location.href = `features/education/quiz/quiz_student.html?pin=${encodeURIComponent(pin)}`;
+}
+
+// สลับเปิด/ปิดกล้องสแกน QR Code
+function toggleCameraScanner() {
+    const box = document.getElementById('modal-qr-box');
+    if (!box) return;
+
+    if (box.classList.contains('d-none')) {
+        startCameraScanner();
+    } else {
+        stopCameraScanner();
+    }
+}
+
+// เริ่มเปิดกล้องอ่าน QR Code
+function startCameraScanner() {
+    const box = document.getElementById('modal-qr-box');
+    const btnText = document.getElementById('btn-toggle-qr-text');
+    if (box) box.classList.remove('d-none');
+    if (btnText) btnText.textContent = 'กำลังเปิดกล้อง...';
+
+    if (typeof Html5Qrcode === 'undefined') {
+        alert('ระบบกล้องยังโหลดไม่สมบูรณ์ กรุณาลองใหม่อีกครั้ง');
+        if (box) box.classList.add('d-none');
+        if (btnText) btnText.textContent = 'เปิดกล้องเพื่อสแกน QR Code';
+        return;
+    }
+
+    if (html5QrScanner) {
+        stopCameraScanner();
+    }
+
+    try {
+        html5QrScanner = new Html5Qrcode('modal-qr-reader');
+        const config = { 
+            fps: 10, 
+            qrbox: { width: 220, height: 220 } 
+        };
+
+        html5QrScanner.start(
+            { facingMode: 'environment' },
+            config,
+            onQrScanSuccess,
+            () => {
+                // Ignore scanning frames without QR
+            }
+        ).then(() => {
+            if (btnText) btnText.textContent = 'ปิดกล้องสแกน';
+        }).catch(err => {
+            console.error('Camera access error:', err);
+            if (box) box.classList.add('d-none');
+            if (btnText) btnText.textContent = 'เปิดกล้องเพื่อสแกน QR Code';
+            alert('ไม่สามารถเปิดกล้องได้ กรุณาอนุญาตสิทธิ์การใช้กล้องในเบราว์เซอร์ของคุณ หรือพิมพ์รหัส PIN แทนครับ');
+        });
+    } catch (e) {
+        console.error('QR scanner exception:', e);
+        if (box) box.classList.add('d-none');
+        if (btnText) btnText.textContent = 'เปิดกล้องเพื่อสแกน QR Code';
+    }
+}
+
+// หยุดการทำงานของกล้อง
+function stopCameraScanner() {
+    if (html5QrScanner) {
+        try {
+            html5QrScanner.stop().then(() => {
+                html5QrScanner.clear();
+                html5QrScanner = null;
+            }).catch(() => {
+                html5QrScanner = null;
+            });
+        } catch (e) {
+            html5QrScanner = null;
+        }
+    }
+    const box = document.getElementById('modal-qr-box');
+    const btnText = document.getElementById('btn-toggle-qr-text');
+    if (box) box.classList.add('d-none');
+    if (btnText) btnText.textContent = 'เปิดกล้องเพื่อสแกน QR Code';
+}
+
+// เมื่อสแกน QR Code สำเร็จ
+function onQrScanSuccess(decodedText) {
+    stopCameraScanner();
+
+    // ปิด Modal
+    const modalEl = document.getElementById('joinRoomModal');
+    if (modalEl && typeof bootstrap !== 'undefined') {
+        const bsModal = bootstrap.Modal.getInstance(modalEl);
+        if (bsModal) bsModal.hide();
+    }
+
+    let extractedPin = '';
+
+    // กรณีเป็น URL ที่มีพารามิเตอร์ pin หรือ room
+    if (decodedText.includes('pin=')) {
+        try {
+            const url = new URL(decodedText);
+            extractedPin = (url.searchParams.get('pin') || '').trim().toUpperCase();
+        } catch (e) {
+            const match = decodedText.match(/pin=([^&]+)/);
+            if (match) extractedPin = match[1].trim().toUpperCase();
+        }
+    } else if (decodedText.includes('room=')) {
+        try {
+            const url = new URL(decodedText);
+            extractedPin = (url.searchParams.get('room') || '').trim().toUpperCase();
+        } catch (e) {
+            const match = decodedText.match(/room=([^&]+)/);
+            if (match) extractedPin = match[1].trim().toUpperCase();
+        }
+    } else if (/^\d{4,8}$/.test(decodedText.trim())) {
+        extractedPin = decodedText.trim().toUpperCase();
+    } else if (decodedText.startsWith('http://') || decodedText.startsWith('https://')) {
+        // ลิงก์ตรง ไปยังหน้านั้นทันที
+        window.location.href = decodedText;
+        return;
+    } else {
+        extractedPin = decodedText.trim().toUpperCase();
+    }
+
+    if (extractedPin) {
+        window.location.href = `features/education/quiz/quiz_student.html?pin=${encodeURIComponent(extractedPin)}`;
+    } else {
+        alert('QR Code ไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
+    }
+}
+
+// ตรวจจับเมื่อ Modal ถูกปิด ให้ปิดกล้องทันที
+document.addEventListener('DOMContentLoaded', () => {
+    const joinModalEl = document.getElementById('joinRoomModal');
+    if (joinModalEl) {
+        joinModalEl.addEventListener('hidden.bs.modal', () => {
+            stopCameraScanner();
+        });
+    }
+});
+
+window.openJoinRoomModal = openJoinRoomModal;
+window.prepareJoinModal = prepareJoinModal;
+window.handleModalJoinRoom = handleModalJoinRoom;
+window.toggleCameraScanner = toggleCameraScanner;
+window.startCameraScanner = startCameraScanner;
+window.stopCameraScanner = stopCameraScanner;
+
+

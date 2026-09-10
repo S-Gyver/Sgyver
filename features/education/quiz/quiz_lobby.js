@@ -18,6 +18,7 @@ let pollTimerInterval = null;
 let examTimerInterval = null;
 let remainingExamSeconds = 0;
 let lastRenderedPlayersJSON = '';
+const localBC = (typeof BroadcastChannel !== 'undefined') ? new BroadcastChannel('gyver_live_quiz_channel') : null;
 
 // SweetAlert Cyber Helper
 const CyberSwal = typeof Swal !== 'undefined' ? Swal.mixin({
@@ -226,37 +227,47 @@ async function createOrRegisterLobby() {
             const { error } = await window.supabaseClient.from('lobbies').upsert([lobbyData], { onConflict: 'room_code' });
             if (error) {
                 console.warn('Supabase lobbies upsert error:', error);
-                // ตรวจสอบว่าตารางยังไม่ได้สร้างใน Supabase หรือไม่
-                if (error.code === 'PGRST205' || String(error.message || '').includes('lobbies') || error.code === '42P01') {
-                    setMissingTableState(true);
-                    return;
-                }
+                setMissingTableState(true, error);
+                return;
             }
             // เชื่อมต่อสำเร็จ
             setMissingTableState(false);
         } catch (e) {
-            console.warn('Lobby sync to Supabase skipped, using local fallback', e);
-            setMissingTableState(true);
+            console.warn('Lobby sync to Supabase skipped:', e);
+            setMissingTableState(true, e);
         }
     } else {
         if (badge) {
             badge.className = 'badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-2';
-            badge.innerHTML = '<i class="bi bi-hdd me-1"></i>โหมดออฟไลน์ (LocalStorage)';
+            badge.innerHTML = '<i class="bi bi-hdd me-1"></i>โหมดออฟไลน์ (LocalStorage / Broadcast)';
         }
     }
 }
 
-function setMissingTableState(isMissing) {
+function setMissingTableState(isMissing, err = null) {
     const badge = document.getElementById('connection-status-badge');
     const banner = document.getElementById('missing-table-banner');
     const btnSql = document.getElementById('btn-header-sql');
 
     if (isMissing) {
+        const errStr = String(err?.message || err || '');
+        const isTableMissing = err && (err.code === 'PGRST205' || errStr.includes('lobbies') || err.code === '42P01');
+
         if (badge) {
             badge.className = 'badge bg-danger text-white px-3 py-2 cursor-pointer shadow-sm animate-pulse';
-            badge.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-1"></i>ยังไม่มีตารางใน Supabase';
+            if (isTableMissing) {
+                badge.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-1"></i>ยังไม่มีตารางใน Supabase (คลิกดูวิธีแก้)';
+            } else {
+                badge.innerHTML = '<i class="bi bi-wifi-off me-1"></i>Supabase เชื่อมต่อไม่ติด (Paused / Offline)';
+            }
         }
-        if (banner) banner.classList.remove('d-none');
+        if (banner) {
+            banner.classList.remove('d-none');
+            const descEl = banner.querySelector('p');
+            if (descEl && !isTableMissing) {
+                descEl.innerHTML = `⚠️ <b>ตรวจพบปัญหาการเชื่อมต่อ Supabase:</b> ระบบได้รับข้อผิดพลาด <code>ERR_CONNECTION_RESET</code> (อาจเกิดจากโปรเจกต์ Supabase อยู่ในสถานะ <b>Paused</b> กรุณาเปิด <a href="https://supabase.com/dashboard" target="_blank" class="text-warning text-decoration-underline fw-bold">Supabase Dashboard</a> แล้วกด <b>"Restore Project"</b>)`;
+            }
+        }
         if (btnSql) btnSql.classList.remove('d-none');
     } else {
         if (badge) {
@@ -331,6 +342,9 @@ async function recheckSupabaseConnection() {
 function saveLocalLobby(data) {
     try {
         localStorage.setItem(`gyver_lobby_${roomCode}`, JSON.stringify(data));
+        if (localBC) {
+            localBC.postMessage({ type: 'LOBBY_STATE', roomCode: roomCode, data: data });
+        }
     } catch (e) {}
 }
 
@@ -347,6 +361,23 @@ function getLocalLobby() {
  * 📡 Realtime + Polling Sync Engine
  */
 function setupLobbyRealtime() {
+    // 0. Local BroadcastChannel for instant local / offline sync
+    if (localBC) {
+        localBC.onmessage = (event) => {
+            const msg = event?.data;
+            if (!msg || msg.roomCode !== roomCode) return;
+            if (msg.type === 'REQUEST_LOBBY') {
+                localBC.postMessage({ type: 'LOBBY_STATE', roomCode: roomCode, data: lobbyData });
+            } else if (msg.type === 'STUDENT_JOIN') {
+                handleStudentJoinedEvent(msg.student);
+            } else if (msg.type === 'STUDENT_LEAVE') {
+                handleStudentLeftEvent(msg.student);
+            } else if (msg.type === 'STUDENT_SUBMIT') {
+                handleStudentSubmittedEvent(msg.result);
+            }
+        };
+    }
+
     // 1. Supabase Postgres Changes & Broadcast Channel
     if (window.supabaseClient) {
         try {
@@ -565,7 +596,17 @@ async function executeKickStudent(idOrName, studentName) {
     saveLocalLobby(lobbyData);
     renderWaitingLobbyUI(true);
 
-    // 2. ซิงค์ Supabase & ส่ง Broadcast แจ้งเตะนักเรียน
+    // 2. ส่ง Local Broadcast ทันที
+    if (localBC) {
+        localBC.postMessage({
+            type: 'KICK_STUDENT',
+            roomCode: roomCode,
+            studentName: studentName,
+            id: idOrName
+        });
+    }
+
+    // 3. ซิงค์ Supabase & ส่ง Supabase Broadcast แจ้งเตะนักเรียน
     if (window.supabaseClient) {
         try {
             await window.supabaseClient
@@ -663,6 +704,15 @@ async function startLiveExam() {
     lobbyData.startedAt = new Date().toISOString();
 
     saveLocalLobby(lobbyData);
+
+    // Broadcast signal locally
+    if (localBC) {
+        localBC.postMessage({
+            type: 'START_EXAM',
+            roomCode: roomCode,
+            lobby: lobbyData
+        });
+    }
 
     // Sync to Supabase
     if (window.supabaseClient) {

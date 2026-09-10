@@ -21,6 +21,7 @@ let pollInterval = null;
 let examTimerInterval = null;
 let remainingExamSeconds = 0;
 let lastFetchError = null;
+const localBC = (typeof BroadcastChannel !== 'undefined') ? new BroadcastChannel('gyver_live_quiz_channel') : null;
 
 // SweetAlert Cyber Helper
 const CyberSwal = typeof Swal !== 'undefined' ? Swal.mixin({
@@ -111,11 +112,29 @@ async function joinLiveLobby() {
     // Verify lobby exists
     const lobby = await fetchLobbyData(roomPin);
     if (!lobby) {
-        if (lastFetchError && (lastFetchError.code === 'PGRST205' || String(lastFetchError.message || '').includes('lobbies') || lastFetchError.code === '42P01')) {
+        const errStr = String(lastFetchError?.message || lastFetchError || '');
+        const isTableMissing = lastFetchError && (lastFetchError.code === 'PGRST205' || errStr.includes('lobbies') || lastFetchError.code === '42P01');
+        const isNetworkOrPaused = errStr.includes('Failed to fetch') || errStr.includes('NetworkError') || errStr.includes('CONNECTION_RESET') || errStr.includes('PROTOCOL_ERROR');
+
+        if (isTableMissing) {
             CyberSwal?.fire({
                 icon: 'warning',
                 title: 'ยังไม่ได้สร้างตารางในฐานข้อมูล',
                 html: `ระบบตรวจพบว่ายังไม่มีตาราง <code>lobbies</code> ในฐานข้อมูล Supabase<br><br><span class="text-warning">โปรดแจ้งคุณครูผู้คุมสอบให้เปิดหน้าจอคุมสอบ แล้วกดปุ่ม <b>"ตั้งค่า SQL"</b> เพื่อรันคำสั่งติดตั้งตารางใน Supabase ก่อนครับ</span>`,
+                confirmButtonText: 'รับทราบ'
+            });
+        } else if (isNetworkOrPaused) {
+            CyberSwal?.fire({
+                icon: 'error',
+                title: 'ไม่สามารถเชื่อมต่อ Supabase ได้',
+                html: `ระบบไม่สามารถติดต่อฐานข้อมูล Supabase ได้ (<code>Failed to fetch / Connection Reset</code>)<br><br>
+                <div class="text-start p-3 rounded bg-dark border border-secondary small text-light">
+                    <p class="mb-2 text-warning fw-bold"><i class="bi bi-exclamation-triangle-fill me-1"></i> สาเหตุที่พบบ่อย:</p>
+                    <ol class="mb-0 ps-3">
+                        <li class="mb-1"><b>โปรเจกต์ Supabase ถูกพัก (Paused):</b> หากไม่มีการใช้งานเกิน 7 วัน Supabase จะพักการทำงานชั่วคราว ให้เปิด <a href="https://supabase.com/dashboard" target="_blank" class="text-info fw-bold text-decoration-underline">Supabase Dashboard</a> แล้วกด <b>"Restore Project"</b></li>
+                        <li><b>เน็ตโรงเรียนหรือเครือข่ายบล็อก:</b> ตรวจสอบสัญญาณอินเทอร์เน็ต</li>
+                    </ol>
+                </div>`,
                 confirmButtonText: 'รับทราบ'
             });
         } else {
@@ -152,6 +171,15 @@ async function joinLiveLobby() {
 
         saveLocalLobby(currentLobby);
 
+        // Send local broadcast to teacher tab
+        if (localBC) {
+            localBC.postMessage({
+                type: 'STUDENT_JOIN',
+                roomCode: roomPin,
+                student: studentProfile
+            });
+        }
+
         // Sync to Supabase
         if (window.supabaseClient) {
             try {
@@ -186,6 +214,31 @@ async function joinLiveLobby() {
  * 📡 ฟังและรอสัญญาณเมื่อครูกด "เริ่มสอบ"
  */
 function listenForExamStart() {
+    // 0. Local BroadcastChannel for instant local / offline sync
+    if (localBC) {
+        localBC.addEventListener('message', (event) => {
+            const msg = event?.data;
+            if (!msg || String(msg.roomCode) !== String(roomPin)) return;
+            if (msg.type === 'START_EXAM') {
+                checkAndLaunchExam(msg.lobby);
+            } else if (msg.type === 'KICK_STUDENT') {
+                if (msg.studentName === studentProfile.name || (studentProfile.id && msg.id === studentProfile.id)) {
+                    handleStudentKicked();
+                }
+            } else if (msg.type === 'LOBBY_STATE' && msg.data) {
+                if (msg.data.status === 'RUNNING') {
+                    checkAndLaunchExam(msg.data);
+                } else if (msg.data.status === 'WAITING') {
+                    const players = msg.data.players || [];
+                    const stillIn = players.some(p => p.name === studentProfile.name);
+                    if (!stillIn) {
+                        handleStudentKicked();
+                    }
+                }
+            }
+        });
+    }
+
     // 1. Supabase Realtime Channel
     if (window.supabaseClient) {
         try {
@@ -287,6 +340,20 @@ function leaveLobby() {
     }
 
     if (!roomPin || !studentProfile.name) return;
+
+    // 0. ส่งสัญญาณ Local Broadcast ให้แท็บครูทันที
+    if (localBC) {
+        localBC.postMessage({
+            type: 'STUDENT_LEAVE',
+            roomCode: roomPin,
+            student: {
+                id: studentProfile.id,
+                name: studentProfile.name,
+                room: studentProfile.room,
+                roomCode: roomPin
+            }
+        });
+    }
 
     // 1. ส่งสัญญาณ broadcast แจ้งเครื่องครูทันที
     if (window.supabaseClient) {
@@ -636,6 +703,15 @@ async function submitLiveExamAnswers() {
         saveLocalLobby(localLobby);
     }
 
+    // Send local broadcast to teacher tab
+    if (localBC) {
+        localBC.postMessage({
+            type: 'STUDENT_SUBMIT',
+            roomCode: roomPin,
+            result: studentExamResult
+        });
+    }
+
     // Sync to Supabase and send broadcast event
     if (window.supabaseClient) {
         try {
@@ -848,6 +924,8 @@ function downloadStudentCertPNG() {
 // Data Helpers
 async function fetchLobbyData(pin) {
     lastFetchError = null;
+
+    // 1. ลองดึงจาก Supabase
     if (window.supabaseClient) {
         try {
             const { data, error } = await window.supabaseClient
@@ -863,10 +941,48 @@ async function fetchLobbyData(pin) {
 
             if (data) return data;
         } catch (e) {
+            console.warn('Supabase fetch exception:', e);
             lastFetchError = e;
         }
     }
-    return getLocalLobby(pin);
+
+    // 2. ตรวจสอบ LocalStorage
+    const local = getLocalLobby(pin);
+    if (local) return local;
+
+    // 3. ร้องขอผ่าน Local BroadcastChannel ข้ามแท็บ
+    if (localBC) {
+        const bcData = await requestLobbyViaBC(pin, 300);
+        if (bcData) return bcData;
+    }
+
+    return null;
+}
+
+function requestLobbyViaBC(pin, timeoutMs = 300) {
+    return new Promise((resolve) => {
+        if (!localBC) return resolve(null);
+        let resolved = false;
+
+        const handler = (event) => {
+            const msg = event?.data;
+            if (msg && msg.type === 'LOBBY_STATE' && String(msg.roomCode) === String(pin)) {
+                resolved = true;
+                localBC.removeEventListener('message', handler);
+                resolve(msg.data);
+            }
+        };
+
+        localBC.addEventListener('message', handler);
+        localBC.postMessage({ type: 'REQUEST_LOBBY', roomCode: pin });
+
+        setTimeout(() => {
+            if (!resolved) {
+                localBC.removeEventListener('message', handler);
+                resolve(null);
+            }
+        }, timeoutMs);
+    });
 }
 
 function saveLocalLobby(data) {
