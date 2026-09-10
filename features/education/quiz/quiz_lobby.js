@@ -364,6 +364,9 @@ function setupLobbyRealtime() {
                 .on('broadcast', { event: 'student_joined' }, (payload) => {
                     handleStudentJoinedEvent(payload.payload);
                 })
+                .on('broadcast', { event: 'student_left' }, (payload) => {
+                    handleStudentLeftEvent(payload.payload);
+                })
                 .on('broadcast', { event: 'student_submitted' }, (payload) => {
                     handleStudentSubmittedEvent(payload.payload);
                 })
@@ -427,6 +430,26 @@ function handleStudentJoinedEvent(student) {
         saveLocalLobby(lobbyData);
         syncLobbyPlayersToSupabase();
         renderWaitingLobbyUI();
+    }
+}
+
+function handleStudentLeftEvent(student) {
+    if (!student || !student.name) return;
+    if (lobbyData.status !== 'WAITING') return; // ให้ผลเฉพาะช่วงรอก่อนสอบเริ่ม
+    if (!lobbyData.players || lobbyData.players.length === 0) return;
+
+    const beforeLen = lobbyData.players.length;
+    lobbyData.players = lobbyData.players.filter(p => {
+        if (student.id && p.id === student.id) return false;
+        if (!student.id && p.name === student.name && (!student.room || p.room === student.room)) return false;
+        if (p.name === student.name && (!student.room || p.room === student.room)) return false;
+        return true;
+    });
+
+    if (lobbyData.players.length !== beforeLen) {
+        saveLocalLobby(lobbyData);
+        syncLobbyPlayersToSupabase();
+        renderWaitingLobbyUI(true);
     }
 }
 

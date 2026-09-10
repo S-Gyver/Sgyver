@@ -37,7 +37,29 @@ const CyberSwal = typeof Swal !== 'undefined' ? Swal.mixin({
 // Initialize on Load
 document.addEventListener('DOMContentLoaded', () => {
     parseUrlParams();
+    setupNavigationListeners();
 });
+
+function setupNavigationListeners() {
+    // ดักการกดย้อนกลับบนเบราว์เซอร์
+    window.addEventListener('popstate', () => {
+        const waitingView = document.getElementById('view-student-waiting');
+        if (waitingView && !waitingView.classList.contains('d-none')) {
+            leaveLobby();
+            waitingView.classList.add('d-none');
+            document.getElementById('view-student-join')?.classList.remove('d-none');
+        }
+    });
+
+    // ดักการปิดแท็บ รีเฟรช หรือปิดหน้าต่างเว็บ
+    window.addEventListener('pagehide', () => {
+        leaveLobby();
+    });
+
+    window.addEventListener('beforeunload', () => {
+        leaveLobby();
+    });
+}
 
 function parseUrlParams() {
     const params = new URLSearchParams(window.location.search);
@@ -153,6 +175,10 @@ async function joinLiveLobby() {
     document.getElementById('view-student-waiting').classList.remove('d-none');
     document.getElementById('waiting-student-name').textContent = `ผู้เข้าสอบ: ${name} ${room ? `(${room})` : ''}`;
 
+    try {
+        history.pushState({ waitingInRoom: true, pin: roomPin }, '');
+    } catch (e) {}
+
     listenForExamStart();
 }
 
@@ -246,6 +272,103 @@ function handleStudentKicked() {
         alert('คุณถูกเชิญออกจากห้องสอบโดยคุณครู');
     }
 }
+
+/**
+ * 🚪 นำนักเรียนออกจาก Lobby เมื่อกดย้อนกลับ, ปิดแท็บ หรือกดปุ่มออกจากห้อง
+ */
+function leaveLobby() {
+    const waitingView = document.getElementById('view-student-waiting');
+    const isWaiting = waitingView && !waitingView.classList.contains('d-none');
+    if (!isWaiting) return; // ทำงานเฉพาะเมื่อกำลังอยู่ในหน้ารอสอบเท่านั้น
+
+    if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+    }
+
+    if (!roomPin || !studentProfile.name) return;
+
+    // 1. ส่งสัญญาณ broadcast แจ้งเครื่องครูทันที
+    if (window.supabaseClient) {
+        try {
+            window.supabaseClient.channel(`quiz_lobby_channel_${roomPin}`).send({
+                type: 'broadcast',
+                event: 'student_left',
+                payload: {
+                    id: studentProfile.id,
+                    name: studentProfile.name,
+                    room: studentProfile.room,
+                    roomCode: roomPin
+                }
+            });
+        } catch (e) {}
+    }
+
+    // 2. ปรับปรุงข้อมูลในฐานข้อมูล Supabase ทันที (หากยังอยู่ในสถานะ WAITING)
+    if (window.supabaseClient && currentLobby && currentLobby.players) {
+        try {
+            const remaining = currentLobby.players.filter(p => 
+                (studentProfile.id ? p.id !== studentProfile.id : true) && p.name !== studentProfile.name
+            );
+            window.supabaseClient
+                .from('lobbies')
+                .update({ players: remaining })
+                .eq('room_code', roomPin)
+                .then(() => {})
+                .catch(() => {});
+        } catch (e) {}
+    }
+
+    // 3. รองรับกรณีปิดเบราว์เซอร์หรือปิดแท็บด้วย fetch keepalive (เบราว์เซอร์จะส่งสำเร็จแม้หน้าต่างจะปิดไปแล้ว)
+    try {
+        const supabaseUrl = window.SUPABASE_URL || (window.supabaseClient && window.supabaseClient.supabaseUrl);
+        const supabaseKey = window.SUPABASE_KEY || (window.supabaseClient && window.supabaseClient.supabaseKey);
+        if (supabaseUrl && supabaseKey && currentLobby && currentLobby.players) {
+            const remaining = currentLobby.players.filter(p => 
+                (studentProfile.id ? p.id !== studentProfile.id : true) && p.name !== studentProfile.name
+            );
+            fetch(`${supabaseUrl}/rest/v1/lobbies?room_code=eq.${encodeURIComponent(roomPin)}&status=eq.WAITING`, {
+                method: 'PATCH',
+                headers: {
+                    'apikey': supabaseKey,
+                    'Authorization': `Bearer ${supabaseKey}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=minimal'
+                },
+                body: JSON.stringify({ players: remaining }),
+                keepalive: true
+            }).catch(() => {});
+        }
+    } catch (e) {}
+}
+
+async function confirmLeaveLobby() {
+    if (typeof Swal !== 'undefined') {
+        const res = await Swal.fire({
+            title: 'ออกจากห้องรอสอบ?',
+            text: 'คุณจะออกจากรายชื่อในห้องนี้ และสามารถกลับเข้ามาใหม่ได้ตลอดก่อนครูเริ่มสอบ',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'ออกจากห้อง',
+            cancelButtonText: 'อยู่ในห้องต่อ',
+            background: 'rgba(15, 23, 42, 0.96)',
+            color: '#f8fafc',
+            customClass: {
+                confirmButton: 'btn btn-outline-danger px-4 py-2 me-2',
+                cancelButton: 'btn btn-secondary px-4 py-2'
+            },
+            buttonsStyling: false
+        });
+        if (!res.isConfirmed) return;
+    }
+
+    leaveLobby();
+    document.getElementById('view-student-waiting')?.classList.add('d-none');
+    document.getElementById('view-student-join')?.classList.remove('d-none');
+}
+
+window.leaveLobby = leaveLobby;
+window.confirmLeaveLobby = confirmLeaveLobby;
 
 async function checkAndLaunchExam(freshLobby) {
     const lobby = freshLobby || (await fetchLobbyData(roomPin));
