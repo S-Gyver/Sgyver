@@ -140,6 +140,34 @@
                             <label class="form-check-label text-white small fw-bold" for="setting-show-answers">แสดงเฉลยหลังส่ง</label>
                         </div>
                     </div>
+
+                    <!-- Question Pool Feature (สุ่มเลือกจำนวนข้อจากคลัง เช่น สุ่ม 20 ข้อจาก 100 ข้อ) -->
+                    <div class="col-12 mt-3 pt-3 border-top border-secondary">
+                        <div class="p-3 rounded-3" style="background: rgba(14, 165, 233, 0.08); border: 1px dashed rgba(14, 165, 233, 0.4);">
+                            <div class="row align-items-center g-3">
+                                <div class="col-12 col-md-6">
+                                    <div class="form-check form-switch m-0">
+                                        <input class="form-check-input" type="checkbox" id="setting-pool-enabled" onchange="togglePoolCountInput()">
+                                        <label class="form-check-label text-white fw-bold" for="setting-pool-enabled">
+                                            <i class="bi bi-shuffle text-info me-1"></i>สุ่มดึงคำถามจากคลังข้อสอบ (Question Pool)
+                                        </label>
+                                    </div>
+                                    <div class="text-subtle small mt-1">
+                                        เช่น เตรียมคำถามไว้ 100 ข้อ แต่กำหนดให้นักเรียนทำเพียง 20 ข้อ ระบบจะสุ่มไม่ซ้ำกัน
+                                    </div>
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <div id="pool-count-container" class="input-group input-group-sm d-none">
+                                        <span class="input-group-text bg-dark text-white border-secondary fw-bold">สุ่มดึงเพียง</span>
+                                        <input type="number" id="setting-pool-count" class="form-control form-control-cyber font-mono fw-bold text-center" value="20" min="1">
+                                        <span class="input-group-text bg-dark text-white border-secondary">
+                                            ข้อ (จากทั้งหมด <span id="pool-total-label" class="text-warning fw-bold mx-1">0</span> ข้อ)
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 

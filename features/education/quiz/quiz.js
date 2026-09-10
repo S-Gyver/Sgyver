@@ -16,6 +16,7 @@ let studentAnswers = {}; // { questionId: value | [values] }
 let examTimerInterval = null;
 let remainingSeconds = 0;
 let lastExamResult = null;
+let activeExamQuestions = [];
 
 // 🌟 SweetAlert2 Cyber Dialog Helpers
 function getCyberSwal() {
@@ -394,11 +395,39 @@ function renderBuilderView() {
     document.getElementById('setting-cert-enabled').checked = currentQuiz.settings?.certEnabled ?? true;
     document.getElementById('setting-show-answers').checked = currentQuiz.settings?.showAnswers ?? true;
 
+    // Question Pool setting
+    const poolEnabledEl = document.getElementById('setting-pool-enabled');
+    const poolCountEl = document.getElementById('setting-pool-count');
+    if (poolEnabledEl) poolEnabledEl.checked = !!currentQuiz.settings?.poolEnabled;
+    if (poolCountEl) poolCountEl.value = currentQuiz.settings?.poolCount || 20;
+    togglePoolCountInput();
+    updatePoolTotalLabel();
+
     renderVariantsBadge();
     renderQuestionsBuilder();
 }
 
+function togglePoolCountInput() {
+    const isEnabled = document.getElementById('setting-pool-enabled')?.checked;
+    const container = document.getElementById('pool-count-container');
+    if (container) {
+        if (isEnabled) {
+            container.classList.remove('d-none');
+        } else {
+            container.classList.add('d-none');
+        }
+    }
+}
+
+function updatePoolTotalLabel() {
+    const label = document.getElementById('pool-total-label');
+    if (label && currentQuiz) {
+        label.textContent = (currentQuiz.questions || []).length;
+    }
+}
+
 function renderQuestionsBuilder() {
+    updatePoolTotalLabel();
     const listEl = document.getElementById('builder-questions-list');
     if (!listEl) return;
     listEl.innerHTML = '';
@@ -590,11 +619,16 @@ function saveCurrentQuiz() {
 
     currentQuiz.title = document.getElementById('builder-quiz-title').value.trim() || 'แบบทดสอบไม่มีชื่อ';
     currentQuiz.description = document.getElementById('builder-quiz-desc').value.trim() || '';
+    const poolEnabled = document.getElementById('setting-pool-enabled')?.checked || false;
+    const poolCount = Number(document.getElementById('setting-pool-count')?.value) || 20;
+
     currentQuiz.settings = {
         passingScore: Number(document.getElementById('setting-passing-score').value) || 70,
         timeLimit: Number(document.getElementById('setting-time-limit').value) || 0,
         certEnabled: document.getElementById('setting-cert-enabled').checked,
-        showAnswers: document.getElementById('setting-show-answers').checked
+        showAnswers: document.getElementById('setting-show-answers').checked,
+        poolEnabled: poolEnabled,
+        poolCount: poolCount
     };
     currentQuiz.updatedAt = new Date().toISOString();
 
@@ -659,12 +693,15 @@ function generate20Variants() {
 
     const baseQuestions = currentQuiz.questions;
     const variants = [];
+    const isPool = currentQuiz.settings?.poolEnabled && currentQuiz.settings?.poolCount > 0;
+    const poolCount = isPool ? Math.min(currentQuiz.settings.poolCount, baseQuestions.length) : baseQuestions.length;
 
     for (let i = 1; i <= 20; i++) {
         const cloned = JSON.parse(JSON.stringify(baseQuestions));
         shuffleArray(cloned);
+        const selected = cloned.slice(0, poolCount);
 
-        cloned.forEach((q, qIdx) => {
+        selected.forEach((q, qIdx) => {
             q.title = q.title.replace(/^ข้อที่\s*\d+[:.]?\s*/, `ข้อที่ ${qIdx + 1}: `);
             if (Array.isArray(q.options) && q.options.length > 1) {
                 shuffleArray(q.options);
@@ -674,7 +711,7 @@ function generate20Variants() {
         variants.push({
             variantIndex: i,
             variantName: `ชุดที่ ${i}`,
-            questions: cloned
+            questions: selected
         });
     }
 
@@ -687,7 +724,9 @@ function generate20Variants() {
         swal.fire({
             icon: 'success',
             title: 'สร้าง 20 ชุดสำเร็จ! 🎉',
-            text: 'ระบบได้สลับลำดับข้อและสลับตัวเลือกเป็น 20 ชุดเรียบร้อย พร้อมสำหรับแจกนักเรียน 1 คนต่อ 1 ชุดในห้องสอบสด',
+            text: isPool 
+                ? `ระบบได้สุ่มดึงคำถามคนละ ${poolCount} ข้อ จากคลังทั้งหมด ${baseQuestions.length} ข้อ พร้อมสลับช้อยส์ 20 ชุดเรียบร้อย` 
+                : 'ระบบได้สลับลำดับข้อและสลับตัวเลือกเป็น 20 ชุดเรียบร้อย พร้อมสำหรับแจกนักเรียน 1 คนต่อ 1 ชุดในห้องสอบสด',
             timer: 2500,
             showConfirmButton: false
         });
@@ -737,7 +776,14 @@ function renderTakerView() {
 
     document.getElementById('gate-quiz-title').textContent = currentQuiz.title || 'แบบทดสอบ';
     document.getElementById('gate-quiz-desc').textContent = currentQuiz.description || 'ไม่มีคำชี้แจง';
-    document.getElementById('gate-total-questions').textContent = `${(currentQuiz.questions || []).length} ข้อ`;
+    
+    const isPool = currentQuiz.settings?.poolEnabled && currentQuiz.settings?.poolCount > 0;
+    const totalQ = (currentQuiz.questions || []).length;
+    const displayCount = isPool ? Math.min(currentQuiz.settings.poolCount, totalQ) : totalQ;
+    document.getElementById('gate-total-questions').textContent = isPool 
+        ? `${displayCount} ข้อ (สุ่มจาก ${totalQ} ข้อ)` 
+        : `${displayCount} ข้อ`;
+
     document.getElementById('gate-total-time').textContent = currentQuiz.settings?.timeLimit ? `${currentQuiz.settings.timeLimit} นาที` : 'ไม่จำกัด';
     document.getElementById('gate-pass-score').textContent = `${currentQuiz.settings?.passingScore || 70}%`;
 }
@@ -775,6 +821,24 @@ function startTakingQuiz() {
 
     document.getElementById('active-exam-title').textContent = currentQuiz.title;
     document.getElementById('active-student-badge').textContent = `ผู้เข้าสอบ: ${name} ${room ? `(${room})` : ''}`;
+
+    // Prepare Active Exam Questions (Random subset if Question Pool enabled)
+    const isPool = currentQuiz.settings?.poolEnabled && currentQuiz.settings?.poolCount > 0;
+    const allQ = JSON.parse(JSON.stringify(currentQuiz.questions || []));
+
+    if (isPool) {
+        shuffleArray(allQ);
+        const count = Math.min(currentQuiz.settings.poolCount, allQ.length);
+        activeExamQuestions = allQ.slice(0, count);
+        activeExamQuestions.forEach((q, idx) => {
+            q.title = q.title.replace(/^ข้อที่\s*\d+[:.]?\s*/, `ข้อที่ ${idx + 1}: `);
+            if (Array.isArray(q.options) && q.options.length > 1) {
+                shuffleArray(q.options);
+            }
+        });
+    } else {
+        activeExamQuestions = allQ;
+    }
 
     renderTakerQuestions();
 
@@ -836,7 +900,9 @@ function renderTakerQuestions() {
     if (!listEl) return;
     listEl.innerHTML = '';
 
-    (currentQuiz.questions || []).forEach((q, idx) => {
+    const questionsToRender = (activeExamQuestions && activeExamQuestions.length > 0) ? activeExamQuestions : (currentQuiz.questions || []);
+
+    questionsToRender.forEach((q, idx) => {
         const card = document.createElement('div');
         card.className = 'cyber-card mb-4 border-quiz';
         card.id = `exam-q-${q.id}`;
@@ -950,7 +1016,9 @@ function autoSubmitQuiz() {
     let earnedPoints = 0;
     const questionResults = [];
 
-    (currentQuiz.questions || []).forEach(q => {
+    const questionsToGrade = (activeExamQuestions && activeExamQuestions.length > 0) ? activeExamQuestions : (currentQuiz.questions || []);
+
+    questionsToGrade.forEach(q => {
         const qPts = Number(q.points) || 10;
         totalPoints += qPts;
 

@@ -90,25 +90,38 @@ async function loadQuizData(quizId) {
         };
     }
 
-    // Ensure 20 variants exist
-    if (!currentQuiz.variants || currentQuiz.variants.length < 20) {
-        currentQuiz.variants = autoGenerate20Variants(currentQuiz.questions);
+    // Ensure 20 variants exist (Support Question Pool)
+    const isPool = currentQuiz.settings?.poolEnabled && currentQuiz.settings?.poolCount > 0;
+    const poolCount = isPool ? Math.min(currentQuiz.settings.poolCount, (currentQuiz.questions || []).length) : null;
+
+    if (!currentQuiz.variants || currentQuiz.variants.length < 20 || (isPool && currentQuiz.variants[0]?.questions?.length !== poolCount)) {
+        currentQuiz.variants = autoGenerate20Variants(currentQuiz.questions, poolCount);
     }
 
     // Update Header UI
+    const totalQ = (currentQuiz.questions || []).length;
+    const qCountBadge = isPool ? `สุ่ม ${poolCount}/${totalQ} ข้อ (20 SETS)` : `20 SETS READY`;
     document.getElementById('lobby-quiz-title').innerHTML = `
         ${escapeHtml(currentQuiz.title)}
-        <span class="badge bg-warning text-dark fs-6 font-mono"><i class="bi bi-shield-lock-fill me-1"></i>20 SETS READY</span>
+        <span class="badge bg-warning text-dark fs-6 font-mono"><i class="bi bi-shield-lock-fill me-1"></i>${qCountBadge}</span>
     `;
-    document.getElementById('lobby-quiz-desc').textContent = currentQuiz.description || 'สุ่มแจกจ่ายข้อสอบ 20 ชุด ไม่ซ้ำกัน 1 คนต่อ 1 ชุด';
+    document.getElementById('lobby-quiz-desc').textContent = isPool 
+        ? `ระบบสุ่มดึงข้อสอบคนละ ${poolCount} ข้อ จากคลังทั้งหมด ${totalQ} ข้อ แจกจ่าย 1 คนต่อ 1 ชุดไม่ซ้ำกัน` 
+        : (currentQuiz.description || 'สุ่มแจกจ่ายข้อสอบ 20 ชุด ไม่ซ้ำกัน 1 คนต่อ 1 ชุด');
 }
 
-function autoGenerate20Variants(baseQuestions) {
+function autoGenerate20Variants(baseQuestions, poolCount) {
     const variants = [];
+    const count = (poolCount && poolCount > 0 && poolCount < (baseQuestions || []).length)
+        ? poolCount
+        : (baseQuestions || []).length;
+
     for (let i = 1; i <= 20; i++) {
         const cloned = JSON.parse(JSON.stringify(baseQuestions || []));
         shuffleArray(cloned);
-        cloned.forEach((q, idx) => {
+        const selected = cloned.slice(0, count);
+
+        selected.forEach((q, idx) => {
             q.title = q.title.replace(/^ข้อที่\s*\d+[:.]?\s*/, `ข้อที่ ${idx + 1}: `);
             if (Array.isArray(q.options) && q.options.length > 1) {
                 shuffleArray(q.options);
@@ -117,7 +130,7 @@ function autoGenerate20Variants(baseQuestions) {
         variants.push({
             variantIndex: i,
             variantName: `ชุดที่ ${i}`,
-            questions: cloned
+            questions: selected
         });
     }
     return variants;
