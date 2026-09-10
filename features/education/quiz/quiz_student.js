@@ -167,6 +167,12 @@ function listenForExamStart() {
                 .on('broadcast', { event: 'START_EXAM' }, async () => {
                     checkAndLaunchExam();
                 })
+                .on('broadcast', { event: 'KICK_STUDENT' }, (payload) => {
+                    const data = payload?.payload || payload;
+                    if (data && (data.studentName === studentProfile.name || (studentProfile.id && data.id === studentProfile.id))) {
+                        handleStudentKicked();
+                    }
+                })
                 .subscribe();
 
             window.supabaseClient.channel(`student_waiting_${roomPin}`)
@@ -176,8 +182,16 @@ function listenForExamStart() {
                     table: 'lobbies',
                     filter: `room_code=eq.${roomPin}`
                 }, (payload) => {
-                    if (payload.new && payload.new.status === 'RUNNING') {
-                        checkAndLaunchExam(payload.new);
+                    if (payload.new) {
+                        if (payload.new.status === 'RUNNING') {
+                            checkAndLaunchExam(payload.new);
+                        } else if (payload.new.status === 'WAITING') {
+                            const players = payload.new.players || [];
+                            const stillIn = players.some(p => p.name === studentProfile.name);
+                            if (!stillIn) {
+                                handleStudentKicked();
+                            }
+                        }
                     }
                 })
                 .subscribe();
@@ -187,10 +201,50 @@ function listenForExamStart() {
     // 2. Fallback Polling every 1.5 seconds
     pollInterval = setInterval(async () => {
         const lobby = await fetchLobbyData(roomPin);
-        if (lobby && lobby.status === 'RUNNING') {
-            checkAndLaunchExam(lobby);
+        if (lobby) {
+            if (lobby.status === 'RUNNING') {
+                checkAndLaunchExam(lobby);
+            } else if (lobby.status === 'WAITING') {
+                const players = lobby.players || [];
+                const stillIn = players.some(p => p.name === studentProfile.name);
+                if (!stillIn) {
+                    handleStudentKicked();
+                }
+            }
         }
     }, 1500);
+}
+
+/**
+ * ⚠️ เมื่อนักเรียนถูกครูเตะออกจากห้องสอบ
+ */
+function handleStudentKicked() {
+    if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+    }
+
+    // สลับกลับหน้า Join
+    document.getElementById('view-student-waiting')?.classList.add('d-none');
+    document.getElementById('view-student-join')?.classList.remove('d-none');
+
+    // แจ้งเตือนนักเรียน
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            icon: 'warning',
+            title: 'คุณถูกเชิญออกจากห้อง',
+            text: 'คุณครูได้เชิญคุณออกจากห้องสอบนี้ หากมีข้อผิดพลาดกรุณาเข้าห้องใหม่อีกครั้ง',
+            background: 'rgba(15, 23, 42, 0.96)',
+            color: '#f8fafc',
+            confirmButtonText: 'เข้าใจแล้ว',
+            customClass: {
+                confirmButton: 'btn btn-quiz-glow px-4 py-2 fw-bold text-white'
+            },
+            buttonsStyling: false
+        });
+    } else {
+        alert('คุณถูกเชิญออกจากห้องสอบโดยคุณครู');
+    }
 }
 
 async function checkAndLaunchExam(freshLobby) {

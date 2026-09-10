@@ -17,6 +17,7 @@ let realtimeChannel = null;
 let pollTimerInterval = null;
 let examTimerInterval = null;
 let remainingExamSeconds = 0;
+let lastRenderedPlayersJSON = '';
 
 // SweetAlert Cyber Helper
 const CyberSwal = typeof Swal !== 'undefined' ? Swal.mixin({
@@ -458,15 +459,22 @@ async function syncLobbyPlayersToSupabase() {
 }
 
 /**
- * 🟢 Render หน้ารอนักเรียนเข้าห้อง
+ * 🟢 Render หน้ารอนักเรียนเข้าห้อง (ไม่มีการ์ดกระพริบ และมีปุ่มให้ครูเตะ นร ออกได้)
  */
-function renderWaitingLobbyUI() {
+function renderWaitingLobbyUI(force = false) {
     const grid = document.getElementById('lobby-students-grid');
     const badge = document.getElementById('student-count-badge');
     if (!grid) return;
 
     const players = lobbyData.players || [];
     if (badge) badge.textContent = `${players.length} คน`;
+
+    const currentJSON = JSON.stringify(players.map(p => ({ id: p.id, name: p.name, room: p.room })));
+    if (!force && currentJSON === lastRenderedPlayersJSON) {
+        // รายชื่อนักเรียนไม่เปลี่ยน ไม่แตะ DOM เพื่อให้การ์ดนิ่งสนิท ไม่กระพริบ
+        return;
+    }
+    lastRenderedPlayersJSON = currentJSON;
 
     if (players.length === 0) {
         grid.innerHTML = `
@@ -480,19 +488,95 @@ function renderWaitingLobbyUI() {
     }
 
     grid.innerHTML = players.map(p => `
-        <div class="col-6 col-md-4 col-xl-3">
-            <div class="student-lobby-card d-flex align-items-center gap-3">
-                <div class="student-avatar">
+        <div class="col-6 col-md-4 col-xl-3" id="player-card-${escapeHtml(p.id || p.name)}">
+            <div class="student-lobby-card d-flex align-items-center gap-3 position-relative">
+                <div class="student-avatar flex-shrink-0">
                     ${escapeHtml((p.name || 'S').charAt(0).toUpperCase())}
                 </div>
-                <div class="text-truncate">
+                <div class="text-truncate flex-grow-1 pe-3">
                     <div class="fw-bold text-white text-truncate">${escapeHtml(p.name)}</div>
                     <div class="small text-subtle">${escapeHtml(p.room || 'นักเรียน')}</div>
                 </div>
+                <button type="button" class="student-kick-btn" data-player-id="${escapeHtml(p.id || p.name)}" data-player-name="${escapeHtml(p.name)}" onclick="onKickStudentClick(this)" title="เตะ ${escapeHtml(p.name)} ออกจากห้อง">
+                    <i class="bi bi-x-lg"></i>
+                </button>
             </div>
         </div>
     `).join('');
 }
+
+function onKickStudentClick(btn) {
+    if (!btn) return;
+    const id = btn.getAttribute('data-player-id');
+    const name = btn.getAttribute('data-player-name');
+    confirmKickStudent(id, name);
+}
+
+async function confirmKickStudent(idOrName, studentName) {
+    if (!CyberSwal) {
+        if (confirm(`คุณต้องการเตะ "${studentName}" ออกจากห้องสอบใช่หรือไม่?`)) {
+            executeKickStudent(idOrName, studentName);
+        }
+        return;
+    }
+
+    const res = await CyberSwal.fire({
+        title: `เตะ "${studentName}" ออก?`,
+        text: 'นักเรียนคนนี้จะถูกนำออกจากห้องสอบ และต้องสแกนหรือใส่ PIN เพื่อเข้าใหม่อีกครั้ง',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: '<i class="bi bi-person-x-fill me-1"></i> ยืนยันเตะออก',
+        cancelButtonText: 'ยกเลิก'
+    });
+
+    if (res.isConfirmed) {
+        executeKickStudent(idOrName, studentName);
+    }
+}
+
+async function executeKickStudent(idOrName, studentName) {
+    if (!lobbyData.players) return;
+
+    // 1. นำนักเรียนออกจากรายชื่อ
+    lobbyData.players = lobbyData.players.filter(p => (p.id !== idOrName && p.name !== studentName));
+    saveLocalLobby(lobbyData);
+    renderWaitingLobbyUI(true);
+
+    // 2. ซิงค์ Supabase & ส่ง Broadcast แจ้งเตะนักเรียน
+    if (window.supabaseClient) {
+        try {
+            await window.supabaseClient
+                .from('lobbies')
+                .update({ players: lobbyData.players })
+                .eq('room_code', roomCode);
+
+            await window.supabaseClient.channel(`quiz_room_${roomCode}`).send({
+                type: 'broadcast',
+                event: 'KICK_STUDENT',
+                payload: {
+                    studentName: studentName,
+                    id: idOrName,
+                    roomCode: roomCode
+                }
+            });
+        } catch (err) {
+            console.error('Failed to sync kick student to Supabase:', err);
+        }
+    }
+
+    if (CyberSwal) {
+        CyberSwal.fire({
+            icon: 'success',
+            title: `เตะ "${studentName}" ออกแล้ว`,
+            timer: 1500,
+            showConfirmButton: false
+        });
+    }
+}
+
+window.onKickStudentClick = onKickStudentClick;
+window.confirmKickStudent = confirmKickStudent;
+
 
 /**
  * 🚀 ครูกดเริ่มสอบ -> สุ่มแจกจ่ายข้อสอบ 20 ชุดแบบ 1 คนต่อ 1 ชุด!
