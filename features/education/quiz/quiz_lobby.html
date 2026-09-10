@@ -274,7 +274,7 @@
                             </button>
                         </div>
                         <div class="card-body p-0">
-                            <pre class="m-0 p-3 font-mono small text-light" style="max-height: 280px; overflow-y: auto; background: #0f172a;" id="sql-code-display"><code>-- 1. สร้างตาราง lobbies (ห้องสอบสด 20 ชุด & Gyver Race)
+                            <pre class="m-0 p-3 font-mono small text-light" style="max-height: 280px; overflow-y: auto; background: #0f172a;" id="sql-code-display"><code>-- 1. สร้าง/อัปเดตตาราง lobbies (เพิ่มคอลัมน์ห้องสอบสด 20 ชุด)
 CREATE TABLE IF NOT EXISTS public.lobbies (
     room_code TEXT PRIMARY KEY,
     game_mode TEXT DEFAULT 'quiz',
@@ -288,6 +288,15 @@ CREATE TABLE IF NOT EXISTS public.lobbies (
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
 );
+
+ALTER TABLE public.lobbies ADD COLUMN IF NOT EXISTS quiz_id TEXT;
+ALTER TABLE public.lobbies ADD COLUMN IF NOT EXISTS quiz_title TEXT;
+ALTER TABLE public.lobbies ADD COLUMN IF NOT EXISTS quiz_variants JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.lobbies ADD COLUMN IF NOT EXISTS quiz_settings JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE public.lobbies ADD COLUMN IF NOT EXISTS game_mode TEXT DEFAULT 'quiz';
+ALTER TABLE public.lobbies ADD COLUMN IF NOT EXISTS match_type TEXT DEFAULT 'solo';
+ALTER TABLE public.lobbies ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'WAITING';
+ALTER TABLE public.lobbies ADD COLUMN IF NOT EXISTS players JSONB DEFAULT '[]'::jsonb;
 
 -- 2. อนุญาตให้เข้าถึงได้สมบูรณ์ (RLS)
 ALTER TABLE public.lobbies ENABLE ROW LEVEL SECURITY;
@@ -323,9 +332,16 @@ ALTER TABLE public.gyver_quiz_responses ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all access to gyver_quiz_responses" ON public.gyver_quiz_responses;
 CREATE POLICY "Allow all access to gyver_quiz_responses" ON public.gyver_quiz_responses FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
--- 4. เปิด Realtime สำหรับตาราง lobbies
-ALTER PUBLICATION supabase_realtime ADD TABLE public.lobbies;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.gyver_quiz_responses;</code></pre>
+-- 4. เปิด Realtime อย่างปลอดภัย (ไม่ฟ้อง Error ซ้ำ)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'lobbies') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.lobbies;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'gyver_quiz_responses') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.gyver_quiz_responses;
+    END IF;
+END $$;</code></pre>
                         </div>
                     </div>
 
