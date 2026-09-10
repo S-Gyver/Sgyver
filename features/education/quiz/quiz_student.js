@@ -35,10 +35,117 @@ const CyberSwal = typeof Swal !== 'undefined' ? Swal.mixin({
     buttonsStyling: false
 }) : null;
 
+// 💾 Session Persistence & Auto-Resume on Refresh
+const STUDENT_SESSION_KEY = 'gyver_active_student_session';
+
+function saveStudentSession(extraData = {}) {
+    if (!roomPin || !studentProfile || !studentProfile.name) return;
+    const session = {
+        roomPin: roomPin,
+        studentProfile: studentProfile,
+        currentLobby: currentLobby,
+        assignedVariant: assignedVariant,
+        studentAnswers: studentAnswers,
+        examEndTime: window.examEndTimeTimestamp || null,
+        activeView: getActiveStudentViewId(),
+        studentExamResult: studentExamResult || null,
+        updatedAt: Date.now(),
+        ...extraData
+    };
+    try {
+        localStorage.setItem(STUDENT_SESSION_KEY, JSON.stringify(session));
+    } catch (e) {}
+}
+
+function getActiveStudentViewId() {
+    const examView = document.getElementById('view-student-exam');
+    const waitingView = document.getElementById('view-student-waiting');
+    const resultView = document.getElementById('view-student-result');
+
+    if (examView && !examView.classList.contains('d-none')) return 'exam';
+    if (waitingView && !waitingView.classList.contains('d-none')) return 'waiting';
+    if (resultView && !resultView.classList.contains('d-none')) return 'result';
+    return 'join';
+}
+
+function clearStudentSession() {
+    try {
+        localStorage.removeItem(STUDENT_SESSION_KEY);
+    } catch (e) {}
+}
+
+async function restoreStudentSession() {
+    try {
+        const raw = localStorage.getItem(STUDENT_SESSION_KEY);
+        if (!raw) return;
+        const session = JSON.parse(raw);
+
+        if (!session || !session.roomPin || !session.studentProfile?.name) return;
+
+        if (roomPin && String(roomPin) !== String(session.roomPin)) {
+            return;
+        }
+        roomPin = String(session.roomPin);
+
+        studentProfile = session.studentProfile;
+        currentLobby = session.currentLobby;
+        assignedVariant = session.assignedVariant;
+        studentAnswers = session.studentAnswers || {};
+        studentExamResult = session.studentExamResult || null;
+        window.examEndTimeTimestamp = session.examEndTime || null;
+
+        const pinInput = document.getElementById('join-pin-input');
+        const nameInput = document.getElementById('join-name-input');
+        const roomInput = document.getElementById('join-room-input');
+        if (pinInput) pinInput.value = roomPin;
+        if (nameInput) nameInput.value = studentProfile.name;
+        if (roomInput) roomInput.value = studentProfile.room || '';
+
+        const freshLobby = await fetchLobbyData(roomPin);
+        if (freshLobby) {
+            currentLobby = freshLobby;
+        }
+
+        if (session.activeView === 'exam' && assignedVariant && assignedVariant.questions) {
+            document.getElementById('view-student-join')?.classList.add('d-none');
+            document.getElementById('view-student-waiting')?.classList.add('d-none');
+            document.getElementById('view-student-result')?.classList.add('d-none');
+            document.getElementById('view-student-exam')?.classList.remove('d-none');
+
+            document.getElementById('exam-variant-badge').innerHTML = `<i class="bi bi-shield-lock-fill me-1"></i>${escapeHtml(assignedVariant.variantName)} (เฉพาะตัวคุณ)`;
+            document.getElementById('exam-student-label').textContent = `${studentProfile.name} ${studentProfile.room ? `(${studentProfile.room})` : ''}`;
+
+            renderLiveQuestions();
+            startStudentExamTimer();
+            listenForExamStart();
+
+        } else if (session.activeView === 'result' && studentExamResult) {
+            document.getElementById('view-student-join')?.classList.add('d-none');
+            document.getElementById('view-student-waiting')?.classList.add('d-none');
+            document.getElementById('view-student-exam')?.classList.add('d-none');
+            document.getElementById('view-student-result')?.classList.remove('d-none');
+
+            renderStudentResultUI();
+
+        } else if (session.activeView === 'waiting') {
+            document.getElementById('view-student-join')?.classList.add('d-none');
+            document.getElementById('view-student-exam')?.classList.add('d-none');
+            document.getElementById('view-student-result')?.classList.add('d-none');
+            document.getElementById('view-student-waiting')?.classList.remove('d-none');
+            document.getElementById('waiting-student-name').textContent = `ผู้เข้าสอบ: ${studentProfile.name} ${studentProfile.room ? `(${studentProfile.room})` : ''}`;
+
+            listenForExamStart();
+        }
+    } catch (e) {
+        console.warn('Failed to restore student session:', e);
+    }
+}
+
 // Initialize on Load
 document.addEventListener('DOMContentLoaded', () => {
     parseUrlParams();
     setupNavigationListeners();
+    restoreStudentSession();
 });
 
 function setupNavigationListeners() {
@@ -47,18 +154,27 @@ function setupNavigationListeners() {
         const waitingView = document.getElementById('view-student-waiting');
         if (waitingView && !waitingView.classList.contains('d-none')) {
             leaveLobby();
+            clearStudentSession();
             waitingView.classList.add('d-none');
             document.getElementById('view-student-join')?.classList.remove('d-none');
         }
     });
 
-    // ดักการปิดแท็บ รีเฟรช หรือปิดหน้าต่างเว็บ
-    window.addEventListener('pagehide', () => {
-        leaveLobby();
-    });
+    // ดักการรีเฟรช/ปิดหน้าต่างขณะกำลังสอบเพื่อบันทึกเซสชัน
+    window.addEventListener('beforeunload', (e) => {
+        const examView = document.getElementById('view-student-exam');
+        const isExamActive = examView && !examView.classList.contains('d-none');
+        if (isExamActive) {
+            saveStudentSession();
+            e.preventDefault();
+            e.returnValue = 'คุณกำลังทำข้อสอบอยู่ ข้อมูลและคำตอบของคุณจะถูกบันทึกไว้อัตโนมัติ';
+            return e.returnValue;
+        }
 
-    window.addEventListener('beforeunload', () => {
-        leaveLobby();
+        const waitingView = document.getElementById('view-student-waiting');
+        if (waitingView && !waitingView.classList.contains('d-none')) {
+            saveStudentSession();
+        }
     });
 }
 
@@ -221,6 +337,8 @@ function listenForExamStart() {
             if (!msg || String(msg.roomCode) !== String(roomPin)) return;
             if (msg.type === 'START_EXAM') {
                 checkAndLaunchExam(msg.lobby);
+            } else if (msg.type === 'ROOM_CLOSED') {
+                handleRoomClosed();
             } else if (msg.type === 'KICK_STUDENT') {
                 if (msg.studentName === studentProfile.name || (studentProfile.id && msg.id === studentProfile.id)) {
                     handleStudentKicked();
@@ -246,6 +364,9 @@ function listenForExamStart() {
                 .on('broadcast', { event: 'START_EXAM' }, async () => {
                     checkAndLaunchExam();
                 })
+                .on('broadcast', { event: 'ROOM_CLOSED' }, () => {
+                    handleRoomClosed();
+                })
                 .on('broadcast', { event: 'KICK_STUDENT' }, (payload) => {
                     const data = payload?.payload || payload;
                     if (data && (data.studentName === studentProfile.name || (studentProfile.id && data.id === studentProfile.id))) {
@@ -256,12 +377,14 @@ function listenForExamStart() {
 
             window.supabaseClient.channel(`student_waiting_${roomPin}`)
                 .on('postgres_changes', {
-                    event: 'UPDATE',
+                    event: '*',
                     schema: 'public',
                     table: 'lobbies',
                     filter: `room_code=eq.${roomPin}`
                 }, (payload) => {
-                    if (payload.new) {
+                    if (payload.eventType === 'DELETE') {
+                        handleRoomClosed();
+                    } else if (payload.new) {
                         if (payload.new.status === 'RUNNING') {
                             checkAndLaunchExam(payload.new);
                         } else if (payload.new.status === 'WAITING') {
@@ -280,18 +403,59 @@ function listenForExamStart() {
     // 2. Fallback Polling every 1.5 seconds
     pollInterval = setInterval(async () => {
         const lobby = await fetchLobbyData(roomPin);
-        if (lobby) {
-            if (lobby.status === 'RUNNING') {
-                checkAndLaunchExam(lobby);
-            } else if (lobby.status === 'WAITING') {
-                const players = lobby.players || [];
-                const stillIn = players.some(p => p.name === studentProfile.name);
-                if (!stillIn) {
-                    handleStudentKicked();
-                }
+        if (!lobby) {
+            handleRoomClosed();
+            return;
+        }
+
+        if (lobby.status === 'RUNNING') {
+            checkAndLaunchExam(lobby);
+        } else if (lobby.status === 'WAITING') {
+            const players = lobby.players || [];
+            const stillIn = players.some(p => p.name === studentProfile.name);
+            if (!stillIn) {
+                handleStudentKicked();
             }
         }
     }, 1500);
+}
+
+/**
+ * ⚠️ เมื่อห้องสอบถูกปิดหรือถูกลบโดยคุณครู
+ */
+function handleRoomClosed() {
+    if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+    }
+
+    clearStudentSession();
+
+    // Reset view to Join screen
+    document.getElementById('view-student-waiting')?.classList.add('d-none');
+    document.getElementById('view-student-exam')?.classList.add('d-none');
+    document.getElementById('view-student-result')?.classList.add('d-none');
+    document.getElementById('view-student-join')?.classList.remove('d-none');
+
+    const pinInput = document.getElementById('join-pin-input');
+    if (pinInput) pinInput.readOnly = false;
+
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            icon: 'info',
+            title: 'ห้องสอบถูกปิดแล้ว',
+            text: 'คุณครูได้ทำการปิดห้องสอบและลบรหัส PIN นี้เรียบร้อยแล้ว',
+            background: 'rgba(15, 23, 42, 0.96)',
+            color: '#f8fafc',
+            confirmButtonText: 'รับทราบ',
+            customClass: {
+                confirmButton: 'btn btn-quiz-glow px-4 py-2 fw-bold text-white'
+            },
+            buttonsStyling: false
+        });
+    } else {
+        alert('ห้องสอบถูกปิดและลบรหัส PIN แล้วโดยคุณครู');
+    }
 }
 
 /**
@@ -400,7 +564,9 @@ function leaveLobby() {
                     'apikey': supabaseKey,
                     'Authorization': `Bearer ${supabaseKey}`,
                     'Content-Type': 'application/json',
-                    'Prefer': 'return=minimal'
+                    'Prefer': 'return=minimal',
+                    'Accept-Profile': 'public',
+                    'Content-Profile': 'public'
                 },
                 body: JSON.stringify({ players: remaining }),
                 keepalive: true
@@ -430,6 +596,7 @@ async function confirmLeaveLobby() {
     }
 
     leaveLobby();
+    clearStudentSession();
     document.getElementById('view-student-waiting')?.classList.add('d-none');
     document.getElementById('view-student-join')?.classList.remove('d-none');
 }
@@ -484,6 +651,7 @@ async function checkAndLaunchExam(freshLobby) {
     document.getElementById('exam-variant-badge').innerHTML = `<i class="bi bi-shield-lock-fill me-1"></i>${escapeHtml(assignedVariant.variantName)} (เฉพาะตัวคุณ)`;
     document.getElementById('exam-student-label').textContent = `${studentProfile.name} ${studentProfile.room ? `(${studentProfile.room})` : ''}`;
 
+    saveStudentSession({ activeView: 'exam' });
     renderLiveQuestions();
     startStudentExamTimer();
 }
@@ -505,36 +673,41 @@ function renderLiveQuestions() {
 
         const isMultiline = (q.options || []).some(opt => (opt || '').includes('\n') || (opt || '').length > 35);
         const colClass = isMultiline ? 'col-12' : 'col-12 col-md-6';
+        const currentAns = studentAnswers[q.id];
 
         let choicesHtml = '';
         if (q.type === 'radio') {
             choicesHtml = `
                 <div class="row g-2 mt-2">
-                    ${(q.options || []).map((opt, oIdx) => `
+                    ${(q.options || []).map((opt, oIdx) => {
+                        const isSelected = (currentAns === opt);
+                        return `
                         <div class="${colClass}">
-                            <div class="quiz-choice-card" onclick="selectStudentRadioByIdx('${q.id}', ${oIdx}, this)">
+                            <div class="quiz-choice-card ${isSelected ? 'selected' : ''}" onclick="selectStudentRadioByIdx('${q.id}', ${oIdx}, this)">
                                 <div class="d-flex align-items-start gap-2">
                                     <span class="badge bg-dark border border-secondary text-white mt-1">${String.fromCharCode(65 + oIdx)}</span>
                                     <div class="quiz-choice-text text-white flex-grow-1">${escapeHtml(opt)}</div>
                                 </div>
                             </div>
                         </div>
-                    `).join('')}
+                    `;}).join('')}
                 </div>
             `;
         } else if (q.type === 'checkbox') {
             choicesHtml = `
                 <div class="row g-2 mt-2">
-                    ${(q.options || []).map((opt, oIdx) => `
+                    ${(q.options || []).map((opt, oIdx) => {
+                        const isSelected = Array.isArray(currentAns) && currentAns.includes(opt);
+                        return `
                         <div class="${colClass}">
-                            <div class="quiz-choice-card" onclick="toggleStudentCheckboxByIdx('${q.id}', ${oIdx}, this)">
+                            <div class="quiz-choice-card ${isSelected ? 'selected' : ''}" onclick="toggleStudentCheckboxByIdx('${q.id}', ${oIdx}, this)">
                                 <div class="d-flex align-items-start gap-2">
                                     <span class="badge bg-dark border border-secondary text-white mt-1">${oIdx + 1}</span>
                                     <div class="quiz-choice-text text-white flex-grow-1">${escapeHtml(opt)}</div>
                                 </div>
                             </div>
                         </div>
-                    `).join('')}
+                    `;}).join('')}
                 </div>
             `;
         } else if (q.type === 'text') {
@@ -542,7 +715,7 @@ function renderLiveQuestions() {
                 <div class="mt-3">
                     <textarea class="form-control form-control-cyber font-mono" rows="2" 
                         placeholder="พิมพ์คำตอบของคุณที่นี่..."
-                        oninput="studentAnswers['${q.id}'] = this.value"></textarea>
+                        oninput="studentAnswers['${q.id}'] = this.value; saveStudentSession();">${escapeHtml(currentAns || '')}</textarea>
                 </div>
             `;
         }
@@ -580,6 +753,7 @@ function selectStudentRadio(qId, val, el) {
         parent.querySelectorAll('.quiz-choice-card').forEach(c => c.classList.remove('selected'));
         el.classList.add('selected');
     }
+    saveStudentSession();
 }
 
 function toggleStudentCheckbox(qId, val, el) {
@@ -594,11 +768,19 @@ function toggleStudentCheckbox(qId, val, el) {
         studentAnswers[qId].splice(idx, 1);
         el.classList.remove('selected');
     }
+    saveStudentSession();
 }
 
 function startStudentExamTimer() {
-    const timeLimitMin = currentLobby.quiz_settings?.timeLimit || 15;
-    remainingExamSeconds = timeLimitMin * 60;
+    const timeLimitMin = currentLobby?.quiz_settings?.timeLimit || 15;
+    if (!window.examEndTimeTimestamp) {
+        remainingExamSeconds = timeLimitMin * 60;
+        window.examEndTimeTimestamp = Date.now() + (remainingExamSeconds * 1000);
+    } else {
+        remainingExamSeconds = Math.max(0, Math.floor((window.examEndTimeTimestamp - Date.now()) / 1000));
+    }
+
+    saveStudentSession({ activeView: 'exam' });
     updateStudentTimerText();
 
     if (examTimerInterval) clearInterval(examTimerInterval);
@@ -776,8 +958,9 @@ async function submitLiveExamAnswers() {
  * 🏆 แสดงผลคะแนนของนักเรียน
  */
 function renderStudentResultUI() {
-    document.getElementById('view-student-exam').classList.add('d-none');
-    document.getElementById('view-student-result').classList.remove('d-none');
+    saveStudentSession({ activeView: 'result' });
+    document.getElementById('view-student-exam')?.classList.add('d-none');
+    document.getElementById('view-student-result')?.classList.remove('d-none');
 
     const res = studentExamResult;
     if (!res) return;
@@ -956,9 +1139,11 @@ async function fetchLobbyData(pin) {
             if (error) {
                 console.warn('Supabase fetchLobbyData error:', error);
                 lastFetchError = error;
+            } else {
+                if (data) return data;
+                // หากเชื่อมต่อ Supabase สำเร็จและไม่พบข้อมูล (data === null) แสดงว่าห้องถูกลบไปแล้ว
+                return null;
             }
-
-            if (data) return data;
         } catch (e) {
             console.warn('Supabase fetch exception:', e);
             lastFetchError = e;

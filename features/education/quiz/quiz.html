@@ -72,25 +72,34 @@
              2. Builder View (สร้าง & แก้ไขควิซ)
              ==================================================== -->
         <div id="view-builder-container" class="d-none">
-            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-                <button class="btn btn-outline-secondary btn-sm text-white" onclick="renderQuizListView()">
-                    <i class="bi bi-arrow-left me-1"></i>กลับหน้ารายการ
-                </button>
-                <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <button class="btn btn-outline-info btn-sm fw-bold" onclick="openBatchImportModal()">
-                        <i class="bi bi-file-earmark-code-fill me-1"></i>วางข้อสอบทั้งชุด (Quick Import)
+            <!-- Sleek Top Header Action Bar -->
+            <div class="cyber-card mb-4 border-quiz py-3 px-3 px-md-4">
+                <!-- Top Row: Navigation & Main Actions -->
+                <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary border-opacity-25 flex-wrap gap-2">
+                    <button class="btn btn-outline-secondary btn-sm px-3 py-2 text-white fw-bold shadow-sm" onclick="renderQuizListView()">
+                        <i class="bi bi-arrow-left me-1.5"></i>กลับหน้ารายการ
                     </button>
-                    <button class="btn btn-outline-warning btn-sm" onclick="promptGenerateVariants()">
-                        <i class="bi bi-shuffle me-1"></i>สุ่มสร้างชุดข้อสอบ (Anti-Cheating)
+
+                    <div class="d-flex align-items-center gap-2">
+                        <a id="btn-builder-lobby-link" href="#" class="btn btn-outline-info btn-sm fw-bold px-3 py-2" onclick="openLobbyForCurrentQuiz(event)">
+                            <i class="bi bi-broadcast-pin me-1.5"></i>เปิดห้องสอบสด (Live Lobby)
+                        </a>
+                        <button class="btn btn-quiz-glow btn-sm px-4 py-2 fw-bold shadow-lg" onclick="saveCurrentQuiz()">
+                            <i class="bi bi-cloud-arrow-up-fill me-1.5 fs-6"></i>บันทึกแบบทดสอบ
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Bottom Row: Builder Tools Strip -->
+                <div class="d-flex align-items-center gap-2 flex-nowrap overflow-auto p-2 bg-dark bg-opacity-40 rounded-3 border border-secondary border-opacity-25">
+                    <button class="btn btn-outline-success btn-sm fw-bold px-3 py-1.5 text-nowrap" onclick="openQuestionBankModal()">
+                        <i class="bi bi-journal-album me-1.5"></i>คลังข้อสอบ (Question Bank)
                     </button>
-                    <a id="btn-builder-lobby-link" href="#" class="btn btn-outline-info btn-sm" onclick="openLobbyForCurrentQuiz(event)">
-                        <i class="bi bi-broadcast-pin me-1"></i>เปิดห้องสอบสด
-                    </a>
-                    <button class="btn btn-outline-quiz btn-sm" onclick="showQuizShareModal()">
-                        <i class="bi bi-qr-code me-1"></i>แชร์ / QR Code
+                    <button class="btn btn-outline-info btn-sm fw-bold px-3 py-1.5 text-nowrap" onclick="openBatchImportModal()">
+                        <i class="bi bi-file-earmark-code-fill me-1.5"></i>วางข้อสอบทั้งชุด (Quick Import)
                     </button>
-                    <button class="btn btn-quiz-glow btn-sm px-3" onclick="saveCurrentQuiz()">
-                        <i class="bi bi-cloud-arrow-up-fill me-1"></i>บันทึกแบบทดสอบ
+                    <button class="btn btn-outline-warning btn-sm fw-bold px-3 py-1.5 text-nowrap" onclick="promptGenerateVariants()">
+                        <i class="bi bi-shuffle me-1.5"></i>สุ่มสร้างชุดข้อสอบ (Anti-Cheating)
                     </button>
                 </div>
             </div>
@@ -180,32 +189,58 @@
                 <!-- Dynamic question blocks -->
             </div>
 
-            <!-- Add Question & Tools Bar -->
-            <div class="cyber-card my-4 p-3 border-quiz rounded-4 shadow-lg">
-                <div class="d-flex flex-column flex-lg-row align-items-stretch align-items-lg-center justify-content-between gap-3">
-                    <!-- Quick Import Action -->
-                    <button class="btn btn-outline-info-quiz py-2.5 px-3.5 fw-bold d-flex align-items-center justify-content-center gap-2 rounded-3 text-nowrap" onclick="openBatchImportModal()">
-                        <i class="bi bi-file-earmark-code-fill fs-5"></i>
-                        <span>วางข้อสอบทั้งชุด (Quick Import โค้ด & ช้อยส์)</span>
-                    </button>
+            <!-- Add Question & Tools Dock -->
+            <div class="cyber-card my-4 p-3 p-md-4 border-quiz rounded-4 shadow-lg">
+                <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 pb-2 border-bottom border-secondary">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="bg-dark border border-quiz rounded-circle p-2 d-inline-flex justify-content-center align-items-center" style="width: 36px; height: 36px;">
+                            <i class="bi bi-plus-lg text-quiz fs-5"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-white fw-bold m-0 font-kanit">เครื่องมือเพิ่มโจทย์คำถามใหม่</h6>
+                            <span class="text-subtle small">เลือกประเภทโจทย์ที่ต้องการเพิ่ม หรือดึงข้อสอบจากคลัง</span>
+                        </div>
+                    </div>
 
-                    <!-- Divider for desktop view -->
-                    <div class="vr bg-secondary opacity-25 d-none d-lg-block" style="height: 32px;"></div>
-                    <hr class="w-100 m-0 d-lg-none opacity-25">
+                    <div class="d-flex align-items-center gap-2">
+                        <button class="btn btn-outline-success btn-sm fw-bold px-3 py-2" onclick="openQuestionBankModal()">
+                            <i class="bi bi-journal-album me-1"></i>ดึงจากคลัง (Question Bank)
+                        </button>
+                        <button class="btn btn-outline-info btn-sm fw-bold px-3 py-2" onclick="openBatchImportModal()">
+                            <i class="bi bi-file-earmark-code-fill me-1"></i>วางข้อสอบทั้งชุด (Quick Import)
+                        </button>
+                    </div>
+                </div>
 
-                    <!-- Question Type Action Buttons -->
-                    <div class="d-flex flex-wrap flex-grow-1 align-items-center justify-content-center justify-content-lg-end gap-2">
-                        <button class="btn btn-outline-quiz py-2.5 px-3 flex-fill flex-md-grow-0 d-flex align-items-center justify-content-center gap-2 rounded-3 text-nowrap" onclick="addQuestion('radio')">
+                <div class="row g-2 align-items-center">
+                    <div class="col-12 col-sm-6 col-lg">
+                        <button class="btn btn-outline-quiz py-2.5 px-3 w-100 fw-bold d-flex align-items-center justify-content-center gap-2 rounded-3 text-nowrap" onclick="addQuestion('radio')">
                             <i class="bi bi-ui-radios fs-5"></i>
-                            <span>เพิ่มคำถาม ปรนัย (ข้อเดียว)</span>
+                            <span>ปรนัย (คำตอบเดียว)</span>
                         </button>
-                        <button class="btn btn-outline-quiz py-2.5 px-3 flex-fill flex-md-grow-0 d-flex align-items-center justify-content-center gap-2 rounded-3 text-nowrap" onclick="addQuestion('checkbox')">
+                    </div>
+                    <div class="col-12 col-sm-6 col-lg">
+                        <button class="btn btn-outline-quiz py-2.5 px-3 w-100 fw-bold d-flex align-items-center justify-content-center gap-2 rounded-3 text-nowrap" onclick="addQuestion('checkbox')">
                             <i class="bi bi-ui-checks fs-5"></i>
-                            <span>เพิ่มคำถาม ปรนัย (หลายข้อ)</span>
+                            <span>ปรนัย (หลายคำตอบ)</span>
                         </button>
-                        <button class="btn btn-outline-quiz py-2.5 px-3 flex-fill flex-md-grow-0 d-flex align-items-center justify-content-center gap-2 rounded-3 text-nowrap" onclick="addQuestion('text')">
+                    </div>
+                    <div class="col-12 col-sm-6 col-lg">
+                        <button class="btn btn-outline-quiz py-2.5 px-3 w-100 fw-bold d-flex align-items-center justify-content-center gap-2 rounded-3 text-nowrap" onclick="addQuestion('tf')">
+                            <i class="bi bi-check2-circle fs-5"></i>
+                            <span>โจทย์ ถูก / ผิด</span>
+                        </button>
+                    </div>
+                    <div class="col-12 col-sm-6 col-lg">
+                        <button class="btn btn-outline-quiz py-2.5 px-3 w-100 fw-bold d-flex align-items-center justify-content-center gap-2 rounded-3 text-nowrap" onclick="addQuestion('text')">
                             <i class="bi bi-textarea-t fs-5"></i>
-                            <span>เพิ่มคำถาม อัตนัย (ข้อเขียน)</span>
+                            <span>อัตนัย (เขียนตอบ)</span>
+                        </button>
+                    </div>
+                    <div class="col-12 col-sm-6 col-lg">
+                        <button class="btn btn-outline-quiz py-2.5 px-3 w-100 fw-bold d-flex align-items-center justify-content-center gap-2 rounded-3 text-nowrap" onclick="addQuestion('star')">
+                            <i class="bi bi-star-fill text-warning fs-5"></i>
+                            <span>แบบประเมินดาว</span>
                         </button>
                     </div>
                 </div>
@@ -530,6 +565,83 @@ D. 30
                     <button type="button" class="btn btn-outline-secondary text-white" data-bs-dismiss="modal">ยกเลิก</button>
                     <button type="button" class="btn btn-quiz-glow px-4 fw-bold" onclick="executeBatchImport()">
                         <i class="bi bi-lightning-charge-fill me-1"></i>นำเข้าข้อสอบเข้าสู่ชุดนี้
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====================================================
+         Modal: Question Bank (คลังข้อสอบ)
+         ==================================================== -->
+    <div class="modal fade" id="questionBankModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content cyber-card border-quiz text-white">
+                <div class="modal-header border-secondary pb-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="bg-success bg-opacity-25 border border-success rounded-circle p-2 d-inline-flex justify-content-center align-items-center" style="width: 44px; height: 44px;">
+                            <i class="bi bi-journal-album text-success fs-4"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold m-0 font-kanit d-flex align-items-center gap-2">
+                                คลังข้อสอบ (Question Bank)
+                                <span class="badge bg-success text-white fs-6 font-mono" id="qb-total-count-badge">0 ข้อในคลัง</span>
+                            </h5>
+                            <p class="text-subtle small m-0">เลือกและนำเข้าโจทย์คำถามจากคลังรายวิชา หรือจากแบบทดสอบเดิมเข้าสู่ควิซนี้ได้ทันที</p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body py-3">
+                    <!-- Filters & Search Toolbar -->
+                    <div class="row g-3 mb-3 pb-3 border-bottom border-secondary align-items-center">
+                        <div class="col-12 col-md-4">
+                            <label class="form-label text-subtle small fw-bold mb-1">แหล่งที่มาของข้อสอบ:</label>
+                            <select id="qb-source-type" class="form-select form-control-cyber form-select-sm" onchange="onQBSourceTypeChange()">
+                                <option value="subjects">📚 คลังรายวิชา (quiz_subjects)</option>
+                                <option value="quizzes">📝 แบบทดสอบเดิมที่คุณเคยสร้างไว้</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label text-subtle small fw-bold mb-1">เลือกหมวดวิชา / ควิซ:</label>
+                            <select id="qb-category-select" class="form-select form-control-cyber form-select-sm" onchange="renderQBQuestionsList()">
+                                <option value="">กำลังโหลดหมวดหมู่...</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label text-subtle small fw-bold mb-1">ค้นหาโจทย์คำถาม:</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-dark text-subtle border-secondary"><i class="bi bi-search"></i></span>
+                                <input type="text" id="qb-search-input" class="form-control form-control-cyber" placeholder="พิมพ์ค้นหาคำในโจทย์..." oninput="renderQBQuestionsList()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actions & Select All Bar -->
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 px-1">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="form-check m-0">
+                                <input class="form-check-input cursor-pointer" type="checkbox" id="qb-select-all-checkbox" onchange="toggleSelectAllQB(this.checked)">
+                                <label class="form-check-label text-white small fw-bold cursor-pointer" for="qb-select-all-checkbox">
+                                    เลือกทั้งหมดในหน้านี้
+                                </label>
+                            </div>
+                            <span id="qb-selected-counter-badge" class="badge bg-warning text-dark font-mono px-2 py-1">เลือกแล้ว 0 ข้อ</span>
+                        </div>
+                        <div class="small text-subtle">
+                            <i class="bi bi-info-circle me-1 text-info"></i>คลิกที่การ์ดข้อสอบเพื่อเลือก/ยกเลิกการเลือก
+                        </div>
+                    </div>
+
+                    <!-- Questions Grid List -->
+                    <div id="qb-questions-container" class="row g-3 overflow-auto pe-1" style="max-height: 480px;">
+                        <!-- Dynamic Question Cards -->
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary justify-content-between">
+                    <button type="button" class="btn btn-outline-secondary text-white" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="button" class="btn btn-success px-4 fw-bold shadow-sm" onclick="importSelectedQBQuestions()">
+                        <i class="bi bi-plus-circle-fill me-1"></i>นำเข้าข้อสอบที่เลือก (<span id="qb-btn-import-count">0</span> ข้อ)
                     </button>
                 </div>
             </div>

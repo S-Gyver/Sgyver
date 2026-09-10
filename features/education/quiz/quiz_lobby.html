@@ -55,9 +55,9 @@
                 <button id="btn-header-sql" class="btn btn-warning btn-sm d-none fw-bold" onclick="openSqlSetupModal()">
                     <i class="bi bi-database-exclamation me-1"></i>ตั้งค่า SQL
                 </button>
-                <a href="quiz.html" class="btn btn-outline-secondary btn-sm px-3 py-2 text-white">
-                    <i class="bi bi-arrow-left me-1"></i>กลับหน้าควิซ
-                </a>
+                <button class="btn btn-outline-danger btn-sm px-3 py-2 fw-bold" onclick="confirmCloseAndDeleteLobby()">
+                    <i class="bi bi-x-circle-fill me-1"></i>ปิดห้องสอบ (ลบ PIN)
+                </button>
             </div>
         </header>
 
@@ -245,9 +245,9 @@
                     <button class="btn btn-outline-success px-4 py-2 fw-bold" onclick="exportLobbyResultsCSV()">
                         <i class="bi bi-file-earmark-excel-fill me-1"></i>ส่งออกผลคะแนน (Excel/CSV)
                     </button>
-                    <a href="quiz.html" class="btn btn-outline-secondary px-4 py-2 text-white">
-                        <i class="bi bi-house-door-fill me-1"></i>กลับหน้ารายการควิซ
-                    </a>
+                    <button class="btn btn-outline-danger px-4 py-2 fw-bold text-white" onclick="confirmCloseAndDeleteLobby()">
+                        <i class="bi bi-x-circle-fill me-1"></i>ปิดห้องสอบและลบ PIN
+                    </button>
                 </div>
 
                 <div class="text-start">

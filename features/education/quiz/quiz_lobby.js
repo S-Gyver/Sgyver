@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initRoomCode();
     await createOrRegisterLobby();
     setupLobbyRealtime();
+    setupLobbyLifecycleListeners();
 });
 
 /**
@@ -945,3 +946,127 @@ function escapeHtml(str) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
 }
+
+let isLobbyCleanedUp = false;
+
+/**
+ * 🎧 ดักฟังเหตุการณ์ระบบ: กดย้อนกลับ (Back), ปิดแท็บ (X), ปิดเบราว์เซอร์ หรือสไลด์ปิดแอปบน มือถือ / iPad / Tablet
+ */
+function setupLobbyLifecycleListeners() {
+    // 1. ปุ่ม Back บนเบราว์เซอร์
+    window.addEventListener('popstate', () => {
+        deleteLobbyKeepalive();
+        if (!window.location.pathname.endsWith('quiz.html')) {
+            window.location.href = 'quiz.html';
+        }
+    });
+
+    // 2. ปิดแท็บ (X), ปิดหน้าต่าง, หรือสไลด์แอปทิ้งใน iOS / Android
+    window.addEventListener('pagehide', () => {
+        deleteLobbyKeepalive();
+    });
+
+    window.addEventListener('beforeunload', () => {
+        deleteLobbyKeepalive();
+    });
+}
+
+/**
+ * ⚡ ลบห้องสอบออกจาก Supabase และ LocalStorage แบบ KeepAlive (ทำงานสำเร็จแม้ปิดหน้าต่างทันที)
+ */
+function deleteLobbyKeepalive() {
+    if (isLobbyCleanedUp || !roomCode) return;
+    isLobbyCleanedUp = true;
+
+    // 1. ส่งสัญญาณกระจายบอกเครื่องนักเรียนว่าห้องปิดแล้ว
+    if (localBC) {
+        try { localBC.postMessage({ type: 'ROOM_CLOSED', roomCode: roomCode }); } catch (e) {}
+    }
+
+    if (window.supabaseClient) {
+        try {
+            window.supabaseClient.channel(`quiz_room_${roomCode}`).send({
+                type: 'broadcast',
+                event: 'ROOM_CLOSED',
+                payload: { roomCode: roomCode }
+            }).catch(() => {});
+
+            window.supabaseClient
+                .from('lobbies')
+                .delete()
+                .eq('room_code', roomCode)
+                .then(() => {})
+                .catch(() => {});
+        } catch (e) {}
+    }
+
+    // 2. ลบข้อมูลจาก LocalStorage
+    try {
+        localStorage.removeItem(`gyver_lobby_${roomCode}`);
+    } catch (e) {}
+
+    // 3. เคลียร์ตัวนับเวลา
+    if (pollTimerInterval) clearInterval(pollTimerInterval);
+    if (examTimerInterval) clearInterval(examTimerInterval);
+
+    // 4. ส่ง HTTP DELETE ไปที่ Supabase REST API พร้อม keepalive: true และ schema headers
+    try {
+        const supabaseUrl = window.SUPABASE_URL || (window.supabaseClient && window.supabaseClient.supabaseUrl);
+        const supabaseKey = window.SUPABASE_KEY || (window.supabaseClient && window.supabaseClient.supabaseKey);
+
+        if (supabaseUrl && supabaseKey) {
+            const url = `${supabaseUrl}/rest/v1/lobbies?room_code=eq.${encodeURIComponent(roomCode)}`;
+            fetch(url, {
+                method: 'DELETE',
+                headers: {
+                    'apikey': supabaseKey,
+                    'Authorization': `Bearer ${supabaseKey}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=minimal',
+                    'Accept-Profile': 'public',
+                    'Content-Profile': 'public'
+                },
+                keepalive: true
+            }).catch(() => {});
+        }
+    } catch (e) {}
+}
+
+/**
+ * 🗑️ ปิดห้องสอบ และลบข้อมูลห้อง (PIN) ออกจาก Supabase และ LocalStorage
+ */
+async function confirmCloseAndDeleteLobby() {
+    if (CyberSwal) {
+        const confirm = await CyberSwal.fire({
+            title: 'ยืนยันปิดห้องสอบ?',
+            text: `รหัสห้องสอบ ${roomCode} จะถูกลบออกจากฐานข้อมูล Supabase ทันที นักเรียนจะไม่สามารถใช้รหัสนี้เข้าห้องสอบได้อีก`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: '<i class="bi bi-trash-fill me-1"></i> ปิดและลบห้องสอบ',
+            cancelButtonText: 'ยกเลิก',
+            customClass: {
+                confirmButton: 'btn btn-danger px-4 py-2 fw-bold',
+                cancelButton: 'btn btn-outline-secondary px-4 py-2 text-white me-2'
+            }
+        });
+        if (!confirm.isConfirmed) return;
+    } else {
+        if (!confirm(`ยืนยันปิดห้องสอบรหัส ${roomCode}? นักเรียนจะไม่สามารถใช้รหัสนี้ได้อีก`)) return;
+    }
+
+    await closeAndDeleteLobby(true);
+}
+
+async function closeAndDeleteLobby(skipConfirm = false) {
+    if (!skipConfirm) {
+        return confirmCloseAndDeleteLobby();
+    }
+
+    deleteLobbyKeepalive();
+
+    // Redirect back to Quiz List
+    window.location.href = 'quiz.html';
+}
+
+window.confirmCloseAndDeleteLobby = confirmCloseAndDeleteLobby;
+window.closeAndDeleteLobby = closeAndDeleteLobby;

@@ -322,24 +322,7 @@ function createNewQuiz() {
             poolCount: 20
         },
         questions: [
-            {
-                id: generateId(),
-                title: 'ข้อที่ 1: เมืองหลวงของประเทศไทยคือเมืองใด?',
-                type: 'radio',
-                points: 1,
-                correctAnswer: 'กรุงเทพมหานคร',
-                explanation: 'กรุงเทพมหานครเป็นเมืองหลวงและศูนย์กลางการปกครองของประเทศไทย',
-                options: ['เชียงใหม่', 'กรุงเทพมหานคร', 'ภูเก็ต', 'ขอนแก่น']
-            },
-            {
-                id: generateId(),
-                title: 'ข้อที่ 2: แม่สีปฐมภูมิประกอบด้วยสีใดบ้าง? (เลือกได้หลายข้อ)',
-                type: 'checkbox',
-                points: 1,
-                correctAnswer: ['สีแดง', 'สีเหลือง', 'สีน้ำเงิน'],
-                explanation: 'แม่สีปฐมภูมิได้แก่ สีแดง สีเหลือง และสีน้ำเงิน',
-                options: ['สีแดง', 'สีเขียว', 'สีเหลือง', 'สีน้ำเงิน']
-            }
+            
         ],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -561,14 +544,30 @@ function addQuestion(type = 'radio') {
     if (!currentQuiz) return;
     if (!currentQuiz.questions) currentQuiz.questions = [];
 
+    let options = ['ตัวเลือกที่ 1', 'ตัวเลือกที่ 2', 'ตัวเลือกที่ 3', 'ตัวเลือกที่ 4'];
+    let correctAnswer = 'ตัวเลือกที่ 1';
+
+    if (type === 'tf') {
+        options = ['ถูก', 'ผิด'];
+        correctAnswer = 'ถูก';
+    } else if (type === 'star') {
+        options = ['⭐ 1 ดาว', '⭐⭐ 2 ดาว', '⭐⭐⭐ 3 ดาว', '⭐⭐⭐⭐ 4 ดาว', '⭐⭐⭐⭐⭐ 5 ดาว'];
+        correctAnswer = '⭐⭐⭐⭐⭐ 5 ดาว';
+    } else if (type === 'text') {
+        options = [];
+        correctAnswer = '';
+    } else if (type === 'checkbox') {
+        correctAnswer = ['ตัวเลือกที่ 1'];
+    }
+
     const newQ = {
         id: generateId(),
         title: `ข้อที่ ${currentQuiz.questions.length + 1}: พิมพ์คำถาม...`,
         type: type,
         points: 1,
-        correctAnswer: type === 'radio' ? 'ตัวเลือกที่ 1' : (type === 'checkbox' ? ['ตัวเลือกที่ 1'] : ''),
+        correctAnswer: correctAnswer,
         explanation: '',
-        options: type === 'text' ? [] : ['ตัวเลือกที่ 1', 'ตัวเลือกที่ 2', 'ตัวเลือกที่ 3', 'ตัวเลือกที่ 4']
+        options: options
     };
 
     currentQuiz.questions.push(newQ);
@@ -660,7 +659,7 @@ function q_setAnswer(qId, val) {
     if (q) q.correctAnswer = val;
 }
 
-function saveCurrentQuiz() {
+async function saveCurrentQuiz(options = { redirect: true }) {
     if (!currentQuiz) return;
 
     currentQuiz.title = document.getElementById('builder-quiz-title').value.trim() || 'แบบทดสอบไม่มีชื่อ';
@@ -679,24 +678,30 @@ function saveCurrentQuiz() {
     currentQuiz.updatedAt = new Date().toISOString();
 
     saveLocalQuizzes(quizzesList);
-    syncQuizToSupabase(currentQuiz);
+    await syncQuizToSupabase(currentQuiz);
+
+    const shouldRedirect = options ? options.redirect !== false : true;
 
     const swal = getCyberSwal();
     if (swal) {
-        swal.fire({
+        await swal.fire({
             icon: 'success',
             title: 'บันทึกสำเร็จ!',
             text: 'แบบทดสอบและคำถามทั้งหมดถูกบันทึกเรียบร้อยแล้ว',
-            timer: 2000,
+            timer: 1500,
             showConfirmButton: false
         });
     } else {
         alert('บันทึกแบบทดสอบเรียบร้อยแล้ว!');
     }
+
+    if (shouldRedirect) {
+        renderQuizListView();
+    }
 }
 
 function previewCurrentQuizAsStudent() {
-    saveCurrentQuiz();
+    saveCurrentQuiz({ redirect: false });
     startQuizFromList(currentQuiz.id);
 }
 
@@ -818,7 +823,8 @@ function generate20Variants(targetCount = 20) {
         const selected = cloned.slice(0, poolCount);
 
         selected.forEach((q, qIdx) => {
-            q.title = q.title.replace(/^ข้อที่\s*\d+[:.]?\s*/, `ข้อที่ ${qIdx + 1}: `);
+            const safeTitle = (q && q.title) ? String(q.title) : 'คำถามไม่มีชื่อ';
+            q.title = safeTitle.replace(/^ข้อที่\s*\d+[:.]?\s*/, `ข้อที่ ${qIdx + 1}: `);
             if (Array.isArray(q.options) && q.options.length > 1) {
                 shuffleArray(q.options);
             }
@@ -878,6 +884,96 @@ function startQuizFromList(quizId) {
     renderTakerView();
 }
 
+// 💾 Self-Take Session Persistence Helper
+const TAKER_SESSION_KEY = 'gyver_taker_active_session';
+
+function saveTakerSession(extraData = {}) {
+    if (!currentQuiz || !currentStudent || !currentStudent.name) return;
+    const session = {
+        quizId: currentQuiz.id,
+        currentStudent: currentStudent,
+        activeExamQuestions: activeExamQuestions,
+        studentAnswers: studentAnswers,
+        takerExamEndTime: window.takerExamEndTimeTimestamp || null,
+        activeView: getActiveTakerViewId(),
+        lastQuizResult: lastQuizResult || null,
+        updatedAt: Date.now(),
+        ...extraData
+    };
+    try {
+        localStorage.setItem(TAKER_SESSION_KEY, JSON.stringify(session));
+    } catch (e) {}
+}
+
+function getActiveTakerViewId() {
+    const activeExam = document.getElementById('taker-active-exam');
+    const resultView = document.getElementById('view-result-container');
+
+    if (activeExam && !activeExam.classList.contains('d-none')) return 'exam';
+    if (resultView && !resultView.classList.contains('d-none')) return 'result';
+    return 'gate';
+}
+
+function clearTakerSession() {
+    try {
+        localStorage.removeItem(TAKER_SESSION_KEY);
+    } catch (e) {}
+}
+
+function restoreTakerSession() {
+    try {
+        const raw = localStorage.getItem(TAKER_SESSION_KEY);
+        if (!raw) return;
+        const session = JSON.parse(raw);
+
+        if (!session || !session.quizId || !session.currentStudent?.name) return;
+        if (currentQuiz && currentQuiz.id !== session.quizId) return;
+
+        currentStudent = session.currentStudent;
+        activeExamQuestions = session.activeExamQuestions || [];
+        studentAnswers = session.studentAnswers || {};
+        lastQuizResult = session.lastQuizResult || null;
+        window.takerExamEndTimeTimestamp = session.takerExamEndTime || null;
+
+        if (session.activeView === 'exam' && activeExamQuestions.length > 0) {
+            document.getElementById('taker-gate-card')?.classList.add('d-none');
+            document.getElementById('taker-active-exam')?.classList.remove('d-none');
+
+            document.getElementById('active-exam-title').textContent = currentQuiz.title;
+            document.getElementById('active-student-badge').textContent = `ผู้เข้าสอบ: ${currentStudent.name} ${currentStudent.room ? `(${currentStudent.room})` : ''}`;
+
+            renderTakerQuestions();
+
+            const timeLimitMin = currentQuiz.settings?.timeLimit || 0;
+            const timerDisplay = document.getElementById('exam-timer-display');
+
+            if (timeLimitMin > 0 && window.takerExamEndTimeTimestamp) {
+                const diffSec = Math.max(0, Math.floor((window.takerExamEndTimeTimestamp - Date.now()) / 1000));
+                if (diffSec <= 0) {
+                    autoSubmitQuiz();
+                    return;
+                }
+                remainingSeconds = diffSec;
+                if (timerDisplay) timerDisplay.classList.remove('d-none');
+                updateTimerDisplay();
+
+                stopTimer();
+                examTimerInterval = setInterval(() => {
+                    remainingSeconds--;
+                    updateTimerDisplay();
+
+                    if (remainingSeconds <= 0) {
+                        stopTimer();
+                        autoSubmitQuiz();
+                    }
+                }, 1000);
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to restore taker session:', e);
+    }
+}
+
 function renderTakerView() {
     if (!currentQuiz) return;
     stopTimer();
@@ -905,6 +1001,8 @@ function renderTakerView() {
 
     document.getElementById('gate-total-time').textContent = currentQuiz.settings?.timeLimit ? `${currentQuiz.settings.timeLimit} นาที` : 'ไม่จำกัด';
     document.getElementById('gate-pass-score').textContent = `${currentQuiz.settings?.passingScore || 70}%`;
+
+    restoreTakerSession();
 }
 
 function startTakingQuiz() {
@@ -970,7 +1068,14 @@ function startTakingQuiz() {
     const timerDisplay = document.getElementById('exam-timer-display');
 
     if (timeLimitMin > 0) {
-        remainingSeconds = timeLimitMin * 60;
+        if (!window.takerExamEndTimeTimestamp) {
+            remainingSeconds = timeLimitMin * 60;
+            window.takerExamEndTimeTimestamp = Date.now() + (remainingSeconds * 1000);
+        } else {
+            remainingSeconds = Math.max(0, Math.floor((window.takerExamEndTimeTimestamp - Date.now()) / 1000));
+        }
+
+        saveTakerSession({ activeView: 'exam' });
         if (timerDisplay) timerDisplay.classList.remove('d-none');
         updateTimerDisplay();
 
@@ -999,6 +1104,7 @@ function startTakingQuiz() {
             }
         }, 1000);
     } else {
+        saveTakerSession({ activeView: 'exam' });
         if (timerDisplay) timerDisplay.classList.add('d-none');
     }
 }
@@ -1006,8 +1112,8 @@ function startTakingQuiz() {
 function updateTimerDisplay() {
     const timerEl = document.getElementById('timer-text');
     if (!timerEl) return;
-    const mins = Math.floor(remainingSeconds / 60);
-    const secs = remainingSeconds % 60;
+    const mins = Math.max(0, Math.floor(remainingSeconds / 60));
+    const secs = Math.max(0, remainingSeconds % 60);
     timerEl.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }
 
@@ -1032,36 +1138,41 @@ function renderTakerQuestions() {
 
         const isMultiline = (q.options || []).some(opt => (opt || '').includes('\n') || (opt || '').length > 35);
         const colClass = isMultiline ? 'col-12' : 'col-12 col-md-6';
+        const currentAns = studentAnswers[q.id];
 
         let choicesHtml = '';
         if (q.type === 'radio') {
             choicesHtml = `
                 <div class="row g-2 mt-2">
-                    ${(q.options || []).map((opt, oIdx) => `
+                    ${(q.options || []).map((opt, oIdx) => {
+                        const isSelected = (currentAns === opt);
+                        return `
                         <div class="${colClass}">
-                            <div class="quiz-choice-card" onclick="selectRadioChoiceByIdx('${q.id}', ${oIdx}, this)">
+                            <div class="quiz-choice-card ${isSelected ? 'selected' : ''}" onclick="selectRadioChoiceByIdx('${q.id}', ${oIdx}, this)">
                                 <div class="d-flex align-items-start gap-2">
                                     <span class="badge bg-dark border border-secondary text-white mt-1">${String.fromCharCode(65 + oIdx)}</span>
                                     <div class="quiz-choice-text text-white flex-grow-1">${escapeHtml(opt)}</div>
                                 </div>
                             </div>
                         </div>
-                    `).join('')}
+                    `;}).join('')}
                 </div>
             `;
         } else if (q.type === 'checkbox') {
             choicesHtml = `
                 <div class="row g-2 mt-2">
-                    ${(q.options || []).map((opt, oIdx) => `
+                    ${(q.options || []).map((opt, oIdx) => {
+                        const isSelected = Array.isArray(currentAns) && currentAns.includes(opt);
+                        return `
                         <div class="${colClass}">
-                            <div class="quiz-choice-card" onclick="toggleCheckboxChoiceByIdx('${q.id}', ${oIdx}, this)">
+                            <div class="quiz-choice-card ${isSelected ? 'selected' : ''}" onclick="toggleCheckboxChoiceByIdx('${q.id}', ${oIdx}, this)">
                                 <div class="d-flex align-items-start gap-2">
                                     <span class="badge bg-dark border border-secondary text-white mt-1">${oIdx + 1}</span>
                                     <div class="quiz-choice-text text-white flex-grow-1">${escapeHtml(opt)}</div>
                                 </div>
                             </div>
                         </div>
-                    `).join('')}
+                    `;}).join('')}
                 </div>
             `;
         } else if (q.type === 'text') {
@@ -1069,7 +1180,7 @@ function renderTakerQuestions() {
                 <div class="mt-3">
                     <textarea class="form-control form-control-cyber font-mono" rows="2" 
                         placeholder="พิมพ์คำตอบของคุณที่นี่..."
-                        oninput="studentAnswers['${q.id}'] = this.value"></textarea>
+                        oninput="studentAnswers['${q.id}'] = this.value; saveTakerSession();">${escapeHtml(currentAns || '')}</textarea>
                 </div>
             `;
         }
@@ -1107,6 +1218,7 @@ function selectRadioChoice(qId, val, el) {
         parentCard.querySelectorAll('.quiz-choice-card').forEach(c => c.classList.remove('selected'));
         el.classList.add('selected');
     }
+    saveTakerSession();
 }
 
 function toggleCheckboxChoice(qId, val, el) {
@@ -1121,6 +1233,7 @@ function toggleCheckboxChoice(qId, val, el) {
         studentAnswers[qId].splice(idx, 1);
         el.classList.remove('selected');
     }
+    saveTakerSession();
 }
 
 async function confirmSubmitQuiz() {
@@ -2208,6 +2321,370 @@ if pork >= 4:
 
 const PYTHON_EXAM_PRESET_TEXT = getPythonExamPresetText();
 
+/**
+ * ====================================================
+ * 📚 Question Bank (คลังข้อสอบ) Engine & Import Logic
+ * ====================================================
+ */
+let qbState = {
+    sourceType: 'subjects', // 'subjects' | 'quizzes'
+    subjectsData: {}, // { "subject_key": [questions] }
+    quizzesData: [], // [quiz]
+    selectedCategoryKey: '',
+    questionsList: [],
+    selectedQuestionIds: new Set()
+};
+
+function normalizeQuestion(q) {
+    if (!q) return null;
+
+    let title = q.title || q.q || q.question || q.question_text || 'คำถามไม่มีชื่อ';
+    
+    let options = [];
+    if (Array.isArray(q.options) && q.options.length > 0) {
+        options = q.options.map(opt => String(opt || ''));
+    } else if (Array.isArray(q.choices) && q.choices.length > 0) {
+        options = q.choices.map(c => String(c || ''));
+    }
+
+    let correctAnswer = q.correctAnswer;
+    if (correctAnswer === undefined || correctAnswer === null || correctAnswer === '') {
+        if (typeof q.correct === 'number' && options.length > q.correct) {
+            correctAnswer = options[q.correct];
+        } else if (typeof q.correct === 'string') {
+            correctAnswer = q.correct;
+        } else if (options.length > 0) {
+            correctAnswer = options[0];
+        }
+    }
+
+    let type = q.type || 'radio';
+    if (options.length === 2 && (options.includes('ถูก') || options.includes('ผิด'))) {
+        type = 'tf';
+    }
+
+    return {
+        id: q.id || ('q_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5)),
+        title: String(title),
+        type: type,
+        points: Number(q.points) || 1,
+        options: options,
+        correctAnswer: String(correctAnswer || '')
+    };
+}
+
+async function openQuestionBankModal() {
+    qbState.selectedQuestionIds.clear();
+    qbState.sourceType = 'subjects';
+
+    const sourceSelect = document.getElementById('qb-source-type');
+    if (sourceSelect) sourceSelect.value = 'subjects';
+
+    const searchInput = document.getElementById('qb-search-input');
+    if (searchInput) searchInput.value = '';
+
+    const selectAllCb = document.getElementById('qb-select-all-checkbox');
+    if (selectAllCb) selectAllCb.checked = false;
+
+    // Load Data
+    await loadQBData();
+
+    // Show Modal
+    const modalEl = document.getElementById('questionBankModal');
+    if (modalEl && typeof bootstrap !== 'undefined') {
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+    }
+}
+
+async function loadQBData() {
+    // 1. Load subjects from Supabase / LocalStorage / Preset
+    let subjectsObj = {};
+    if (window.supabaseClient && isSupabaseTableAvailable) {
+        try {
+            const { data } = await window.supabaseClient.from('quiz_subjects').select('*');
+            if (data && data.length > 0) {
+                data.forEach(s => {
+                    if (s.subject_key && Array.isArray(s.questions) && s.questions.length > 0) {
+                        subjectsObj[s.subject_key] = s.questions;
+                    }
+                });
+            }
+        } catch (e) {}
+    }
+
+    if (Object.keys(subjectsObj).length === 0) {
+        try {
+            const raw = localStorage.getItem('gyver_quiz_subjects');
+            if (raw) subjectsObj = JSON.parse(raw);
+        } catch (e) {}
+    }
+
+    // Auto seed Preset if empty
+    if (Object.keys(subjectsObj).length === 0 && typeof parseRawQuizText === 'function' && typeof getPythonExamPresetText === 'function') {
+        const pyQs = parseRawQuizText(getPythonExamPresetText(), 1);
+        if (pyQs && pyQs.length > 0) {
+            subjectsObj['📚 คลังวิชา Python พื้นฐาน (20 ข้อ)'] = pyQs;
+        }
+    }
+
+    qbState.subjectsData = subjectsObj;
+
+    // 2. Load quizzes from quizzesList
+    qbState.quizzesData = (quizzesList || []).filter(q => Array.isArray(q.questions) && q.questions.length > 0);
+
+    // Populate Category Dropdown & Questions
+    updateQBCategoryDropdown();
+}
+
+function onQBSourceTypeChange() {
+    const sourceSelect = document.getElementById('qb-source-type');
+    if (sourceSelect) qbState.sourceType = sourceSelect.value;
+    qbState.selectedQuestionIds.clear();
+
+    const selectAllCb = document.getElementById('qb-select-all-checkbox');
+    if (selectAllCb) selectAllCb.checked = false;
+
+    updateQBCategoryDropdown();
+}
+
+function updateQBCategoryDropdown() {
+    const catSelect = document.getElementById('qb-category-select');
+    if (!catSelect) return;
+
+    if (qbState.sourceType === 'subjects') {
+        const keys = Object.keys(qbState.subjectsData || {});
+        if (keys.length === 0) {
+            catSelect.innerHTML = '<option value="">ยังไม่มีข้อมูลคลังรายวิชา</option>';
+            qbState.selectedCategoryKey = '';
+        } else {
+            catSelect.innerHTML = keys.map((k, idx) => `
+                <option value="${escapeHtml(k)}" ${idx === 0 ? 'selected' : ''}>
+                    📚 ${escapeHtml(k)} (${(qbState.subjectsData[k] || []).length} ข้อ)
+                </option>
+            `).join('');
+            qbState.selectedCategoryKey = keys[0] || '';
+        }
+    } else {
+        const quizzes = qbState.quizzesData || [];
+        if (quizzes.length === 0) {
+            catSelect.innerHTML = '<option value="">ยังไม่มีแบบทดสอบเดิม</option>';
+            qbState.selectedCategoryKey = '';
+        } else {
+            catSelect.innerHTML = quizzes.map((q, idx) => `
+                <option value="${escapeHtml(q.id)}" ${idx === 0 ? 'selected' : ''}>
+                    📝 ${escapeHtml(q.title)} (${(q.questions || []).length} ข้อ)
+                </option>
+            `).join('');
+            qbState.selectedCategoryKey = quizzes[0]?.id || '';
+        }
+    }
+
+    renderQBQuestionsList();
+}
+
+function renderQBQuestionsList() {
+    const catSelect = document.getElementById('qb-category-select');
+    if (catSelect) qbState.selectedCategoryKey = catSelect.value;
+
+    const searchInput = document.getElementById('qb-search-input');
+    const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+
+    let rawQuestions = [];
+    if (qbState.sourceType === 'subjects') {
+        rawQuestions = qbState.subjectsData[qbState.selectedCategoryKey] || [];
+    } else {
+        const quiz = qbState.quizzesData.find(q => String(q.id) === String(qbState.selectedCategoryKey));
+        rawQuestions = quiz ? (quiz.questions || []) : [];
+    }
+
+    // Normalize questions schema ({ q, choices, correct } -> { title, options, correctAnswer })
+    let questions = rawQuestions.map((rawQ, idx) => {
+        const norm = normalizeQuestion(rawQ);
+        norm.tempQbId = rawQ.id || `qb_q_${idx}`;
+        return norm;
+    });
+
+    // Filter by search query
+    if (query) {
+        questions = questions.filter(q => {
+            const titleMatch = (q.title || '').toLowerCase().includes(query);
+            const optionsMatch = Array.isArray(q.options) && q.options.some(opt => String(opt).toLowerCase().includes(query));
+            return titleMatch || optionsMatch;
+        });
+    }
+
+    qbState.questionsList = questions;
+
+    // Update total count badge
+    const totalBadge = document.getElementById('qb-total-count-badge');
+    if (totalBadge) totalBadge.textContent = `${questions.length} ข้อ`;
+
+    const container = document.getElementById('qb-questions-container');
+    if (!container) return;
+
+    if (questions.length === 0) {
+        container.innerHTML = `
+            <div class="col-12 text-center py-5 text-subtle">
+                <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary"></i>
+                <h5>ไม่พบโจทย์คำถามในหมวดนี้</h5>
+                <p class="small text-subtle m-0">กรุณาเลือกหมวดวิชาอื่น หรือเปลี่ยนคำค้นหาครับ</p>
+            </div>
+        `;
+        updateQBSelectionCounters();
+        return;
+    }
+
+    container.innerHTML = questions.map((q, idx) => {
+        const qId = q.tempQbId || `qb_q_${idx}`;
+        const isSelected = qbState.selectedQuestionIds.has(qId);
+        const optionsList = Array.isArray(q.options) ? q.options : [];
+
+        let typeBadgeHtml = '<span class="badge bg-primary-subtle text-primary border border-primary-subtle">ปรนัย</span>';
+        if (q.type === 'tf' || optionsList.length === 2) {
+            typeBadgeHtml = '<span class="badge bg-warning-subtle text-warning border border-warning-subtle">ถูก / ผิด</span>';
+        } else if (q.type === 'star') {
+            typeBadgeHtml = '<span class="badge bg-info-subtle text-info border border-info-subtle">⭐ ประเมินดาว</span>';
+        } else if (q.type === 'subjective') {
+            typeBadgeHtml = '<span class="badge bg-success-subtle text-success border border-success-subtle">อัตนัย</span>';
+        }
+
+        return `
+            <div class="col-12 col-md-6">
+                <div class="qb-card ${isSelected ? 'is-selected' : ''}" onclick="toggleQBQuestionSelection('${qId}')">
+                    <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <input class="form-check-input cursor-pointer" type="checkbox" id="cb_${qId}" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); toggleQBQuestionSelection('${qId}')">
+                            <span class="fw-bold text-white small">ข้อที่ ${idx + 1}</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-1">
+                            ${typeBadgeHtml}
+                            <span class="badge bg-dark text-subtle font-mono small">${q.points || 1} คะแนน</span>
+                        </div>
+                    </div>
+                    <div class="fw-bold text-white mb-2 text-truncate-2 small" style="line-height: 1.4;">
+                        ${escapeHtml(q.title || 'คำถามไม่มีชื่อ')}
+                    </div>
+                    ${optionsList.length > 0 ? `
+                        <div class="row g-1 pt-1 border-top border-secondary small text-subtle">
+                            ${optionsList.slice(0, 4).map((opt, oIdx) => {
+                                const labels = ['A', 'B', 'C', 'D'];
+                                const isCorrect = q.correctAnswer === opt || q.correctAnswer === labels[oIdx];
+                                return `
+                                    <div class="col-6 text-truncate ${isCorrect ? 'text-success fw-bold' : ''}">
+                                        <span class="font-mono text-subtle me-1">${labels[oIdx] || oIdx + 1}.</span>${escapeHtml(opt)} ${isCorrect ? '✓' : ''}
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    updateQBSelectionCounters();
+}
+
+function toggleQBQuestionSelection(qId) {
+    if (qbState.selectedQuestionIds.has(qId)) {
+        qbState.selectedQuestionIds.delete(qId);
+    } else {
+        qbState.selectedQuestionIds.add(qId);
+    }
+
+    const card = document.querySelector(`.qb-card[onclick*="${qId}"]`);
+    const cb = document.getElementById(`cb_${qId}`);
+    if (card) {
+        if (qbState.selectedQuestionIds.has(qId)) {
+            card.classList.add('is-selected');
+        } else {
+            card.classList.remove('is-selected');
+        }
+    }
+    if (cb) cb.checked = qbState.selectedQuestionIds.has(qId);
+
+    updateQBSelectionCounters();
+}
+
+function toggleSelectAllQB(checked) {
+    const questions = qbState.questionsList || [];
+    if (checked) {
+        questions.forEach(q => {
+            if (q.tempQbId) qbState.selectedQuestionIds.add(q.tempQbId);
+        });
+    } else {
+        questions.forEach(q => {
+            if (q.tempQbId) qbState.selectedQuestionIds.delete(q.tempQbId);
+        });
+    }
+
+    renderQBQuestionsList();
+}
+
+function updateQBSelectionCounters() {
+    const count = qbState.selectedQuestionIds.size;
+    const badge = document.getElementById('qb-selected-counter-badge');
+    const btnCount = document.getElementById('qb-btn-import-count');
+
+    if (badge) badge.textContent = `เลือกแล้ว ${count} ข้อ`;
+    if (btnCount) btnCount.textContent = count;
+}
+
+function importSelectedQBQuestions() {
+    if (qbState.selectedQuestionIds.size === 0) {
+        const swal = getCyberSwal();
+        if (swal) {
+            swal.fire({
+                icon: 'warning',
+                title: 'ยังไม่ได้เลือกข้อสอบ',
+                text: 'กรุณาติ๊กเลือกอย่างน้อย 1 ข้อสอบเพื่อนำเข้าครับ',
+                confirmButtonText: 'เข้าใจแล้ว'
+            });
+        } else {
+            alert('กรุณาเลือกอย่างน้อย 1 ข้อสอบเพื่อนำเข้า!');
+        }
+        return;
+    }
+
+    if (!currentQuiz) {
+        createNewQuiz();
+    }
+    if (!currentQuiz.questions) currentQuiz.questions = [];
+
+    const selectedQuestions = (qbState.questionsList || []).filter(q => q.tempQbId && qbState.selectedQuestionIds.has(q.tempQbId));
+    
+    selectedQuestions.forEach(rawQ => {
+        const norm = normalizeQuestion(rawQ);
+        delete norm.tempQbId;
+        norm.id = 'q_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+        currentQuiz.questions.push(norm);
+    });
+
+    // Close Modal
+    const modalEl = document.getElementById('questionBankModal');
+    if (modalEl && typeof bootstrap !== 'undefined') {
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+    }
+
+    // Refresh Builder UI
+    renderBuilderView();
+
+    const swal = getCyberSwal();
+    if (swal) {
+        swal.fire({
+            icon: 'success',
+            title: `นำเข้าสำเร็จ ${selectedQuestions.length} ข้อ!`,
+            text: 'คำถามถูกเพิ่มเข้าสู่ควิซนี้เรียบร้อยแล้ว อย่าลืมกดบันทึกแบบทดสอบครับ',
+            timer: 2000,
+            showConfirmButton: false
+        });
+    } else {
+        alert(`นำเข้าสำเร็จ ${selectedQuestions.length} ข้อ!`);
+    }
+}
+
 // Expose globals for HTML onclick handlers
 window.getPythonExamPresetText = getPythonExamPresetText;
 window.PYTHON_EXAM_PRESET_TEXT = PYTHON_EXAM_PRESET_TEXT;
@@ -2215,3 +2692,9 @@ window.openBatchImportModal = openBatchImportModal;
 window.loadPythonPresetQuestions = loadPythonPresetQuestions;
 window.executeBatchImport = executeBatchImport;
 window.parseRawQuizText = parseRawQuizText;
+window.openQuestionBankModal = openQuestionBankModal;
+window.onQBSourceTypeChange = onQBSourceTypeChange;
+window.renderQBQuestionsList = renderQBQuestionsList;
+window.toggleQBQuestionSelection = toggleQBQuestionSelection;
+window.toggleSelectAllQB = toggleSelectAllQB;
+window.importSelectedQBQuestions = importSelectedQBQuestions;
