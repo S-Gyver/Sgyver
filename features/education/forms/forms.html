@@ -106,23 +106,33 @@
                 
                 <!-- Response Limits & Edit Permissions -->
                 <div class="row g-3">
-                    <div class="col-12 col-md-6">
+                    <div class="col-12 col-md-4">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="setting-limit-one" onchange="updateFormSettings()" checked>
                             <label class="form-check-label text-white fw-bold" for="setting-limit-one">
                                 <i class="bi bi-person-check-fill text-info me-1"></i>จำกัดให้ 1 คน ทำได้ 1 ครั้ง
                             </label>
-                            <div class="text-subtle small mt-1">ผู้ตอบสามารถส่งคำตอบได้เพียงครั้งเดียวเท่านั้น</div>
+                            <div class="text-subtle small mt-1">ผู้ตอบสามารถส่งคำตอบได้เพียงครั้งเดียว</div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-md-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="setting-anonymous" onchange="updateFormSettings()">
+                            <label class="form-check-label text-white fw-bold" for="setting-anonymous">
+                                <i class="bi bi-incognito text-warning me-1"></i>ไม่ระบุชื่อ (ซ่อนชื่อผู้ตอบ)
+                            </label>
+                            <div class="text-subtle small mt-1">ซ่อนช่องกรอกชื่อ ผู้ตอบไม่ต้องระบุตัวตน</div>
                         </div>
                     </div>
                     
-                    <div class="col-12 col-md-6">
+                    <div class="col-12 col-md-4">
                         <div class="form-check form-switch mb-2">
                             <input class="form-check-input" type="checkbox" id="setting-allow-edit" onchange="toggleEditLimitUI()">
                             <label class="form-check-label text-white fw-bold" for="setting-allow-edit">
                                 <i class="bi bi-pencil-square text-success me-1"></i>อนุญาตให้แก้ไขคำตอบได้
                             </label>
-                            <div class="text-subtle small mt-1">ผู้ตอบสามารถกลับมาแก้ไขคำตอบเดิมหลังจากส่งแล้วได้</div>
+                            <div class="text-subtle small mt-1">สามารถกลับมาแก้ไขคำตอบเดิมได้</div>
                         </div>
                         <div id="edit-limit-sub" class="mt-2 d-none">
                             <label class="form-label small fw-bold text-subtle">จำนวนครั้งสูงสุดที่แก้ไขได้:</label>
@@ -159,7 +169,7 @@
                 <p id="respond-desc" class="text-subtle mb-0">รายละเอียดคำอธิบายแบบสอบถาม</p>
             </div>
 
-            <div class="cyber-card border-purple-accent mb-4 p-4">
+            <div class="cyber-card border-purple-accent mb-4 p-4" id="responder-name-card">
                 <label class="form-label small fw-bold text-white">ชื่อ-นามสกุล ผู้ทำรายการ <span class="text-danger">*</span></label>
                 <input type="text" id="responder-name" class="form-control bg-dark text-white border-purple" placeholder="กรอกชื่อ-นามสกุล ของคุณเพื่อบันทึกผล">
             </div>
@@ -169,7 +179,7 @@
             </div>
 
             <div class="text-center my-4">
-                <button class="btn btn-success fw-bold px-5 py-3 rounded-pill shadow-lg" onclick="submitResponse()">
+                <button id="btn-submit-response" class="btn btn-success fw-bold px-5 py-3 rounded-pill shadow-lg" onclick="submitResponse()">
                     <i class="bi bi-send-fill me-2"></i>ส่งคำตอบ (Submit)
                 </button>
             </div>
@@ -347,14 +357,16 @@
     </div>
 
     <!-- 🎯 Response Result Modal -->
-    <div class="modal fade" id="responseSuccessModal" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="responseSuccessModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content bg-dark text-white border-purple rounded-4">
                 <div class="modal-body p-4" id="response-result-content">
                     <!-- Dynamic modal content rendered via JS -->
                 </div>
                 <div class="modal-footer border-secondary">
-                    <button type="button" class="btn btn-outline-secondary text-white w-100" data-bs-dismiss="modal">ปิดหน้านี้</button>
+                    <button type="button" class="btn btn-purple-glow text-white w-100 py-2 fw-bold" onclick="onCloseResponseSuccessModal()">
+                        <i class="bi bi-house-door-fill me-1"></i>ปิดหน้านี้และกลับหน้าหลัก
+                    </button>
                 </div>
             </div>
         </div>

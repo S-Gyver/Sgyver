@@ -162,7 +162,59 @@ function saveLocalResponse(formId, responseObj) {
     const list = getLocalResponses(formId);
     list.unshift(responseObj);
     localStorage.setItem(`gyver_form_responses_${formId}`, JSON.stringify(list));
+    if (!responsesList.some(r => r.id === responseObj.id)) {
+        responsesList.unshift(responseObj);
+    }
     return list;
+}
+
+function updateLocalResponse(formId, responseObj) {
+    const list = getLocalResponses(formId);
+    const idx = list.findIndex(r => r.id === responseObj.id);
+    if (idx >= 0) {
+        list[idx] = responseObj;
+    } else {
+        list.unshift(responseObj);
+    }
+    localStorage.setItem(`gyver_form_responses_${formId}`, JSON.stringify(list));
+
+    const rIdx = responsesList.findIndex(r => r.id === responseObj.id);
+    if (rIdx >= 0) {
+        responsesList[rIdx] = responseObj;
+    } else {
+        responsesList.unshift(responseObj);
+    }
+    return list;
+}
+
+async function updateSupabaseResponse(respObj) {
+    try {
+        if (typeof BroadcastChannel !== 'undefined') {
+            const bc = new BroadcastChannel('gyver_forms_channel');
+            bc.postMessage({ type: 'UPDATE_RESPONSE', formId: currentForm.id, response: respObj });
+            bc.close();
+        }
+    } catch (e) {}
+
+    if (!window.supabaseClient || !isSupabaseTableAvailable) return;
+    try {
+        const { error } = await window.supabaseClient
+            .from('gyver_form_responses')
+            .update({
+                responder_name: respObj.responderName || respObj.responder_name,
+                answers: respObj.answers,
+                quiz_score: respObj.quizScore ?? respObj.quiz_score,
+                total_points: respObj.totalPoints ?? respObj.total_points,
+                is_passed: respObj.isPassed ?? respObj.is_passed,
+                created_at: respObj.updatedAt || respObj.submittedAt
+            })
+            .eq('id', respObj.id);
+        if (error) {
+            console.warn('Could not update response in Supabase:', error);
+        }
+    } catch (e) {
+        console.warn('Supabase update failed:', e);
+    }
 }
 
 /**
@@ -462,6 +514,7 @@ function renderBuilderView() {
 
     // Render Form Settings
     const limitOneToggle = document.getElementById('setting-limit-one');
+    const anonymousToggle = document.getElementById('setting-anonymous');
     const allowEditToggle = document.getElementById('setting-allow-edit');
     const maxEditSelect = document.getElementById('setting-max-edit-limit');
 
@@ -469,6 +522,9 @@ function renderBuilderView() {
         if (!currentForm.settings) currentForm.settings = {};
         if (currentForm.settings.limitOneResponse === undefined) currentForm.settings.limitOneResponse = true;
         limitOneToggle.checked = !!currentForm.settings.limitOneResponse;
+    }
+    if (anonymousToggle) {
+        anonymousToggle.checked = currentForm.settings ? !!currentForm.settings.isAnonymous : false;
     }
     if (allowEditToggle) {
         allowEditToggle.checked = currentForm.settings ? !!currentForm.settings.allowEdit : true;
@@ -518,6 +574,7 @@ function updateFormSettings() {
     const passingInput = document.getElementById('setting-passing-score');
     const certTitleInput = document.getElementById('setting-cert-title');
     const limitOneToggle = document.getElementById('setting-limit-one');
+    const anonymousToggle = document.getElementById('setting-anonymous');
     const allowEditToggle = document.getElementById('setting-allow-edit');
     const maxEditSelect = document.getElementById('setting-max-edit-limit');
 
@@ -525,6 +582,7 @@ function updateFormSettings() {
     if (passingInput) currentForm.settings.passingScore = parseInt(passingInput.value) || 70;
     if (certTitleInput) currentForm.settings.certTitle = certTitleInput.value;
     if (limitOneToggle) currentForm.settings.limitOneResponse = limitOneToggle.checked;
+    if (anonymousToggle) currentForm.settings.isAnonymous = anonymousToggle.checked;
     if (allowEditToggle) currentForm.settings.allowEdit = allowEditToggle.checked;
     if (maxEditSelect) currentForm.settings.maxEditLimit = parseInt(maxEditSelect.value) || 3;
 
@@ -834,10 +892,77 @@ function renderResponderView() {
         return;
     }
 
+    const settings = currentForm.settings || {};
+    const isLimitOne = settings.limitOneResponse !== undefined ? !!settings.limitOneResponse : true;
+    const allowEdit = !!settings.allowEdit;
+    const submittedId = localStorage.getItem('gyver_form_submitted_' + currentForm.id);
+
+    // 🔒 1. กรณีจำกัด 1 คน 1 ครั้ง และ "ไม่อนุญาตให้แก้ไข" (เมื่อเคยส่งแล้ว)
+    if (isLimitOne && !allowEdit && submittedId) {
+        if (container) {
+            container.innerHTML = `
+                <div class="cyber-card border-purple-accent text-center py-5 px-3 my-4">
+                    <div class="display-3 text-success mb-3"><i class="bi bi-check-circle-fill"></i></div>
+                    <h3 class="fw-bold text-white font-kanit mb-2">คุณได้บันทึกคำตอบเรียบร้อยแล้ว</h3>
+                    <p class="text-subtle mb-4">
+                        แบบสอบถามนี้เปิดการตั้งค่า <span class="text-info fw-bold">"จำกัดให้ 1 คน ทำได้ 1 ครั้ง"</span> และ <span class="text-warning fw-bold">"ไม่อนุญาตให้แก้ไขคำตอบ"</span><br>
+                        ระบบได้รับข้อมูลคำตอบของคุณแล้ว ไม่สามารถส่งคำตอบซ้ำได้ครับ
+                    </p>
+                    <div class="d-flex justify-content-center gap-3">
+                        <a href="../../../index.html" class="btn btn-purple-glow px-4 py-2 fw-bold">
+                            <i class="bi bi-house-door-fill me-2"></i>กลับสู่หน้าหลัก
+                        </a>
+                    </div>
+                </div>
+            `;
+        }
+        return;
+    }
+
+    // 🔄 2. ดึงคำตอบเดิมมาเติมในกรณีอนุญาตให้แก้ไขได้ (Edit Mode)
+    let prevResp = null;
+    if (isLimitOne && allowEdit && submittedId) {
+        prevResp = responsesList.find(r => r.id === submittedId) || getLocalResponses(currentForm.id).find(r => r.id === submittedId);
+    }
+
     const titleEl = document.getElementById('respond-title');
     const descEl = document.getElementById('respond-desc');
     if (titleEl) titleEl.innerText = currentForm.title || 'แบบสอบถาม';
-    if (descEl) descEl.innerText = currentForm.description || '';
+    if (descEl) {
+        if (prevResp) {
+            descEl.innerHTML = `
+                ${escapeHtml(currentForm.description || '')}
+                <div class="alert alert-info py-2 px-3 small border-info mt-3 mb-0">
+                    <i class="bi bi-pencil-square me-2"></i>คุณเคยส่งคำตอบแล้ว กำลังอยู่ใน <b>โหมดแก้ไขคำตอบเดิม</b> (บันทึกทับข้อมูลเดิม ไม่สร้างผู้ส่งซ้ำ)
+                </div>
+            `;
+        } else {
+            descEl.innerText = currentForm.description || '';
+        }
+    }
+
+    const isAnonymous = currentForm.settings ? !!currentForm.settings.isAnonymous : false;
+    const nameCard = document.getElementById('responder-name-card');
+    if (nameCard) {
+        nameCard.classList.toggle('d-none', isAnonymous);
+    }
+
+    const nameInput = document.getElementById('responder-name');
+    if (nameInput) {
+        if (prevResp) {
+            nameInput.value = prevResp.responderName || prevResp.responder_name || '';
+        } else {
+            nameInput.value = '';
+        }
+    }
+
+    const submitBtn = document.getElementById('btn-submit-response') || document.querySelector('#view-respond-container button[onclick="submitResponse()"]');
+    if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = prevResp 
+            ? '<i class="bi bi-pencil-square me-2"></i>บันทึกการแก้ไขคำตอบ (Update)' 
+            : '<i class="bi bi-send-fill me-2"></i>ส่งคำตอบ (Submit)';
+    }
 
     const qList = document.getElementById('respond-questions-list');
     if (!qList) return;
@@ -847,49 +972,60 @@ function renderResponderView() {
         const card = document.createElement('div');
         card.className = 'cyber-card border-purple-accent mb-3 p-3 p-md-4';
 
+        const prevVal = prevResp && prevResp.answers ? prevResp.answers[q.id] : null;
+
         let inputHtml = '';
         if (q.type === 'radio') {
-            inputHtml = (q.options || []).map((opt, oIdx) => `
-                <div class="form-check mb-2">
-                    <input class="form-check-input" type="radio" name="ans-${q.id}" id="ans-${q.id}-${oIdx}" value="${escapeHtml(opt)}">
-                    <label class="form-check-label text-white" for="ans-${q.id}-${oIdx}">${escapeHtml(opt)}</label>
-                </div>
-            `).join('');
+            inputHtml = (q.options || []).map((opt, oIdx) => {
+                const isChecked = prevVal !== null && prevVal === opt;
+                return `
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="ans-${q.id}" id="ans-${q.id}-${oIdx}" value="${escapeHtml(opt)}" ${isChecked ? 'checked' : ''}>
+                        <label class="form-check-label text-white" for="ans-${q.id}-${oIdx}">${escapeHtml(opt)}</label>
+                    </div>
+                `;
+            }).join('');
         } else if (q.type === 'checkbox') {
-            inputHtml = (q.options || []).map((opt, oIdx) => `
-                <div class="form-check mb-2">
-                    <input class="form-check-input" type="checkbox" name="ans-${q.id}" id="ans-${q.id}-${oIdx}" value="${escapeHtml(opt)}">
-                    <label class="form-check-label text-white" for="ans-${q.id}-${oIdx}">${escapeHtml(opt)}</label>
-                </div>
-            `).join('');
+            inputHtml = (q.options || []).map((opt, oIdx) => {
+                const isChecked = Array.isArray(prevVal) && prevVal.includes(opt);
+                return `
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" name="ans-${q.id}" id="ans-${q.id}-${oIdx}" value="${escapeHtml(opt)}" ${isChecked ? 'checked' : ''}>
+                        <label class="form-check-label text-white" for="ans-${q.id}-${oIdx}">${escapeHtml(opt)}</label>
+                    </div>
+                `;
+            }).join('');
         } else if (q.type === 'select') {
             inputHtml = `
                 <select class="form-select bg-dark text-white border-purple" name="ans-${q.id}">
                     <option value="">-- เลือกคำตอบ --</option>
-                    ${(q.options || []).map(opt => `<option value="${escapeHtml(opt)}">${escapeHtml(opt)}</option>`).join('')}
+                    ${(q.options || []).map(opt => `
+                        <option value="${escapeHtml(opt)}" ${prevVal === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>
+                    `).join('')}
                 </select>
             `;
         } else if (q.type === 'rating') {
+            const initialRating = Number(prevVal) || 0;
             inputHtml = `
                 <div class="star-rating-box py-2" id="star-box-${q.id}">
-                    <input type="hidden" name="ans-${q.id}" id="ans-${q.id}" value="">
+                    <input type="hidden" name="ans-${q.id}" id="ans-${q.id}" value="${initialRating || ''}">
                     <div class="d-flex align-items-center gap-2 fs-2 text-warning">
                         ${[1, 2, 3, 4, 5].map(star => `
-                            <i class="bi bi-star star-btn-${q.id}" style="cursor: pointer;" 
+                            <i class="bi bi-star${star <= initialRating ? '-fill' : ''} star-btn-${q.id}" style="cursor: pointer;" 
                                data-star="${star}" 
                                onclick="setFormStarRating('${q.id}', ${star})"
                                onmouseover="hoverFormStarRating('${q.id}', ${star})"
                                onmouseout="resetFormStarRating('${q.id}')"
                                title="${star} ดาว"></i>
                         `).join('')}
-                        <span id="star-label-${q.id}" class="text-warning fw-bold ms-2 fs-6"></span>
+                        <span id="star-label-${q.id}" class="text-warning fw-bold ms-2 fs-6">${initialRating ? initialRating + ' / 5 ดาว' : ''}</span>
                     </div>
                 </div>
             `;
         } else if (q.type === 'textarea') {
-            inputHtml = `<textarea class="form-control bg-dark text-white border-purple" name="ans-${q.id}" rows="3" placeholder="พิมพ์คำตอบของคุณ..."></textarea>`;
+            inputHtml = `<textarea class="form-control bg-dark text-white border-purple" name="ans-${q.id}" rows="3" placeholder="พิมพ์คำตอบของคุณ...">${escapeHtml(prevVal || '')}</textarea>`;
         } else {
-            inputHtml = `<input type="text" class="form-control bg-dark text-white border-purple" name="ans-${q.id}" placeholder="พิมพ์คำตอบของคุณ...">`;
+            inputHtml = `<input type="text" class="form-control bg-dark text-white border-purple" name="ans-${q.id}" placeholder="พิมพ์คำตอบของคุณ..." value="${escapeHtml(prevVal || '')}">`;
         }
 
         card.innerHTML = `
@@ -946,12 +1082,95 @@ function resetFormStarRating(qId) {
     setFormStarRating(qId, currentVal);
 }
 
-function submitResponse() {
+async function submitResponse() {
     if (!currentForm) return;
 
+    const settings = currentForm.settings || {};
+    const isAnonymous = !!settings.isAnonymous;
     const nameInput = document.getElementById('responder-name');
-    const responderName = nameInput ? nameInput.value.trim() : 'ผู้ตอบแบบสอบถาม';
+    let responderName = nameInput ? nameInput.value.trim() : '';
 
+    if (isAnonymous) {
+        responderName = 'ผู้ไม่ประสงค์ออกนาม';
+    } else {
+        if (!responderName) {
+            const swal = getCyberSwal();
+            if (swal) {
+                swal.fire({
+                    icon: 'warning',
+                    title: 'กรุณากรอกชื่อ-นามสกุล',
+                    text: 'กรุณากรอกชื่อ-นามสกุลของคุณก่อนกดส่งคำตอบ',
+                    confirmButtonText: 'ตกลง'
+                });
+            } else {
+                alert('กรุณากรอกชื่อ-นามสกุลของคุณก่อนกดส่งคำตอบ');
+            }
+            if (nameInput) nameInput.focus();
+            return;
+        }
+    }
+
+    const isLimitOne = settings.limitOneResponse !== undefined ? !!settings.limitOneResponse : true;
+    const allowEdit = !!settings.allowEdit;
+    const maxEditLimit = parseInt(settings.maxEditLimit) || 3;
+
+    const submittedId = localStorage.getItem('gyver_form_submitted_' + currentForm.id);
+    const existingByName = (!isAnonymous && responderName) ? responsesList.find(r => 
+        (r.responder_name || r.responderName || '').trim().toLowerCase() === responderName.toLowerCase()
+    ) : null;
+
+    // 🔒 1. ป้องกันการส่งซ้ำ: กรณีจำกัด 1 คน 1 ครั้ง และ "ไม่อนุญาตให้แก้ไขคำตอบ"
+    if (isLimitOne && !allowEdit) {
+        if (submittedId || existingByName) {
+            const swal = getCyberSwal();
+            const msg = existingByName 
+                ? `ชื่อ "${responderName}" ได้ส่งคำตอบสำหรับแบบสอบถามนี้ไปแล้ว ระบบจำกัดให้ทำได้เพียง 1 ครั้ง และไม่อนุญาตให้แก้ไขคำตอบ`
+                : 'อุปกรณ์นี้ได้ทำการส่งคำตอบสำหรับแบบสอบถามนี้ไปแล้ว ระบบจำกัดให้ทำได้ 1 ครั้ง และไม่อนุญาตให้แก้ไขคำตอบ';
+            if (swal) {
+                swal.fire({
+                    icon: 'warning',
+                    title: 'ไม่สามารถส่งซ้ำได้',
+                    text: msg,
+                    confirmButtonText: '<i class="bi bi-house-door-fill me-1"></i>กลับหน้าหลัก',
+                    showCancelButton: true,
+                    cancelButtonText: 'ปิด'
+                }).then(result => {
+                    if (result.isConfirmed) {
+                        window.location.href = '../../../index.html';
+                    }
+                });
+            } else {
+                alert(msg);
+            }
+            return;
+        }
+    }
+
+    // 🔄 2. กรณีอนุญาตให้แก้ไขคำตอบได้: หาข้อมูลคำตอบเดิมที่จะบันทึกทับ (Update)
+    let targetExistingResponse = null;
+    if (isLimitOne && allowEdit) {
+        targetExistingResponse = (submittedId ? responsesList.find(r => r.id === submittedId) : null) || existingByName;
+        if (targetExistingResponse) {
+            const editCount = targetExistingResponse.editCount || 1;
+            if (maxEditLimit < 999 && editCount >= maxEditLimit) {
+                const swal = getCyberSwal();
+                const msg = `คุณได้แก้ไขคำตอบครบตามจำนวนสูงสุดที่กำหนดแล้ว (${maxEditLimit} ครั้ง) ไม่สามารถแก้ไขได้อีก`;
+                if (swal) {
+                    swal.fire({
+                        icon: 'warning',
+                        title: 'ครบจำนวนครั้งที่อนุญาตแก้ไข',
+                        text: msg,
+                        confirmButtonText: 'เข้าใจแล้ว'
+                    });
+                } else {
+                    alert(msg);
+                }
+                return;
+            }
+        }
+    }
+
+    // ตรวจสอบความครบถ้วนของคำตอบ
     let quizScore = 0;
     let totalPoints = 0;
     const isQuiz = currentForm.settings ? !!currentForm.settings.isQuiz : false;
@@ -1004,24 +1223,57 @@ function submitResponse() {
         }
     }
 
+    // ⚡ ป้องกันการกดส่งรัวๆ ซ้ำหลายครั้ง (Disable Submit Button ทันที)
+    const submitBtn = document.getElementById('btn-submit-response') || document.querySelector('#view-respond-container button[onclick="submitResponse()"]');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>กำลังบันทึกคำตอบ...';
+    }
+
     const passingPct = (currentForm.settings && currentForm.settings.passingScore) || 70;
     const userPct = totalPoints > 0 ? (quizScore / totalPoints) * 100 : 100;
     const isPassed = isQuiz ? (userPct >= passingPct) : true;
 
-    const responseObj = {
-        id: generateId(),
-        responderName: responderName || 'ผู้ตอบแบบสอบถาม',
-        answers: userAnswers,
-        quizScore: quizScore,
-        totalPoints: totalPoints,
-        isPassed: isPassed,
-        submittedAt: new Date().toISOString()
-    };
+    if (targetExistingResponse) {
+        // อัปเดตข้อมูลของผู้ตอบคนเดิม
+        targetExistingResponse.responderName = responderName;
+        targetExistingResponse.responder_name = responderName;
+        targetExistingResponse.answers = userAnswers;
+        targetExistingResponse.quizScore = quizScore;
+        targetExistingResponse.quiz_score = quizScore;
+        targetExistingResponse.totalPoints = totalPoints;
+        targetExistingResponse.total_points = totalPoints;
+        targetExistingResponse.isPassed = isPassed;
+        targetExistingResponse.is_passed = isPassed;
+        targetExistingResponse.editCount = (targetExistingResponse.editCount || 1) + 1;
+        targetExistingResponse.updatedAt = new Date().toISOString();
 
-    saveLocalResponse(currentForm.id, responseObj);
-    syncResponseToSupabase(responseObj);
+        updateLocalResponse(currentForm.id, targetExistingResponse);
+        await updateSupabaseResponse(targetExistingResponse);
+        localStorage.setItem('gyver_form_submitted_' + currentForm.id, targetExistingResponse.id);
+        showResponseSuccessModal(targetExistingResponse);
+    } else {
+        // บันทึกคำตอบใหม่ครั้งแรก
+        const responseObj = {
+            id: generateId(),
+            responderName: responderName,
+            responder_name: responderName,
+            answers: userAnswers,
+            quizScore: quizScore,
+            quiz_score: quizScore,
+            totalPoints: totalPoints,
+            total_points: totalPoints,
+            isPassed: isPassed,
+            is_passed: isPassed,
+            editCount: 1,
+            submittedAt: new Date().toISOString()
+        };
 
-    showResponseSuccessModal(responseObj);
+        saveLocalResponse(currentForm.id, responseObj);
+        await syncResponseToSupabase(responseObj);
+        localStorage.setItem('gyver_form_submitted_' + currentForm.id, responseObj.id);
+        showResponseSuccessModal(responseObj);
+    }
 }
 
 function showResponseSuccessModal(respObj) {
@@ -1062,6 +1314,18 @@ function showResponseSuccessModal(respObj) {
         const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
         bsModal.show();
     }
+}
+
+/**
+ * 🏠 ปิดหน้าต่างแจ้งเตือนและนำทางกลับไปยังหน้าหลัก index.html
+ */
+function onCloseResponseSuccessModal() {
+    const modalEl = document.getElementById('responseSuccessModal');
+    if (modalEl && window.bootstrap) {
+        const bsModal = bootstrap.Modal.getInstance(modalEl);
+        if (bsModal) bsModal.hide();
+    }
+    window.location.href = '../../../index.html';
 }
 
 async function syncResponseToSupabase(respObj) {
@@ -1174,9 +1438,15 @@ function renderResponsesList() {
                 : '<span class="badge bg-danger">ไม่ผ่าน</span>';
         }
 
+        const nameVal = resp.responderName || resp.responder_name || 'ผู้ตอบแบบสอบถาม';
+        const isAnon = nameVal === 'ผู้ไม่ประสงค์ออกนาม' || nameVal === 'ไม่ระบุชื่อ';
+        const nameHtml = isAnon 
+            ? '<span class="badge bg-dark border border-secondary text-subtle py-1 px-2"><i class="bi bi-incognito text-warning me-1"></i>ไม่ระบุชื่อ (นิรนาม)</span>'
+            : `<span class="fw-bold text-white">${escapeHtml(nameVal)}</span>`;
+
         tr.innerHTML = `
             <td class="text-subtle font-mono">${idx + 1}</td>
-            <td class="fw-bold text-white">${escapeHtml(resp.responderName || 'ผู้ตอบแบบสอบถาม')}</td>
+            <td>${nameHtml}</td>
             <td>${scoreHtml}</td>
             <td>${statusHtml}</td>
             <td class="text-subtle small">${dateStr}</td>
@@ -1368,8 +1638,10 @@ function viewIndividualResponse(respId) {
     const resp = responsesList.find(r => r.id === respId);
     if (!resp || !currentForm) return;
 
+    const nameVal = resp.responderName || resp.responder_name || 'ผู้ตอบแบบสอบถาม';
+    const isAnon = nameVal === 'ผู้ไม่ประสงค์ออกนาม' || nameVal === 'ไม่ระบุชื่อ';
     const nameEl = document.getElementById('modal-resp-name');
-    if (nameEl) nameEl.textContent = resp.responderName || 'ผู้ตอบแบบสอบถาม';
+    if (nameEl) nameEl.textContent = isAnon ? 'ไม่ระบุชื่อ (นิรนาม)' : nameVal;
 
     const bodyEl = document.getElementById('modal-resp-answers-body');
     if (!bodyEl) return;
@@ -1693,6 +1965,14 @@ let currentCertData = null;
 
 function showCertificateModalFromResponse() {
     if (!currentForm) return;
+    window.isOpeningCertificate = true;
+    const respModalEl = document.getElementById('responseSuccessModal');
+    if (respModalEl && window.bootstrap) {
+        const bsModal = bootstrap.Modal.getInstance(respModalEl);
+        if (bsModal) bsModal.hide();
+    }
+    setTimeout(() => { window.isOpeningCertificate = false; }, 1200);
+
     const nameInput = document.getElementById('responder-name');
     const name = nameInput ? nameInput.value.trim() : 'ผู้สอบ';
     const lastResp = responsesList[0];
@@ -1891,6 +2171,20 @@ window.deleteSingleResponse = deleteSingleResponse;
 window.clearFormResponses = clearFormResponses;
 window.openShareModalFromAnalytics = openShareModalFromAnalytics;
 window.showSqlHelpModal = showSqlHelpModal;
+window.onCloseResponseSuccessModal = onCloseResponseSuccessModal;
+window.submitResponse = submitResponse;
+
+// 🎯 Event listener: เมื่อปิดหน้าต่าง responseSuccessModal ให้นำทางไปยังหน้าหลัก index.html ทันที
+document.addEventListener('DOMContentLoaded', () => {
+    const successModalEl = document.getElementById('responseSuccessModal');
+    if (successModalEl) {
+        successModalEl.addEventListener('hidden.bs.modal', () => {
+            if (!window.isOpeningCertificate) {
+                window.location.href = '../../../index.html';
+            }
+        });
+    }
+});
 
 // 📡 BroadcastChannel Listener for Realtime Multi-tab Updates
 if (typeof BroadcastChannel !== 'undefined') {
