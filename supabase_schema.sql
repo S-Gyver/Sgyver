@@ -8,7 +8,7 @@
 -- ==============================================================================
 
 -- ------------------------------------------------------------------------------
--- 1. ตาราง lobbies (รองรับทั้งสร้างใหม่ และอัปเดตตารางเดิมที่มีอยู่แล้ว)
+-- 1. ตาราง lobbies (สำหรับห้องสอบสด Gyver Quiz Live Lobby & Gyver Code Race)
 -- ------------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.lobbies (
     room_code TEXT PRIMARY KEY,
@@ -20,21 +20,22 @@ CREATE TABLE IF NOT EXISTS public.lobbies (
     quiz_title TEXT,
     quiz_variants JSONB DEFAULT '[]'::jsonb,
     quiz_settings JSONB DEFAULT '{}'::jsonb,
+    target_code TEXT,
+    timer_enabled BOOLEAN DEFAULT false,
+    timer_duration INT DEFAULT 300,
+    quiz_enabled BOOLEAN DEFAULT false,
+    quiz_stock_id TEXT,
+    gold_enabled BOOLEAN DEFAULT false,
+    gold_milestone INT DEFAULT 20,
+    gold_amount INT DEFAULT 50,
+    shop_enabled BOOLEAN DEFAULT false,
+    item_shield BOOLEAN DEFAULT true,
+    item_blind BOOLEAN DEFAULT true,
+    item_freeze BOOLEAN DEFAULT true,
+    item_boost BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
 );
-
--- เพิ่มคอลัมน์สำคัญสำหรับ Gyver Quiz เข้าตาราง lobbies เดิม (กรณีที่มีตารางอยู่แล้ว)
-ALTER TABLE public.lobbies ADD COLUMN IF NOT EXISTS quiz_id TEXT;
-ALTER TABLE public.lobbies ADD COLUMN IF NOT EXISTS quiz_title TEXT;
-ALTER TABLE public.lobbies ADD COLUMN IF NOT EXISTS quiz_variants JSONB DEFAULT '[]'::jsonb;
-ALTER TABLE public.lobbies ADD COLUMN IF NOT EXISTS quiz_settings JSONB DEFAULT '{}'::jsonb;
-ALTER TABLE public.lobbies ADD COLUMN IF NOT EXISTS game_mode TEXT DEFAULT 'quiz';
-ALTER TABLE public.lobbies ADD COLUMN IF NOT EXISTS match_type TEXT DEFAULT 'solo';
-ALTER TABLE public.lobbies ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'WAITING';
-ALTER TABLE public.lobbies ADD COLUMN IF NOT EXISTS players JSONB DEFAULT '[]'::jsonb;
-ALTER TABLE public.lobbies ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now();
-ALTER TABLE public.lobbies ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
 
 -- เปิด RLS และอนุญาตให้ทุกคนเข้าถึงได้ (Anon / Authenticated)
 ALTER TABLE public.lobbies ENABLE ROW LEVEL SECURITY;
@@ -150,13 +151,5 @@ BEGIN
         WHERE pubname = 'supabase_realtime' AND tablename = 'gyver_quiz_responses'
     ) THEN
         ALTER PUBLICATION supabase_realtime ADD TABLE public.gyver_quiz_responses;
-    END IF;
-
-    -- เพิ่มตาราง gyver_form_responses เข้า Realtime publication
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_publication_tables 
-        WHERE pubname = 'supabase_realtime' AND tablename = 'gyver_form_responses'
-    ) THEN
-        ALTER PUBLICATION supabase_realtime ADD TABLE public.gyver_form_responses;
     END IF;
 END $$;

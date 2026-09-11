@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gyver Studio - Workspace</title>
+
+    <!-- Bootstrap CSS, Icons & Kanit Font -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- ดึงไฟล์สไตล์ภายนอก -->
+    <link rel="stylesheet" href="assets/css/index.css">
+
+    <!-- Supabase SDK & สคริปต์กลาง -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="assets/js/supabaseClient.js"></script>
+    <script src="assets/js/utils.js"></script>
+</head>
+
+<body class="d-flex flex-column min-vh-100 bg-light">
+
+    <!-- Navbar ส่วนหัว -->
+    <nav class="navbar navbar-custom py-3 sticky-top bg-white border-bottom">
+        <div class="container">
+            <a class="navbar-brand fw-bold fs-4 text-dark d-flex align-items-center gap-2" href="index.html">
+                <div class="bg-primary text-white rounded-3 p-1 px-2 fs-5">
+                    <i class="bi bi-grid-1x2-fill"></i>
+                </div>
+                Gyver Workspace
+            </a>
+            <div class="d-flex align-items-center gap-3">
+                <!-- 🕒 นาฬิกาและวันที่สดใหม่ -->
+                <div class="d-none d-md-flex align-items-center gap-2 live-clock-badge shadow-sm">
+                    <i class="bi bi-clock-history text-primary"></i>
+                    <span id="current-time-display">กำลังโหลดเวลา...</span>
+                </div>
+
+                <!-- 🎮 ปุ่มด่วนเข้าห้องด้วย PIN -->
+                <button type="button" class="btn btn-sm btn-outline-danger fw-bold px-3 d-flex align-items-center gap-1 shadow-sm rounded-pill"
+                    onclick="openJoinRoomModal()">
+                    <i class="bi bi-broadcast"></i><span>เข้าห้อง (PIN)</span>
+                </button>
+
+                <!-- 🔑 สถานะ Level 0: ปุ่มกดเปิด Popup Login -->
+                <button class="btn btn-sm btn-primary fw-bold px-3 shadow-sm" id="auth-login-btn" data-bs-toggle="modal"
+                    data-bs-target="#authModal">
+                    <i class="bi bi-box-arrow-in-right me-1"></i>เข้าสู่ระบบ
+                </button>
+
+                <!-- 👤 สถานะ Level 1+: Dropdown รูปโปรไฟล์ -->
+                <div class="d-none align-items-center" id="user-profile-zone">
+                    <div class="dropdown">
+                        <button
+                            class="btn btn-light border rounded-pill d-flex align-items-center gap-2 px-3 py-1 dropdown-toggle shadow-sm"
+                            type="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <img id="nav-user-avatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png"
+                                class="rounded-circle border border-2 border-primary"
+                                style="width: 32px; height: 32px; object-fit: cover;">
+                            <span id="nav-user-name" class="fw-bold text-dark small">User</span>
+                            <span id="nav-user-badge"
+                                class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Lv.1</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-3 mt-2"
+                            aria-labelledby="profileDropdown">
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2"
+                                    href="auth/profile/profile.html">
+                                    <i class="bi bi-person-gear text-primary fs-5"></i>
+                                    <div>
+                                        <div class="fw-bold text-dark small">จัดการโปรไฟล์</div>
+                                        <div class="text-muted text-xs" style="font-size: 0.75rem;">เปลี่ยนชื่อ /
+                                            รูปภาพโปรไฟล์</div>
+                                    </div>
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2"
+                                    href="auth/classroom_manage/classroom_manage.html">
+                                    <i class="bi bi-people text-success fs-5"></i>
+                                    <div>
+                                        <div class="fw-bold text-dark small">จัดการห้องเรียน & นักเรียน</div>
+                                        <div class="text-muted text-xs" style="font-size: 0.75rem;">สร้างห้องเรียน
+                                            จัดการรายชื่อนักเรียน</div>
+                                    </div>
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2"
+                                    href="auth/history/history.html">
+                                    <i class="bi bi-clock-history text-info fs-5"></i>
+                                    <div>
+                                        <div class="fw-bold text-dark small">ประวัติกิจกรรม / คะแนน</div>
+                                        <div class="text-muted text-xs" style="font-size: 0.75rem;">
+                                            ดูสถิติและคะแนนย้อนหลัง</div>
+                                    </div>
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2"
+                                    href="auth/change_password/change_password.html">
+                                    <i class="bi bi-shield-lock text-secondary fs-5"></i>
+                                    <div>
+                                        <div class="fw-bold text-dark small">เปลี่ยนรหัสผ่าน</div>
+                                        <div class="text-muted text-xs" style="font-size: 0.75rem;">อัปเดตรหัสผ่านใหม่
+                                        </div>
+                                    </div>
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2"
+                                    href="auth/upgrade/upgrade.html">
+                                    <i class="bi bi-rocket-takeoff text-warning fs-5"></i>
+                                    <div>
+                                        <div class="fw-bold text-dark small">อัปเกรดสิทธิ์</div>
+                                        <div class="text-muted text-xs" style="font-size: 0.75rem;">
+                                            ขยับสิทธิ์เข้าถึงฟีเจอร์ระดับสูง</div>
+                                    </div>
+                                </a>
+                            </li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2 text-danger fw-bold"
+                                    href="#" onclick="logoutMainSystem()">
+                                    <i class="bi bi-box-arrow-right fs-5"></i> ออกจากระบบ
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-4 flex-grow-1">
+
+        <!-- Hero Welcome Banner -->
+        <div class="hero-banner mb-5 position-relative overflow-hidden">
+            <div class="row align-items-center position-relative z-1">
+                <div class="col-md-8">
+                    <span class="badge bg-white text-primary rounded-pill px-3 py-1 mb-2 fw-semibold"
+                        id="level-badge-text">Gyver Portal (Lv.0 Visitor)</span>
+                    <h2 class="fw-bold mb-2">ยินดีต้อนรับสู่ Gyver Workspace 👋</h2>
+                    <p class="mb-0 text-white-50" id="level-welcome-desc">
+                        ศูนย์รวมเครื่องมือช่วยสอนและระบบจัดการห้องเรียนออนไลน์
+                        กรุณาล็อกอินเพื่อเข้าถึงฟังก์ชันเต็มรูปแบบ</p>
+                    <div class="d-flex flex-wrap gap-2 mt-4" id="hero-cta-zone">
+                        <button class="btn btn-light text-primary fw-bold px-4 py-2 rounded-pill shadow-sm"
+                            data-bs-toggle="modal" data-bs-target="#authModal">
+                            <i class="bi bi-box-arrow-in-right me-1"></i>เข้าสู่ระบบ / สมัครใช้งาน
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <i class="bi bi-controller position-absolute end-0 bottom-0 text-white opacity-10"
+                style="font-size: 12rem; margin-right: -20px; margin-bottom: -40px;"></i>
+        </div>
+
+        <!-- 🔍 แถบค้นหาและแท็กกรองหมวดหมู่ -->
+        <div class="row align-items-center g-3 mb-4">
+            <div class="col-md-6 col-lg-5">
+                <div class="search-box-wrapper d-flex align-items-center px-3 py-2 shadow-sm">
+                    <i class="bi bi-search text-muted me-2 fs-5"></i>
+                    <input type="text" id="tool-search-input"
+                        class="form-control border-0 p-0 shadow-none bg-transparent"
+                        placeholder="ค้นหาเครื่องมือ เช่น วงล้อ, ทายเลข, คำถาม...">
+                    <button class="btn btn-sm btn-link text-muted p-0 d-none" id="btn-clear-search"
+                        onclick="clearToolSearch()">
+                        <i class="bi bi-x-circle-fill"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-7">
+                <div class="d-flex flex-wrap gap-2 justify-content-md-end" id="filter-pills-group">
+                    <button class="btn filter-btn active" data-filter="all">ทั้งหมด</button>
+                    <button class="btn filter-btn" data-filter="quick">⚡ ใช้งานด่วน (Lv.0)</button>
+                    <button class="btn filter-btn" data-filter="education">🎮 กิจกรรมห้องเรียน (Lv.1)</button>
+                    <button class="btn filter-btn" data-filter="assessment">📝 วัดผล/ประเมิน (Lv.1)</button>
+                    <button class="btn filter-btn" data-filter="teacher">📚 จัดการผู้สอน (Lv.1)</button>
+                    <button class="btn filter-btn" data-filter="business">💼 ธุรกิจ</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ⚡ หมวดหมู่ที่ 1: เครื่องมือด่วนใช้งานทันที (สำหรับ Lv.0) -->
+        <div class="mb-5" data-tool-section data-tool-category="quick">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="category-title m-0 fw-bold text-dark">Gyver Quick Tools (เครื่องมือด่วนใช้งานทันที)</h5>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-md-6 col-lg-4" data-tool-card data-tool-category="quick"
+                    data-tool-title="Gyver Instant Wheel วงล้อสุ่มชื่อด่วน"
+                    data-tool-desc="ระบบวงล้อสุ่มชื่อด่วน พิมพ์รายชื่อแล้วหมุนสุ่มได้ทันที">
+                    <a href="features/education/wheel/standalone_wheel.html"
+                        class="action-card p-3 d-flex align-items-center gap-3 text-decoration-none h-100">
+                        <div class="icon-box icon-gradient-wheel text-white shadow-sm">
+                            <i class="bi bi-disc-fill"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <h6 class="fw-bold text-dark m-0 fs-5">Gyver Instant Wheel</h6>
+                                <span class="badge-ready"><i class="bi bi-check-circle-fill me-1"></i>พร้อมใช้งาน</span>
+                            </div>
+                            <p class="text-secondary small m-0">ระบบวงล้อสุ่มชื่อด่วน พิมพ์รายชื่อแล้วหมุนสุ่มได้ทันที
+                            </p>
+                        </div>
+                    </a>
+                </div>
+                <!-- Gyver Number Guess (เกมทายเลข มากไป-น้อยไป) -->
+                <div class="col-md-6 col-lg-4" data-tool-card data-tool-category="quick"
+                    data-tool-title="Gyver Number Guess เกมทายเลข มากไปน้อยไป"
+                    data-tool-desc="เกมทายตัวเลขปริศนา แจ้งเตือนมากไป/น้อยไปทันที">
+                    <a href="features/education/standalone_guess/standalone_guess.html"
+                        class="action-card p-3 d-flex align-items-center gap-3 text-decoration-none h-100">
+                        <div class="icon-box icon-gradient-guess text-white shadow-sm">
+                            <i class="bi bi-123"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <h6 class="fw-bold text-dark m-0 fs-5">Gyver Number Guess</h6>
+                                <span class="badge-ready"><i class="bi bi-check-circle-fill me-1"></i>พร้อมใช้งาน</span>
+                            </div>
+                            <p class="text-secondary small m-0">เกมทายตัวเลขปริศนา แจ้งเตือนมากไป/น้อยไปทันที</p>
+                        </div>
+                    </a>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- 🏫 หมวดหมู่ที่ 2: เกมและกิจกรรมห้องเรียนสด (ปลดล็อกเมื่อเป็น Lv.1) -->
+        <div class="mb-5" data-tool-section data-tool-category="education">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="category-title m-0 fw-bold text-dark">Gyver Education (กิจกรรมห้องเรียนอัจฉริยะ)</h5>
+            </div>
+
+            <div class="row g-3">
+                <!-- 1. Gyver Wheel (Live) -->
+                <div class="col-md-6 col-lg-4" data-tool-card data-tool-category="education"
+                    data-tool-title="Gyver Wheel Live วงล้อสุ่มรายชื่อออนไลน์"
+                    data-tool-desc="วงล้อสุ่มรายชื่อออนไลน์ บันทึกสถิติคะแนนสดลงฐานข้อมูล">
+                    <div id="education-wheel-card"
+                        class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100"
+                        style="cursor: pointer;"
+                        onclick="handleProtectedToolClick(event, 'features/education/wheel/wheel_display.html', 'Gyver Wheel (Live)')">
+                        <div class="icon-box icon-gradient-wheel text-white shadow-sm">
+                            <i class="bi bi-disc-fill"></i>
+                        </div>
+                        <div>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <h6 class="fw-bold text-muted m-0">Gyver Wheel (Live)</h6>
+                                <span
+                                    class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
+                            </div>
+                            <p class="text-muted small m-0">ล็อกอินด้วยบัญชีสมาชิกเพื่อใช้งานระบบวงล้อเรียลไทม์</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Gyver Code Race (เกมแข่งพิมพ์โค้ด) -->
+                <div class="col-md-6 col-lg-4" data-tool-card data-tool-category="education"
+                    data-tool-title="Gyver Code Race แข่งพิมพ์โค้ด Python"
+                    data-tool-desc="เกมแข่งพิมพ์โค้ดภาษา Python ออนไลน์ สนุกตื่นเต้นแบบ Realtime">
+                    <div id="education-race-card"
+                        class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100"
+                        style="cursor: pointer;"
+                        onclick="handleProtectedToolClick(event, 'features/education/gyver%20Code%20Race/race_home.html', 'Gyver Code Race')">
+                        <div class="icon-box icon-gradient-race text-white shadow-sm">
+                            <i class="bi bi-controller"></i>
+                        </div>
+                        <div>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <h6 class="fw-bold text-muted m-0">Gyver Code Race</h6>
+                                <span
+                                    class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
+                            </div>
+                            <p class="text-muted small m-0">ล็อกอินด้วยบัญชีสมาชิกเพื่อใช้งานเกมแข่งพิมพ์โค้ดออนไลน์</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. E-Learning Tools -->
+                <div class="col-md-6 col-lg-4" data-tool-card data-tool-category="education"
+                    data-tool-title="E-Learning Tools สื่อการเรียนการสอน"
+                    data-tool-desc="คลังสื่อการเรียนการสอนและเครื่องมือคำนวณ">
+                    <div class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100">
+                        <div class="icon-box icon-gradient-guess text-white shadow-sm">
+                            <i class="bi bi-easel2-fill"></i>
+                        </div>
+                        <div>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <h6 class="fw-bold text-muted m-0">E-Learning Tools</h6>
+                                <span class="badge bg-light text-secondary border">Soon</span>
+                            </div>
+                            <p class="text-muted small m-0">คลังสื่อการเรียนการสอนและเครื่องมือคำนวณ</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 📝 หมวดหมู่ที่ 3: ระบบวัดผลและประเมินผู้เรียน (ปลดล็อกเมื่อเป็น Lv.1) -->
+        <div class="mb-5" data-tool-section data-tool-category="assessment">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="category-title m-0 fw-bold text-dark">Gyver Assessment & Evaluation
+                    (ระบบวัดผลและประเมินผู้เรียน)</h5>
+            </div>
+
+            <div class="row g-3">
+                <!-- 1. Gyver Forms (ระบบสร้างแบบสอบถาม & แบบประเมินออนไลน์) -->
+                <div class="col-md-6 col-lg-4" data-tool-card data-tool-category="assessment"
+                    data-tool-title="Gyver Forms แบบสอบถามและแบบประเมินออนไลน์"
+                    data-tool-desc="ระบบสร้างแบบสอบถามออนไลน์ สรุปผลด้วยกราฟและส่งออก CSV">
+                    <div id="teacher-forms-card"
+                        class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100"
+                        style="cursor: pointer;"
+                        onclick="handleProtectedToolClick(event, 'features/education/forms/forms.html', 'Gyver Forms')">
+                        <div class="icon-box icon-gradient-forms text-white shadow-sm">
+                            <i class="bi bi-file-earmark-text-fill"></i>
+                        </div>
+                        <div>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <h6 class="fw-bold text-muted m-0">Gyver Forms</h6>
+                                <span
+                                    class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
+                            </div>
+                            <p class="text-muted small m-0">ระบบสร้างแบบสอบถามออนไลน์ สรุปผลด้วยกราฟและส่งออก CSV</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Gyver Quiz (ระบบสร้างแบบทดสอบ & ควิซออนไลน์) -->
+                <div class="col-md-6 col-lg-4" data-tool-card data-tool-category="assessment"
+                    data-tool-title="Gyver Quiz แบบทดสอบ ควิซออนไลน์ ข้อสอบ"
+                    data-tool-desc="ระบบสร้างแบบทดสอบออนไลน์ ตรวจคำตอบอัตโนมัติ ตัดเกรด พร้อมมอบเกียรติบัตร">
+                    <div id="teacher-quiz-card"
+                        class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100"
+                        style="cursor: pointer;"
+                        onclick="handleProtectedToolClick(event, 'features/education/quiz/quiz.html', 'Gyver Quiz')">
+                        <div class="icon-box icon-gradient-quiz text-white shadow-sm">
+                            <i class="bi bi-patch-question-fill"></i>
+                        </div>
+                        <div>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <h6 class="fw-bold text-muted m-0">Gyver Quiz</h6>
+                                <span
+                                    class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
+                            </div>
+                            <p class="text-muted small m-0">ระบบสร้างแบบทดสอบออนไลน์ ตรวจคำตอบและตัดเกรดอัตโนมัติ</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 📚 หมวดหมู่ที่ 4: คลังสื่อและระบบจัดการผู้สอน (ปลดล็อกเมื่อเป็น Lv.1) -->
+        <div class="mb-5" data-tool-section data-tool-category="teacher">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="category-title m-0 fw-bold text-dark">Gyver Teacher Studio (คลังสื่อและระบบจัดการผู้สอน)</h5>
+            </div>
+
+            <div class="row g-3">
+
+                <!-- 2. Gyver Question Bank (คลังคำถามและข้อสอบ) -->
+                <div class="col-md-6 col-lg-4" data-tool-card data-tool-category="teacher"
+                    data-tool-title="Gyver Question Bank คลังข้อสอบ คลังคำถาม"
+                    data-tool-desc="คลังคำถามและข้อสอบ สำหรับเชื่อมต่อวงล้อและเกมพิมพ์โค้ด">
+                    <div id="education-bank-card"
+                        class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100"
+                        style="cursor: pointer;"
+                        onclick="handleProtectedToolClick(event, 'features/education/question_bank/question_bank.html', 'Gyver Question Bank')">
+                        <div class="icon-box icon-gradient-bank text-white shadow-sm">
+                            <i class="bi bi-question-square-fill"></i>
+                        </div>
+                        <div>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <h6 class="fw-bold text-muted m-0">Gyver Question Bank</h6>
+                                <span
+                                    class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
+                            </div>
+                            <p class="text-muted small m-0">คลังคำถามและข้อสอบ สำหรับเชื่อมต่อวงล้อและเกมพิมพ์โค้ด</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Classroom Management (จัดการห้องเรียน & นักเรียน) -->
+                <div class="col-md-6 col-lg-4" data-tool-card data-tool-category="teacher"
+                    data-tool-title="Classroom Management จัดการห้องเรียน รายชื่อนักเรียน"
+                    data-tool-desc="สร้างห้องเรียน จัดการรายชื่อนักเรียน และ QR Code เข้าร่วมกิจกรรม">
+                    <div id="teacher-classroom-card"
+                        class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100"
+                        style="cursor: pointer;"
+                        onclick="handleProtectedToolClick(event, 'auth/classroom_manage/classroom_manage.html', 'Classroom Management')">
+                        <div class="icon-box icon-gradient-classroom text-white shadow-sm">
+                            <i class="bi bi-people-fill"></i>
+                        </div>
+                        <div>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <h6 class="fw-bold text-muted m-0">Classroom Management</h6>
+                                <span
+                                    class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
+                            </div>
+                            <p class="text-muted small m-0">สร้างห้องเรียน จัดการรายชื่อนักเรียน และ QR Code
+                                เข้าร่วมห้อง</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Activity History (ประวัติกิจกรรม & คะแนน) -->
+                <div class="col-md-6 col-lg-4" data-tool-card data-tool-category="teacher"
+                    data-tool-title="Activity History ประวัติกิจกรรม คะแนนย้อนหลัง"
+                    data-tool-desc="ดูสถิติการเล่น ประวัติคะแนน และผลกิจกรรมย้อนหลัง">
+                    <div id="teacher-history-card"
+                        class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100"
+                        style="cursor: pointer;"
+                        onclick="handleProtectedToolClick(event, 'auth/history/history.html', 'Activity History')">
+                        <div class="icon-box icon-gradient-history text-white shadow-sm">
+                            <i class="bi bi-clock-history"></i>
+                        </div>
+                        <div>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <h6 class="fw-bold text-muted m-0">Activity History</h6>
+                                <span
+                                    class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
+                            </div>
+                            <p class="text-muted small m-0">ดูสถิติการเล่น ประวัติคะแนน และผลกิจกรรมย้อนหลัง</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 💼 หมวดหมู่ที่ 3: เครื่องมือส่วนตัว -->
+        <div class="mb-4" data-tool-section data-tool-category="business">
+            <h5 class="category-title mb-3 fw-bold text-dark">Gyver Business Tools (เครื่องมือส่วนตัว)</h5>
+
+            <div class="row g-3">
+                <div class="col-md-6 col-lg-4" data-tool-card data-tool-category="business"
+                    data-tool-title="Quotation Creator ออกใบเสนอราคา"
+                    data-tool-desc="ระบบออกใบเสนอราคา คำนวณภาษี และดาวน์โหลด PDF">
+                    <div class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100">
+                        <div class="icon-box bg-secondary bg-gradient text-white">
+                            <i class="bi bi-file-earmark-spreadsheet-fill"></i>
+                        </div>
+                        <div>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <h6 class="fw-bold text-muted m-0">Quotation Creator</h6>
+                                <span class="badge bg-light text-secondary border">Soon</span>
+                            </div>
+                            <p class="text-muted small m-0">ระบบออกใบเสนอราคา คำนวณภาษี และดาวน์โหลด PDF</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 col-lg-4" data-tool-card data-tool-category="business"
+                    data-tool-title="Inventory Tools สต็อกและต้นทุนวัสดุ"
+                    data-tool-desc="ระบบคำนวณสต็อกและต้นทุนวัสดุ Gyver Shop">
+                    <div class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100">
+                        <div class="icon-box bg-secondary bg-gradient text-white">
+                            <i class="bi bi-box-seam-fill"></i>
+                        </div>
+                        <div>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <h6 class="fw-bold text-muted m-0">Inventory Tools</h6>
+                                <span class="badge bg-light text-secondary border">Soon</span>
+                            </div>
+                            <p class="text-muted small m-0">ระบบคำนวณสต็อกและต้นทุนวัสดุ Gyver Shop</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 🔑 POPUP MODAL LOGIN / REGISTER -->
+    <div class="modal fade" id="authModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-dark"><i
+                            class="bi bi-shield-lock-fill text-primary me-2"></i>เข้าสู่ระบบ Gyver Workspace</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+
+                    <ul class="nav nav-pills nav-justified gap-2 mb-4 p-1 bg-light rounded-3" role="tablist">
+                        <li class="nav-item">
+                            <button class="nav-link active fw-bold" id="tab-login" data-bs-toggle="pill"
+                                data-bs-target="#panel-login" type="button">
+                                <i class="bi bi-box-arrow-in-right me-1"></i>เข้าสู่ระบบ
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link fw-bold" id="tab-register" data-bs-toggle="pill"
+                                data-bs-target="#panel-register" type="button">
+                                <i class="bi bi-person-plus me-1"></i>สมัครสมาชิก
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div id="popup-auth-alert" class="alert d-none py-2 small text-center" role="alert"></div>
+
+                    <div class="tab-content">
+                        <!-- 1. ฟอร์มเข้าสู่ระบบ (Login) -->
+                        <div class="tab-pane fade show active" id="panel-login">
+                            <form id="form-popup-login">
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-secondary">ชื่อผู้ใช้งาน หรือ อีเมล
+                                        (Username / Email)</label>
+                                    <input type="text" id="popup-login-email" class="form-control"
+                                        placeholder="พิมพ์ชื่อผู้ใช้ หรือ name@example.com" required>
+                                </div>
+                                <div class="mb-4">
+                                    <label class="form-label small fw-bold text-secondary">รหัสผ่าน</label>
+                                    <div class="input-group">
+                                        <input type="password" id="popup-login-pass" class="form-control"
+                                            placeholder="••••••••" required>
+                                        <button class="btn btn-outline-secondary btn-toggle-password" type="button"
+                                            onclick="togglePasswordVisibility('popup-login-pass', 'icon-login-pass')">
+                                            <i class="bi bi-eye" id="icon-login-pass"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100 py-2 fw-bold shadow-sm rounded-3"
+                                    id="btn-popup-login">
+                                    <i class="bi bi-box-arrow-in-right me-1"></i>ลงชื่อเข้าใช้งาน
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- 2. ฟอร์มสมัครสมาชิก (Register) -->
+                        <div class="tab-pane fade" id="panel-register">
+                            <form id="form-popup-register">
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-secondary">1. ชื่อผู้ใช้งาน (Username)
+                                        <span class="text-danger">*</span></label>
+                                    <input type="text" id="popup-reg-username" class="form-control"
+                                        placeholder="เช่น gyver" required>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-secondary">2. อีเมล (E-mail) <span
+                                            class="text-danger">*</span></label>
+                                    <input type="email" id="popup-reg-email" class="form-control"
+                                        placeholder="name@example.com" required>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-secondary">3. รหัสผ่าน (Password) <span
+                                            class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <input type="password" id="popup-reg-pass" class="form-control"
+                                            placeholder="•••••••• (ขั้นต่ำ 6 ตัว)" minlength="6" required>
+                                        <button class="btn btn-outline-secondary btn-toggle-password" type="button"
+                                            onclick="togglePasswordVisibility('popup-reg-pass', 'icon-reg-pass')">
+                                            <i class="bi bi-eye" id="icon-reg-pass"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-secondary">4. ยืนยันรหัสผ่านอีกครั้ง
+                                        <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <input type="password" id="popup-reg-pass-confirm" class="form-control"
+                                            placeholder="••••••••" minlength="6" required>
+                                        <button class="btn btn-outline-secondary btn-toggle-password" type="button"
+                                            onclick="togglePasswordVisibility('popup-reg-pass-confirm', 'icon-reg-pass-confirm')">
+                                            <i class="bi bi-eye" id="icon-reg-pass-confirm"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label class="form-label small fw-bold text-secondary">5. แทรกรูปโปรไฟล์ <span
+                                            class="text-muted fw-normal">(เลือกหรือไม่เลือกก็ได้)</span></label>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <input type="file" id="popup-reg-avatar-file" class="form-control"
+                                            accept="image/*" onchange="previewAvatar(event)">
+                                        <img id="avatar-preview"
+                                            src="https://cdn-icons-png.flaticon.com/512/149/149071.png"
+                                            class="rounded-circle border"
+                                            style="width: 45px; height: 45px; object-fit: cover;" alt="Preview">
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn btn-success w-100 py-2 fw-bold shadow-sm rounded-3"
+                                    id="btn-popup-reg">
+                                    <i class="bi bi-person-plus me-1"></i>ยืนยันการสมัครสมาชิก
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ⚠️ Modal แจ้งเตือนให้กรอกข้อมูลโปรไฟล์ให้ครบถ้วนก่อนใช้งานห้องเรียน -->
+    <div class="modal fade" id="profileIncompleteModal" tabindex="-1" aria-labelledby="profileIncompleteModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 460px;">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header border-0 bg-warning bg-opacity-10 pb-0 pt-4 px-4 align-items-start">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="d-flex align-items-center justify-content-center rounded-circle shadow-sm flex-shrink-0"
+                            style="width: 50px; height: 50px; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; font-size: 24px;">
+                            <i class="bi bi-person-exclamation"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold text-dark mb-1" id="profileIncompleteModalLabel">
+                                กรุณากรอกโปรไฟล์ให้ครบ</h5>
+                            <div class="text-muted small" id="profile-modal-tool-name">
+                                สำหรับเริ่มใช้งานห้องเรียนอัจฉริยะ</div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-secondary small mb-3">
+                        เพื่อความถูกต้องในการจัดเก็บสถิติ บันทึกคะแนนกิจกรรม และการจัดการห้องเรียน
+                        กรุณากรอกข้อมูลส่วนตัวในหน้าโปรไฟล์ให้ครบถ้วนก่อนเข้าใช้งาน:
+                    </p>
+
+                    <div class="p-3 bg-light rounded-3 border mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="small fw-bold text-dark"><i
+                                    class="bi bi-list-check me-1 text-primary"></i>ข้อมูลที่ยังไม่ได้ระบุ:</span>
+                            <span
+                                class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 small"
+                                id="missing-count-badge">ยังไม่ครบ</span>
+                        </div>
+                        <div id="missing-profile-fields-list" class="d-flex flex-column gap-2">
+                            <!-- Dynamic missing fields rendered via JS -->
+                        </div>
+                    </div>
+
+                    <div class="d-flex flex-column gap-2 pt-1">
+                        <a href="auth/profile/profile.html?required=1" id="btn-go-to-profile"
+                            class="btn btn-primary py-2 fw-bold shadow-sm rounded-3 text-decoration-none text-center">
+                            <i class="bi bi-pencil-square me-1"></i>ไปกรอกข้อมูลโปรไฟล์ทันที
+                        </a>
+                        <button type="button" class="btn btn-light py-2 text-secondary fw-semibold rounded-3 border"
+                            data-bs-dismiss="modal">
+                            ไว้คราวหลัง
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🎮 Modal สำหรับใส่ PIN หรือเปิดกล้องมือถือสแกน QR Code เพื่อเข้าห้อง -->
+    <div class="modal fade" id="joinRoomModal" tabindex="-1" aria-labelledby="joinRoomModalLabel" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden" style="background: #0f172a; color: #f8fafc; border: 1px solid rgba(255, 255, 255, 0.15) !important;">
+                <div class="modal-header border-secondary border-opacity-25 pb-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="rounded-3 p-2 text-white shadow-sm" style="background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%); font-size: 1.25rem;">
+                            <i class="bi bi-door-open-fill"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold text-white mb-0" id="joinRoomModalLabel">เข้าสู่ห้องสอบ / กิจกรรม</h5>
+                            <div class="small text-subtle" style="font-size: 0.78rem; color: #94a3b8;">ใส่รหัส PIN หรือสแกน QR Code จากหน้าจอคุณครู</div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" onclick="stopCameraScanner()"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <!-- วิธีที่ 1: พิมพ์เลขห้อง PIN -->
+                    <div class="mb-3">
+                        <label for="modal-join-pin" class="form-label text-white-50 small fw-bold mb-2">
+                            <i class="bi bi-key-fill text-warning me-1"></i> วิธีที่ 1: พิมพ์รหัสห้อง (ROOM PIN)
+                        </label>
+                        <form id="modal-join-form" onsubmit="handleModalJoinRoom(event)" class="d-flex flex-column gap-2 m-0">
+                            <input type="text" id="modal-join-pin" 
+                                class="form-control form-control-lg text-center fw-bold text-uppercase rounded-3" 
+                                placeholder="ใส่เลขห้อง เช่น 842109" 
+                                maxlength="10" 
+                                autocomplete="off"
+                                style="background: rgba(255, 255, 255, 0.08); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.25); letter-spacing: 3px; font-family: monospace; font-size: 1.3rem;">
+                            <button type="submit" id="modal-btn-join" 
+                                class="btn btn-lg fw-bold text-white rounded-3 shadow mt-1 d-flex align-items-center justify-content-center gap-2"
+                                style="background: linear-gradient(135deg, #ec4899 0%, #a855f7 100%); border: none;">
+                                <span>เข้าห้องสอบทันที</span>
+                                <i class="bi bi-arrow-right-circle-fill"></i>
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- เส้นคั่น หรือ -->
+                    <div class="d-flex align-items-center my-3">
+                        <hr class="flex-grow-1 border-secondary border-opacity-50 m-0">
+                        <span class="px-3 text-secondary small fw-semibold">หรือ</span>
+                        <hr class="flex-grow-1 border-secondary border-opacity-50 m-0">
+                    </div>
+
+                    <!-- วิธีที่ 2: สแกน QR Code ด้วยกล้องมือถือ -->
+                    <div>
+                        <label class="form-label text-white-50 small fw-bold mb-2">
+                            <i class="bi bi-camera-fill text-info me-1"></i> วิธีที่ 2: สแกน QR Code ด้วยกล้องมือถือ
+                        </label>
+                        <button type="button" id="btn-toggle-qr-cam" class="btn btn-outline-info w-100 py-2 fw-bold d-flex align-items-center justify-content-center gap-2 rounded-3" onclick="toggleCameraScanner()">
+                            <i class="bi bi-qr-code-scan fs-5"></i>
+                            <span id="btn-toggle-qr-text">เปิดกล้องเพื่อสแกน QR Code</span>
+                        </button>
+
+                        <!-- พื้นที่แสดงกล้องสแกน -->
+                        <div id="modal-qr-box" class="d-none mt-3 p-2 bg-black rounded-3 border border-info border-opacity-50 text-center">
+                            <div id="modal-qr-reader" style="width: 100%; min-height: 250px;" class="rounded-2 overflow-hidden"></div>
+                            <div class="small text-info mt-2">
+                                <i class="bi bi-broadcast me-1"></i> ส่องกล้องไปที่ QR Code บนหน้าจอของคุณครู
+                            </div>
+                            <button type="button" class="btn btn-outline-secondary btn-sm text-white-50 w-100 mt-2" onclick="stopCameraScanner()">
+                                <i class="bi bi-x-circle me-1"></i> ปิดกล้อง
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="py-4 navbar-custom text-center text-muted small mt-auto border-top bg-white">
+        <div class="container d-flex flex-column flex-md-row justify-content-between align-items-center gap-2">
+            <div>&copy; 2026 Gyver Home & Gyver Shop. All Rights Reserved.</div>
+            <div class="text-muted opacity-75">Designed for Gyver Workspace</div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="index.js"></script>
+</body>
+
+</html>

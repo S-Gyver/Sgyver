@@ -1,0 +1,575 @@
+/* ====================================================
+   🎨 Gyver Workspace 2.0 - Core Workspace Styling
+   Gemini Sidebar, Dashboard Widgets & Whiteboard Styles
+   ==================================================== */
+
+:root {
+    --sidebar-width: 280px;
+    --sidebar-collapsed-width: 68px;
+    --sidebar-bg: #0f172a;
+    --sidebar-hover: rgba(255, 255, 255, 0.08);
+    --sidebar-active: rgba(59, 130, 246, 0.2);
+    --sidebar-border: rgba(255, 255, 255, 0.1);
+}
+
+body {
+    font-family: 'Kanit', sans-serif;
+    background-color: #f1f5f9;
+    overflow-x: hidden;
+}
+
+/* 📱 Layout Structure */
+#app-layout {
+    display: flex;
+    height: calc(100vh - 65px);
+    position: relative;
+    overflow: hidden;
+}
+
+/* 🤖 Gemini Left Sidebar */
+.gemini-sidebar {
+    width: var(--sidebar-width);
+    min-width: var(--sidebar-width);
+    background: var(--sidebar-bg);
+    color: #f8fafc;
+    border-right: 1px solid var(--sidebar-border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1020;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+/* 🌟 Gemini Collapsed Icon Rail (เมื่อกดพับเก็บ) */
+@media (min-width: 992px) {
+    .gemini-sidebar.collapsed {
+        width: var(--sidebar-collapsed-width) !important;
+        min-width: var(--sidebar-collapsed-width) !important;
+        margin-left: 0 !important;
+    }
+
+    .gemini-sidebar.collapsed .sidebar-scrollable-content {
+        padding: 16px 8px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .gemini-sidebar.collapsed .btn-new-note {
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        margin-bottom: 16px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+    }
+
+    .gemini-sidebar.collapsed .btn-new-note span {
+        display: none !important;
+    }
+
+    .gemini-sidebar.collapsed .btn-new-note i {
+        font-size: 1.25rem;
+        margin: 0;
+    }
+
+    /* เส้นคั่นบางๆ สไตล์ Gemini แทนชื่อหัวข้อ */
+    .gemini-sidebar.collapsed .sidebar-section-label {
+        height: 1px;
+        width: 32px;
+        margin: 10px auto 8px;
+        background: rgba(255, 255, 255, 0.12);
+        font-size: 0;
+        padding: 0;
+        overflow: hidden;
+        border-radius: 1px;
+    }
+
+    .gemini-sidebar.collapsed .sidebar-nav-item {
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        margin-bottom: 8px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        transform: none !important;
+    }
+
+    .gemini-sidebar.collapsed .sidebar-nav-item span:not(.nav-icon) {
+        display: none !important;
+    }
+
+    .gemini-sidebar.collapsed .sidebar-nav-item .nav-icon {
+        font-size: 1.3rem;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .gemini-sidebar.collapsed .sidebar-footer {
+        padding: 14px 6px;
+        justify-content: center;
+    }
+
+    .gemini-sidebar.collapsed .sidebar-footer div,
+    .gemini-sidebar.collapsed .sidebar-footer a span {
+        display: none !important;
+    }
+
+    .gemini-sidebar.collapsed .sidebar-footer a {
+        padding: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    .gemini-sidebar.collapsed .sidebar-footer a i {
+        font-size: 1.2rem;
+        margin: 0 !important;
+    }
+
+    /* 🎈 Floating Tooltip สไตล์ Gemini เมื่อ Hover ที่ไอคอนตอนพับแถบ */
+    .gemini-sidebar.collapsed .sidebar-nav-item[data-tooltip]::after,
+    .gemini-sidebar.collapsed .btn-new-note[data-tooltip]::after,
+    .gemini-sidebar.collapsed .sidebar-footer a[data-tooltip]::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        left: 54px;
+        top: 50%;
+        transform: translateY(-50%) scale(0.95);
+        background: #1e293b;
+        color: #ffffff;
+        font-size: 0.8rem;
+        font-weight: 500;
+        white-space: nowrap;
+        padding: 6px 12px;
+        border-radius: 8px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        opacity: 0;
+        pointer-events: none;
+        transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 1060;
+    }
+
+    .gemini-sidebar.collapsed .sidebar-nav-item[data-tooltip]:hover::after,
+    .gemini-sidebar.collapsed .btn-new-note[data-tooltip]:hover::after,
+    .gemini-sidebar.collapsed .sidebar-footer a[data-tooltip]:hover::after {
+        opacity: 1;
+        transform: translateY(-50%) scale(1);
+    }
+}
+
+.sidebar-brand-box {
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--sidebar-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.sidebar-scrollable-content {
+    flex-grow: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 16px 12px;
+}
+
+.sidebar-scrollable-content::-webkit-scrollbar {
+    width: 4px;
+}
+
+.sidebar-scrollable-content::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+}
+
+.sidebar-section-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #94a3b8;
+    text-transform: uppercase;
+    padding: 10px 14px 6px;
+    transition: all 0.2s ease;
+}
+
+/* Sidebar Navigation Items */
+.sidebar-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    margin-bottom: 4px;
+    color: #cbd5e1;
+    text-decoration: none;
+    border-radius: 12px;
+    font-size: 0.92rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: 1px solid transparent;
+    position: relative;
+}
+
+.sidebar-nav-item:hover {
+    background: var(--sidebar-hover);
+    color: #ffffff;
+    transform: translateX(3px);
+}
+
+.sidebar-nav-item.active {
+    background: var(--sidebar-active);
+    color: #60a5fa;
+    font-weight: 600;
+    border-color: rgba(96, 165, 250, 0.3);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+}
+
+.sidebar-nav-item .nav-icon {
+    font-size: 1.15rem;
+    width: 24px;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* 📌 New Note / Action Button */
+.btn-new-note {
+    background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+    color: white;
+    border: none;
+    border-radius: 14px;
+    padding: 10px 16px;
+    font-weight: 600;
+    font-size: 0.92rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+    transition: all 0.2s ease;
+}
+
+.btn-new-note:hover {
+    filter: brightness(1.1);
+    transform: translateY(-2px);
+    color: white;
+}
+
+/* Sidebar Footer */
+.sidebar-footer {
+    padding: 14px 16px;
+    border-top: 1px solid var(--sidebar-border);
+    font-size: 0.82rem;
+    color: #94a3b8;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+/* 💻 Main Workspace Container */
+#main-workspace-zone {
+    flex-grow: 1;
+    overflow-y: auto;
+    background: #f8fafc;
+    padding: 24px 30px;
+}
+
+/* 📝 Board Widgets Styling */
+.board-card {
+    background: #ffffff;
+    border-radius: 20px;
+    border: 1px solid #e2e8f0;
+    padding: 24px;
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04);
+    transition: all 0.2s ease;
+}
+
+.board-card:hover {
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+}
+
+.notepad-textarea {
+    width: 100%;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    background: #fafafa;
+    padding: 16px;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: #1e293b;
+    resize: vertical;
+    min-height: 220px;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.notepad-textarea:focus {
+    background: #ffffff;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
+}
+
+/* Breadcrumb Bar */
+.category-breadcrumb-bar {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 12px 18px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+/* Quick Stat Pill */
+.quick-stat-pill {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+/* 🚫 Hide Profile & Classroom CTA Buttons Permanently as requested */
+#hero-cta-zone {
+    display: none !important;
+}
+
+/* 🎛️ Widget Controls & Responsive Styling */
+.btn-widget-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 10;
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #64748b;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(4px);
+}
+
+.btn-widget-close:hover {
+    background: #ef4444;
+    color: #ffffff;
+    border-color: #ef4444;
+    transform: scale(1.1);
+}
+
+.btn-widget-close-inline {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    padding: 4px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-size: 0.82rem;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-widget-close-inline:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #dc2626;
+}
+
+.widget-fade-in {
+    animation: widgetFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes widgetFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 🖍️ Whiteboard Container & Toolbar */
+.whiteboard-container {
+    background: #ffffff;
+    border-radius: 20px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 6px 24px -4px rgba(0, 0, 0, 0.06);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    height: calc(100vh - 180px);
+    min-height: 560px;
+}
+
+.whiteboard-toolbar {
+    background: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    z-index: 10;
+}
+
+.wb-tool-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: #f1f5f9;
+    padding: 4px 6px;
+    border-radius: 12px;
+}
+
+.wb-tool-btn {
+    border: none;
+    background: transparent;
+    color: #475569;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s ease;
+    cursor: pointer;
+}
+
+.wb-tool-btn:hover {
+    background: rgba(0, 0, 0, 0.06);
+    color: #0f172a;
+}
+
+.wb-tool-btn.active {
+    background: #2563eb;
+    color: #ffffff !important;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+}
+
+.wb-color-dot {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.wb-color-dot:hover {
+    transform: scale(1.2);
+}
+
+.wb-color-dot.active {
+    border-color: #0284c7;
+    transform: scale(1.15);
+    box-shadow: 0 0 0 2px #ffffff;
+}
+
+.whiteboard-canvas-wrapper {
+    flex-grow: 1;
+    position: relative;
+    overflow: hidden;
+    touch-action: none;
+    background-color: #ffffff;
+}
+
+/* 🔲 Whiteboard Background Patterns */
+.whiteboard-canvas-wrapper.bg-white-clean {
+    background-color: #ffffff;
+}
+
+.whiteboard-canvas-wrapper.bg-grid {
+    background-color: #ffffff;
+    background-image: linear-gradient(#e2e8f0 1px, transparent 1px),
+                      linear-gradient(90deg, #e2e8f0 1px, transparent 1px);
+    background-size: 26px 26px;
+}
+
+.whiteboard-canvas-wrapper.bg-lined {
+    background-color: #ffffff;
+    background-image: linear-gradient(#e2e8f0 1px, transparent 1px);
+    background-size: 100% 30px;
+}
+
+.whiteboard-canvas-wrapper.bg-chalkboard {
+    background-color: #0f172a;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 0);
+    background-size: 26px 26px;
+}
+
+#whiteboard-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: crosshair;
+}
+
+/* Mobile Backdrop */
+.sidebar-backdrop {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 1015;
+}
+
+@media (max-width: 991.98px) {
+    .gemini-sidebar {
+        position: fixed;
+        top: 65px;
+        bottom: 0;
+        left: 0;
+        margin-left: calc(-1 * var(--sidebar-width));
+    }
+
+    .gemini-sidebar.show-mobile {
+        margin-left: 0 !important;
+    }
+
+    .sidebar-backdrop.show {
+        display: block;
+    }
+
+    #main-workspace-zone {
+        padding: 16px;
+    }
+}
