@@ -239,28 +239,35 @@ async function loadFormResponses(formId) {
 
     if (window.supabaseClient && isSupabaseTableAvailable) {
         try {
-            const { data, error } = await window.supabaseClient
+            let res = await window.supabaseClient
                 .from('gyver_form_responses')
                 .select('*')
                 .eq('form_id', formId)
                 .order('created_at', { ascending: false });
 
-            if (error) {
-                console.warn('Supabase gyver_form_responses error:', error);
-                if (error.code === '42P01' || error.message?.includes('does not exist') || error.status === 400 || error.code === 'PGRST200') {
-                    if (noticeEl) noticeEl.classList.remove('d-none');
-                }
-            } else if (data) {
+            // Fallback: หากตารางเดิมยังไม่มีคอลัมน์ created_at ให้ลอง select โดยไม่ sort created_at
+            if (res.error && (res.error.code === '42703' || res.error.message?.includes('created_at'))) {
+                console.warn('⚠️ Column created_at missing, retrying without order:', res.error);
+                res = await window.supabaseClient
+                    .from('gyver_form_responses')
+                    .select('*')
+                    .eq('form_id', formId);
+            }
+
+            if (res.error) {
+                console.warn('Supabase gyver_form_responses error:', res.error);
+                if (noticeEl) noticeEl.classList.remove('d-none');
+            } else if (res.data) {
                 if (noticeEl) noticeEl.classList.add('d-none');
-                if (data.length > 0) {
-                    responsesList = data.map(item => ({
+                if (res.data.length > 0) {
+                    responsesList = res.data.map(item => ({
                         id: item.id,
                         responderName: item.responder_name || 'ผู้ตอบแบบสอบถาม',
                         answers: typeof item.answers === 'string' ? JSON.parse(item.answers) : (item.answers || {}),
                         quizScore: Number(item.quiz_score) || 0,
                         totalPoints: Number(item.total_points) || 0,
                         isPassed: !!item.is_passed,
-                        submittedAt: item.created_at
+                        submittedAt: item.created_at || new Date().toISOString()
                     }));
                     localStorage.setItem(`gyver_form_responses_${formId}`, JSON.stringify(responsesList));
                 }
