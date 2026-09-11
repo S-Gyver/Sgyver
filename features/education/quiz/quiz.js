@@ -280,9 +280,8 @@ function renderQuizListView() {
                         <i class="bi bi-broadcast-pin me-1"></i>เปิดห้องสอบสด (Live Lobby 20 ชุด)
                     </a>
 
-                    <div class="border-top border-secondary pt-3">
-                        <!-- แถวบน: 4 ปุ่มหลัก บรรทัดเดียว สวยงาม ไม่ขึ้นบรรทัดใหม่ -->
-                        <div class="btn-group btn-group-sm quiz-card-btn-group mb-2">
+                    <div class="border-top border-secondary pt-3 d-flex flex-wrap gap-2 justify-content-between">
+                        <div class="btn-group btn-group-sm">
                             <button class="btn btn-outline-quiz" onclick="startQuizFromList('${quiz.id}')" title="เข้าทำข้อสอบเดี่ยว">
                                 <i class="bi bi-play-fill me-1"></i>ทำข้อสอบ
                             </button>
@@ -292,16 +291,12 @@ function renderQuizListView() {
                             <button class="btn btn-outline-info" onclick="viewQuizAnalytics('${quiz.id}')" title="ดูผลคะแนน">
                                 <i class="bi bi-bar-chart-fill me-1"></i>คะแนน
                             </button>
-                            <button class="btn btn-outline-danger" onclick="clearQuizResponsesById('${quiz.id}')" title="ล้างรายชื่อและผลสอบ (เริ่มรอบใหม่)">
-                                <i class="bi bi-arrow-counterclockwise me-1"></i>ล้างค่า
-                            </button>
                         </div>
-                        <!-- แถวล่าง: ปุ่ม QR Code และ ลบแบบทดสอบ -->
-                        <div class="d-flex justify-content-end gap-1">
-                            <button class="btn btn-sm btn-outline-quiz px-2" onclick="openShareModalForId('${quiz.id}')" title="แชร์ข้อสอบ / QR Code">
+                        <div class="d-flex gap-1">
+                            <button class="btn btn-sm btn-outline-quiz" onclick="openShareModalForId('${quiz.id}')" title="แชร์ข้อสอบ / QR Code">
                                 <i class="bi bi-qr-code-scan"></i>
                             </button>
-                            <button class="btn btn-sm btn-outline-danger px-2" onclick="deleteQuiz('${quiz.id}')" title="ลบแบบทดสอบ">
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteQuiz('${quiz.id}')" title="ลบแบบทดสอบ">
                                 <i class="bi bi-trash-fill"></i>
                             </button>
                         </div>
@@ -1638,7 +1633,7 @@ function renderAnalyticsView() {
     tbody.innerHTML = '';
 
     if (sorted.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-subtle">ยังไม่มีประวัติการส่งข้อสอบ</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-subtle">ยังไม่มีประวัติการส่งข้อสอบ</td></tr>`;
         return;
     }
 
@@ -1659,141 +1654,9 @@ function renderAnalyticsView() {
                 </span>
             </td>
             <td class="text-subtle small">${dateStr}</td>
-            <td class="text-center">
-                <button class="btn btn-sm btn-outline-danger py-0 px-2 rounded" title="ลบผลสอบของ ${escapeHtml(r.studentName)}" onclick="deleteSingleQuizResponse('${escapeHtml(String(r.id || r.submittedAt))}')">
-                    <i class="bi bi-trash3"></i>
-                </button>
-            </td>
         `;
         tbody.appendChild(tr);
     });
-}
-
-/**
- * 🧹 ล้างประวัติและรายชื่อผู้เข้าสอบทั้งหมดตาม Quiz ID (กดจากหน้ารายการควิซ หรือหน้า Analytics)
- */
-async function clearQuizResponsesById(quizId) {
-    const targetQuiz = (quizzesList && quizzesList.find(q => q.id === quizId)) || currentQuiz;
-    const quizTitle = targetQuiz ? targetQuiz.title : 'ชุดข้อสอบนี้';
-    const responses = getLocalQuizResponses(quizId);
-
-    if (!responses || responses.length === 0) {
-        const swal = getCyberSwal();
-        if (swal) {
-            swal.fire({
-                icon: 'info',
-                title: 'ไม่มีรายชื่อให้ล้าง',
-                text: `ยังไม่มีประวัติหรือรายชื่อผู้เข้าสอบใน "${quizTitle}" ครับ`
-            });
-        } else {
-            alert(`ยังไม่มีประวัติหรือรายชื่อผู้เข้าสอบใน "${quizTitle}" ครับ`);
-        }
-        return;
-    }
-
-    const swal = getCyberSwal();
-    if (swal) {
-        const result = await swal.fire({
-            icon: 'warning',
-            title: 'ล้างค่าผลคะแนนรอบนี้?',
-            html: `ต้องการล้างรายชื่อและผลสอบของผู้เข้าสอบทั้งหมด <b>${responses.length} คน</b> ในชุด<br><b class="text-info">"${escapeHtml(quizTitle)}"</b> ใช่หรือไม่?<br><span class="text-danger small">ข้อมูลจะถูกล้างเพื่อเตรียมพร้อมสำหรับการสอบรอบใหม่ (ไม่สามารถกู้คืนได้)</span>`,
-            showCancelButton: true,
-            confirmButtonText: '<i class="bi bi-trash3-fill me-1"></i>ล้างข้อมูลทันที',
-            cancelButtonText: 'ยกเลิก',
-            confirmButtonColor: '#ef4444'
-        });
-        if (!result.isConfirmed) return;
-    } else {
-        if (!confirm(`ต้องการล้างรายชื่อและผลสอบของผู้เข้าสอบทั้งหมด ${responses.length} คน ในชุด "${quizTitle}" เพื่อเริ่มรอบใหม่ ใช่หรือไม่?`)) return;
-    }
-
-    // 1. Clear LocalStorage
-    saveLocalQuizResponses(quizId, []);
-
-    // 2. Clear Supabase if connected
-    if (window.supabaseClient && isSupabaseTableAvailable) {
-        try {
-            await window.supabaseClient
-                .from('gyver_quiz_responses')
-                .delete()
-                .eq('quiz_id', quizId);
-        } catch (e) {
-            console.warn('Could not delete quiz responses from Supabase', e);
-        }
-    }
-
-    // 3. Re-render according to current mode
-    if (currentMode === 'analytics' && currentQuiz && currentQuiz.id === quizId) {
-        renderAnalyticsView();
-    } else if (currentMode === 'list') {
-        renderQuizListView();
-    }
-
-    const toast = getCyberToast();
-    if (toast) {
-        toast.fire({
-            icon: 'success',
-            title: `ล้างรายชื่อของ "${quizTitle}" เรียบร้อยแล้ว พร้อมสำหรับรอบใหม่!`
-        });
-    }
-}
-
-async function clearQuizResponses() {
-    if (currentQuiz) {
-        await clearQuizResponsesById(currentQuiz.id);
-    }
-}
-
-/**
- * 🗑️ ลบรายชื่อผู้เข้าสอบเฉพาะรายบุคคล
- */
-async function deleteSingleQuizResponse(responseId) {
-    if (!currentQuiz) return;
-    const responses = getLocalQuizResponses(currentQuiz.id);
-    const targetIdx = responses.findIndex(r => String(r.id || r.submittedAt) === String(responseId));
-    if (targetIdx === -1) return;
-
-    const targetStudent = responses[targetIdx];
-    const swal = getCyberSwal();
-    if (swal) {
-        const result = await swal.fire({
-            icon: 'warning',
-            title: 'ลบรายชื่อผู้เข้าสอบ?',
-            html: `ต้องการลบผลสอบของ <b>${escapeHtml(targetStudent.studentName)}</b> ใช่หรือไม่?`,
-            showCancelButton: true,
-            confirmButtonText: '<i class="bi bi-trash3 me-1"></i>ลบรายชื่อ',
-            cancelButtonText: 'ยกเลิก',
-            confirmButtonColor: '#ef4444'
-        });
-        if (!result.isConfirmed) return;
-    } else {
-        if (!confirm(`ต้องการลบผลสอบของ ${targetStudent.studentName} ใช่หรือไม่?`)) return;
-    }
-
-    responses.splice(targetIdx, 1);
-    saveLocalQuizResponses(currentQuiz.id, responses);
-
-    // Delete in Supabase if exists
-    if (window.supabaseClient && isSupabaseTableAvailable && targetStudent.id) {
-        try {
-            await window.supabaseClient
-                .from('gyver_quiz_responses')
-                .delete()
-                .eq('id', targetStudent.id);
-        } catch (e) {
-            console.warn('Could not delete single response from Supabase', e);
-        }
-    }
-
-    renderAnalyticsView();
-
-    const toast = getCyberToast();
-    if (toast) {
-        toast.fire({
-            icon: 'success',
-            title: `ลบผลสอบของ ${targetStudent.studentName} เรียบร้อยแล้ว`
-        });
-    }
 }
 
 function exportQuizResultsCSV() {
@@ -2835,6 +2698,3 @@ window.renderQBQuestionsList = renderQBQuestionsList;
 window.toggleQBQuestionSelection = toggleQBQuestionSelection;
 window.toggleSelectAllQB = toggleSelectAllQB;
 window.importSelectedQBQuestions = importSelectedQBQuestions;
-window.clearQuizResponses = clearQuizResponses;
-window.clearQuizResponsesById = clearQuizResponsesById;
-window.deleteSingleQuizResponse = deleteSingleQuizResponse;

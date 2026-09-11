@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="th">
 
 <head>
@@ -161,46 +161,39 @@
 
                 <!-- หมวด 1: พื้นที่ส่วนตัว -->
                 <div class="sidebar-section-label">WORKSPACE BOARD</div>
-                <div class="sidebar-nav-item active" id="nav-item-board" onclick="switchMainView('board')" data-tooltip="หน้ากระดาน & โน้ตของฉัน" title="หน้ากระดาน & โน้ตของฉัน">
-                    <span class="nav-icon"><i class="bi bi-kanban-fill text-primary"></i></span>
-                    <span>หน้ากระดาน & โน้ตของฉัน</span>
-                    <span class="badge bg-primary-subtle text-primary ms-auto small">หลัก</span>
-                </div>
                 <div class="sidebar-nav-item" id="nav-item-whiteboard" onclick="switchMainView('whiteboard')" data-tooltip="กระดานไวท์บอร์ด (Whiteboard)" title="กระดานไวท์บอร์ด (Whiteboard)">
                     <span class="nav-icon"><i class="bi bi-easel2-fill text-info"></i></span>
                     <span>กระดานไวท์บอร์ด (Whiteboard)</span>
-                    <span class="badge bg-info-subtle text-info ms-auto small">วาดเขียน</span>
                 </div>
 
                 <!-- หมวด 2: เครื่องมือและกิจกรรม -->
-                <div class="sidebar-section-label mt-3">ระบบและกิจกรรมการสอน</div>
+                <div class="sidebar-section-label sidebar-section-link mt-3" id="nav-item-teaching" onclick="switchMainView('teaching')" data-tooltip="รวมระบบและกิจกรรมการสอนทั้งหมด" title="คลิกเพื่อดูฟังก์ชันรวมทุกระบบและกิจกรรมการสอน">
+                    <span>ระบบและกิจกรรมการสอน</span>
+                    <i class="bi bi-chevron-right text-xs opacity-75"></i>
+                </div>
 
                 <!-- ⚡ Gyver Quick Tools -->
                 <div class="sidebar-nav-item" id="nav-item-quick" onclick="switchMainView('quick')" data-tooltip="เครื่องมือด่วน (Quick Tools)" title="เครื่องมือด่วน (Quick Tools)">
                     <span class="nav-icon"><i class="bi bi-lightning-charge-fill text-danger"></i></span>
                     <span>เครื่องมือด่วน (Quick Tools)</span>
-                    <span class="badge bg-danger-subtle text-danger ms-auto small">Lv.0</span>
                 </div>
 
                 <!-- 🎮 Gyver Education (กิจกรรมห้องเรียนอัจฉริยะ) -->
                 <div class="sidebar-nav-item" id="nav-item-education" onclick="switchMainView('education')" data-tooltip="Gyver Education (ห้องเรียน)" title="Gyver Education (ห้องเรียน)">
                     <span class="nav-icon"><i class="bi bi-controller text-warning"></i></span>
                     <span>Gyver Education (ห้องเรียน)</span>
-                    <span class="badge bg-warning-subtle text-warning-emphasis ms-auto small">Lv.1</span>
                 </div>
 
                 <!-- 📝 Gyver Assessment & Evaluation (วัดผลและประเมิน) -->
                 <div class="sidebar-nav-item" id="nav-item-assessment" onclick="switchMainView('assessment')" data-tooltip="วัดผล & ประเมิน (Assessment)" title="วัดผล & ประเมิน (Assessment)">
                     <span class="nav-icon"><i class="bi bi-clipboard2-check-fill text-info"></i></span>
                     <span>วัดผล & ประเมิน (Assessment)</span>
-                    <span class="badge bg-info-subtle text-info ms-auto small">Lv.1</span>
                 </div>
 
                 <!-- 📚 Gyver Teacher Studio (จัดการผู้สอน) -->
                 <div class="sidebar-nav-item" id="nav-item-teacher" onclick="switchMainView('teacher')" data-tooltip="คลังสื่อ & จัดการผู้สอน" title="คลังสื่อ & จัดการผู้สอน">
                     <span class="nav-icon"><i class="bi bi-mortarboard-fill text-success"></i></span>
                     <span>คลังสื่อ & จัดการผู้สอน</span>
-                    <span class="badge bg-success-subtle text-success ms-auto small">Lv.1</span>
                 </div>
 
                 <!-- 💼 Gyver Business Tools (เครื่องมือส่วนตัว) -->
@@ -216,7 +209,6 @@
                     <span class="badge bg-success rounded-circle p-1"> </span>
                     <span class="small text-white-50">Gyver Workspace Ready</span>
                 </div>
-                <span class="badge bg-dark border border-secondary text-white-50 small" data-tooltip="Workspace 2.0">v2.0</span>
             </div>
         </aside>
 
@@ -257,9 +249,6 @@
 
                 <!-- 🖼️ Widget 1: Welcome Banner -->
                 <div class="widget-item mb-4 position-relative widget-fade-in" id="widget-banner">
-                    <button type="button" class="btn-widget-close" onclick="toggleWidget('banner', false)" title="ซ่อนแบนเนอร์นี้">
-                        <i class="bi bi-x-lg"></i>
-                    </button>
                     <div class="hero-banner position-relative overflow-hidden">
                         <div class="row align-items-center position-relative z-1">
                             <div class="col-md-8">
@@ -285,65 +274,15 @@
                 <!-- ⚡ Widget 2: แถว Quick Shortcuts ทางลัดด่วนบนหน้ากระดาน -->
                 <div class="widget-item mb-4 position-relative widget-fade-in" id="widget-shortcuts">
                     <div class="d-flex justify-content-between align-items-center mb-2 px-1">
-                        <div class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.05em; font-size: 0.76rem;">
+                        <div class="fw-bold text-dark small text-uppercase d-flex align-items-center gap-1" style="letter-spacing: 0.05em; font-size: 0.76rem;">
                             <i class="bi bi-lightning-charge-fill text-warning me-1"></i>ทางลัดด่วน (Quick Shortcuts)
                         </div>
-                        <button type="button" class="btn-widget-close-inline" onclick="toggleWidget('shortcuts', false)" title="ซ่อนทางลัดด่วน">
-                            <i class="bi bi-x-lg me-1"></i><span>ซ่อน</span>
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 small d-flex align-items-center gap-1 shadow-sm fw-semibold" onclick="openCustomizeShortcutsModal()" title="เลือกสลับเปลี่ยนทางลัดที่ต้องการแสดง">
+                            <i class="bi bi-sliders me-1"></i><span>ปรับแต่งทางลัด</span>
                         </button>
                     </div>
-                    <div class="row g-3">
-                        <div class="col-6 col-md-3">
-                            <div class="quick-stat-pill" style="cursor: pointer;" onclick="switchMainView('education')">
-                                <div class="rounded-3 p-2 text-white shadow-sm"
-                                    style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
-                                    <i class="bi bi-controller fs-4"></i>
-                                </div>
-                                <div>
-                                    <div class="text-muted small" style="font-size: 0.78rem;">กิจกรรมห้องเรียน</div>
-                                    <div class="fw-bold text-dark fs-6">Gyver Education</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-6 col-md-3">
-                            <div class="quick-stat-pill" style="cursor: pointer;" onclick="switchMainView('assessment')">
-                                <div class="rounded-3 p-2 text-white shadow-sm"
-                                    style="background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);">
-                                    <i class="bi bi-file-earmark-text-fill fs-4"></i>
-                                </div>
-                                <div>
-                                    <div class="text-muted small" style="font-size: 0.78rem;">แบบประเมิน & ควิซ</div>
-                                    <div class="fw-bold text-dark fs-6">Gyver Forms</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-6 col-md-3">
-                            <div class="quick-stat-pill" style="cursor: pointer;" onclick="switchMainView('quick')">
-                                <div class="rounded-3 p-2 text-white shadow-sm"
-                                    style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
-                                    <i class="bi bi-disc-fill fs-4"></i>
-                                </div>
-                                <div>
-                                    <div class="text-muted small" style="font-size: 0.78rem;">หมุนสุ่มชื่อด่วน</div>
-                                    <div class="fw-bold text-dark fs-6">Instant Wheel</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-6 col-md-3">
-                            <div class="quick-stat-pill" style="cursor: pointer;" onclick="openJoinRoomModal()">
-                                <div class="rounded-3 p-2 text-white shadow-sm"
-                                    style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);">
-                                    <i class="bi bi-broadcast fs-4"></i>
-                                </div>
-                                <div>
-                                    <div class="text-muted small" style="font-size: 0.78rem;">เชื่อมต่อห้องสอบ</div>
-                                    <div class="fw-bold text-dark fs-6">ใส่รหัส PIN</div>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="row g-3" id="quick-shortcuts-container">
+                        <!-- Dynamic Quick Shortcuts rendered via JS -->
                     </div>
                 </div>
 
@@ -364,9 +303,6 @@
                                 <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1-5 rounded-pill small">
                                     <i class="bi bi-circle-fill me-1" style="font-size: 0.55rem;"></i>เรียลไทม์
                                 </span>
-                                <button type="button" class="btn-widget-close-inline ms-2" onclick="toggleWidget('clock', false)" title="ซ่อนนาฬิกา">
-                                    <i class="bi bi-x-lg"></i>
-                                </button>
                             </div>
                         </div>
                     </div>
@@ -388,9 +324,6 @@
                             <div class="d-flex align-items-center gap-2">
                                 <button type="button" class="btn btn-sm btn-outline-info rounded-pill px-3 fw-semibold" onclick="switchMainView('whiteboard')">
                                     <i class="bi bi-arrows-fullscreen me-1"></i>เปิดกระดานเต็มจอ
-                                </button>
-                                <button type="button" class="btn-widget-close-inline" onclick="toggleWidget('whiteboard', false)" title="ซ่อนไวท์บอร์ดด่วน">
-                                    <i class="bi bi-x-lg"></i>
                                 </button>
                             </div>
                         </div>
@@ -427,9 +360,6 @@
                                         id="notes-save-status">
                                         <i class="bi bi-cloud-check-fill me-1"></i>บันทึกแล้ว
                                     </span>
-                                    <button type="button" class="btn-widget-close-inline" onclick="toggleWidget('scratchpad', false)" title="ซ่อนโน้ตนี้">
-                                        <i class="bi bi-x-lg"></i>
-                                    </button>
                                 </div>
                             </div>
 
@@ -464,9 +394,6 @@
                                         onclick="addTodoPrompt()">
                                         <i class="bi bi-plus"></i>เพิ่ม
                                     </button>
-                                    <button type="button" class="btn-widget-close-inline" onclick="toggleWidget('todo', false)" title="ซ่อน To-Do นี้">
-                                        <i class="bi bi-x-lg"></i>
-                                    </button>
                                 </div>
                             </div>
 
@@ -487,32 +414,6 @@
                             </div>
                         </div>
                     </div>
-                </div>
-
-                <!-- 📭 Empty state: แสดงเมื่อผู้ใช้ปิดซ่อน Widgets ทั้งหมด -->
-                <div class="board-card text-center py-5 d-none" id="widgets-empty-state">
-                    <i class="bi bi-layout-text-window-reverse text-muted opacity-50" style="font-size: 4rem;"></i>
-                    <h5 class="fw-bold text-dark mt-3">หน้ากระดานกำลังอยู่ในโหมดว่างเปล่า (Clean Mode)</h5>
-                    <p class="text-muted small mb-3">คุณได้ซ่อน Widgets ทั้งหมดไว้ หากต้องการเปิดใช้งานส่วนใด สามารถคลิกปุ่มด้านล่างเพื่อเปิดกลับมาได้ตลอดเวลาครับ</p>
-                    <button class="btn btn-primary rounded-pill px-4 py-2 fw-semibold shadow-sm"
-                        data-bs-toggle="offcanvas" data-bs-target="#widgetDrawer">
-                        <i class="bi bi-ui-checks-grid me-1"></i>เลือกเปิด Widgets ที่นี่
-                    </button>
-                </div>
-
-                <!-- 🎨 โซนด้านล่าง: ปุ่มการ์ดเปิดเมนูปรับแต่งหน้ากระดาน -->
-                <div class="p-3 bg-white rounded-4 border border-dashed text-center mt-4 shadow-sm" id="widget-customize-footer">
-                    <div class="d-flex align-items-center justify-content-center gap-2 mb-1">
-                        <i class="bi bi-ui-checks-grid text-primary fs-5"></i>
-                        <span class="fw-bold text-dark">ปรับแต่งหน้ากระดานส่วนตัวของคุณ (Customize Widgets)</span>
-                    </div>
-                    <p class="text-muted small mb-2" style="max-width: 550px; margin: auto; font-size: 0.8rem;">
-                        เลือกเปิดหรือปิดส่วนต่างๆ เช่น แบนเนอร์, ปุ่มลัด, กระดานโน้ต, หรือ To-Do list เพื่อให้หน้าจอสะอาดตาตามสไตล์คุณ
-                    </p>
-                    <button class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1-5 fw-semibold"
-                        data-bs-toggle="offcanvas" data-bs-target="#widgetDrawer">
-                        <i class="bi bi-sliders me-1"></i>เปิดเมนูจัดการ Widgets
-                    </button>
                 </div>
             </div>
 
@@ -623,8 +524,244 @@
                     </div>
                 </div>
             </div>
-                 ⚡ VIEW 2: หมวดหมู่ Gyver Quick Tools
+                 
+            <!-- ----------------------------------------------------
+                 🎓 VIEW: ศูนย์รวมระบบและกิจกรรมการสอนทั้งหมด (Teaching System Overview)
                  ---------------------------------------------------- -->
+            <div id="view-teaching-section" class="d-none" data-tool-section data-tool-category="teaching">
+                <div class="category-breadcrumb-bar">
+                    <div class="d-flex align-items-center gap-2">
+                        <button class="btn btn-sm btn-outline-secondary rounded-pill" onclick="switchMainView('board')">
+                            <i class="bi bi-arrow-left me-1"></i>กลับหน้ากระดาน
+                        </button>
+                        <span class="text-muted">/</span>
+                        <span class="fw-bold text-dark"><i class="bi bi-collection-play-fill text-primary me-1"></i>ศูนย์รวมระบบและกิจกรรมการสอนทั้งหมด</span>
+                    </div>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-1">รวมทุกหมวดหมู่</span>
+                </div>
+
+
+
+                <!-- Category 1: เครื่องมือด่วน (Quick Tools) -->
+                <div class="mb-4">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h6 class="fw-bold text-dark m-0 d-flex align-items-center gap-2">
+                            <i class="bi bi-lightning-charge-fill text-danger fs-5"></i>
+                            <span>1. เครื่องมือด่วน (Quick Tools)</span>
+                        </h6>
+                        <button class="btn btn-sm btn-link text-decoration-none text-muted p-0" onclick="switchMainView('quick')">ดูเฉพาะหมวดนี้ <i class="bi bi-arrow-right"></i></button>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6 col-lg-4">
+                            <a href="features/education/wheel/standalone_wheel.html" class="action-card p-3 d-flex align-items-center gap-3 text-decoration-none h-100">
+                                <div class="icon-box icon-gradient-wheel text-white shadow-sm">
+                                    <i class="bi bi-disc-fill"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center justify-content-between mb-1">
+                                        <h6 class="fw-bold text-dark m-0 fs-6">Gyver Instant Wheel</h6>
+                                        <span class="badge-ready"><i class="bi bi-check-circle-fill me-1"></i>พร้อมใช้งาน</span>
+                                    </div>
+                                    <p class="text-secondary small m-0">ระบบวงล้อสุ่มชื่อด่วน พิมพ์รายชื่อแล้วหมุนสุ่มได้ทันที</p>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-md-6 col-lg-4">
+                            <a href="features/education/standalone_guess/standalone_guess.html" class="action-card p-3 d-flex align-items-center gap-3 text-decoration-none h-100">
+                                <div class="icon-box icon-gradient-guess text-white shadow-sm">
+                                    <i class="bi bi-123"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center justify-content-between mb-1">
+                                        <h6 class="fw-bold text-dark m-0 fs-6">Gyver Number Guess</h6>
+                                        <span class="badge-ready"><i class="bi bi-check-circle-fill me-1"></i>พร้อมใช้งาน</span>
+                                    </div>
+                                    <p class="text-secondary small m-0">เกมทายตัวเลขปริศนา แจ้งเตือนมากไป/น้อยไปทันที</p>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Category 2: Gyver Education (กิจกรรมห้องเรียน) -->
+                <div class="mb-4">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h6 class="fw-bold text-dark m-0 d-flex align-items-center gap-2">
+                            <i class="bi bi-controller text-warning fs-5"></i>
+                            <span>2. Gyver Education (กิจกรรมห้องเรียนอัจฉริยะ)</span>
+                        </h6>
+                        <button class="btn btn-sm btn-link text-decoration-none text-muted p-0" onclick="switchMainView('education')">ดูเฉพาะหมวดนี้ <i class="bi bi-arrow-right"></i></button>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6 col-lg-4">
+                            <div class="action-card disabled-card protected-tool-card p-3 d-flex align-items-center gap-3 h-100" style="cursor: pointer;" onclick="handleProtectedToolClick(event, 'features/education/wheel/wheel_display.html', 'Gyver Wheel (Live)')">
+                                <div class="icon-box icon-gradient-wheel text-white shadow-sm">
+                                    <i class="bi bi-disc-fill"></i>
+                                </div>
+                                <div>
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <h6 class="fw-bold text-muted m-0 fs-6">Gyver Wheel (Live)</h6>
+                                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
+                                    </div>
+                                    <p class="text-muted small m-0">ล็อกอินด้วยบัญชีสมาชิกเพื่อใช้งานระบบวงล้อเรียลไทม์</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-4">
+                            <div class="action-card disabled-card protected-tool-card p-3 d-flex align-items-center gap-3 h-100" style="cursor: pointer;" onclick="handleProtectedToolClick(event, 'features/education/gyver%20Code%20Race/race_home.html', 'Gyver Code Race')">
+                                <div class="icon-box icon-gradient-race text-white shadow-sm">
+                                    <i class="bi bi-controller"></i>
+                                </div>
+                                <div>
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <h6 class="fw-bold text-muted m-0 fs-6">Gyver Code Race</h6>
+                                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
+                                    </div>
+                                    <p class="text-muted small m-0">ล็อกอินด้วยบัญชีสมาชิกเพื่อใช้งานเกมแข่งพิมพ์โค้ดออนไลน์</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-4">
+                            <div class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100">
+                                <div class="icon-box icon-gradient-guess text-white shadow-sm">
+                                    <i class="bi bi-easel2-fill"></i>
+                                </div>
+                                <div>
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <h6 class="fw-bold text-muted m-0 fs-6">E-Learning Tools</h6>
+                                        <span class="badge bg-light text-secondary border">Soon</span>
+                                    </div>
+                                    <p class="text-muted small m-0">คลังสื่อการเรียนการสอนและเครื่องมือคำนวณ</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Category 3: วัดผล & ประเมิน (Assessment) -->
+                <div class="mb-4">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h6 class="fw-bold text-dark m-0 d-flex align-items-center gap-2">
+                            <i class="bi bi-clipboard2-check-fill text-info fs-5"></i>
+                            <span>3. วัดผล & ประเมิน (Gyver Assessment & Evaluation)</span>
+                        </h6>
+                        <button class="btn btn-sm btn-link text-decoration-none text-muted p-0" onclick="switchMainView('assessment')">ดูเฉพาะหมวดนี้ <i class="bi bi-arrow-right"></i></button>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6 col-lg-4">
+                            <div class="action-card disabled-card protected-tool-card p-3 d-flex align-items-center gap-3 h-100" style="cursor: pointer;" onclick="handleProtectedToolClick(event, 'features/education/forms/forms.html', 'Gyver Forms')">
+                                <div class="icon-box icon-gradient-forms text-white shadow-sm">
+                                    <i class="bi bi-file-earmark-text-fill"></i>
+                                </div>
+                                <div>
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <h6 class="fw-bold text-muted m-0 fs-6">Gyver Forms</h6>
+                                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
+                                    </div>
+                                    <p class="text-muted small m-0">ระบบสร้างแบบสอบถามออนไลน์ สรุปผลด้วยกราฟและส่งออก CSV</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-4">
+                            <div class="action-card disabled-card protected-tool-card p-3 d-flex align-items-center gap-3 h-100" style="cursor: pointer;" onclick="handleProtectedToolClick(event, 'features/education/quiz/quiz.html', 'Gyver Quiz')">
+                                <div class="icon-box icon-gradient-quiz text-white shadow-sm">
+                                    <i class="bi bi-patch-question-fill"></i>
+                                </div>
+                                <div>
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <h6 class="fw-bold text-muted m-0 fs-6">Gyver Quiz</h6>
+                                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
+                                    </div>
+                                    <p class="text-muted small m-0">ระบบสร้างแบบทดสอบออนไลน์ ตรวจคำตอบและตัดเกรดอัตโนมัติ</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Category 4: คลังสื่อ & จัดการผู้สอน (Teacher Studio) -->
+                <div class="mb-4">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h6 class="fw-bold text-dark m-0 d-flex align-items-center gap-2">
+                            <i class="bi bi-mortarboard-fill text-success fs-5"></i>
+                            <span>4. คลังสื่อ & จัดการผู้สอน (Gyver Teacher Studio)</span>
+                        </h6>
+                        <button class="btn btn-sm btn-link text-decoration-none text-muted p-0" onclick="switchMainView('teacher')">ดูเฉพาะหมวดนี้ <i class="bi bi-arrow-right"></i></button>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6 col-lg-4">
+                            <div class="action-card disabled-card protected-tool-card p-3 d-flex align-items-center gap-3 h-100" style="cursor: pointer;" onclick="handleProtectedToolClick(event, 'features/education/question_bank/question_bank.html', 'Gyver Question Bank')">
+                                <div class="icon-box icon-gradient-bank text-white shadow-sm">
+                                    <i class="bi bi-question-square-fill"></i>
+                                </div>
+                                <div>
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <h6 class="fw-bold text-muted m-0 fs-6">Gyver Question Bank</h6>
+                                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
+                                    </div>
+                                    <p class="text-muted small m-0">คลังคำถามและข้อสอบ สำหรับเชื่อมต่อวงล้อและเกมพิมพ์โค้ด</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-4">
+                            <div class="action-card disabled-card protected-tool-card p-3 d-flex align-items-center gap-3 h-100" style="cursor: pointer;" onclick="handleProtectedToolClick(event, 'auth/classroom_manage/classroom_manage.html', 'Classroom Management')">
+                                <div class="icon-box icon-gradient-classroom text-white shadow-sm">
+                                    <i class="bi bi-people-fill"></i>
+                                </div>
+                                <div>
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <h6 class="fw-bold text-muted m-0 fs-6">Classroom Management</h6>
+                                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
+                                    </div>
+                                    <p class="text-muted small m-0">สร้างห้องเรียน จัดการรายชื่อนักเรียน และ QR Code เข้าร่วมห้อง</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-4">
+                            <div class="action-card disabled-card protected-tool-card p-3 d-flex align-items-center gap-3 h-100" style="cursor: pointer;" onclick="handleProtectedToolClick(event, 'auth/history/history.html', 'Activity History')">
+                                <div class="icon-box icon-gradient-history text-white shadow-sm">
+                                    <i class="bi bi-clock-history"></i>
+                                </div>
+                                <div>
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <h6 class="fw-bold text-muted m-0 fs-6">Activity History</h6>
+                                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">ต้องล็อกอิน</span>
+                                    </div>
+                                    <p class="text-muted small m-0">ดูสถิติการเล่น ประวัติคะแนน และผลกิจกรรมย้อนหลัง</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Category 5: เครื่องมือส่วนตัว (Business Tools) -->
+                <div class="mb-4">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h6 class="fw-bold text-dark m-0 d-flex align-items-center gap-2">
+                            <i class="bi bi-briefcase-fill text-secondary fs-5"></i>
+                            <span>5. เครื่องมือส่วนตัว (Business Tools)</span>
+                        </h6>
+                        <button class="btn btn-sm btn-link text-decoration-none text-muted p-0" onclick="switchMainView('business')">ดูเฉพาะหมวดนี้ <i class="bi bi-arrow-right"></i></button>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6 col-lg-4">
+                            <div class="action-card disabled-card p-3 d-flex align-items-center gap-3 h-100">
+                                <div class="icon-box bg-secondary bg-gradient text-white">
+                                    <i class="bi bi-file-earmark-spreadsheet-fill"></i>
+                                </div>
+                                <div>
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <h6 class="fw-bold text-muted m-0 fs-6">Quotation Creator</h6>
+                                        <span class="badge bg-light text-secondary border">Soon</span>
+                                    </div>
+                                    <p class="text-muted small m-0">ระบบออกใบเสนอราคา คำนวณภาษี และดาวน์โหลด PDF</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div id="view-quick-section" class="d-none" data-tool-section data-tool-category="quick">
                 <div class="category-breadcrumb-bar">
                     <div class="d-flex align-items-center gap-2">
@@ -1384,6 +1521,37 @@
                 <button type="button" class="btn btn-outline-secondary btn-sm flex-fill rounded-pill py-2 fw-semibold" onclick="resetDefaultWidgets()">
                     <i class="bi bi-arrow-counterclockwise me-1"></i>ค่าเริ่มต้น
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ⚙️ Modal ปรับแต่งทางลัดด่วน (Customize Quick Shortcuts Modal) -->
+    <div class="modal fade" id="customizeShortcutsModal" tabindex="-1" aria-labelledby="customizeShortcutsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <div>
+                        <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2" id="customizeShortcutsModalLabel">
+                            <i class="bi bi-lightning-charge-fill text-warning fs-4"></i>
+                            <span>ปรับแต่งทางลัดด่วน (Custom Quick Shortcuts)</span>
+                        </h5>
+                        <p class="text-muted small mb-0" style="font-size: 0.82rem;">
+                            เลือกเปิดหรือปิดเมนูทางลัดที่ต้องการให้แสดงบนหน้ากระดานของคุณ
+                        </p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-3">
+                    <div class="row g-3" id="shortcuts-selection-list">
+                        <!-- Dynamic Shortcut Selection Items -->
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0 gap-2">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" onclick="saveShortcutsSelection()">
+                        <i class="bi bi-check-lg me-1"></i>บันทึกทางลัด
+                    </button>
+                </div>
             </div>
         </div>
     </div>

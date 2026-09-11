@@ -36,6 +36,7 @@ function toggleSidebar() {
 const views = {
     'board': 'view-board-section',
     'whiteboard': 'view-whiteboard-section',
+    'teaching': 'view-teaching-section',
     'quick': 'view-quick-section',
     'education': 'view-education-section',
     'assessment': 'view-assessment-section',
@@ -55,8 +56,8 @@ function switchMainView(categoryKey) {
     const targetEl = document.getElementById(targetId);
     if (targetEl) targetEl.classList.remove('d-none');
 
-    // Update active state in sidebar nav items
-    document.querySelectorAll('.sidebar-nav-item').forEach(item => {
+    // Update active state in sidebar nav items & section links
+    document.querySelectorAll('.sidebar-nav-item, .sidebar-section-link').forEach(item => {
         item.classList.remove('active');
     });
     const activeNav = document.getElementById(`nav-item-${categoryKey}`);
@@ -357,16 +358,6 @@ function updateWidgetBadgesAndLayout() {
             todoCol.className = 'col-12 col-lg-5';
         }
     }
-
-    // Empty state check
-    const emptyState = document.getElementById('widgets-empty-state');
-    if (emptyState) {
-        if (activeCount === 0) {
-            emptyState.classList.remove('d-none');
-        } else {
-            emptyState.classList.add('d-none');
-        }
-    }
 }
 
 // 🕒 Live Clock Updater
@@ -394,9 +385,14 @@ function initLiveClock() {
 }
 
 // ====================================================
-// 6. Page Initialization on DOMContentLoaded
+// 7. Page Initialization on DOMContentLoaded
 // ====================================================
 document.addEventListener('DOMContentLoaded', () => {
+    // Clear any previous drag layout storage
+    try {
+        localStorage.removeItem('gyver_widget_layout_v2');
+    } catch (e) {}
+
     // Restore sidebar collapsed state
     try {
         if (window.innerWidth >= 992 && localStorage.getItem('gyver_sidebar_collapsed') === 'true') {
@@ -406,10 +402,235 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) {}
 
     loadWidgetConfig();
+    loadCustomShortcuts();
     initLiveClock();
     loadBoardNotes();
     loadBoardTodos();
+
     if (typeof initWhiteboard === 'function') {
         initWhiteboard();
     }
 });
+
+// ====================================================
+// 📊 CUSTOMIZABLE QUICK SHORTCUTS SYSTEM
+// ====================================================
+const SHORTCUTS_STORAGE_KEY = 'gyver_custom_shortcuts';
+
+const ALL_SHORTCUT_CATALOG = [
+    {
+        id: 'education',
+        title: 'Gyver Education',
+        subtitle: 'กิจกรรมห้องเรียน',
+        icon: 'bi-controller',
+        gradient: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+        action: "switchMainView('education')"
+    },
+    {
+        id: 'forms',
+        title: 'Gyver Forms',
+        subtitle: 'แบบประเมิน & ควิซ',
+        icon: 'bi-file-earmark-text-fill',
+        gradient: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
+        action: "switchMainView('assessment')"
+    },
+    {
+        id: 'wheel',
+        title: 'Instant Wheel',
+        subtitle: 'หมุนสุ่มชื่อด่วน',
+        icon: 'bi-disc-fill',
+        gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+        action: "switchMainView('quick')"
+    },
+    {
+        id: 'pin',
+        title: 'ใส่รหัส PIN',
+        subtitle: 'เชื่อมต่อห้องสอบ',
+        icon: 'bi-broadcast',
+        gradient: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
+        action: 'openJoinRoomModal()'
+    },
+    {
+        id: 'whiteboard',
+        title: 'ไวท์บอร์ด',
+        subtitle: 'กระดานวาดเขียน',
+        icon: 'bi-easel2-fill',
+        gradient: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
+        action: "switchMainView('whiteboard')"
+    },
+    {
+        id: 'quiz',
+        title: 'Gyver Quiz',
+        subtitle: 'ระบบสร้างแบบทดสอบ',
+        icon: 'bi-patch-question-fill',
+        gradient: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
+        action: "switchMainView('assessment')"
+    },
+    {
+        id: 'code_race',
+        title: 'Code Race',
+        subtitle: 'แข่งพิมพ์โค้ดภาษา Python',
+        icon: 'bi-code-slash',
+        gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+        action: "switchMainView('education')"
+    },
+    {
+        id: 'question_bank',
+        title: 'คลังข้อสอบ',
+        subtitle: 'คลังคำถามและข้อสอบ',
+        icon: 'bi-question-square-fill',
+        gradient: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+        action: "switchMainView('teacher')"
+    },
+    {
+        id: 'classroom',
+        title: 'จัดการห้องเรียน',
+        subtitle: 'รายชื่อนักเรียน & เช็คชื่อ',
+        icon: 'bi-people-fill',
+        gradient: 'linear-gradient(135deg, #14b8a6 0%, #0d9488 100%)',
+        action: "switchMainView('teacher')"
+    },
+    {
+        id: 'number_guess',
+        title: 'Number Guess',
+        subtitle: 'เกมทายตัวเลขปริศนา',
+        icon: 'bi-123',
+        gradient: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+        action: "switchMainView('quick')"
+    },
+    {
+        id: 'history',
+        title: 'ประวัติกิจกรรม',
+        subtitle: 'สถิติและคะแนนย้อนหลัง',
+        icon: 'bi-clock-history',
+        gradient: 'linear-gradient(135deg, #64748b 0%, #475569 100%)',
+        action: "switchMainView('teacher')"
+    }
+];
+
+const DEFAULT_SHORTCUT_IDS = ['education', 'forms', 'wheel', 'pin'];
+let selectedShortcutIds = [...DEFAULT_SHORTCUT_IDS];
+
+function loadCustomShortcuts() {
+    try {
+        const saved = localStorage.getItem(SHORTCUTS_STORAGE_KEY);
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                selectedShortcutIds = parsed;
+            }
+        }
+    } catch (e) {
+        selectedShortcutIds = [...DEFAULT_SHORTCUT_IDS];
+    }
+    renderQuickShortcuts();
+}
+
+function saveCustomShortcuts() {
+    try {
+        localStorage.setItem(SHORTCUTS_STORAGE_KEY, JSON.stringify(selectedShortcutIds));
+    } catch (e) {}
+    renderQuickShortcuts();
+}
+
+function renderQuickShortcuts() {
+    const container = document.getElementById('quick-shortcuts-container');
+    if (!container) return;
+
+    const itemsToRender = ALL_SHORTCUT_CATALOG.filter(item => selectedShortcutIds.includes(item.id));
+
+    let colClass = 'col-6 col-md-3';
+    if (itemsToRender.length === 1) colClass = 'col-12';
+    else if (itemsToRender.length === 2) colClass = 'col-6';
+    else if (itemsToRender.length === 3) colClass = 'col-12 col-md-4';
+    else if (itemsToRender.length >= 4) colClass = 'col-6 col-md-3';
+
+    container.innerHTML = itemsToRender.map(item => `
+        <div class="${colClass}">
+            <div class="quick-stat-pill" style="cursor: pointer;" onclick="${item.action}">
+                <div class="rounded-3 p-2 text-white shadow-sm" style="background: ${item.gradient}; flex-shrink: 0;">
+                    <i class="bi ${item.icon} fs-4"></i>
+                </div>
+                <div class="text-truncate">
+                    <div class="text-muted small text-truncate" style="font-size: 0.78rem;">${item.subtitle}</div>
+                    <div class="fw-bold text-dark fs-6 text-truncate">${item.title}</div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function openCustomizeShortcutsModal() {
+    const modalEl = document.getElementById('customizeShortcutsModal');
+    if (!modalEl) return;
+
+    const listContainer = document.getElementById('shortcuts-selection-list');
+    if (listContainer) {
+        listContainer.innerHTML = ALL_SHORTCUT_CATALOG.map(item => {
+            const isChecked = selectedShortcutIds.includes(item.id);
+            return `
+                <div class="col-md-6">
+                    <label class="d-flex align-items-center justify-content-between p-3 rounded-3 border bg-white cursor-pointer shadow-sm h-100 position-relative" for="chk_sc_${item.id}" style="transition: all 0.2s ease;">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-3 p-2 text-white d-flex align-items-center justify-content-center flex-shrink-0" style="background: ${item.gradient}; width: 42px; height: 42px;">
+                                <i class="bi ${item.icon} fs-5"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold text-dark small">${item.title}</div>
+                                <div class="text-muted text-xs" style="font-size: 0.75rem;">${item.subtitle}</div>
+                            </div>
+                        </div>
+                        <div class="form-check form-switch fs-5 m-0 ms-2">
+                            <input class="form-check-input shortcut-toggle-item" type="checkbox" id="chk_sc_${item.id}" value="${item.id}" ${isChecked ? 'checked' : ''}>
+                        </div>
+                    </label>
+                </div>
+            `;
+        }).join('');
+    }
+
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+}
+
+function saveShortcutsSelection() {
+    const checkboxes = document.querySelectorAll('.shortcut-toggle-item');
+    const newSelected = [];
+    checkboxes.forEach(chk => {
+        if (chk.checked) {
+            newSelected.push(chk.value);
+        }
+    });
+
+    if (newSelected.length === 0) {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'warning',
+                title: 'กรุณาเลือกอย่างน้อย 1 ทางลัด',
+                text: 'คุณต้องเลือกอย่างน้อย 1 ทางลัดด่วนเพื่อแสดงผลบนหน้ากระดาน'
+            });
+        } else {
+            alert('กรุณาเลือกอย่างน้อย 1 ทางลัด');
+        }
+        return;
+    }
+
+    selectedShortcutIds = newSelected;
+    saveCustomShortcuts();
+
+    const modalEl = document.getElementById('customizeShortcutsModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
+
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            icon: 'success',
+            title: 'บันทึกทางลัดสำเร็จ!',
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 2000
+        });
+    }
+}
+

@@ -194,20 +194,9 @@ function updateUIForLoggedOut() {
  * 🔓 Toggle card UI locks based on login status
  */
 function unlockProtectedCards(isLoggedIn) {
-    const protectedCardIds = [
-        'education-wheel-card',
-        'education-race-card',
-        'teacher-forms-card',
-        'teacher-quiz-card',
-        'education-bank-card',
-        'teacher-classroom-card',
-        'teacher-history-card'
-    ];
+    const protectedCards = document.querySelectorAll('.protected-tool-card, #education-wheel-card, #education-race-card, #teacher-forms-card, #teacher-quiz-card, #education-bank-card, #teacher-classroom-card, #teacher-history-card');
 
-    protectedCardIds.forEach(id => {
-        const card = document.getElementById(id);
-        if (!card) return;
-
+    protectedCards.forEach(card => {
         const titleEl = card.querySelector('h6');
         const badge = card.querySelector('.badge');
 

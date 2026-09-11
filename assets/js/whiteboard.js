@@ -217,11 +217,47 @@ function undoWb() {
     wbCtx.putImageData(previous, 0, 0);
 }
 
-function clearWb() {
+function clearWb(force = false) {
     if (!wbCtx || !wbCanvas) return;
-    if (confirm('คุณต้องการล้างภาพวาดบนกระดานทั้งหมดใช่หรือไม่?')) {
+
+    const doClear = () => {
         saveWhiteboardState();
+        const prevComp = wbCtx.globalCompositeOperation;
+        const prevAlpha = wbCtx.globalAlpha;
+
+        wbCtx.globalCompositeOperation = 'source-over';
+        wbCtx.globalAlpha = 1.0;
         wbCtx.clearRect(0, 0, wbCanvas.width, wbCanvas.height);
+
+        wbCtx.globalCompositeOperation = prevComp;
+        wbCtx.globalAlpha = prevAlpha;
+    };
+
+    if (force) {
+        doClear();
+        return;
+    }
+
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'ล้างกระดานทั้งหมด?',
+            text: 'ภาพวาดบนกระดานไวท์บอร์ดจะถูกลบทันที',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'ใช่, ล้างกระดาน',
+            cancelButtonText: 'ยกเลิก',
+            customClass: {
+                popup: 'rounded-4'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                doClear();
+            }
+        });
+    } else if (confirm('คุณต้องการล้างภาพวาดบนกระดานทั้งหมดใช่หรือไม่?')) {
+        doClear();
     }
 }
 
