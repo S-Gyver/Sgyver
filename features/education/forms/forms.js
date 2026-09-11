@@ -235,6 +235,8 @@ async function syncFormToSupabase(formObj) {
  */
 async function loadFormResponses(formId) {
     responsesList = getLocalResponses(formId);
+    const noticeEl = document.getElementById('supabase-missing-notice');
+
     if (window.supabaseClient && isSupabaseTableAvailable) {
         try {
             const { data, error } = await window.supabaseClient
@@ -243,20 +245,29 @@ async function loadFormResponses(formId) {
                 .eq('form_id', formId)
                 .order('created_at', { ascending: false });
 
-            if (!error && data) {
-                responsesList = data.map(item => ({
-                    id: item.id,
-                    responderName: item.responder_name || 'ผู้ตอบแบบสอบถาม',
-                    answers: typeof item.answers === 'string' ? JSON.parse(item.answers) : item.answers,
-                    quizScore: item.quiz_score || 0,
-                    totalPoints: item.total_points || 0,
-                    isPassed: item.is_passed || false,
-                    submittedAt: item.created_at
-                }));
-                localStorage.setItem(`gyver_form_responses_${formId}`, JSON.stringify(responsesList));
+            if (error) {
+                console.warn('Supabase gyver_form_responses error:', error);
+                if (error.code === '42P01' || error.message?.includes('does not exist') || error.status === 400 || error.code === 'PGRST200') {
+                    if (noticeEl) noticeEl.classList.remove('d-none');
+                }
+            } else if (data) {
+                if (noticeEl) noticeEl.classList.add('d-none');
+                if (data.length > 0) {
+                    responsesList = data.map(item => ({
+                        id: item.id,
+                        responderName: item.responder_name || 'ผู้ตอบแบบสอบถาม',
+                        answers: typeof item.answers === 'string' ? JSON.parse(item.answers) : (item.answers || {}),
+                        quizScore: Number(item.quiz_score) || 0,
+                        totalPoints: Number(item.total_points) || 0,
+                        isPassed: !!item.is_passed,
+                        submittedAt: item.created_at
+                    }));
+                    localStorage.setItem(`gyver_form_responses_${formId}`, JSON.stringify(responsesList));
+                }
             }
         } catch (e) {
             console.warn('Supabase response fetch skipped:', e);
+            if (noticeEl) noticeEl.classList.remove('d-none');
         }
     }
 }
@@ -1047,25 +1058,40 @@ function showResponseSuccessModal(respObj) {
 }
 
 async function syncResponseToSupabase(respObj) {
+    // Notify same-device browser tabs via BroadcastChannel
+    try {
+        if (typeof BroadcastChannel !== 'undefined') {
+            const bc = new BroadcastChannel('gyver_forms_channel');
+            bc.postMessage({ type: 'NEW_RESPONSE', formId: currentForm.id, response: respObj });
+            bc.close();
+        }
+    } catch (e) {}
+
     if (!window.supabaseClient || !isSupabaseTableAvailable) return;
     try {
-        await window.supabaseClient.from('gyver_form_responses').insert({
+        const { error } = await window.supabaseClient.from('gyver_form_responses').insert({
             id: respObj.id,
             form_id: currentForm.id,
             responder_name: respObj.responderName,
-            answers: JSON.stringify(respObj.answers),
+            answers: respObj.answers,
             quiz_score: respObj.quizScore,
             total_points: respObj.totalPoints,
             is_passed: respObj.isPassed,
             created_at: respObj.submittedAt
         });
+        if (error) {
+            console.warn('Could not insert form response into Supabase:', error);
+            if (error.code === '42P01' || error.message?.includes('does not exist')) {
+                console.error('⚠️ Table public.gyver_form_responses does not exist in Supabase yet. Run supabase_schema.sql to create it.');
+            }
+        }
     } catch (e) {
         console.warn('Response sync skipped:', e);
     }
 }
 
 // ====================================================
-// 4. Analytics View (หน้าสรุปผล & Item Analysis)
+// 4. Analytics View (หน้าสรุปผล, รายชื่อผู้ตอบ & Item Analysis)
 // ====================================================
 
 function renderAnalyticsView() {
@@ -1075,14 +1101,474 @@ function renderAnalyticsView() {
 
     if (!currentForm) return;
 
+    const isQuiz = !!currentForm.settings?.isQuiz;
+
     const titleEl = document.getElementById('analytics-form-title');
     if (titleEl) titleEl.innerText = currentForm.title || 'สรุปผล';
+
+    // Subtitle text
+    const subtitleEl = document.querySelector('#view-responses-container p.text-subtle');
+    if (subtitleEl) {
+        subtitleEl.innerText = isQuiz
+            ? 'ข้อมูลผู้ส่งคำตอบ สถิติคะแนน และการวิเคราะห์คุณภาพข้อสอบ (Item Analysis)'
+            : 'ข้อมูลผู้ส่งคำตอบ สถิติความพึงพอใจ และข้อเสนอแนะ';
+    }
+
+    // Table header labels
+    const thScore = document.getElementById('th-score-header');
+    if (thScore) thScore.innerText = isQuiz ? 'ผลคะแนน' : 'ประเภท';
 
     const respCountEl = document.getElementById('analytics-total-responses');
     if (respCountEl) respCountEl.innerText = responsesList.length;
 
-    renderItemAnalysis();
+    renderResponsesList();
+
+    // Toggle Survey Summary vs Quiz Item Analysis
+    const surveyContainer = document.getElementById('survey-summary-container');
+    const quizContainer = document.getElementById('item-analysis-container');
+
+    if (isQuiz) {
+        if (surveyContainer) surveyContainer.classList.add('d-none');
+        if (quizContainer) quizContainer.classList.remove('d-none');
+        renderItemAnalysis();
+    } else {
+        if (quizContainer) quizContainer.classList.add('d-none');
+        if (surveyContainer) surveyContainer.classList.remove('d-none');
+        renderSurveySummary();
+    }
 }
+
+/**
+ * 👥 แสดงรายชื่อผู้ส่งคำตอบแบบสอบถาม (Individual Submissions List)
+ */
+function renderResponsesList() {
+    const tbody = document.getElementById('responses-list-tbody');
+    if (!tbody || !currentForm) return;
+    tbody.innerHTML = '';
+
+    if (responsesList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-subtle py-4">ยังไม่มีผู้ส่งคำตอบในแบบฟอร์มนี้</td></tr>`;
+        return;
+    }
+
+    const isQuiz = !!currentForm.settings?.isQuiz;
+
+    responsesList.forEach((resp, idx) => {
+        const tr = document.createElement('tr');
+        const dateStr = resp.submittedAt ? new Date(resp.submittedAt).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' }) : '-';
+        
+        let scoreHtml = '<span class="badge bg-purple-subtle text-purple border border-purple">แบบสอบถาม</span>';
+        let statusHtml = '<span class="badge bg-success"><i class="bi bi-check2 me-1"></i>ส่งแล้ว</span>';
+
+        if (isQuiz) {
+            scoreHtml = `<span class="fw-bold text-warning">${resp.quizScore || 0}</span> / ${resp.totalPoints || 0}`;
+            statusHtml = resp.isPassed 
+                ? '<span class="badge bg-success">ผ่าน</span>' 
+                : '<span class="badge bg-danger">ไม่ผ่าน</span>';
+        }
+
+        tr.innerHTML = `
+            <td class="text-subtle font-mono">${idx + 1}</td>
+            <td class="fw-bold text-white">${escapeHtml(resp.responderName || 'ผู้ตอบแบบสอบถาม')}</td>
+            <td>${scoreHtml}</td>
+            <td>${statusHtml}</td>
+            <td class="text-subtle small">${dateStr}</td>
+            <td class="text-center">
+                <button class="btn btn-sm btn-outline-info py-0 px-2 me-1" onclick="viewIndividualResponse('${escapeHtml(resp.id)}')" title="ดูคำตอบ">
+                    <i class="bi bi-eye-fill me-1"></i>ดูคำตอบ
+                </button>
+                <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteSingleResponse('${escapeHtml(resp.id)}')" title="ลบคำตอบนี้">
+                    <i class="bi bi-trash3"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+/**
+ * 📊 สรุปผลสำหรับแบบสอบถาม/แบบประเมินความพึงพอใจรายข้อ
+ */
+function renderSurveySummary() {
+    const container = document.getElementById('survey-summary-content');
+    if (!container || !currentForm) return;
+    container.innerHTML = '';
+
+    if (responsesList.length === 0) {
+        container.innerHTML = `<div class="text-center text-subtle py-4">ยังไม่มีคำตอบเพื่อทำการสรุปผลแบบประเมิน</div>`;
+        return;
+    }
+
+    (currentForm.questions || []).forEach((q, idx) => {
+        const card = document.createElement('div');
+        card.className = 'cyber-card bg-dark border-purple p-3 mb-3';
+
+        let cardHeader = `
+            <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                <div class="fw-bold text-white font-kanit fs-6">
+                    <span class="text-purple me-1">ข้อที่ ${idx + 1}:</span> ${escapeHtml(q.title)}
+                </div>
+                <span class="badge bg-secondary small">${getQuestionTypeLabel(q.type)}</span>
+            </div>
+        `;
+
+        let cardBody = '';
+
+        if (q.type === 'rating') {
+            // ⭐ คำนวณค่าเฉลี่ย Rating 1-5 ดาว
+            const ratings = responsesList
+                .map(r => Number(r.answers?.[q.id]))
+                .filter(v => !isNaN(v) && v > 0);
+
+            if (ratings.length > 0) {
+                const sum = ratings.reduce((a, b) => a + b, 0);
+                const mean = sum / ratings.length;
+                const maxRating = 5;
+                const pct = Math.min(100, Math.round((mean / maxRating) * 100));
+
+                let ratingLevel = '';
+                let badgeClass = 'bg-success';
+                if (mean >= 4.51) { ratingLevel = 'มากที่สุด'; badgeClass = 'bg-success'; }
+                else if (mean >= 3.51) { ratingLevel = 'มาก'; badgeClass = 'bg-info text-dark'; }
+                else if (mean >= 2.51) { ratingLevel = 'ปานกลาง'; badgeClass = 'bg-warning text-dark'; }
+                else if (mean >= 1.51) { ratingLevel = 'น้อย'; badgeClass = 'bg-danger'; }
+                else { ratingLevel = 'น้อยที่สุด'; badgeClass = 'bg-dark border border-danger text-danger'; }
+
+                cardBody = `
+                    <div class="row align-items-center g-3 mt-1">
+                        <div class="col-12 col-md-4 text-center text-md-start">
+                            <div class="fs-2 fw-bold text-warning font-mono">${mean.toFixed(2)} <span class="fs-6 text-subtle">/ ${maxRating}</span></div>
+                            <div class="small mt-1"><span class="badge ${badgeClass} px-2 py-1">${ratingLevel}</span> <span class="text-subtle">(${ratings.length} คนประเมิน)</span></div>
+                        </div>
+                        <div class="col-12 col-md-8">
+                            <div class="progress bg-black border border-secondary" style="height: 18px; border-radius: 9px;">
+                                <div class="progress-bar bg-warning progress-bar-striped" role="progressbar" style="width: ${pct}%;">
+                                    ${pct}%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                cardBody = `<div class="text-subtle small fst-italic">ยังไม่มีผู้ให้คะแนนข้อนี้</div>`;
+            }
+
+        } else if (q.type === 'radio' || q.type === 'select') {
+            // 🔘 สรุปสัดส่วนตัวเลือก Radio / Select
+            const counts = {};
+            (q.options || []).forEach(opt => { counts[opt] = 0; });
+            let answeredCount = 0;
+
+            responsesList.forEach(r => {
+                const val = r.answers?.[q.id];
+                if (val !== undefined && val !== null && val !== '') {
+                    counts[val] = (counts[val] || 0) + 1;
+                    answeredCount++;
+                }
+            });
+
+            const optionsHtml = (q.options || []).map(opt => {
+                const count = counts[opt] || 0;
+                const pct = answeredCount > 0 ? Math.round((count / answeredCount) * 100) : 0;
+                return `
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between small text-white mb-1">
+                            <span>${escapeHtml(opt)}</span>
+                            <span class="text-subtle font-mono">${count} คน (${pct}%)</span>
+                        </div>
+                        <div class="progress bg-black border border-secondary border-opacity-50" style="height: 10px;">
+                            <div class="progress-bar bg-purple" role="progressbar" style="width: ${pct}%;"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            cardBody = `<div class="mt-2">${optionsHtml || '<div class="text-subtle small">ไม่มีตัวเลือก</div>'}</div>`;
+
+        } else if (q.type === 'checkbox') {
+            // ☑️ สรุปสัดส่วนตัวเลือก Checkbox
+            const counts = {};
+            (q.options || []).forEach(opt => { counts[opt] = 0; });
+            let answeredCount = 0;
+
+            responsesList.forEach(r => {
+                const val = r.answers?.[q.id];
+                if (Array.isArray(val) && val.length > 0) {
+                    val.forEach(v => { counts[v] = (counts[v] || 0) + 1; });
+                    answeredCount++;
+                }
+            });
+
+            const optionsHtml = (q.options || []).map(opt => {
+                const count = counts[opt] || 0;
+                const pct = answeredCount > 0 ? Math.round((count / answeredCount) * 100) : 0;
+                return `
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between small text-white mb-1">
+                            <span>${escapeHtml(opt)}</span>
+                            <span class="text-subtle font-mono">${count} คน (${pct}%)</span>
+                        </div>
+                        <div class="progress bg-black border border-secondary border-opacity-50" style="height: 10px;">
+                            <div class="progress-bar bg-info" role="progressbar" style="width: ${pct}%;"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            cardBody = `<div class="mt-2">${optionsHtml || '<div class="text-subtle small">ไม่มีตัวเลือก</div>'}</div>`;
+
+        } else {
+            // 📝 ข้อความสั้น / ข้อเสนอแนะ (Text / Textarea)
+            const textResponses = responsesList
+                .map(r => ({ name: r.responderName || 'ผู้ตอบ', text: r.answers?.[q.id] }))
+                .filter(item => item.text && String(item.text).trim().length > 0);
+
+            if (textResponses.length > 0) {
+                const listHtml = textResponses.map(item => `
+                    <div class="bg-black bg-opacity-50 border border-secondary border-opacity-50 rounded p-2 mb-2 small">
+                        <div class="text-white"><i class="bi bi-chat-quote-fill text-purple me-1"></i>${escapeHtml(String(item.text))}</div>
+                        <div class="text-subtle mt-1" style="font-size: 0.75rem;">— ${escapeHtml(item.name)}</div>
+                    </div>
+                `).join('');
+                cardBody = `<div class="mt-2" style="max-height: 220px; overflow-y: auto;">${listHtml}</div>`;
+            } else {
+                cardBody = `<div class="text-subtle small fst-italic mt-2">ยังไม่มีข้อความตอบกลับในข้อนี้</div>`;
+            }
+        }
+
+        card.innerHTML = cardHeader + cardBody;
+        container.appendChild(card);
+    });
+}
+
+function getQuestionTypeLabel(type) {
+    switch(type) {
+        case 'rating': return 'ระดับความพึงพอใจ';
+        case 'radio': return 'เลือกตอบข้อเดียว';
+        case 'checkbox': return 'เลือกตอบหลายข้อ';
+        case 'select': return 'เมนูเลื่อน';
+        case 'textarea': return 'ข้อเสนอแนะยาว';
+        case 'text': return 'ข้อความสั้น';
+        default: return 'คำถาม';
+    }
+}
+
+
+/**
+ * 🔍 เปิดดูคำตอบที่นักเรียนคนนั้นตอบมาทีละข้อ
+ */
+function viewIndividualResponse(respId) {
+    const resp = responsesList.find(r => r.id === respId);
+    if (!resp || !currentForm) return;
+
+    const nameEl = document.getElementById('modal-resp-name');
+    if (nameEl) nameEl.textContent = resp.responderName || 'ผู้ตอบแบบสอบถาม';
+
+    const bodyEl = document.getElementById('modal-resp-answers-body');
+    if (!bodyEl) return;
+
+    let html = '';
+    const isQuiz = currentForm.settings?.isQuiz;
+
+    (currentForm.questions || []).forEach((q, idx) => {
+        const userAns = resp.answers ? resp.answers[q.id] : null;
+        let ansDisplay = '';
+
+        if (userAns === null || userAns === undefined || userAns === '') {
+            ansDisplay = '<span class="text-subtle fst-italic">ไม่ได้ตอบ</span>';
+        } else if (Array.isArray(userAns)) {
+            ansDisplay = userAns.map(v => `<span class="badge bg-dark border border-purple text-white me-1">${escapeHtml(v)}</span>`).join('');
+        } else {
+            ansDisplay = `<span class="text-white">${escapeHtml(String(userAns))}</span>`;
+        }
+
+        let correctnessBadge = '';
+        if (isQuiz) {
+            let isCorrect = false;
+            if (q.type === 'checkbox') {
+                const targetKey = Array.isArray(q.answerKey) ? q.answerKey : [];
+                if (Array.isArray(userAns) && userAns.length === targetKey.length && userAns.every(v => targetKey.includes(v))) {
+                    isCorrect = true;
+                }
+            } else {
+                if (q.answerKey && userAns === q.answerKey) isCorrect = true;
+            }
+            correctnessBadge = isCorrect 
+                ? `<span class="badge bg-success ms-2"><i class="bi bi-check-lg me-1"></i>ถูกต้อง (+${q.points || 0} คะแนน)</span>`
+                : `<span class="badge bg-danger ms-2"><i class="bi bi-x-lg me-1"></i>ผิด (0 คะแนน)</span>`;
+        }
+
+        html += `
+            <div class="cyber-card bg-dark border-purple p-3 mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="fw-bold text-white">ข้อที่ ${idx + 1}: ${escapeHtml(q.title)}</div>
+                    ${correctnessBadge}
+                </div>
+                <div class="bg-black bg-opacity-50 p-2 rounded border border-secondary border-opacity-50">
+                    <span class="text-subtle small me-2">คำตอบ:</span> ${ansDisplay}
+                </div>
+                ${isQuiz && q.answerKey ? `<div class="small text-success mt-1"><i class="bi bi-info-circle me-1"></i>เฉลยที่ถูกต้อง: ${escapeHtml(Array.isArray(q.answerKey) ? q.answerKey.join(', ') : q.answerKey)}</div>` : ''}
+            </div>
+        `;
+    });
+
+    bodyEl.innerHTML = html;
+
+    const modalEl = document.getElementById('individualResponseModal');
+    if (modalEl && window.bootstrap) {
+        const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        bsModal.show();
+    }
+}
+
+/**
+ * 🧹 ล้างข้อมูลคำตอบทั้งหมดของแบบฟอร์มนี้
+ */
+async function clearFormResponses() {
+    if (!currentForm) return;
+    if (responsesList.length === 0) {
+        const swal = getCyberSwal();
+        if (swal) {
+            swal.fire({
+                icon: 'info',
+                title: 'ไม่มีข้อมูลให้ล้าง',
+                text: 'ยังไม่มีประวัติการส่งคำตอบในแบบฟอร์มนี้ครับ'
+            });
+        }
+        return;
+    }
+
+    const swal = getCyberSwal();
+    if (swal) {
+        const result = await swal.fire({
+            icon: 'warning',
+            title: 'ยืนยันล้างข้อมูลการตอบทั้งหมด?',
+            html: `ต้องการล้างคำตอบของผู้ตอบทั้งหมด <b>${responsesList.length} คน</b> ในแบบฟอร์มนี้ใช่หรือไม่?<br><span class="text-danger small">ข้อมูลจะถูกล้างเพื่อเตรียมพร้อมสำหรับรอบใหม่ (ไม่สามารถกู้คืนได้)</span>`,
+            showCancelButton: true,
+            confirmButtonText: '<i class="bi bi-trash3-fill me-1"></i>ล้างข้อมูลทันที',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#ef4444'
+        });
+        if (!result.isConfirmed) return;
+    } else {
+        if (!confirm(`ต้องการล้างคำตอบทั้งหมด ${responsesList.length} คน ใช่หรือไม่?`)) return;
+    }
+
+    // 1. Clear LocalStorage
+    localStorage.setItem(`gyver_form_responses_${currentForm.id}`, JSON.stringify([]));
+    responsesList = [];
+
+    // 2. Clear Supabase
+    if (window.supabaseClient && isSupabaseTableAvailable) {
+        try {
+            await window.supabaseClient
+                .from('gyver_form_responses')
+                .delete()
+                .eq('form_id', currentForm.id);
+        } catch (e) {
+            console.warn('Could not delete form responses from Supabase:', e);
+        }
+    }
+
+    renderAnalyticsView();
+
+    const toast = getCyberToast();
+    if (toast) {
+        toast.fire({
+            icon: 'success',
+            title: 'ล้างข้อมูลการตอบเรียบร้อยแล้ว พร้อมสำหรับรอบใหม่!'
+        });
+    }
+}
+
+/**
+ * 🗑️ ลบคำตอบเฉพาะรายบุคคล
+ */
+async function deleteSingleResponse(respId) {
+    if (!currentForm) return;
+    const targetIdx = responsesList.findIndex(r => r.id === respId);
+    if (targetIdx === -1) return;
+
+    const targetResp = responsesList[targetIdx];
+    const swal = getCyberSwal();
+    if (swal) {
+        const result = await swal.fire({
+            icon: 'warning',
+            title: 'ลบคำตอบนี้?',
+            html: `ต้องการลบคำตอบของ <b>${escapeHtml(targetResp.responderName || 'ผู้ตอบแบบสอบถาม')}</b> ใช่หรือไม่?`,
+            showCancelButton: true,
+            confirmButtonText: 'ลบคำตอบ',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#ef4444'
+        });
+        if (!result.isConfirmed) return;
+    } else {
+        if (!confirm(`ต้องการลบคำตอบของ ${targetResp.responderName} ใช่หรือไม่?`)) return;
+    }
+
+    responsesList.splice(targetIdx, 1);
+    localStorage.setItem(`gyver_form_responses_${currentForm.id}`, JSON.stringify(responsesList));
+
+    if (window.supabaseClient && isSupabaseTableAvailable && targetResp.id) {
+        try {
+            await window.supabaseClient
+                .from('gyver_form_responses')
+                .delete()
+                .eq('id', targetResp.id);
+        } catch (e) {
+            console.warn('Could not delete single response from Supabase:', e);
+        }
+    }
+
+    renderAnalyticsView();
+
+    const toast = getCyberToast();
+    if (toast) {
+        toast.fire({
+            icon: 'success',
+            title: `ลบคำตอบของ ${targetResp.responderName} เรียบร้อยแล้ว`
+        });
+    }
+}
+
+function openShareModalFromAnalytics() {
+    if (currentForm) {
+        showShareModal(currentForm.id);
+    }
+}
+
+function showSqlHelpModal() {
+    const swal = getCyberSwal();
+    if (swal) {
+        swal.fire({
+            icon: 'info',
+            title: 'คำสั่ง SQL สำหรับเปิดตาราง Gyver Forms',
+            html: `
+                <div class="text-start small">
+                    <p class="mb-2">คัดลอกคำสั่งนี้ไปวางและกด Run ใน <b>Supabase Dashboard ➔ SQL Editor</b> เพื่อสร้างตารางบันทึกคำตอบครับ:</p>
+                    <pre class="bg-black p-3 rounded border border-purple text-info font-mono text-wrap" style="max-height: 200px; overflow-y: auto; font-size: 0.8rem; user-select: all;">CREATE TABLE IF NOT EXISTS public.gyver_form_responses (
+    id TEXT PRIMARY KEY,
+    form_id TEXT NOT NULL,
+    responder_name TEXT,
+    answers JSONB DEFAULT '{}'::jsonb,
+    quiz_score NUMERIC,
+    total_points NUMERIC,
+    is_passed BOOLEAN,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.gyver_form_responses ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all access to gyver_form_responses" ON public.gyver_form_responses;
+CREATE POLICY "Allow all access to gyver_form_responses" ON public.gyver_form_responses
+    FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);</pre>
+                </div>
+            `,
+            confirmButtonText: 'เข้าใจแล้ว',
+            width: '650px'
+        });
+    }
+}
+
 
 function renderItemAnalysis() {
     const tbody = document.getElementById('item-analysis-tbody');
@@ -1390,4 +1876,26 @@ function escapeHtml(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+}
+
+// Expose globals for HTML onclick handlers
+window.viewIndividualResponse = viewIndividualResponse;
+window.deleteSingleResponse = deleteSingleResponse;
+window.clearFormResponses = clearFormResponses;
+window.openShareModalFromAnalytics = openShareModalFromAnalytics;
+window.showSqlHelpModal = showSqlHelpModal;
+
+// 📡 BroadcastChannel Listener for Realtime Multi-tab Updates
+if (typeof BroadcastChannel !== 'undefined') {
+    try {
+        const formsBc = new BroadcastChannel('gyver_forms_channel');
+        formsBc.onmessage = (event) => {
+            if (event.data?.type === 'NEW_RESPONSE' && currentForm && event.data.formId === currentForm.id) {
+                responsesList.unshift(event.data.response);
+                if (currentMode === 'responses') {
+                    renderAnalyticsView();
+                }
+            }
+        };
+    } catch (e) {}
 }

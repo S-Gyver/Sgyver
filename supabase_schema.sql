@@ -151,4 +151,12 @@ BEGIN
     ) THEN
         ALTER PUBLICATION supabase_realtime ADD TABLE public.gyver_quiz_responses;
     END IF;
+
+    -- เพิ่มตาราง gyver_form_responses เข้า Realtime publication
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' AND tablename = 'gyver_form_responses'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.gyver_form_responses;
+    END IF;
 END $$;
