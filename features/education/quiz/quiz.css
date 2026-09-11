@@ -296,4 +296,23 @@ body {
     box-shadow: 0 0 12px rgba(16, 185, 129, 0.3) !important;
 }
 
+/* 🎛️ Quiz Card Action Buttons: แถวบน 4 ปุ่ม บรรทัดเดียว สวยงาม */
+.quiz-card-btn-group {
+    display: flex !important;
+    width: 100% !important;
+}
+.quiz-card-btn-group .btn {
+    white-space: nowrap !important;
+    padding: 6px 3px !important;
+    font-size: 0.8rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex: 1 1 0 !important;
+    letter-spacing: -0.2px;
+}
+.quiz-card-btn-group .btn i {
+    font-size: 0.85rem;
+}
+
 

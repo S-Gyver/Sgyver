@@ -376,7 +376,10 @@
                 <button class="btn btn-outline-secondary btn-sm text-white" onclick="renderQuizListView()">
                     <i class="bi bi-arrow-left me-1"></i>กลับหน้ารายการ
                 </button>
-                <div class="d-flex gap-2">
+                <div class="d-flex gap-2 flex-wrap">
+                    <button class="btn btn-outline-danger btn-sm fw-bold" onclick="clearQuizResponses()" title="ล้างรายชื่อและผลสอบทั้งหมด เพื่อเริ่มรอบใหม่">
+                        <i class="bi bi-trash3-fill me-1"></i>ล้างรายชื่อ (รอบใหม่)
+                    </button>
                     <button class="btn btn-outline-success btn-sm" onclick="exportQuizResultsCSV()">
                         <i class="bi bi-file-earmark-excel-fill me-1"></i>ส่งออก CSV (Excel)
                     </button>
@@ -429,6 +432,7 @@
                                 <th>ร้อยละ</th>
                                 <th>สถานะ</th>
                                 <th>เวลาที่ส่ง</th>
+                                <th style="width: 70px;" class="text-center">จัดการ</th>
                             </tr>
                         </thead>
                         <tbody id="analytics-leaderboard-tbody">
