@@ -68,28 +68,59 @@
         <!-- Main Layout -->
         <div class="row g-3">
 
-            <!-- 👈 ฝั่งซ้าย: สแกน QR Code + รายชื่อรออนุมัติ -->
+            <!-- 👈 ฝั่งซ้าย: สแกน QR Code + ข้อมูลห้องแข่งขัน -->
             <div class="col-lg-3">
                 <div class="cyber-card p-3 h-100 d-flex flex-column gap-3">
 
-                    <!-- QR Code -->
-                    <div class="qr-box-card p-2 rounded-3 text-center border-cyan">
-                        <div id="qrcode-box" class="bg-white p-2 rounded-3 d-inline-block mb-1 shadow-sm"></div>
-                        <small class="text-subtle d-block font-mono" style="font-size: 0.75rem;">สแกน QR เพื่อเข้าห้องนี้</small>
+                    <!-- QR Code Card -->
+                    <div class="qr-box-card p-3 rounded-3 text-center border-cyan bg-dark shadow-sm">
+                        <div id="qrcode-box" class="bg-white p-2 rounded-3 d-inline-block mb-2 shadow-sm"></div>
+                        <div class="font-mono small text-white fw-bold mb-1">สแกน QR Code เพื่อเข้าห้อง</div>
+                        <small class="text-subtle d-block font-mono" style="font-size: 0.75rem;">PIN ห้อง: <span class="text-warning fw-bold fs-6" id="qr-room-code-text">----</span></small>
                     </div>
 
-                    <!-- 🔴 รอนุมัติ (Pending Approval) -->
-                    <div class="config-sub-box p-3 rounded-3 border-warning-subtle flex-grow-1 d-flex flex-column">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <h6 class="fw-bold text-warning m-0 font-mono small">
-                                <i class="bi bi-hourglass-split me-1"></i>รออนุมัติ (<span id="pending-count">0</span>)
-                            </h6>
-                            <button class="btn btn-sm btn-success font-mono py-0 px-2" style="font-size: 0.75rem;" onclick="approveAllStudents()">
-                                <i class="bi bi-check-all me-1"></i>อนุมัติหมด
-                            </button>
+                    <!-- ℹ️ ข้อมูลการแข่งขัน & ทางลัด -->
+                    <div class="config-sub-box p-3 rounded-3 border-cyan-subtle flex-grow-1 d-flex flex-column justify-content-between">
+                        <div>
+                            <div class="d-flex align-items-center justify-content-between mb-3 border-bottom border-secondary pb-2">
+                                <span class="text-cyan font-mono fw-bold small"><i class="bi bi-info-circle me-1"></i>ข้อมูลการแข่งขัน</span>
+                                <span class="badge bg-dark border border-cyan text-cyan font-mono" id="card-match-type">แข่งเดี่ยว</span>
+                            </div>
+                            <div class="d-flex flex-column gap-2 font-mono small text-subtle" style="font-size: 0.82rem;">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span>โหมดแข่ง:</span>
+                                    <strong class="text-white" id="info-mode-text">Solo</strong>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span>โจทย์:</span>
+                                    <strong class="text-info text-truncate ms-2" style="max-width: 130px;" id="info-problem-text">กำลังโหลด...</strong>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span>เวลาแข่ง:</span>
+                                    <strong class="text-warning" id="info-timer-text">ไม่จำกัด</strong>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span>ร้านค้าไอเทม:</span>
+                                    <strong class="text-cyan" id="info-shop-text">ปิด</strong>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span>แจก Gold:</span>
+                                    <strong class="text-warning" id="info-gold-text">ปิด</strong>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span>คำถามกวนใจ:</span>
+                                    <strong class="text-danger" id="info-quiz-text">ปิด</strong>
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="d-flex flex-column gap-2 overflow-auto flex-grow-1" id="pending-list-grid" style="max-height: 380px;">
+                        <div class="d-flex flex-column gap-2 mt-3 pt-2 border-top border-secondary">
+                            <button type="button" class="btn btn-outline-warning btn-sm font-mono w-100 py-2 fw-bold" data-bs-toggle="modal" data-bs-target="#matchSettingsModal">
+                                <i class="bi bi-sliders me-1"></i>ปรับแต่งกติกา & โจทย์
+                            </button>
+                            <a href="projector_race.html" target="_blank" class="btn btn-outline-info btn-sm font-mono w-100 py-2 fw-bold">
+                                <i class="bi bi-display me-1"></i>เปิดจอโปรเจกเตอร์
+                            </a>
                         </div>
                     </div>
 

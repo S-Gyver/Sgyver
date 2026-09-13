@@ -13,7 +13,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../../../../assets/js/supabaseClient.js"></script>
 
-    <link rel="stylesheet" href="teacher_lobby.css">
+    <link rel="stylesheet" href="projector_race.css">
     <style>
         .progress-track-item {
             background: #020617;
@@ -66,9 +66,14 @@
         }
     </style>
 </head>
-<body class="cyber-body py-2 px-3">
+<body class="cyber-projector-body py-2 px-3 position-relative">
 
-    <div class="container-fluid p-0">
+    <!-- Background Elements -->
+    <div class="bg-glow-blur glow-top"></div>
+    <div class="bg-glow-blur glow-bottom"></div>
+    <div class="bg-cyber-grid"></div>
+
+    <div class="container-fluid p-0 position-relative z-1">
         
         <!-- Header Bar -->
         <div class="cyber-card p-2 px-3 mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">

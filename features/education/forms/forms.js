@@ -909,7 +909,7 @@ function renderResponderView() {
                         ระบบได้รับข้อมูลคำตอบของคุณแล้ว ไม่สามารถส่งคำตอบซ้ำได้ครับ
                     </p>
                     <div class="d-flex justify-content-center gap-3">
-                        <a href="../../../index.html" class="btn btn-purple-glow px-4 py-2 fw-bold">
+                        <a href="../../../my_workspace.html" class="btn btn-purple-glow px-4 py-2 fw-bold">
                             <i class="bi bi-house-door-fill me-2"></i>กลับสู่หน้าหลัก
                         </a>
                     </div>
@@ -1136,7 +1136,7 @@ async function submitResponse() {
                     cancelButtonText: 'ปิด'
                 }).then(result => {
                     if (result.isConfirmed) {
-                        window.location.href = '../../../index.html';
+                        window.location.href = '../../../my_workspace.html';
                     }
                 });
             } else {
@@ -1325,7 +1325,7 @@ function onCloseResponseSuccessModal() {
         const bsModal = bootstrap.Modal.getInstance(modalEl);
         if (bsModal) bsModal.hide();
     }
-    window.location.href = '../../../index.html';
+    window.location.href = '../../../my_workspace.html';
 }
 
 async function syncResponseToSupabase(respObj) {
@@ -2180,7 +2180,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (successModalEl) {
         successModalEl.addEventListener('hidden.bs.modal', () => {
             if (!window.isOpeningCertificate) {
-                window.location.href = '../../../index.html';
+                window.location.href = '../../../my_workspace.html';
             }
         });
     }

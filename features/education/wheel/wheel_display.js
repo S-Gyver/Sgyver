@@ -1241,3 +1241,11 @@ function listenRealtimeSignals() {
         .subscribe();
     }
 }
+
+function toggleStageFullscreen() {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => console.log(err));
+    } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+    }
+}

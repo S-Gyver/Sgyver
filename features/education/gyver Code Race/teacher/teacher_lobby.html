@@ -27,7 +27,7 @@
                 const adminSession = sessionStorage.getItem('gyver_admin_session');
                 if (!session && !adminSession) {
                     alert('🔒 กรุณาลงชื่อเข้าใช้งานก่อนเข้าสู่ระบบจัดการห้องแข่ง');
-                    window.location.href = '../../../../index.html';
+                    window.location.href = '../../../../my_workspace.html';
                 }
             }
         })();
@@ -62,11 +62,11 @@
         </div>
 
         <!-- Main Configuration Card -->
-        <div class="cyber-hub-card p-4 p-md-5 shadow-2xl border-secondary-subtle">
+        <div class="cyber-hub-card p-3 p-md-4 shadow-2xl border-secondary-subtle">
             
             <!-- 1. เลือกโหมดการแข่งขัน -->
-            <div class="mb-4">
-                <label class="section-label mb-3 font-mono text-warning">
+            <div class="mb-3">
+                <label class="section-label mb-2 font-mono text-warning">
                     <i class="bi bi-controller me-2"></i>1. เลือกโหมดการแข่งขัน (Game Mode)
                 </label>
                 
@@ -112,9 +112,9 @@
             </div>
 
             <!-- 2. รูปแบบการแข่งขัน -->
-            <div class="mb-4">
+            <div class="mb-3">
                 <div class="config-sub-box p-3">
-                    <label class="section-label-sm mb-3 font-mono text-cyan">
+                    <label class="section-label-sm mb-2 font-mono text-cyan">
                         <i class="bi bi-people-fill me-2"></i>2. รูปแบบการแข่งขัน (Match Type)
                     </label>
                     <div class="d-flex gap-4 align-items-center pt-1 mb-2">
@@ -163,7 +163,7 @@
             </div>
 
             <!-- 3. แสดงรหัสห้องแข่ง 4 หลัก + QR Code -->
-            <div class="room-code-box p-3 p-md-4 mb-4 text-center">
+            <div class="room-code-box p-3 mb-3 text-center">
                 <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
                     <span class="text-cyan font-mono small fw-bold">
                         <i class="bi bi-key-fill me-1"></i>รหัสห้องแข่งขัน 4 หลัก (ROOM CODE)
@@ -173,7 +173,7 @@
                     </button>
                 </div>
 
-                <div class="row align-items-center g-3 my-2">
+                <div class="row align-items-center g-3 my-1">
                     <!-- ฝั่งแสดงรหัสตัวเลข 4 หลัก -->
                     <div class="col-12 col-md-7 border-end-md border-secondary-subtle">
                         <div id="display-room-code" class="display-code-text font-mono text-warning my-1">
@@ -186,7 +186,7 @@
 
                     <!-- ฝั่งแสดง QR Code สแกนเข้าห้อง -->
                     <div class="col-12 col-md-5 d-flex flex-column align-items-center justify-content-center">
-                        <div class="qr-wrapper p-2 bg-white rounded-3 shadow-sm mb-2">
+                        <div class="qr-wrapper p-2 bg-white rounded-3 shadow-sm mb-1">
                             <div id="qrcode-box"></div>
                         </div>
                         <span class="badge bg-dark border border-secondary text-cyan font-mono small">
@@ -197,7 +197,7 @@
             </div>
 
             <!-- Submit Button -->
-            <button id="create-lobby-btn" class="btn btn-warning btn-cyber-submit w-100 font-kanit fw-black fs-4 shadow-lg" onclick="handleCreateLobby()">
+            <button id="create-lobby-btn" class="btn btn-warning btn-cyber-submit w-100 font-kanit fw-black fs-5 py-3 shadow-lg" onclick="handleCreateLobby()">
                 <i class="bi bi-gear-fill me-2"></i>สร้างห้องแข่งและไปตั้งค่าโจทย์ (Create Room & Setup)
             </button>
 

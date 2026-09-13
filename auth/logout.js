@@ -6,6 +6,6 @@ async function logoutProfilePage() {
         }
         sessionStorage.clear();
         localStorage.removeItem('gyver_admin_session');
-        window.location.href = '../../index.html';
+        window.location.href = '../../my_workspace.html';
     }, 1000);
 }

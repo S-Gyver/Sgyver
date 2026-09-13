@@ -31,32 +31,32 @@ body.race-home-bg {
 }
 
 .bg-glow-blur {
-    position: absolute;
-    width: 380px;
-    height: 380px;
+    position: fixed;
+    width: 450px;
+    height: 450px;
     border-radius: 50%;
-    filter: blur(120px);
-    opacity: 0.18;
-    z-index: 1;
+    filter: blur(140px);
+    opacity: 0.15;
+    z-index: 0;
     pointer-events: none;
 }
 
-.glow-1 { top: -50px; left: 10%; background: #ff007f; }
-.glow-2 { bottom: -50px; right: 10%; background: #00f2fe; }
+.glow-1 { top: -100px; left: -100px; background: #00f2fe; }
+.glow-2 { bottom: -100px; right: -100px; background: #ff007f; }
 
 /* 🏆 Header & Badges */
 .brand-badge {
     background: rgba(255, 193, 7, 0.15);
-    border: 1px solid rgba(255, 193, 7, 0.3);
-    padding: 6px 12px;
+    border: 1px solid rgba(255, 193, 7, 0.35);
+    padding: 6px 10px;
     border-radius: 10px;
+    box-shadow: 0 0 15px rgba(255, 193, 7, 0.2);
 }
 
-.brand-text {
+.brand-title {
     letter-spacing: 0.5px;
-    background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: #ffffff !important;
+    text-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
 }
 
 .bg-live-badge {
@@ -84,21 +84,27 @@ body.race-home-bg {
 .max-w-900 { max-width: 900px; }
 
 .cyber-role-card {
-    background: rgba(18, 24, 38, 0.75);
+    background: rgba(15, 23, 42, 0.82) !important;
     backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 20px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-    transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.5);
+    transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
 .cyber-role-card:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+    transform: translateY(-4px);
 }
 
-.teacher-card:hover { border-color: rgba(255, 193, 7, 0.5); }
-.student-card:hover { border-color: rgba(0, 242, 254, 0.5); }
+.teacher-card:hover { 
+    border-color: rgba(255, 193, 7, 0.6); 
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(255, 193, 7, 0.2);
+}
+
+.student-card:hover { 
+    border-color: rgba(0, 242, 254, 0.6); 
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(0, 242, 254, 0.2);
+}
 
 /* 🌟 Icon Box */
 .role-icon-box {
@@ -112,25 +118,25 @@ body.race-home-bg {
 
 .bg-warning-glow {
     background: rgba(255, 193, 7, 0.1);
-    border: 1px solid rgba(255, 193, 7, 0.25);
-    box-shadow: inset 0 0 20px rgba(255, 193, 7, 0.15);
+    border: 1px solid rgba(255, 193, 7, 0.35);
+    box-shadow: 0 0 25px rgba(255, 193, 7, 0.25);
 }
 
 .bg-cyan-glow {
     background: rgba(0, 242, 254, 0.1);
-    border: 1px solid rgba(0, 242, 254, 0.25);
-    box-shadow: inset 0 0 20px rgba(0, 242, 254, 0.15);
+    border: 1px solid rgba(0, 242, 254, 0.35);
+    box-shadow: 0 0 25px rgba(0, 242, 254, 0.25);
 }
 
 /* 🔘 Buttons & Inputs */
 .btn-cyber-lg {
-    padding: 14px 20px;
-    font-size: 1.1rem;
+    padding: 12px 18px;
+    font-size: 1.05rem;
     border-radius: 12px;
 }
 
 .btn-cyber-md {
-    padding: 10px 16px;
+    padding: 9px 16px;
     border-radius: 12px;
 }
 

@@ -15,7 +15,7 @@ async function checkExistingSession() {
         if (session) {
             const urlParams = new URLSearchParams(window.location.search);
             const redirectParam = urlParams.get('redirect');
-            const redirectUrl = redirectParam || sessionStorage.getItem('gyver_redirect_target') || '../index.html';
+            const redirectUrl = redirectParam || sessionStorage.getItem('gyver_redirect_target') || '../my_workspace.html';
             sessionStorage.removeItem('gyver_redirect_target');
             window.location.href = redirectUrl;
         }
@@ -75,7 +75,7 @@ document.getElementById('form-login').addEventListener('submit', async function(
         }
 
         setTimeout(() => {
-            const redirectUrl = sessionStorage.getItem('gyver_redirect_target') || '../index.html';
+            const redirectUrl = sessionStorage.getItem('gyver_redirect_target') || '../my_workspace.html';
             sessionStorage.removeItem('gyver_redirect_target');
             window.location.href = redirectUrl;
         }, 1000);
@@ -135,7 +135,7 @@ document.getElementById('form-register').addEventListener('submit', async functi
         } else {
             showAlert('🎉 สมัครสมาชิกและเข้าสู่ระบบเรียบร้อยแล้ว!', 'success');
             setTimeout(() => {
-                const redirectUrl = sessionStorage.getItem('gyver_redirect_target') || '../index.html';
+                const redirectUrl = sessionStorage.getItem('gyver_redirect_target') || '../my_workspace.html';
                 sessionStorage.removeItem('gyver_redirect_target');
                 window.location.href = redirectUrl;
             }, 1200);

@@ -7,14 +7,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 🔒 ตรวจสอบสิทธิ์การเข้าใช้งาน Admin
     const savedSession = sessionStorage.getItem('gyver_admin_session');
     if (!savedSession) {
-        window.location.href = '../index.html';
+        window.location.href = '../my_workspace.html';
         return;
     }
 
     try {
         adminSession = JSON.parse(savedSession);
         if (!adminSession.isLoggedIn) {
-            window.location.href = '../index.html';
+            window.location.href = '../my_workspace.html';
             return;
         }
 
@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (nameEl) nameEl.innerText = adminSession.name || adminSession.username;
 
     } catch (e) {
-        window.location.href = '../index.html';
+        window.location.href = '../my_workspace.html';
         return;
     }
 
@@ -392,7 +392,7 @@ async function handleAdminLogout() {
         console.error("Logout error:", err);
     } finally {
         // 3. นำทางกลับไปยังหน้าหลัก index.html
-        window.location.href = '../index.html';
+        window.location.href = '../my_workspace.html';
     }
 }
 

@@ -20,6 +20,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const roomDisplay = document.getElementById('display-room-code');
     if (roomDisplay) roomDisplay.innerText = roomCode;
 
+    const qrRoomText = document.getElementById('qr-room-code-text');
+    if (qrRoomText) qrRoomText.innerText = roomCode;
+
     // อัปเดตลิงก์เปิดจอใหญ่ให้มีรหัสห้องติดไปด้วยเสมอ
     const openProjectorBtn = document.querySelector('a[href="projector_race.html"]');
     if (openProjectorBtn) {
@@ -33,8 +36,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const matchBadge = document.getElementById('match-type-badge');
     const summaryMode = document.getElementById('summary-mode-text');
+    const cardMatchType = document.getElementById('card-match-type');
+    const infoMode = document.getElementById('info-mode-text');
+
+    const modeLabel = matchType === 'team' ? `แข่งกลุ่ม (Team ${teamSize} คน)` : `แข่งเดี่ยว (Solo)`;
     if (matchBadge) matchBadge.innerText = matchType === 'team' ? `แข่งกลุ่ม (Team)` : `แข่งเดี่ยว (Solo)`;
     if (summaryMode) summaryMode.innerText = matchType === 'team' ? `แข่งกลุ่ม (${teamSize} คน/ทีม)` : `Solo`;
+    if (cardMatchType) cardMatchType.innerText = matchType === 'team' ? `แข่งกลุ่ม` : `แข่งเดี่ยว`;
+    if (infoMode) infoMode.innerText = modeLabel;
 
     const shuffleBtn = document.getElementById('btn-auto-shuffle-teams');
     if (shuffleBtn) {
@@ -141,15 +150,18 @@ async function fetchAndApplySavedConfig() {
                     matchedProb = typingProblemStock.find(p => (p.starter_code || p.code || '').trim() === cleanTarget);
                 }
 
+                const infoProb = document.getElementById('info-problem-text');
                 if (matchedProb) {
                     if (selectBox) selectBox.value = matchedProb.id;
                     if (preview) preview.innerText = matchedProb.starter_code || matchedProb.code || "";
                     if (summaryProb) summaryProb.innerText = matchedProb.title || "เลือกแล้ว";
+                    if (infoProb) infoProb.innerText = matchedProb.title || "เลือกแล้ว";
                 } else if (typingProblemStock.length > 0) {
                     const firstProb = typingProblemStock[0];
                     if (selectBox) selectBox.value = firstProb.id;
                     if (preview) preview.innerText = firstProb.starter_code || firstProb.code || "";
                     if (summaryProb) summaryProb.innerText = firstProb.title || "เลือกแล้ว";
+                    if (infoProb) infoProb.innerText = firstProb.title || "เลือกแล้ว";
                 }
 
                 const timerSwitch = document.getElementById('timer-toggle-switch');
@@ -210,33 +222,52 @@ async function fetchAndApplySavedConfig() {
 function updateHeaderMatchSummaryDirect(data) {
     if (!data) return;
 
+    const timerText = !data.timer_enabled 
+        ? "ไม่จำกัดเวลา" 
+        : `${Math.floor((data.timer_duration || 180) / 60)} นาที (${data.timer_duration || 180}s)`;
     const summaryTimer = document.getElementById('summary-timer-text');
+    const infoTimer = document.getElementById('info-timer-text');
     if (summaryTimer) {
-        summaryTimer.innerText = !data.timer_enabled 
-            ? "ไม่จำกัดเวลา" 
-            : `${Math.floor((data.timer_duration || 180) / 60)} นาที (${data.timer_duration || 180}s)`;
+        summaryTimer.innerText = timerText;
         summaryTimer.className = data.timer_enabled ? "text-info fw-bold" : "text-subtle";
     }
-
-    const summaryGold = document.getElementById('summary-gold-text');
-    if (summaryGold) {
-        summaryGold.innerText = data.gold_enabled 
-            ? `แจก ${data.gold_amount || 3}G / ${data.gold_milestone || '10%'}` 
-            : "ปิดใช้งาน";
-        summaryGold.className = data.gold_enabled ? "text-warning fw-bold" : "text-subtle";
+    if (infoTimer) {
+        infoTimer.innerText = timerText;
+        infoTimer.className = data.timer_enabled ? "text-warning fw-bold" : "text-subtle";
     }
 
+    const goldText = data.gold_enabled 
+        ? `แจก ${data.gold_amount || 3}G / ${data.gold_milestone || '10%'}` 
+        : "ปิดใช้งาน";
+    const summaryGold = document.getElementById('summary-gold-text');
+    const infoGold = document.getElementById('info-gold-text');
+    if (summaryGold) {
+        summaryGold.innerText = goldText;
+        summaryGold.className = data.gold_enabled ? "text-warning fw-bold" : "text-subtle";
+    }
+    if (infoGold) {
+        infoGold.innerText = goldText;
+        infoGold.className = data.gold_enabled ? "text-warning fw-bold" : "text-subtle";
+    }
+
+    const quizText = data.quiz_enabled ? "เปิดใช้งาน" : "ปิดใช้งาน";
     const summaryQuiz = document.getElementById('summary-quiz-text');
+    const infoQuiz = document.getElementById('info-quiz-text');
     if (summaryQuiz) {
-        summaryQuiz.innerText = data.quiz_enabled ? "เปิดใช้งาน" : "ปิดใช้งาน";
+        summaryQuiz.innerText = quizText;
         summaryQuiz.className = data.quiz_enabled ? "text-danger fw-bold" : "text-subtle";
+    }
+    if (infoQuiz) {
+        infoQuiz.innerText = quizText;
+        infoQuiz.className = data.quiz_enabled ? "text-danger fw-bold" : "text-subtle";
     }
 
     const summaryShop = document.getElementById('summary-shop-text');
-    if (summaryShop) {
+    const infoShop = document.getElementById('info-shop-text');
+    if (summaryShop || infoShop) {
         if (!data.shop_enabled) {
-            summaryShop.innerText = "ปิดใช้งาน";
-            summaryShop.className = "text-subtle";
+            if (summaryShop) { summaryShop.innerText = "ปิดใช้งาน"; summaryShop.className = "text-subtle"; }
+            if (infoShop) { infoShop.innerText = "ปิดใช้งาน"; infoShop.className = "text-subtle"; }
         } else {
             let activeItems = [];
             if (data.item_shield) activeItems.push("🛡️โล่");
@@ -244,8 +275,9 @@ function updateHeaderMatchSummaryDirect(data) {
             if (data.item_freeze) activeItems.push("❄️แช่แข็ง");
             if (data.item_boost) activeItems.push("⚡บูสท์");
             
-            summaryShop.innerText = activeItems.length > 0 ? activeItems.join(" ") : "ไม่มีไอเทม";
-            summaryShop.className = "text-cyan fw-bold";
+            const shopText = activeItems.length > 0 ? activeItems.join(" ") : "ไม่มีไอเทม";
+            if (summaryShop) { summaryShop.innerText = shopText; summaryShop.className = "text-cyan fw-bold"; }
+            if (infoShop) { infoShop.innerText = shopText; infoShop.className = "text-cyan fw-bold"; }
         }
     }
 }
@@ -375,7 +407,10 @@ async function fetchAndListenStudents() {
                 filter: `room_code=eq.${roomCode}`
             }, (payload) => {
                 if (payload.new && Array.isArray(payload.new.players)) {
-                    studentList = payload.new.players;
+                    studentList = payload.new.players.map(p => ({
+                        ...p,
+                        status: p.status === 'rejected' ? 'rejected' : 'approved'
+                    }));
                     renderStudentsUI();
                 }
             })
@@ -398,7 +433,10 @@ async function fetchStudents() {
                 .maybeSingle();
 
             if (data && Array.isArray(data.players)) {
-                studentList = data.players;
+                studentList = data.players.map(p => ({
+                    ...p,
+                    status: p.status === 'rejected' ? 'rejected' : 'approved'
+                }));
                 renderStudentsUI();
             }
         }
@@ -409,27 +447,14 @@ function renderStudentsUI() {
     const pendingGrid = document.getElementById('pending-list-grid');
     const teamsGrid = document.getElementById('teams-container-grid');
 
-    const pendingList = studentList.filter(s => s.status === 'pending');
-    const approvedList = studentList.filter(s => s.status === 'approved');
+    // นักเรียนที่เข้าห้องแข่งขันทุกคนถือว่าเข้าได้เลยทันที (ไม่ต้องรออนุมัติ)
+    const approvedList = studentList.filter(s => s.status !== 'rejected');
 
-    if (document.getElementById('pending-count')) document.getElementById('pending-count').innerText = pendingList.length;
+    if (document.getElementById('pending-count')) document.getElementById('pending-count').innerText = '0';
     if (document.getElementById('approved-count')) document.getElementById('approved-count').innerText = approvedList.length;
 
     if (pendingGrid) {
-        pendingGrid.innerHTML = pendingList.length === 0 
-            ? `<div class="text-center text-subtle small py-3 font-mono">ไม่มีนักเรียนรอนุมัติ</div>`
-            : pendingList.map(s => `
-                <div class="p-2 bg-dark rounded-3 border border-warning d-flex align-items-center justify-content-between">
-                    <div class="d-flex align-items-center gap-2 overflow-hidden me-2">
-                        <img src="${s.image || s.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=' + encodeURIComponent(s.nickname_th || 'Racer')}" class="rounded-circle" style="width:30px; height:30px; object-fit:cover;">
-                        <span class="fw-bold text-white small text-truncate">${s.nickname_th || s.name} <small class="text-subtle">(เลขที่ ${s.number || '-'})</small></span>
-                    </div>
-                    <div class="d-flex gap-1">
-                        <button type="button" class="btn btn-sm btn-success py-0 px-2 font-mono" onclick="approveStudent('${s.number}')"><i class="bi bi-check-lg"></i></button>
-                        <button type="button" class="btn btn-sm btn-danger py-0 px-2 font-mono" onclick="kickStudent('${s.number}')"><i class="bi bi-x-lg"></i></button>
-                    </div>
-                </div>
-            `).join('');
+        pendingGrid.innerHTML = '';
     }
 
     if (teamsGrid) {
@@ -488,8 +513,8 @@ function renderStudentChip(s) {
 }
 
 async function autoRandomizeTeams() {
-    const approvedList = studentList.filter(s => s.status === 'approved');
-    if (approvedList.length === 0) return showCyberAlert("ไม่สามารถสุ่มกลุ่มได้", "ยังไม่มีนักเรียนที่ได้รับการอนุมัติในห้องแข่งครับ", "warning");
+    const approvedList = studentList.filter(s => s.status !== 'rejected');
+    if (approvedList.length === 0) return showCyberAlert("ไม่สามารถสุ่มกลุ่มได้", "ยังไม่มีนักเรียนในห้องแข่งครับ", "warning");
 
     const perTeam = parseInt(teamSize) || 2;
     const shuffled = [...approvedList].sort(() => Math.random() - 0.5);
@@ -594,9 +619,9 @@ function promptActionConfirm(action) {
     const modalCard = document.getElementById('action-modal-card');
 
     if (action === 'start') {
-        const approvedList = studentList.filter(s => s.status === 'approved');
+        const approvedList = studentList.filter(s => s.status !== 'rejected');
         if (approvedList.length === 0) {
-            showCyberAlert("ยังไม่สามารถเริ่มได้", "ยังไม่มีนักเรียนที่ได้รับการอนุมัติในห้องแข่งเลยครับ กรุณาอนุมัตินักเรียนก่อนเริ่มแข่งขัน", "warning");
+            showCyberAlert("ยังไม่สามารถเริ่มได้", "ยังไม่มีนักเรียนในห้องแข่งเลยครับ กรุณารอนักเรียนเข้าร่วมห้องก่อนเริ่มแข่งขัน", "warning");
             return;
         }
 

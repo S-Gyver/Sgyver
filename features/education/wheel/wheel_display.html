@@ -24,61 +24,62 @@
     <link rel="stylesheet" href="wheel_display.css">
 </head>
 
-<body class="cyber-body py-3">
+<body class="cyber-body p-0">
 
     <!-- Background Elements -->
     <div class="bg-glow-blur glow-top"></div>
     <div class="bg-glow-blur glow-bottom"></div>
     <div class="bg-cyber-grid"></div>
 
-    <div class="container-fluid px-3 px-md-4 position-relative z-2">
+    <div class="container-fluid px-3 px-md-4 py-2 position-relative z-2 stage-page-container">
 
-        <!-- Navbar Header Banner -->
-        <div class="cyber-card p-2 px-3 mb-3 border-cyan d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <!-- Unified Cyber Navbar Header -->
+        <header class="cyber-card p-2 px-3 mb-2 border-cyan d-flex justify-content-between align-items-center flex-wrap gap-2 stage-topbar">
+            <!-- Left: Back & Title -->
             <div class="d-flex align-items-center gap-2">
-                <a href="../../../index.html"
-                    class="bg-primary text-white rounded-3 p-1 px-2 fs-5 d-inline-flex align-items-center justify-content-center text-decoration-none shadow-sm"
-                    style="width: 36px; height: 36px;" title="กลับหน้าหลัก">
+                <a href="../../../my_workspace.html"
+                    class="bg-primary text-white rounded-3 p-1 px-2 fs-6 d-inline-flex align-items-center justify-content-center text-decoration-none shadow-sm"
+                    style="width: 34px; height: 34px;" title="กลับหน้าหลัก">
                     <i class="bi bi-grid-1x2-fill"></i>
                 </a>
-                <span class="fw-bold text-white fs-5 font-kanit">Gyver Wheel Lucky Draw</span>
+                <span class="fw-black text-white fs-5 font-kanit text-cyan-glow tracking-wide text-nowrap">Gyver Wheel Lucky Draw</span>
             </div>
 
+            <!-- Center: Classroom & Subject Badges -->
+            <div class="d-flex align-items-center gap-2 flex-wrap justify-content-center">
+                <span class="badge bg-dark border border-cyan text-cyan font-mono px-3 py-1 fs-6 d-flex align-items-center gap-1 shadow-sm">
+                    <i class="bi bi-door-open-fill text-info"></i>ห้องเรียน: <span id="display-room-title" class="text-white fw-bold ms-1">กำลังโหลด...</span>
+                </span>
+                <span class="badge bg-dark border border-warning text-warning font-mono px-3 py-1 fs-6 d-flex align-items-center gap-1 shadow-sm">
+                    <i class="bi bi-journal-bookmark-fill text-warning"></i>วิชาที่ใช้: <span id="display-subject-tag" class="text-white fw-bold ms-1">กำลังโหลด...</span>
+                </span>
+            </div>
+
+            <!-- Right: Action Controls -->
             <div class="d-flex align-items-center gap-2">
-                <button id="wheel-sound-toggle-btn" class="btn btn-sm btn-outline-warning font-mono" onclick="toggleWheelSound()">
+                <button id="wheel-sound-toggle-btn" class="btn btn-sm btn-outline-warning font-mono" onclick="toggleWheelSound()" title="เปิด/ปิดเสียง">
                     <i class="bi bi-volume-up-fill me-1" id="wheel-sound-icon"></i><span id="wheel-sound-label">เสียง: เปิด</span>
+                </button>
+                <button id="stage-fullscreen-btn" class="btn btn-sm btn-outline-light font-mono" onclick="toggleStageFullscreen()" title="เต็มจอ (Fullscreen)">
+                    <i class="bi bi-arrows-fullscreen"></i>
                 </button>
                 <a href="teacher_wheel_monitor.html" target="_blank" class="btn btn-sm btn-outline-warning font-mono">
                     <i class="bi bi-sliders me-1"></i>บอร์ดควบคุม (Live Monitor)
                 </a>
                 <a href="../../../auth/classroom_manage/classroom_manage.html"
                     class="btn btn-sm btn-outline-info font-mono">
-                    <i class="bi bi-gear-fill me-1"></i>จัดการข้อมูลห้องเรียน
+                    <i class="bi bi-gear-fill me-1"></i>จัดการห้องเรียน
                 </a>
             </div>
-        </div>
+        </header>
 
-        <!-- Section สรุปข้อมูลห้องเรียน และ วิชาที่ใช้ -->
-        <div class="text-center mb-3">
-            <h3 class="fw-black text-white font-kanit m-0 tracking-wide text-cyan-glow">Gyver Wheel Lucky Draw</h3>
-            
-            <div class="d-flex justify-content-center align-items-center gap-2 mt-2 flex-wrap">
-                <span class="badge bg-dark border border-cyan text-cyan font-mono px-3 py-2 fs-6">
-                    <i class="bi bi-door-open-fill me-1"></i>ห้องเรียน: <span id="display-room-title" class="text-white fw-bold">กำลังโหลด...</span>
-                </span>
-                <span class="badge bg-dark border border-warning text-warning font-mono px-3 py-2 fs-6">
-                    <i class="bi bi-journal-bookmark-fill me-1"></i>วิชาที่ใช้: <span id="display-subject-tag" class="text-white fw-bold">กำลังโหลด...</span>
-                </span>
-            </div>
-        </div>
+        <!-- Main Stage Interactive Layout (Full Viewport Fit) -->
+        <div class="row g-2 g-md-3 stage-main-row">
 
-        <!-- Main Layout (3 : 9) -->
-        <div class="row g-3">
-
-            <!-- 👈 ฝั่งซ้าย: วงล้อ Cyber Canvas + ปุ่มกดหมุน -->
-            <div class="col-lg-3 d-flex flex-column align-items-center justify-content-center">
-                <div class="cyber-card p-3 w-100 text-center h-100 d-flex flex-column justify-content-between border-cyan">
-                    <div class="my-auto">
+            <!-- 👈 ฝั่งซ้าย: วงล้อ Cyber Canvas + ปุ่มกดหมุน (Adaptive Wheel Card) -->
+            <div class="col-lg-4 col-xl-3 d-flex flex-column h-100">
+                <div class="cyber-card p-3 w-100 text-center stage-wheel-card border-cyan h-100">
+                    <div class="wheel-stage-wrapper my-auto">
                         <div class="wheel-container">
                             <div id="wheel-pointer-arrow" class="wheel-pointer"></div>
                             <canvas id="wheel-canvas" width="380" height="380"></canvas>
@@ -86,9 +87,9 @@
                     </div>
 
                     <!-- 🌀 ปุ่มกดหมุนวงล้อสุ่มชื่อ -->
-                    <div class="mt-3">
+                    <div class="mt-auto pt-2 w-100">
                         <button id="btn-spin-wheel"
-                            class="btn btn-warning btn-lg w-100 font-mono fw-bold rounded-pill shadow-lg"
+                            class="btn btn-warning w-100 font-mono fw-bold rounded-pill shadow-lg"
                             onclick="spinRandomly()">
                             <i class="bi bi-play-circle-fill me-2"></i>หมุนวงล้อสุ่มชื่อ
                         </button>
@@ -96,44 +97,53 @@
                 </div>
             </div>
 
-            <!-- 👉 ฝั่งขวา: ทำเนียบบัลลังก์แชมป์ & ตารางคะแนน -->
-            <div class="col-lg-9">
-                <div class="cyber-card p-3 h-100 border-secondary d-flex flex-column justify-content-between">
+            <!-- 👉 ฝั่งขวา: ทำเนียบบัลลังก์แชมป์ & ตารางคะแนน (Podium + Leaderboard Card) -->
+            <div class="col-lg-8 col-xl-9 d-flex flex-column h-100">
+                <div class="cyber-card p-3 stage-leaderboard-card border-secondary h-100">
 
-                    <div class="row g-3 mb-2">
+                    <div class="row g-3 h-100 align-items-stretch">
                         <!-- 🏆 บัลลังก์แชมป์ 3 อันดับแรก (Podium) -->
-                        <div class="col-md-6 border-end border-secondary pe-md-3">
-                            <h4 class="fw-bold text-warning font-mono text-center mb-2 fs-3">
+                        <div class="col-md-6 border-end border-secondary pe-md-3 d-flex flex-column justify-content-between">
+                            <h4 class="fw-bold text-warning font-mono text-center mb-1 fs-4 podium-header-title">
                                 <i class="bi bi-trophy-fill me-1"></i>ทำเนียบบัลลังก์แชมป์
                             </h4>
 
-                            <div class="podium-box">
+                            <div class="podium-box my-auto">
                                 <!-- อันดับ 2 -->
                                 <div class="podium-step podium-2">
-                                    <img id="podium-2-img" src="https://api.dicebear.com/7.x/big-smile/svg?seed=Rank2"
-                                        class="podium-avatar">
-                                    <small class="text-white font-mono text-truncate w-100 text-center fw-bold fs-6"
-                                        id="podium-2-name">-</small>
+                                    <div class="podium-avatar-wrap">
+                                        <span class="podium-medal-badge badge-silver">🥈</span>
+                                        <img id="podium-2-img" src="https://api.dicebear.com/7.x/big-smile/svg?seed=Rank2"
+                                            class="podium-avatar" alt="อันดับ 2">
+                                    </div>
+                                    <span class="text-white font-mono text-center fw-bold podium-student-name"
+                                        id="podium-2-name">-</span>
                                     <small class="text-cyan font-mono mb-1 fw-bold fs-6" id="podium-2-score">0 pt</small>
                                     <div class="podium-bar">2</div>
                                 </div>
 
-                                <!-- อันดับ 1 -->
+                                <!-- อันดับ 1 (แชมป์) -->
                                 <div class="podium-step podium-1">
-                                    <img id="podium-1-img" src="https://api.dicebear.com/7.x/big-smile/svg?seed=Rank1"
-                                        class="podium-avatar">
-                                    <small class="text-warning font-mono text-truncate w-100 text-center fw-bold fs-5"
-                                        id="podium-1-name">-</small>
+                                    <div class="podium-avatar-wrap">
+                                        <span class="podium-medal-badge badge-gold">👑</span>
+                                        <img id="podium-1-img" src="https://api.dicebear.com/7.x/big-smile/svg?seed=Rank1"
+                                            class="podium-avatar" alt="อันดับ 1">
+                                    </div>
+                                    <span class="text-warning font-mono text-center fw-bold podium-student-name podium-name-gold"
+                                        id="podium-1-name">-</span>
                                     <small class="text-warning font-mono mb-1 fs-5 fw-bold" id="podium-1-score">0 pt</small>
                                     <div class="podium-bar">1</div>
                                 </div>
 
                                 <!-- อันดับ 3 -->
                                 <div class="podium-step podium-3">
-                                    <img id="podium-3-img" src="https://api.dicebear.com/7.x/big-smile/svg?seed=Rank3"
-                                        class="podium-avatar">
-                                    <small class="text-white font-mono text-truncate w-100 text-center fw-bold fs-6"
-                                        id="podium-3-name">-</small>
+                                    <div class="podium-avatar-wrap">
+                                        <span class="podium-medal-badge badge-bronze">🥉</span>
+                                        <img id="podium-3-img" src="https://api.dicebear.com/7.x/big-smile/svg?seed=Rank3"
+                                            class="podium-avatar" alt="อันดับ 3">
+                                    </div>
+                                    <span class="text-white font-mono text-center fw-bold podium-student-name"
+                                        id="podium-3-name">-</span>
                                     <small class="text-success font-mono mb-1 fw-bold fs-6" id="podium-3-score">0 pt</small>
                                     <div class="podium-bar">3</div>
                                 </div>
@@ -141,19 +151,20 @@
                         </div>
 
                         <!-- 📊 ตารางคะแนนปัจจุบัน -->
-                        <div class="col-md-6 ps-md-2">
-                            <h5 class="fw-bold text-cyan font-mono mb-2 fs-4">
-                                <i class="bi bi-list-stars me-1"></i>ตารางคะแนนปัจจุบัน
+                        <div class="col-md-6 ps-md-3 d-flex flex-column">
+                            <h5 class="fw-bold text-cyan font-mono mb-2 fs-5 d-flex align-items-center justify-content-between">
+                                <span><i class="bi bi-list-stars me-1"></i>ตารางคะแนนปัจจุบัน</span>
+                                <span class="badge bg-dark border border-cyan text-cyan small font-mono" id="leaderboard-count-badge">Top Ranks</span>
                             </h5>
 
-                            <div class="table-responsive border border-secondary rounded-3" style="max-height: 480px; overflow-y: auto;">
+                            <div class="table-responsive border border-secondary rounded-3 flex-grow-1 stage-table-wrap">
                                 <table class="table table-dark table-hover table-compact font-mono align-middle mb-0">
                                     <thead class="table-dark sticky-top">
                                         <tr class="text-subtle fs-6">
-                                            <th class="text-center" style="width: 40px;">#</th>
-                                            <th class="text-end pe-2">ชื่อผู้เล่น</th>
-                                            <th class="text-end" style="width: 75px;">ถูกสุ่ม</th>
-                                            <th class="text-end" style="width: 75px;">คะแนน</th>
+                                            <th class="text-center" style="width: 45px;">#</th>
+                                            <th class="text-start ps-2">ชื่อผู้เล่น</th>
+                                            <th class="text-end" style="width: 70px;">ถูกสุ่ม</th>
+                                            <th class="text-end pe-3" style="width: 80px;">คะแนน</th>
                                         </tr>
                                     </thead>
                                     <tbody id="leaderboard-table-body">

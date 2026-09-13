@@ -234,8 +234,8 @@ async function checkApprovalAndGoToArena(roomCode, name, className, no, team) {
             if (lobbyData && Array.isArray(lobbyData.players)) {
                 const me = lobbyData.players.find(p => String(p.number) === String(no) && p.nickname_th === name);
 
-                if (!me || me.status !== 'approved') {
-                    alert("⚠️ คุณยังไม่ได้รับการอนุมัติให้เข้าแข่งขัน กรุณารอคุณครูกด 'อนุมัติ' ก่อนครับ!");
+                if (!me || me.status === 'rejected') {
+                    alert("⚠️ คุณถูกคุณครูนำออกจากห้องแข่งขัน ไม่สามารถเข้าสู่สนามได้ครับ");
                     return;
                 }
             }

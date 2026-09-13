@@ -262,7 +262,7 @@ async function handleStudentJoin(e) {
                 class_name: studentClassFormatted,
                 number: parseInt(studentNumber) || 1,
                 image: currentAvatarUrl,
-                status: 'pending',
+                status: 'approved',
                 score: 0,
                 progress: 0,
                 wpm: 0,

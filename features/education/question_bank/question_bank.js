@@ -371,7 +371,7 @@ async function launchWheelWithSubject() {
 
 async function logout() { 
     await window.supabaseClient.auth.signOut();
-    window.location.href = '../../../index.html'; 
+    window.location.href = '../../../my_workspace.html'; 
 }
 
 window.onload = () => {

@@ -20,7 +20,7 @@ async function enforceAdminRole() {
         const userRole = session.user.user_metadata?.role || 'user';
         if (userRole !== 'admin') {
             alert('🚨 บัญชีของคุณไม่มีสิทธิ์เข้าใช้งานส่วนการจัดการแอดมิน!');
-            window.location.href = '../index.html'; // เด้งกลับหน้า User หลัก
+            window.location.href = '../my_workspace.html'; // เด้งกลับหน้า User หลัก
         }
     }
 }

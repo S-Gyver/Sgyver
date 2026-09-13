@@ -57,18 +57,35 @@ body.cyber-body {
 /* ==========================================
    🎡 WHEEL CANVAS COMPONENTS
    ========================================== */
+.stage-wheel-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.wheel-stage-wrapper {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    width: 100%;
+}
+
 .wheel-container {
     position: relative;
-    width: 360px;
-    height: 360px;
-    margin: 0 auto;
+    width: min(100%, min(290px, 38vh));
+    height: min(100%, min(290px, 38vh));
+    aspect-ratio: 1 / 1;
+    margin: auto auto;
 }
 
 #wheel-canvas {
     width: 100%;
     height: 100%;
     border-radius: 50%;
-    box-shadow: 0 0 35px rgba(0, 240, 255, 0.3), inset 0 0 20px rgba(0, 0, 0, 0.9);
+    box-shadow: 0 0 35px rgba(0, 240, 255, 0.35), inset 0 0 20px rgba(0, 0, 0, 0.9);
 }
 
 .wheel-pointer {
@@ -164,7 +181,6 @@ body.cyber-body {
 /* ==========================================
    ❓ QUESTION & CHOICE COMPONENTS
    ========================================== */
-/* กล่องโจทย์คำถาม (ขยายความสูงตามเนื้อหาคำถามจริง) */
 .quiz-question-card {
     height: fit-content !important;
     max-height: 480px;
@@ -180,7 +196,6 @@ body.cyber-body {
 .quiz-scroll-container::-webkit-scrollbar-track { background: #0f172a; border-radius: 4px; }
 .quiz-scroll-container::-webkit-scrollbar-thumb { background: #00f0ff; border-radius: 4px; }
 
-/* ตัวเลือกคำตอบ 1-4 กรอบสีมืดขอบนีออน */
 .choice-box-neon {
     background: rgba(18, 24, 36, 0.95);
     border: 2px solid #00f0ff;
@@ -231,7 +246,6 @@ body.cyber-body {
 /* ==========================================
    🔵 ACTION BUTTON COMPONENTS
    ========================================== */
-/* ปุ่มทรงกลมแอ็กชัน (สุ่มคำถาม / ยืนยันคำตอบ) */
 .btn-circle-action {
     width: 120px;
     height: 120px;
@@ -267,43 +281,89 @@ body.cyber-body {
     display: flex;
     align-items: flex-end;
     justify-content: center;
-    gap: 14px;
-    padding-top: 20px;
-    padding-bottom: 10px;
+    gap: clamp(8px, 1.4vw, 16px);
+    width: 100%;
+    padding: 0.4rem 0 0.1rem 0;
 }
 
 .podium-step {
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 100px;
+    flex: 1;
+    min-width: 90px;
+    max-width: 140px;
+}
+
+.podium-avatar-wrap {
+    position: relative;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.podium-medal-badge {
+    position: absolute;
+    top: -12px;
+    right: -4px;
+    font-size: 1.4rem;
+    filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.9));
+    z-index: 5;
+    animation: medalFloat 2s ease-in-out infinite alternate;
+}
+
+@keyframes medalFloat {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(-3px); }
+}
+
+.podium-student-name {
+    font-size: clamp(0.85rem, 1.1vw, 1.05rem);
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    line-height: 1.3;
+}
+
+.podium-name-gold {
+    color: #ffbe0b !important;
+    text-shadow: 0 0 12px rgba(255, 190, 11, 0.6);
 }
 
 .podium-avatar {
     border-radius: 50%;
     object-fit: cover;
-    border: 4px solid #00f0ff;
-    margin-bottom: 8px;
     background: #0f172a;
     transition: transform 0.25s ease-out, box-shadow 0.25s ease;
+    cursor: pointer;
+}
+
+.podium-avatar:hover {
+    transform: scale(1.08);
 }
 
 .podium-1 .podium-avatar { 
-    width: 120px; height: 120px; 
-    border-color: #ffbe0b; border-width: 5px;
-    box-shadow: 0 0 35px rgba(255, 190, 11, 0.9); 
+    width: clamp(85px, 11vh, 115px);
+    height: clamp(85px, 11vh, 115px);
+    border: 4px solid #ffbe0b;
+    box-shadow: 0 0 35px rgba(255, 190, 11, 0.95); 
 }
 
 .podium-2 .podium-avatar { 
-    width: 95px; height: 95px; 
-    border-color: #00f0ff; 
-    box-shadow: 0 0 25px rgba(0, 240, 255, 0.8); 
+    width: clamp(70px, 9vh, 90px);
+    height: clamp(70px, 9vh, 90px);
+    border: 4px solid #00f0ff;
+    box-shadow: 0 0 25px rgba(0, 240, 255, 0.85); 
 }
 
 .podium-3 .podium-avatar { 
-    width: 88px; height: 88px; 
-    border-color: #06d6a0; 
-    box-shadow: 0 0 25px rgba(6, 214, 160, 0.8); 
+    width: clamp(65px, 8vh, 85px);
+    height: clamp(65px, 8vh, 85px);
+    border: 4px solid #06d6a0;
+    box-shadow: 0 0 25px rgba(6, 214, 160, 0.85); 
 }
 
 .podium-bar {
@@ -313,25 +373,32 @@ body.cyber-body {
     align-items: center;
     justify-content: center;
     font-weight: 800;
-    font-size: 1.8rem;
+    font-size: clamp(1.4rem, 2vw, 1.8rem);
     color: #fff;
     box-shadow: 0 0 25px rgba(0, 0, 0, 0.6);
 }
 
-.podium-1 .podium-bar { height: 140px; background: linear-gradient(180deg, #ffbe0b, #d97706); }
-.podium-2 .podium-bar { height: 105px; background: linear-gradient(180deg, #3a86ff, #2563eb); }
-.podium-3 .podium-bar { height: 80px; background: linear-gradient(180deg, #06d6a0, #059669); }
+.podium-1 .podium-bar { height: clamp(80px, 14vh, 130px); background: linear-gradient(180deg, #ffbe0b, #d97706); }
+.podium-2 .podium-bar { height: clamp(60px, 10vh, 95px); background: linear-gradient(180deg, #3a86ff, #2563eb); }
+.podium-3 .podium-bar { height: clamp(45px, 8vh, 75px); background: linear-gradient(180deg, #06d6a0, #059669); }
 
 /* 📜 Table & Scrollbar */
-.table-responsive {
-    max-height: 480px;
+.stage-table-wrap {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: calc(100vh - 170px);
     overflow-y: auto !important;
     overflow-x: hidden !important;
 }
 
-.table-responsive::-webkit-scrollbar { width: 8px; }
-.table-responsive::-webkit-scrollbar-track { background: #0f172a; border-radius: 4px; }
-.table-responsive::-webkit-scrollbar-thumb { background: #00f0ff; border-radius: 4px; box-shadow: 0 0 10px rgba(0, 240, 255, 0.5); }
+.table-compact th,
+.table-compact td {
+    padding: 0.42rem 0.55rem !important;
+}
+
+.stage-table-wrap::-webkit-scrollbar { width: 6px; }
+.stage-table-wrap::-webkit-scrollbar-track { background: #0f172a; border-radius: 4px; }
+.stage-table-wrap::-webkit-scrollbar-thumb { background: #00f0ff; border-radius: 4px; box-shadow: 0 0 8px rgba(0, 240, 255, 0.5); }
 
 #leaderboard-table-body img {
     transition: transform 0.25s ease;
@@ -344,9 +411,56 @@ body.cyber-body {
 }
 
 .student-name-text {
-    font-size: 1.55rem !important;
-    font-weight: 800 !important;
+    font-size: clamp(0.92rem, 1.05vw, 1.1rem) !important;
+    font-weight: 700 !important;
     color: #ffffff !important;
+    line-height: 1.2;
+}
+
+/* ==========================================
+   🌌 STAGE VIEWPORT FITTING (NO SCROLL ON DESKTOP)
+   ========================================== */
+@media (min-width: 992px) {
+    body.cyber-body {
+        height: 100vh !important;
+        max-height: 100vh !important;
+        overflow: hidden !important;
+        display: flex;
+        flex-direction: column;
+        padding: 0 !important;
+    }
+
+    .stage-page-container {
+        height: 100vh !important;
+        max-height: 100vh !important;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        padding: 10px 16px !important;
+    }
+
+    .stage-topbar {
+        flex-shrink: 0;
+        margin-bottom: 8px !important;
+    }
+
+    .stage-main-row {
+        flex: 1 1 auto;
+        min-height: 0;
+        height: calc(100vh - 72px);
+        overflow: hidden;
+        margin-bottom: 0 !important;
+    }
+
+    .stage-wheel-card,
+    .stage-leaderboard-card {
+        height: 100% !important;
+        max-height: 100% !important;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        overflow: hidden;
+    }
 }
 
 .style-cyber-modal-fullscreen {
