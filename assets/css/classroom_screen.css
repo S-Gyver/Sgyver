@@ -1,0 +1,1612 @@
+/* ====================================================
+   🎨 Gyver Studio - Classroom Screen Theme & UI System
+   ClassroomScreen.com Inspired Dynamic Dashboard Styles
+   ==================================================== */
+
+:root {
+    --cs-primary: #4361ee;
+    --cs-primary-hover: #3b52d4;
+    --cs-accent: #f72585;
+    --cs-teal: #4cc9f0;
+    --cs-green: #2ecc71;
+    --cs-yellow: #f1c40f;
+    --cs-red: #e74c3c;
+    
+    --cs-dark-bg: #050811;
+    --cs-glass-bg: rgba(15, 23, 42, 0.78);
+    --cs-glass-card: rgba(15, 23, 42, 0.86);
+    --cs-glass-border: rgba(255, 255, 255, 0.14);
+    --cs-glass-border-hover: rgba(255, 255, 255, 0.28);
+    
+    --cs-text-light: #f8fafc;
+    --cs-text-muted: #cbd5e1;
+    --cs-radius-lg: 20px;
+    --cs-radius-md: 14px;
+    --cs-radius-sm: 10px;
+    --cs-shadow-glow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+/* 🌌 Fullscreen Canvas Body */
+body.classroom-mode {
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Kanit', sans-serif;
+    background-color: var(--cs-dark-bg);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    transition: background-image 0.5s ease-in-out, background-color 0.5s ease;
+    user-select: none;
+    position: relative;
+    color: #f8fafc;
+}
+
+/* 🖼️ Overlay gradient to ensure UI readability */
+.classroom-bg-overlay {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.35) 100%);
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* ====================================================
+   📌 1. TOP HEADER BAR
+   ==================================================== */
+.cs-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    padding: 0 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--cs-glass-bg);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border-bottom: 1px solid var(--cs-glass-border);
+    z-index: 1000;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+}
+
+.cs-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    text-decoration: none;
+    color: var(--cs-text-light);
+    font-weight: 700;
+    font-size: 1.15rem;
+    letter-spacing: -0.02em;
+}
+
+.cs-brand-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: var(--cs-radius-sm);
+    background: linear-gradient(135deg, var(--cs-primary), var(--cs-accent));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(67, 97, 238, 0.4);
+}
+
+/* ✏️ Editable Screen Title */
+.cs-title-box {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--cs-glass-border);
+    border-radius: 30px;
+    padding: 0.35rem 1rem;
+    color: var(--cs-text-light);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.cs-title-box:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.cs-title-box input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #fff;
+    font-weight: 600;
+    font-family: 'Kanit', sans-serif;
+    font-size: 0.9rem;
+    min-width: 160px;
+    text-align: center;
+}
+
+/* 🕒 Top Live Clock Badge */
+.cs-header-clock {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--cs-glass-border);
+    padding: 0.35rem 0.85rem;
+    border-radius: 30px;
+    color: #e2e8f0;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.cs-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.cs-btn-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--cs-glass-border);
+    color: var(--cs-text-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.cs-btn-icon:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.35);
+    transform: translateY(-1px);
+}
+
+.cs-btn-text {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--cs-glass-border);
+    color: var(--cs-text-light);
+    padding: 0.4rem 0.9rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.cs-btn-text:hover {
+    background: rgba(255, 255, 255, 0.18);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* ====================================================
+   🎨 2. MAIN WIDGET CANVAS AREA
+   ==================================================== */
+#cs-widget-canvas {
+    position: absolute;
+    top: 54px;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    overflow: hidden;
+}
+
+body.classroom-mode #cs-widget-canvas {
+    position: fixed;
+    top: 60px;
+    bottom: 0;
+}
+
+/* ====================================================
+   🪟 3. FLOATING WIDGET CARDS
+   ==================================================== */
+.cs-widget {
+    position: absolute;
+    background: var(--cs-glass-card);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid var(--cs-glass-border);
+    border-radius: var(--cs-radius-lg);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+    min-width: 260px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    container-type: inline-size;
+}
+
+@keyframes popIn {
+    0% { opacity: 0; transform: scale(0.85) translateY(20px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.cs-widget.active-drag {
+    border-color: var(--cs-teal);
+    box-shadow: 0 20px 50px rgba(76, 201, 240, 0.35);
+    cursor: grabbing !important;
+}
+
+/* Widget Header Bar */
+.cs-widget-header {
+    height: 42px;
+    padding: 0 0.85rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: grab;
+    user-select: none;
+    flex-shrink: 0;
+}
+
+.cs-widget-title {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: var(--cs-text-light);
+    font-size: 0.88rem;
+    font-weight: 600;
+}
+
+.cs-widget-title i {
+    font-size: 1rem;
+    color: var(--cs-teal);
+}
+
+.cs-widget-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.cs-wctrl-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: var(--cs-text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.cs-wctrl-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+}
+
+.cs-wctrl-btn.close-btn:hover {
+    background: var(--cs-red);
+    color: #fff;
+}
+
+/* Widget Body */
+.cs-widget-body {
+    padding: 1rem;
+    color: var(--cs-text-light);
+    overflow: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Widget Resizer Handle */
+.cs-widget-resizer {
+    position: absolute;
+    right: 2px;
+    bottom: 2px;
+    width: 18px;
+    height: 18px;
+    cursor: se-resize;
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    padding: 3px;
+    z-index: 50;
+    user-select: none;
+}
+
+.cs-widget-resizer::after {
+    content: '';
+    width: 9px;
+    height: 9px;
+    border-right: 2.5px solid rgba(255, 255, 255, 0.45);
+    border-bottom: 2.5px solid rgba(255, 255, 255, 0.45);
+    border-radius: 1px;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.cs-widget:hover .cs-widget-resizer::after {
+    border-color: var(--cs-teal);
+    transform: scale(1.15);
+}
+
+/* ====================================================
+   🎲 WIDGET SPECIFIC STYLES
+   ==================================================== */
+
+/* 1. 🎲 Dice Widget */
+.dice-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 0.5rem 0;
+}
+
+.dice-face {
+    width: 70px;
+    height: 70px;
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.15), 0 8px 16px rgba(0, 0, 0, 0.3);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    padding: 8px;
+    align-items: center;
+    justify-items: center;
+    position: relative;
+    transition: transform 0.15s ease;
+}
+
+.dice-dot {
+    width: 11px;
+    height: 11px;
+    background-color: #1e293b;
+    border-radius: 50%;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.dice-rolling {
+    animation: roll3d 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes roll3d {
+    0% { transform: rotate(0deg) scale(0.9); }
+    50% { transform: rotate(180deg) scale(1.15); }
+    100% { transform: rotate(360deg) scale(0.95); }
+}
+
+/* 2. 🎰 Random Name Widget */
+.name-picker-box {
+    text-align: center;
+}
+
+.name-display {
+    min-height: 80px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 2px dashed var(--cs-teal);
+    border-radius: var(--cs-radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #fff;
+    padding: 0.75rem;
+    margin-bottom: 0.85rem;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+/* 3. 🔊 Noise Level Widget */
+.noise-meter-bar {
+    width: 100%;
+    height: 24px;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid var(--cs-glass-border);
+}
+
+.noise-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #2ecc71 0%, #f1c40f 70%, #e74c3c 100%);
+    transition: width 0.1s ease-out;
+    border-radius: 12px;
+}
+
+.noise-threshold-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: #ffffff;
+    box-shadow: 0 0 8px #ffffff;
+    z-index: 5;
+}
+
+.noise-alarm-badge {
+    animation: flashRed 0.6s ease infinite alternate;
+}
+
+@keyframes flashRed {
+    from { opacity: 0.4; }
+    to { opacity: 1; filter: drop-shadow(0 0 10px var(--cs-red)); }
+}
+
+/* 4. 🚥 Traffic Light Widget */
+.traffic-housing {
+    width: 90px;
+    background: #1e293b;
+    border: 2px solid #334155;
+    border-radius: 40px;
+    padding: 12px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+    margin: 0 auto;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6), 0 10px 25px rgba(0, 0, 0, 0.4);
+}
+
+.traffic-bulb {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: #0f172a;
+    opacity: 0.35;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: inset 0 4px 6px rgba(0, 0, 0, 0.6);
+}
+
+.traffic-bulb.red { border: 2px solid #ef4444; }
+.traffic-bulb.yellow { border: 2px solid #f59e0b; }
+.traffic-bulb.green { border: 2px solid #10b981; }
+
+.traffic-bulb.red.active {
+    background-color: #ef4444;
+    opacity: 1;
+    box-shadow: 0 0 25px #ef4444, inset 0 0 10px rgba(255, 255, 255, 0.6);
+}
+
+.traffic-bulb.yellow.active {
+    background-color: #f59e0b;
+    opacity: 1;
+    box-shadow: 0 0 25px #f59e0b, inset 0 0 10px rgba(255, 255, 255, 0.6);
+}
+
+.traffic-bulb.green.active {
+    background-color: #10b981;
+    opacity: 1;
+    box-shadow: 0 0 25px #10b981, inset 0 0 10px rgba(255, 255, 255, 0.6);
+}
+
+/* 5. ⏱️ Timer Widget */
+.timer-display {
+    font-size: 3.2rem;
+    font-weight: 800;
+    font-family: 'Plus Jakarta Sans', monospace;
+    text-align: center;
+    letter-spacing: 0.05em;
+    color: #ffffff;
+    text-shadow: 0 4px 15px rgba(67, 97, 238, 0.4);
+    margin: 0.2rem 0 0.8rem;
+}
+
+/* 6. 🙋‍♂️ Work Symbols Widget */
+.symbol-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.65rem;
+}
+
+.symbol-card {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--cs-glass-border);
+    border-radius: var(--cs-radius-md);
+    padding: 0.75rem 0.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.symbol-card:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.25);
+    transform: translateY(-2px);
+}
+
+.symbol-card.active {
+    background: linear-gradient(135deg, rgba(67, 97, 238, 0.35), rgba(76, 201, 240, 0.35));
+    border-color: var(--cs-teal);
+    box-shadow: 0 4px 15px rgba(76, 201, 240, 0.3);
+}
+
+.symbol-icon {
+    font-size: 1.8rem;
+    margin-bottom: 0.25rem;
+}
+
+.symbol-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--cs-text-light);
+}
+
+/* 7. 📝 Text Note Widget */
+.cs-note-textarea {
+    width: 100%;
+    min-height: 140px;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #ffffff;
+    font-family: 'Kanit', sans-serif;
+    font-size: 1.05rem;
+    line-height: 1.6;
+    resize: both;
+}
+
+/* 8. 🎨 Whiteboard / Drawing Widget */
+.drawing-canvas {
+    background: #ffffff;
+    border-radius: var(--cs-radius-md);
+    cursor: crosshair;
+    touch-action: none;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+/* 9. 🎡 Lucky Wheel Widget */
+.wheel-widget-box {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    flex: 1;
+    min-height: 0;
+    position: relative;
+}
+
+.wheel-main-layout {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 14px;
+    width: 100%;
+    height: 100%;
+    flex: 1;
+    min-height: 0;
+}
+
+.wheel-left-col {
+    flex: 1 1 50%;
+    min-width: 220px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    height: 100%;
+    min-height: 0;
+    position: relative;
+}
+
+.wheel-right-col {
+    flex: 1 1 50%;
+    min-width: 220px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+    min-height: 0;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 14px;
+    padding: 10px;
+}
+
+.cs-widget.wheel-settings-collapsed .wheel-left-col {
+    flex: 1 1 100%;
+    max-width: 100%;
+}
+
+.wheel-canvas-container {
+    position: relative;
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    max-height: calc(100% - 46px);
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: auto auto;
+}
+
+.wheel-canvas {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100%;
+    max-height: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: 50%;
+    border: 5px solid #1e293b;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    display: block;
+}
+
+.wheel-pointer {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 14px solid transparent;
+    border-right: 14px solid transparent;
+    border-top: 24px solid var(--pointer-color, #ef4444);
+    z-index: 25;
+    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.6));
+    transform-origin: 50% 0;
+    transition: border-top-color 0.12s ease-out;
+}
+
+.wheel-pointer.tick-anim {
+    animation: wheelPointerTick 0.08s ease-out;
+}
+
+@keyframes wheelPointerTick {
+    0% { transform: translateX(-50%) rotate(0deg); }
+    30% { transform: translateX(-50%) rotate(-14deg); }
+    100% { transform: translateX(-50%) rotate(0deg); }
+}
+
+/* Floating Winner Announcement Overlay */
+.wheel-winner-banner {
+    position: absolute;
+    inset: 10px;
+    background: rgba(15, 23, 42, 0.94);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 2px solid rgba(245, 158, 11, 0.7);
+    border-radius: 20px;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 40;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.75), 0 0 30px rgba(245, 158, 11, 0.35);
+    padding: 16px;
+    text-align: center;
+    animation: bannerPopIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.wheel-winner-banner.show {
+    display: flex !important;
+}
+
+@keyframes bannerPopIn {
+    0% { opacity: 0; transform: scale(0.85); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+/* 2-Column Layout Utilities for Name Picker and Number Guess */
+.name-picker-box,
+.guess-widget-box {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    flex: 1;
+    min-height: 0;
+}
+
+.name-main-layout,
+.guess-main-layout {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 14px;
+    width: 100%;
+    height: 100%;
+    flex: 1;
+    min-height: 0;
+}
+
+.name-left-col,
+.guess-left-col {
+    flex: 1 1 50%;
+    min-width: 200px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+    min-height: 0;
+}
+
+.name-right-col,
+.guess-right-col {
+    flex: 1 1 50%;
+    min-width: 200px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+    min-height: 0;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 12px;
+    padding: 10px;
+}
+
+.cs-widget.name-settings-collapsed .name-left-col,
+.cs-widget.guess-settings-collapsed .guess-left-col {
+    flex: 1 1 100%;
+    max-width: 100%;
+}
+
+/* High-Contrast Widget Badges */
+.cs-count-badge {
+    background: rgba(56, 189, 248, 0.16) !important;
+    color: #38bdf8 !important;
+    border: 1px solid rgba(56, 189, 248, 0.45) !important;
+    font-size: 0.72rem !important;
+    font-weight: 600 !important;
+    padding: 3px 9px !important;
+    border-radius: 999px !important;
+    letter-spacing: 0.02em;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.cs-count-badge-success {
+    background: rgba(16, 185, 129, 0.16) !important;
+    color: #34d399 !important;
+    border: 1px solid rgba(16, 185, 129, 0.45) !important;
+    font-size: 0.72rem !important;
+    font-weight: 600 !important;
+    padding: 3px 9px !important;
+    border-radius: 999px !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+/* Fallback override for any secondary subtle badges in widgets */
+.cs-widget .badge.bg-secondary-subtle {
+    background: rgba(56, 189, 248, 0.16) !important;
+    color: #38bdf8 !important;
+    border: 1px solid rgba(56, 189, 248, 0.45) !important;
+}
+
+/* 10. 🔢 Gyver Number Guess */
+.guess-game-box {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+/* ====================================================
+   ⚓ 4. BOTTOM FLOATING DOCK TOOLBAR
+   ==================================================== */
+.cs-toolbar-wrapper,
+.cs-dock-wrapper {
+    position: fixed;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    max-width: 96vw;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cs-toolbar,
+.cs-dock {
+    background: var(--cs-glass-bg);
+    backdrop-filter: blur(28px) saturate(190%);
+    -webkit-backdrop-filter: blur(28px) saturate(190%);
+    border: 1px solid var(--cs-glass-border);
+    border-radius: 40px;
+    padding: 0.45rem 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.cs-toolbar::-webkit-scrollbar,
+.cs-dock::-webkit-scrollbar { display: none; }
+
+#cs-dock-items {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.cs-tool-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 58px;
+    height: 58px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--cs-text-light);
+    cursor: pointer;
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.2s ease, border-color 0.2s ease;
+    flex-shrink: 0;
+    position: relative;
+    outline: none;
+}
+
+.cs-tool-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.35);
+    transform: translateY(-6px) scale(1.08);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+}
+
+.cs-tool-btn i {
+    font-size: 1.45rem;
+    margin-bottom: 2px;
+}
+
+.cs-tool-btn span {
+    font-size: 0.65rem;
+    font-weight: 500;
+    white-space: nowrap;
+    opacity: 0.9;
+}
+
+/* Tool Icon Colors */
+.tool-bg { color: #4cc9f0 !important; }
+.tool-dice { color: #ff7675 !important; }
+.tool-name { color: #fdcb6e !important; }
+.tool-sound { color: #55efc4 !important; }
+.tool-traffic { color: #ff7675 !important; }
+.tool-timer { color: #a29bfe !important; }
+.tool-clock { color: #74b9ff !important; }
+.tool-symbol { color: #fd79a8 !important; }
+.tool-text { color: #fab1a0 !important; }
+.tool-draw { color: #81ecec !important; }
+.tool-qr { color: #e84393 !important; }
+.tool-group { color: #00b894 !important; }
+.tool-media { color: #ff7675 !important; }
+
+/* Balloon Tooltip on Hover */
+.dock-tooltip {
+    position: absolute;
+    bottom: calc(100% + 12px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    background: rgba(15, 23, 42, 0.94);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 4px 10px;
+    color: #ffffff;
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+    z-index: 100;
+}
+
+.dock-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 5px;
+    border-style: solid;
+    border-color: rgba(15, 23, 42, 0.94) transparent transparent transparent;
+}
+
+.cs-tool-btn:hover .dock-tooltip {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* Remove button on dock item in edit mode */
+.cs-dock-remove-btn {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    width: 18px;
+    height: 18px;
+    background: #ef4444;
+    color: #fff;
+    border-radius: 50%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    cursor: pointer;
+    z-index: 10;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+    border: 1.5px solid #ffffff;
+}
+
+.dock-edit-mode .cs-dock-remove-btn {
+    display: flex !important;
+}
+
+.dock-edit-mode .cs-tool-btn {
+    animation: dockJiggle 0.3s ease-in-out infinite alternate;
+}
+
+@keyframes dockJiggle {
+    0% { transform: rotate(-1.5deg); }
+    100% { transform: rotate(1.5deg); }
+}
+
+/* Active Widget Badge Counter */
+.cs-tool-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 18px;
+    height: 18px;
+    background: var(--cs-primary);
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 700;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--cs-dark-bg);
+}
+
+/* ====================================================
+   🍎 macOS / iOS Launchpad Style App Grid (Teacher Tools)
+   ==================================================== */
+#teacherMenuDrawer {
+    width: 440px !important;
+    max-width: 92vw !important;
+    background: rgba(15, 23, 42, 0.96) !important;
+    backdrop-filter: blur(28px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.16) !important;
+    box-shadow: 20px 0 50px rgba(0, 0, 0, 0.65) !important;
+    color: #f8fafc;
+}
+
+#teacherMenuDrawer .offcanvas-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+#teacherMenuDrawer .offcanvas-title {
+    color: #ffffff !important;
+    font-weight: 700;
+    font-size: 1.05rem;
+    letter-spacing: -0.01em;
+}
+
+/* View Switcher Pills */
+.launchpad-view-toggle {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+    padding: 3px;
+    gap: 2px;
+}
+
+.launchpad-view-btn {
+    border: none;
+    background: transparent;
+    color: #94a3b8;
+    padding: 4px 9px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.launchpad-view-btn:hover {
+    color: #f8fafc;
+}
+
+.launchpad-view-btn.active {
+    background: linear-gradient(135deg, #0ea5e9, #0284c7);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(14, 165, 233, 0.4);
+}
+
+/* Instant Search Box */
+.launchpad-search-wrap {
+    position: relative;
+    margin-bottom: 1.15rem;
+}
+
+.launchpad-search-wrap i {
+    position: absolute;
+    left: 13px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #38bdf8;
+    font-size: 0.95rem;
+    pointer-events: none;
+}
+
+.launchpad-search-input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    padding: 0.52rem 0.9rem 0.52rem 2.35rem;
+    color: #ffffff;
+    font-size: 0.86rem;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.launchpad-search-input:focus {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: #38bdf8;
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+}
+
+.launchpad-search-input::placeholder {
+    color: #94a3b8;
+    font-size: 0.82rem;
+}
+
+/* Category Sections */
+.launchpad-category {
+    margin-bottom: 1.35rem;
+}
+
+.launchpad-category-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #38bdf8;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* 🍎 1. GRID MODE (Apple Launchpad Style) */
+.drawer-view-grid .launchpad-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px 8px;
+}
+
+.drawer-view-grid .launchpad-app-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 8px 4px 6px;
+    border-radius: 18px;
+    text-decoration: none !important;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.drawer-view-grid .launchpad-app-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-4px);
+}
+
+/* The Apple Squircle Icon */
+.drawer-view-grid .launchpad-icon {
+    width: 68px;
+    height: 68px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    font-size: 1.95rem;
+    color: #ffffff;
+    box-shadow: 0 10px 22px -3px rgba(0, 0, 0, 0.48),
+                inset 0 1.5px 1.5px rgba(255, 255, 255, 0.55),
+                inset 0 -1.5px 2px rgba(0, 0, 0, 0.25);
+    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    flex-shrink: 0;
+}
+
+/* Glossy specular curved highlight on the top half */
+.drawer-view-grid .launchpad-icon::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 48%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0.03) 100%);
+    border-radius: 20px 20px 60px 60px / 20px 20px 24px 24px;
+    pointer-events: none;
+}
+
+.drawer-view-grid .launchpad-app-item:hover .launchpad-icon {
+    transform: scale(1.08);
+    box-shadow: 0 16px 30px -2px rgba(0, 0, 0, 0.6),
+                0 0 20px rgba(56, 189, 248, 0.3),
+                inset 0 1.5px 2px rgba(255, 255, 255, 0.8);
+}
+
+/* Centered Label below the icon */
+.drawer-view-grid .launchpad-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 8px;
+    width: 100%;
+}
+
+.drawer-view-grid .launchpad-title {
+    font-size: 0.81rem;
+    font-weight: 500;
+    color: #f1f5f9;
+    text-align: center;
+    line-height: 1.25;
+    max-width: 104px;
+    word-break: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+    transition: color 0.2s ease;
+}
+
+.drawer-view-grid .launchpad-app-item:hover .launchpad-title {
+    color: #38bdf8;
+    font-weight: 600;
+}
+
+.drawer-view-grid .launchpad-desc {
+    display: none;
+}
+
+/* 📋 2. LIST MODE */
+.drawer-view-list .launchpad-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.drawer-view-list .launchpad-app-item {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 0.85rem 1rem;
+    border-radius: 14px;
+    color: #f8fafc;
+    text-decoration: none !important;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: all 0.2s ease;
+}
+
+.drawer-view-list .launchpad-app-item:hover {
+    background: rgba(67, 97, 238, 0.25);
+    border-color: rgba(76, 201, 240, 0.4);
+    transform: translateX(4px);
+}
+
+.drawer-view-list .launchpad-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    color: #ffffff;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.drawer-view-list .launchpad-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.drawer-view-list .launchpad-title {
+    font-weight: 700;
+    color: #ffffff;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.drawer-view-list .launchpad-desc {
+    display: block;
+    color: #cbd5e1;
+    font-size: 0.82rem;
+    line-height: 1.4;
+    margin-top: 2px;
+}
+
+/* Badges */
+.launchpad-badge-pill {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 999px;
+    letter-spacing: 0.03em;
+}
+
+.drawer-view-grid .launchpad-badge-pill {
+    position: absolute;
+    top: 2px;
+    right: 6px;
+    z-index: 2;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.launchpad-badge-live {
+    background: #ef4444;
+    color: #ffffff;
+    animation: livePulse 1.8s infinite;
+}
+
+@keyframes livePulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.85; transform: scale(1.08); }
+}
+
+.launchpad-badge-soon {
+    background: rgba(148, 163, 184, 0.25);
+    color: #cbd5e1;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+}
+
+/* Launchpad Tabs & Dock Manager Styles */
+.launchpad-tab-pill {
+    background: transparent;
+    color: #94a3b8;
+    font-size: 0.82rem;
+    font-weight: 600;
+    transition: all 0.22s ease;
+    cursor: pointer;
+}
+
+.launchpad-tab-pill:hover {
+    color: #f8fafc;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.launchpad-tab-pill.active {
+    background: linear-gradient(135deg, #0ea5e9, #0284c7) !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 10px rgba(14, 165, 233, 0.45);
+}
+
+/* Dock Manage Mode on Drawer */
+.dock-manage-mode .launchpad-app-item {
+    cursor: pointer !important;
+}
+
+.dock-manage-mode .launchpad-app-item.is-in-dock {
+    border: 2px solid #38bdf8 !important;
+    background: rgba(14, 165, 233, 0.16) !important;
+    box-shadow: 0 0 16px rgba(56, 189, 248, 0.35);
+}
+
+.dock-manage-mode .launchpad-app-item:not(.is-in-dock) {
+    opacity: 0.68;
+    border: 1px dashed rgba(255, 255, 255, 0.2) !important;
+}
+
+.dock-manage-mode .launchpad-app-item:not(.is-in-dock):hover {
+    opacity: 1;
+    border-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Pin Button on Grid Item */
+.launchpad-pin-btn {
+    position: absolute;
+    top: 4px;
+    left: 6px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: rgba(0, 0, 0, 0.65);
+    color: #cbd5e1;
+    display: flex;
+    opacity: 0;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    z-index: 5;
+}
+
+.launchpad-app-item:hover .launchpad-pin-btn,
+.launchpad-pin-btn.is-pinned,
+.dock-manage-mode .launchpad-pin-btn {
+    opacity: 1 !important;
+}
+
+.launchpad-pin-btn.is-pinned {
+    background: linear-gradient(135deg, #0ea5e9, #0284c7) !important;
+    color: #ffffff !important;
+    border: 1.5px solid #ffffff !important;
+    box-shadow: 0 2px 8px rgba(14, 165, 233, 0.6);
+}
+
+.launchpad-pin-btn:hover {
+    background: var(--cs-primary);
+    color: #fff;
+    transform: scale(1.18);
+}
+
+/* List Mode Dock Toggle Button */
+.launchpad-list-dock-btn {
+    display: none;
+}
+
+.drawer-view-list .launchpad-list-dock-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+    color: #cbd5e1;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.drawer-view-list .launchpad-list-dock-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    border-color: #38bdf8;
+}
+
+.drawer-view-list .launchpad-list-dock-btn.is-pinned {
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.25), rgba(2, 132, 199, 0.35));
+    border-color: #38bdf8;
+    color: #38bdf8;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+}
+
+/* Dock Item Text Label */
+.cs-dock-label {
+    font-size: 0.62rem;
+    font-weight: 500;
+    color: #e2e8f0;
+    white-space: nowrap;
+    margin-top: 1px;
+    max-width: 54px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+    line-height: 1.1;
+    pointer-events: none;
+}
+
+/* ====================================================
+   🖼️ 5. BACKGROUND SELECTOR MODAL & GALLERY
+   ==================================================== */
+.bg-preset-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 0.75rem;
+    max-height: 380px;
+    overflow-y: auto;
+    padding: 0.5rem;
+}
+
+.bg-preset-card {
+    height: 85px;
+    border-radius: var(--cs-radius-md);
+    background-size: cover;
+    background-position: center;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.bg-preset-card:hover {
+    transform: scale(1.05);
+    border-color: var(--cs-teal);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.bg-preset-card.active {
+    border-color: var(--cs-accent);
+    box-shadow: 0 0 16px var(--cs-accent);
+}
+
+.bg-preset-label {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 500;
+    padding: 2px 6px;
+    text-align: center;
+}
+
+/* Modal Dark Theme Overrides */
+.cs-modal .modal-content {
+    background: #1e293b;
+    border: 1px solid var(--cs-glass-border);
+    border-radius: var(--cs-radius-lg);
+    color: #ffffff;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+}
+
+.cs-modal .modal-header {
+    border-bottom: 1px solid var(--cs-glass-border);
+}
+
+.cs-modal .modal-footer {
+    border-top: 1px solid var(--cs-glass-border);
+}
+
+.cs-modal .btn-close {
+    filter: invert(1);
+}
+
+/* Responsive adjust */
+@media (max-width: 768px) {
+    .cs-header { padding: 0 0.75rem; }
+    .cs-header-clock { display: none !important; }
+    .cs-tool-btn { width: 50px; height: 50px; border-radius: 14px; }
+    .cs-tool-btn i { font-size: 1.25rem; }
+    .cs-tool-btn span { font-size: 0.6rem; }
+}
+
+/* ====================================================
+   🖱️ Dock Context Menu (Right Click & Long Press)
+   ==================================================== */
+.cs-dock-context-menu {
+    position: fixed !important;
+    z-index: 10005 !important;
+    min-width: 220px;
+    background: rgba(15, 23, 42, 0.95) !important;
+    backdrop-filter: blur(24px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.18) !important;
+    border-radius: 16px;
+    padding: 8px !important;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+    opacity: 0;
+    transform: scale(0.95);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    margin: 0 !important;
+}
+
+.cs-dock-context-menu.show {
+    display: flex !important;
+    opacity: 1 !important;
+    transform: scale(1) !important;
+}
+
+.cs-dock-context-header {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 6px 12px 4px;
+}
+
+.cs-dock-context-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: none;
+    background: transparent;
+    color: #f1f5f9;
+    font-size: 0.85rem;
+    font-weight: 500;
+    font-family: 'Kanit', sans-serif;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.cs-dock-context-item i {
+    font-size: 1rem;
+    width: 20px;
+    text-align: center;
+}
+
+.cs-dock-context-item:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+    transform: translateX(2px);
+}
+
+.cs-dock-context-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 4px 6px;
+}
+
+/* 🍞 Floating Toast Notification */
+.cs-dock-toast {
+    position: fixed !important;
+    bottom: 96px !important;
+    left: 50% !important;
+    transform: translateX(-50%) translateY(20px);
+    z-index: 10010 !important;
+    background: rgba(15, 23, 42, 0.94) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border: 1px solid rgba(56, 189, 248, 0.4) !important;
+    border-radius: 999px;
+    padding: 8px 20px;
+    color: #f8fafc;
+    font-size: 0.86rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55), 0 0 20px rgba(56, 189, 248, 0.25);
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    margin: 0 !important;
+}
+
+.cs-dock-toast.show {
+    opacity: 1 !important;
+    transform: translateX(-50%) translateY(0) !important;
+}
+

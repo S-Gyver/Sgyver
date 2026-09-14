@@ -227,6 +227,10 @@
     <!-- 🖱️ Dock Context Menu (Right-Click PC / Long-Press iPad) -->
     <div id="dockContextMenu" class="cs-dock-context-menu" role="menu">
         <div class="cs-dock-context-header" id="dockContextTitle">Dock</div>
+        <button class="cs-dock-context-item text-info" onclick="openDockManagerFromMenu(event)">
+            <i class="bi bi-grid-3x3-gap-fill text-info"></i>
+            <span>เลือกไอคอนสำหรับ Dock</span>
+        </button>
         <button class="cs-dock-context-item" onclick="contextActionToggleEdit(event)">
             <i class="bi bi-pencil-square text-warning"></i>
             <span id="dockContextEditLabel">ปรับแต่ง Dock</span>
@@ -264,14 +268,14 @@
                 </div>
             </div>
             <div class="d-flex align-items-center gap-2">
-                <!-- View Mode Switcher: Grid (แบบรูปที่ 2) vs List (แบบรายการ) -->
+                <!-- View Mode Switcher: Grid vs List -->
                 <div class="launchpad-view-toggle">
                     <button type="button" class="launchpad-view-btn active" id="drawerModeGridBtn"
-                        onclick="setDrawerMode('grid')" title="มุมมองตารางไอคอนแอป (App Grid)">
+                        onclick="setDrawerMode('grid')" title="มุมมองตารางไอคอนแอป (Grid)">
                         <i class="bi bi-grid-fill"></i>
                     </button>
                     <button type="button" class="launchpad-view-btn" id="drawerModeListBtn"
-                        onclick="setDrawerMode('list')" title="มุมมองรายการพร้อมคำอธิบาย (List)">
+                        onclick="setDrawerMode('list')" title="มุมมองรายการ (List)">
                         <i class="bi bi-list-ul"></i>
                     </button>
                 </div>
@@ -995,6 +999,35 @@
             }
         }
 
+        function onLaunchpadAppClick(event, toolId) {
+            launchTool(toolId);
+        }
+
+        function openDockManagerFromMenu(e) {
+            if (e) e.stopPropagation();
+            closeDockContextMenu();
+            const drawerEl = document.getElementById('teacherMenuDrawer');
+            if (drawerEl) {
+                const bsOffcanvas = bootstrap.Offcanvas.getOrCreateInstance(drawerEl);
+                bsOffcanvas.show();
+                setDrawerTab('dock');
+            }
+        }
+
+        function selectAllToolsToDock() {
+            currentDockItems = Object.keys(ALL_DOCK_TOOLS);
+            saveDockItems();
+            renderDock();
+            showDockToast(`✅ เลือกไอคอนทั้งหมด (${currentDockItems.length} รายการ) ลง Dock แล้ว`);
+        }
+
+        function clearAllDockTools() {
+            currentDockItems = [];
+            saveDockItems();
+            renderDock();
+            showDockToast('🗑️ นำไอคอนทั้งหมดออกจาก Dock แล้ว');
+        }
+
         // 🍎 macOS Launchpad Grid & List View Toggle
         function setDrawerMode(mode) {
             const drawer = document.getElementById('teacherMenuDrawer');
@@ -1015,6 +1048,7 @@
                 if (listBtn) listBtn.classList.remove('active');
                 try { localStorage.setItem('gyver_drawer_mode', 'grid'); } catch (_) {}
             }
+            updateLaunchpadPinBadges();
         }
 
         // 🔍 Realtime Search Filter for Launchpad Apps
@@ -1177,12 +1211,13 @@
                 btn.ondrop = (e) => onDockItemDrop(e, index);
                 btn.ondragend = (e) => onDockItemDragEnd(e);
 
-                // Icon Only + Floating Balloon Tooltip on Hover
+                // Icon + Text Label + Floating Balloon Tooltip on Hover
                 btn.innerHTML = `
                     <div class="cs-dock-remove-btn" onclick="removeDockItem(event, ${index})" title="นำออกจาก Dock">
                         <i class="bi bi-x"></i>
                     </div>
                     <i class="${tool.icon} ${tool.colorClass || ''}"></i>
+                    <span class="cs-dock-label">${tool.title}</span>
                     <div class="dock-tooltip">${tool.title}</div>
                 `;
 
@@ -1247,20 +1282,61 @@
         }
 
         function updateLaunchpadPinBadges() {
+            const countBadge = document.getElementById('drawerDockCountBadge');
+            if (countBadge) {
+                countBadge.textContent = currentDockItems.length;
+            }
+
             document.querySelectorAll('#teacherMenuDrawer .launchpad-app-item').forEach(item => {
-                const pinBtn = item.querySelector('.launchpad-pin-btn');
-                if (!pinBtn) return;
-                
                 const match = (item.getAttribute('ondragstart') || '').match(/'([^']+)'/);
-                if (match && match[1]) {
-                    const toolId = match[1];
-                    const isPinned = currentDockItems.includes(toolId);
-                    if (isPinned) {
+                const toolId = item.getAttribute('data-tool-id') || (match ? match[1] : null);
+                if (!toolId) return;
+
+                // Ensure data-tool-id is set
+                item.setAttribute('data-tool-id', toolId);
+
+                // Intercept card click to handle dock manage mode smoothly
+                item.onclick = (e) => {
+                    if (e.target.closest('.launchpad-pin-btn') || e.target.closest('.launchpad-list-dock-btn')) return;
+                    onLaunchpadAppClick(e, toolId);
+                };
+
+                const isPinned = currentDockItems.includes(toolId);
+                const pinBtn = item.querySelector('.launchpad-pin-btn');
+
+                // Dynamic list dock button
+                let listBtn = item.querySelector('.launchpad-list-dock-btn');
+                if (!listBtn) {
+                    listBtn = document.createElement('button');
+                    listBtn.type = 'button';
+                    listBtn.className = 'launchpad-list-dock-btn';
+                    listBtn.onclick = (e) => togglePinTool(e, toolId);
+                    item.appendChild(listBtn);
+                }
+
+                if (isPinned) {
+                    item.classList.add('is-in-dock');
+                    if (pinBtn) {
                         pinBtn.classList.add('is-pinned');
-                        pinBtn.title = '📌 ปักหมุดอยู่ที่ Dock แล้ว (คลิกเพื่อถอด)';
-                    } else {
+                        pinBtn.innerHTML = '<i class="bi bi-pin-angle-fill"></i>';
+                        pinBtn.title = '📌 อยู่ใน Dock แล้ว (คลิกเพื่อถอด)';
+                    }
+                    if (listBtn) {
+                        listBtn.className = 'launchpad-list-dock-btn is-pinned';
+                        listBtn.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i><span>อยู่ใน Dock</span>';
+                        listBtn.title = 'คลิกเพื่อนำออกจาก Dock';
+                    }
+                } else {
+                    item.classList.remove('is-in-dock');
+                    if (pinBtn) {
                         pinBtn.classList.remove('is-pinned');
-                        pinBtn.title = '📌 ปักหมุดไว้ที่ Dock ด้านล่าง';
+                        pinBtn.innerHTML = '<i class="bi bi-plus-lg"></i>';
+                        pinBtn.title = '➕ ปักหมุดไว้ที่ Dock ด้านล่าง';
+                    }
+                    if (listBtn) {
+                        listBtn.className = 'launchpad-list-dock-btn';
+                        listBtn.innerHTML = '<i class="bi bi-plus-circle me-1"></i><span>เพิ่มลง Dock</span>';
+                        listBtn.title = 'คลิกเพื่อเพิ่มลง Dock';
                     }
                 }
             });

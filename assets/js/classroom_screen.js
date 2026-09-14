@@ -928,7 +928,7 @@ function spawnWidget(type, customPos = null, savedState = null) {
     widgetEl.style.zIndex = currentZ;
 
     const defaultSizes = {
-        wheel: { w: 610, h: 410 },
+        wheel: { w: 610, h: 430 },
         name: { w: 610, h: 380 },
         guess: { w: 640, h: 410 },
         group: { w: 380, h: 440 },
@@ -947,12 +947,17 @@ function spawnWidget(type, customPos = null, savedState = null) {
     const defSize = defaultSizes[type] || { w: 340, h: 280 };
 
     if (savedState && savedState.width) {
-        widgetEl.style.width = savedState.width;
+        if (type === 'wheel' && parseInt(savedState.width) < 560 && (!savedState.data || savedState.data.settingsOpen !== false)) {
+            widgetEl.style.width = Math.min(defSize.w, winW - 30) + 'px';
+            widgetEl.style.height = Math.min(defSize.h, winH - 60) + 'px';
+        } else {
+            widgetEl.style.width = savedState.width;
+        }
     } else {
         widgetEl.style.width = Math.min(defSize.w, winW - 30) + 'px';
     }
 
-    if (savedState && savedState.height) {
+    if (savedState && savedState.height && !(type === 'wheel' && (parseInt(savedState.width) < 560 || parseInt(savedState.height) < 420) && (!savedState.data || savedState.data.settingsOpen !== false))) {
         widgetEl.style.height = savedState.height;
     } else {
         widgetEl.style.height = Math.min(defSize.h, winH - 60) + 'px';
@@ -1651,9 +1656,9 @@ const widgetConfigs = {
                     <!-- Left Column: Wheel & Action Controls -->
                     <div class="wheel-left-col">
                         <!-- Wheel Stage Container -->
-                        <div class="wheel-canvas-container" id="wheel-container-${id}" style="position: relative; width: 100%; max-width: clamp(200px, 34cqi, 400px); max-height: calc(100% - 48px); aspect-ratio: 1/1; margin: auto auto; display: flex; align-items: center; justify-content: center;">
+                        <div class="wheel-canvas-container" id="wheel-container-${id}">
                             <div class="wheel-pointer" id="wheel-pointer-${id}"></div>
-                            <canvas class="wheel-canvas" id="wheel-canvas-${id}" width="400" height="400" style="width: 100% !important; height: 100% !important; max-width: 100%; max-height: 100%; aspect-ratio: 1/1; display: block; border-radius: 50%; border: 5px solid #1e293b; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);"></canvas>
+                            <canvas class="wheel-canvas" id="wheel-canvas-${id}" width="400" height="400"></canvas>
                             
                             <!-- Floating Winner Announcement Overlay -->
                             <div class="wheel-winner-banner" id="wheel-winner-banner-${id}">
@@ -1681,7 +1686,7 @@ const widgetConfigs = {
                         </div>
                     </div>
 
-                    <!-- Right Column: Settings, Classroom Picker & Names List (ส่วนรูปที่ 1 ด้านขวา) -->
+                    <!-- Right Column: Settings, Classroom Picker & Names List (ส่วนรูปที่ 2 ด้านขวา) -->
                     <div class="wheel-right-col text-start" id="wheel-settings-panel-${id}">
                         <!-- 🏫 Classroom Selector -->
                         <div class="p-2 mb-2 rounded-3" style="background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.12);">
@@ -1707,7 +1712,7 @@ const widgetConfigs = {
                             <span class="small text-white-50" style="font-size: 0.76rem;">รายชื่อในวงล้อ:</span>
                             <span class="badge bg-secondary-subtle text-white-50 border border-secondary" id="wheel-item-count-${id}" style="font-size: 0.7rem;">6 รายการ</span>
                         </div>
-                        <textarea class="form-control form-control-sm bg-dark text-white border-secondary mb-2 flex-grow-1" id="wheel-input-${id}" rows="4" oninput="onWheelInputChanged('${id}')" placeholder="ใส่ชื่อคนละบรรทัด..." style="font-size: 0.88rem; min-height: 120px;">ปุ่น&#10;หนูดี&#10;ซาย&#10;ชมพู่&#10;ปริ้น&#10;โอ๊ค</textarea>
+                        <textarea class="form-control form-control-sm bg-dark text-white border-secondary mb-2 flex-grow-1" id="wheel-input-${id}" rows="4" oninput="onWheelInputChanged('${id}')" placeholder="ใส่ชื่อคนละบรรทัด..." style="font-size: 0.88rem; min-height: 70px; resize: none;">ปุ่น&#10;หนูดี&#10;ซาย&#10;ชมพู่&#10;ปริ้น&#10;โอ๊ค</textarea>
                         
                         <div class="d-flex justify-content-between align-items-center px-1 mt-auto">
                             <div class="form-check text-start small mb-0">
