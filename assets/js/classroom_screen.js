@@ -1321,15 +1321,39 @@ const widgetConfigs = {
                             </select>
                         </div>
 
+                        <!-- 🔢 Auto Number Generator -->
+                        <div class="p-2 mb-2 rounded-3" style="background: rgba(99, 102, 241, 0.12); border: 1px solid rgba(99, 102, 241, 0.35);">
+                            <div class="d-flex align-items-center gap-1 mb-1">
+                                <i class="bi bi-hash" style="color: #818cf8; font-size: 0.78rem;"></i>
+                                <span class="fw-semibold" style="color: #c7d2fe; font-size: 0.76rem;">สร้างเลขที่อัตโนมัติ:</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-1">
+                                <span style="color: #94a3b8; font-size: 0.75rem; white-space: nowrap;">เลขที่</span>
+                                <input type="number" class="form-control form-control-sm text-center fw-bold" id="name-num-from-${id}"
+                                    value="1" min="1" max="9999"
+                                    style="width: 60px; background: rgba(255,255,255,0.08); color: #e2e8f0; border: 1px solid rgba(99,102,241,0.5); border-radius: 8px; font-size: 0.82rem;">
+                                <span style="color: #94a3b8; font-size: 0.75rem;">ถึง</span>
+                                <input type="number" class="form-control form-control-sm text-center fw-bold" id="name-num-to-${id}"
+                                    value="30" min="1" max="9999"
+                                    style="width: 60px; background: rgba(255,255,255,0.08); color: #e2e8f0; border: 1px solid rgba(99,102,241,0.5); border-radius: 8px; font-size: 0.82rem;">
+                                <button type="button"
+                                    class="btn btn-sm fw-bold flex-grow-1 rounded-2"
+                                    onclick="generateNamePickerNumbers('${id}')"
+                                    style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; border: none; font-size: 0.76rem; white-space: nowrap; padding: 4px 8px;">
+                                    <i class="bi bi-lightning-charge-fill me-1"></i>สร้าง!
+                                </button>
+                            </div>
+                        </div>
+
                         <!-- Names Textarea -->
-                        <textarea class="form-control form-control-sm bg-dark text-white border-secondary mb-2 flex-grow-1" id="name-input-${id}" rows="3" oninput="debouncedSaveWidgetsState()" placeholder="ใส่ชื่อคนละบรรทัด...&#10;ปุ่น&#10;หนูดี&#10;ซาย" style="font-size: 0.88rem; min-height: 100px;">ปุ่น&#10;หนูดี&#10;ซาย&#10;ชมพู่&#10;ปริ้น&#10;โอ๊ค</textarea>
+                        <textarea class="form-control form-control-sm mb-2 flex-grow-1" id="name-input-${id}" rows="3" oninput="debouncedSaveWidgetsState()" placeholder="ใส่ชื่อหรือเลขที่คนละบรรทัด..." style="font-size: 0.88rem; min-height: 100px; background: rgba(15,23,42,0.7); color: #f1f5f9; border: 1px solid rgba(255,255,255,0.18); border-radius: 10px;">ปุ่น&#10;หนูดี&#10;ซาย&#10;ชมพู่&#10;ปริ้น&#10;โอ๊ค</textarea>
                         
                         <div class="d-flex justify-content-between align-items-center mt-auto">
                             <div class="form-check text-start small mb-0">
                                 <input class="form-check-input" type="checkbox" id="remove-picked-${id}" onchange="debouncedSaveWidgetsState()">
                                 <label class="form-check-label" for="remove-picked-${id}" style="color: #e2e8f0 !important; font-weight: 500; font-size: 0.8rem;">ลบชื่อที่ถูกสุ่มแล้วออก</label>
                             </div>
-                            <button type="button" class="btn btn-link btn-sm text-white-50 p-0 text-decoration-none small" style="font-size: 0.76rem;" onclick="saveCurrentNamesAsClassroom('${id}')" title="บันทึกรายชื่อนี้เป็นห้องใหม่">
+                            <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none small" style="font-size: 0.76rem; color: #94a3b8;" onclick="saveCurrentNamesAsClassroom('${id}')" title="บันทึกรายชื่อนี้เป็นห้องใหม่">
                                 <i class="bi bi-floppy me-1 text-info"></i>บันทึกเป็นห้อง
                             </button>
                         </div>
@@ -1412,9 +1436,17 @@ const widgetConfigs = {
         title: 'นาฬิกา & ปฏิทิน (Clock)',
         icon: 'bi bi-clock-fill text-info',
         render: (id) => `
-            <div style="min-width: 220px;" class="clock-widget-box text-center py-1">
-                <div class="fw-bold text-white clock-big-time" id="clock-big-time-${id}">00:00:00</div>
-                <div class="text-info font-monospace fw-medium clock-big-date" id="clock-big-date-${id}">วันเสาร์ที่ 12 กุมภาพันธ์</div>
+            <div class="clock-widget-box text-center" style="min-width: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 8px 12px;">
+                <!-- Big Time Display -->
+                <div id="clock-big-time-${id}"
+                    style="font-size: clamp(2.8rem, 6vw, 4.5rem); font-weight: 900; font-family: 'Kanit', 'Courier New', monospace; letter-spacing: 4px; color: #ffffff; line-height: 1; text-shadow: 0 0 20px rgba(34,211,238,0.6), 0 0 40px rgba(34,211,238,0.3); filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5));">
+                    00:00:00
+                </div>
+                <!-- Date Display -->
+                <div id="clock-big-date-${id}"
+                    style="font-size: clamp(0.85rem, 1.8vw, 1.1rem); font-weight: 600; color: #22d3ee; letter-spacing: 1px; font-family: 'Kanit', sans-serif; text-shadow: 0 0 10px rgba(34,211,238,0.5); white-space: nowrap;">
+                    วันเสาร์ที่ 12 กุมภาพันธ์
+                </div>
             </div>
         `,
         postRender: (id) => {
@@ -1440,19 +1472,27 @@ const widgetConfigs = {
             <div style="min-width: 240px;" class="symbol-widget-box">
                 <div class="symbol-grid">
                     <div class="symbol-card active" onclick="setWorkSymbol(this)">
-                        <div class="symbol-icon">🤫</div>
+                        <div class="symbol-icon" style="font-size: 2.2rem; line-height: 1;">
+                            <i class="bi bi-volume-mute-fill" style="color: #94a3b8;"></i>
+                        </div>
                         <div class="symbol-label">เงียบสนิท</div>
                     </div>
                     <div class="symbol-card" onclick="setWorkSymbol(this)">
-                        <div class="symbol-icon">💬</div>
+                        <div class="symbol-icon" style="font-size: 2.2rem; line-height: 1;">
+                            <i class="bi bi-chat-dots-fill" style="color: #34d399;"></i>
+                        </div>
                         <div class="symbol-label">กระซิบ</div>
                     </div>
                     <div class="symbol-card" onclick="setWorkSymbol(this)">
-                        <div class="symbol-icon">👥</div>
+                        <div class="symbol-icon" style="font-size: 2.2rem; line-height: 1;">
+                            <i class="bi bi-people-fill" style="color: #60a5fa;"></i>
+                        </div>
                         <div class="symbol-label">ถามเพื่อน</div>
                     </div>
                     <div class="symbol-card" onclick="setWorkSymbol(this)">
-                        <div class="symbol-icon">🤝</div>
+                        <div class="symbol-icon" style="font-size: 2.2rem; line-height: 1;">
+                            <i class="bi bi-collection-fill" style="color: #fbbf24;"></i>
+                        </div>
                         <div class="symbol-label">ทำงานกลุ่ม</div>
                     </div>
                 </div>
@@ -1601,12 +1641,37 @@ const widgetConfigs = {
                 <!-- Collapsible Names Editor Panel -->
                 <div id="group-names-panel-${id}" class="mb-2 text-start" style="display: none; background: rgba(0, 0, 0, 0.25); border-radius: 8px; padding: 8px; border: 1px dashed rgba(255, 255, 255, 0.15);">
                     <div class="d-flex justify-content-between align-items-center mb-1 px-1">
-                        <span class="small text-white-50" style="font-size: 0.74rem;">แก้ไข/เพิ่ม-ลบ รายชื่อนักเรียน (คนละบรรทัด):</span>
+                        <span class="small fw-semibold" style="font-size: 0.74rem; color: #cbd5e1;">แก้ไข/เพิ่ม-ลบ รายชื่อ (คนละบรรทัด):</span>
                         <button type="button" class="btn btn-link btn-sm text-danger p-0 text-decoration-none" style="font-size: 0.74rem;" onclick="clearGroupNames('${id}')">
                             <i class="bi bi-trash3 me-1"></i>ล้าง
                         </button>
                     </div>
-                    <textarea class="form-control form-control-sm bg-dark text-white border-secondary" id="group-names-input-${id}" rows="4" oninput="updateGroupNamesBadge('${id}'); debouncedSaveWidgetsState()" placeholder="พิมพ์หรือวางชื่อคนละบรรทัด..." style="font-size: 0.85rem;">ปุ่น&#10;หนูดี&#10;ซาย&#10;ชมพู่&#10;ปริ้น&#10;โอ๊ค&#10;ชัยวัฒน์&#10;ปรียา&#10;สุรชัย&#10;ศิริพร&#10;ธนพล&#10;กนกวรรณ</textarea>
+
+                    <!-- 🔢 Auto Number Generator -->
+                    <div class="p-2 mb-2 rounded-3" style="background: rgba(99, 102, 241, 0.12); border: 1px solid rgba(99, 102, 241, 0.35);">
+                        <div class="d-flex align-items-center gap-1 mb-1">
+                            <i class="bi bi-hash" style="color: #818cf8; font-size: 0.76rem;"></i>
+                            <span class="fw-semibold" style="color: #c7d2fe; font-size: 0.74rem;">สร้างเลขที่อัตโนมัติ:</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-1">
+                            <span style="color: #94a3b8; font-size: 0.73rem; white-space: nowrap;">เลขที่</span>
+                            <input type="number" class="form-control form-control-sm text-center fw-bold" id="group-num-from-${id}"
+                                value="1" min="1" max="9999"
+                                style="width: 56px; background: rgba(255,255,255,0.08); color: #e2e8f0; border: 1px solid rgba(99,102,241,0.5); border-radius: 8px; font-size: 0.8rem;">
+                            <span style="color: #94a3b8; font-size: 0.73rem;">ถึง</span>
+                            <input type="number" class="form-control form-control-sm text-center fw-bold" id="group-num-to-${id}"
+                                value="30" min="1" max="9999"
+                                style="width: 56px; background: rgba(255,255,255,0.08); color: #e2e8f0; border: 1px solid rgba(99,102,241,0.5); border-radius: 8px; font-size: 0.8rem;">
+                            <button type="button"
+                                class="btn btn-sm fw-bold flex-grow-1 rounded-2"
+                                onclick="generateGroupNumbers('${id}')"
+                                style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; border: none; font-size: 0.74rem; white-space: nowrap; padding: 3px 8px;">
+                                <i class="bi bi-lightning-charge-fill me-1"></i>สร้าง!
+                            </button>
+                        </div>
+                    </div>
+
+                    <textarea class="form-control form-control-sm" id="group-names-input-${id}" rows="4" oninput="updateGroupNamesBadge('${id}'); debouncedSaveWidgetsState()" placeholder="พิมพ์หรือวางชื่อ/เลขที่คนละบรรทัด..." style="font-size: 0.85rem; background: rgba(15,23,42,0.7); color: #f1f5f9; border: 1px solid rgba(255,255,255,0.18); border-radius: 8px;">ปุ่น&#10;หนูดี&#10;ซาย&#10;ชมพู่&#10;ปริ้น&#10;โอ๊ค&#10;ชัยวัฒน์&#10;ปรียา&#10;สุรชัย&#10;ศิริพร&#10;ธนพล&#10;กนกวรรณ</textarea>
                 </div>
 
                 <!-- Generate Action Button -->
@@ -1677,10 +1742,12 @@ const widgetConfigs = {
 
                         <!-- Action Controls -->
                         <div class="d-flex gap-2 w-100 mb-1 px-1">
-                            <button class="btn btn-danger fw-bold flex-grow-1 rounded-pill shadow-sm" id="wheel-spin-btn-${id}" onclick="spinWheelWidget('${id}')">
+                            <button class="btn fw-bold flex-grow-1 rounded-pill shadow-sm" id="wheel-spin-btn-${id}" onclick="spinWheelWidget('${id}')"
+                                style="background: linear-gradient(135deg, #ef4444, #dc2626); color: #ffffff; border: none; text-shadow: 0 1px 3px rgba(0,0,0,0.4); box-shadow: 0 4px 14px rgba(239,68,68,0.45);">
                                 <i class="bi bi-play-circle-fill me-1"></i>หมุนวงล้อ!
                             </button>
-                            <button class="btn btn-info active rounded-pill px-3" id="wheel-settings-toggle-${id}" onclick="toggleWheelSettings('${id}')" title="แสดง/ซ่อน รายชื่อและห้องเรียน">
+                            <button class="btn rounded-pill px-3 fw-semibold" id="wheel-settings-toggle-${id}" onclick="toggleWheelSettings('${id}')" title="แสดง/ซ่อน รายชื่อและห้องเรียน"
+                                style="background: rgba(255,255,255,0.12); color: #e2e8f0; border: 1.5px solid rgba(255,255,255,0.3); box-shadow: 0 2px 8px rgba(0,0,0,0.3);">
                                 <i class="bi bi-gear-fill"></i>
                             </button>
                         </div>
@@ -1707,19 +1774,43 @@ const widgetConfigs = {
                             </select>
                         </div>
 
+                        <!-- 🔢 Auto Number Generator -->
+                        <div class="p-2 mb-2 rounded-3" style="background: rgba(99, 102, 241, 0.12); border: 1px solid rgba(99, 102, 241, 0.35);">
+                            <div class="d-flex align-items-center gap-1 mb-1">
+                                <i class="bi bi-hash text-indigo" style="color: #818cf8; font-size: 0.78rem;"></i>
+                                <span class="fw-semibold" style="color: #c7d2fe; font-size: 0.76rem;">สร้างเลขที่อัตโนมัติ:</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-1">
+                                <span style="color: #94a3b8; font-size: 0.75rem; white-space: nowrap;">เลขที่</span>
+                                <input type="number" class="form-control form-control-sm text-center fw-bold" id="wheel-num-from-${id}"
+                                    value="1" min="1" max="9999"
+                                    style="width: 60px; background: rgba(255,255,255,0.08); color: #e2e8f0; border: 1px solid rgba(99,102,241,0.5); border-radius: 8px; font-size: 0.82rem;">
+                                <span style="color: #94a3b8; font-size: 0.75rem;">ถึง</span>
+                                <input type="number" class="form-control form-control-sm text-center fw-bold" id="wheel-num-to-${id}"
+                                    value="30" min="1" max="9999"
+                                    style="width: 60px; background: rgba(255,255,255,0.08); color: #e2e8f0; border: 1px solid rgba(99,102,241,0.5); border-radius: 8px; font-size: 0.82rem;">
+                                <button type="button"
+                                    class="btn btn-sm fw-bold flex-grow-1 rounded-2"
+                                    onclick="generateWheelNumbers('${id}')"
+                                    style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; border: none; font-size: 0.76rem; white-space: nowrap; padding: 4px 8px;">
+                                    <i class="bi bi-lightning-charge-fill me-1"></i>สร้าง!
+                                </button>
+                            </div>
+                        </div>
+
                         <!-- Items Input -->
                         <div class="d-flex justify-content-between align-items-center mb-1 px-1">
-                            <span class="small text-white-50" style="font-size: 0.76rem;">รายชื่อในวงล้อ:</span>
-                            <span class="badge bg-secondary-subtle text-white-50 border border-secondary" id="wheel-item-count-${id}" style="font-size: 0.7rem;">6 รายการ</span>
+                            <span class="small fw-semibold" style="color: #cbd5e1; font-size: 0.76rem;"><i class="bi bi-list-ul me-1 text-info"></i>รายการในวงล้อ:</span>
+                            <span class="badge border" id="wheel-item-count-${id}" style="font-size: 0.7rem; background: rgba(99,102,241,0.2); color: #a5b4fc; border-color: rgba(99,102,241,0.4) !important;">6 รายการ</span>
                         </div>
-                        <textarea class="form-control form-control-sm bg-dark text-white border-secondary mb-2 flex-grow-1" id="wheel-input-${id}" rows="4" oninput="onWheelInputChanged('${id}')" placeholder="ใส่ชื่อคนละบรรทัด..." style="font-size: 0.88rem; min-height: 70px; resize: none;">ปุ่น&#10;หนูดี&#10;ซาย&#10;ชมพู่&#10;ปริ้น&#10;โอ๊ค</textarea>
+                        <textarea class="form-control form-control-sm mb-2 flex-grow-1" id="wheel-input-${id}" rows="4" oninput="onWheelInputChanged('${id}')" placeholder="ใส่ชื่อหรือเลขที่คนละบรรทัด..." style="font-size: 0.88rem; min-height: 70px; resize: none; background: rgba(15,23,42,0.7); color: #f1f5f9; border: 1px solid rgba(255,255,255,0.18); border-radius: 10px;">ปุ่น&#10;หนูดี&#10;ซาย&#10;ชมพู่&#10;ปริ้น&#10;โอ๊ค</textarea>
                         
                         <div class="d-flex justify-content-between align-items-center px-1 mt-auto">
                             <div class="form-check text-start small mb-0">
                                 <input class="form-check-input" type="checkbox" id="wheel-auto-remove-${id}" onchange="debouncedSaveWidgetsState()">
                                 <label class="form-check-label" for="wheel-auto-remove-${id}" style="color: #e2e8f0 !important; font-size: 0.78rem;">ลบชื่อผู้ชนะอัตโนมัติ</label>
                             </div>
-                            <button type="button" class="btn btn-link btn-sm text-white-50 p-0 text-decoration-none small" style="font-size: 0.76rem;" onclick="shuffleWheelItems('${id}')" title="สลับตำแหน่ง">
+                            <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none small" style="font-size: 0.76rem; color: #94a3b8;" onclick="shuffleWheelItems('${id}')" title="สลับตำแหน่งแบบสุ่ม">
                                 <i class="bi bi-shuffle me-1"></i>สลับ
                             </button>
                         </div>
@@ -2173,6 +2264,44 @@ function toggleNameSettings(id) {
     debouncedSaveWidgetsState();
 }
 
+function generateNamePickerNumbers(id) {
+    const fromEl = document.getElementById(`name-num-from-${id}`);
+    const toEl   = document.getElementById(`name-num-to-${id}`);
+    const textarea = document.getElementById(`name-input-${id}`);
+    if (!fromEl || !toEl || !textarea) return;
+
+    const from = parseInt(fromEl.value, 10);
+    const to   = parseInt(toEl.value, 10);
+
+    if (isNaN(from) || isNaN(to) || from < 1 || to < from) {
+        if (typeof showDockToast === 'function') {
+            showDockToast('⚠️ กรุณาตรวจสอบช่วงเลขที่ให้ถูกต้อง');
+        }
+        return;
+    }
+
+    const limit = 200;
+    if ((to - from + 1) > limit) {
+        if (typeof showDockToast === 'function') {
+            showDockToast(`⚠️ สร้างได้สูงสุด ${limit} รายการ`);
+        }
+        toEl.value = from + limit - 1;
+        return;
+    }
+
+    const numbers = [];
+    for (let n = from; n <= to; n++) {
+        numbers.push(n);
+    }
+
+    textarea.value = numbers.join('\n');
+    debouncedSaveWidgetsState();
+
+    if (typeof showDockToast === 'function') {
+        showDockToast(`🔢 สร้างเลขที่ ${from}–${to} ลงในรายชื่อแล้ว (${numbers.length} รายการ)`);
+    }
+}
+
 function spinNamePicker(id) {
     const textarea = document.getElementById(`name-input-${id}`);
     const display = document.getElementById(`name-display-${id}`);
@@ -2466,6 +2595,46 @@ function shuffleWheelItems(id) {
     }
 }
 
+function generateWheelNumbers(id) {
+    const fromEl = document.getElementById(`wheel-num-from-${id}`);
+    const toEl   = document.getElementById(`wheel-num-to-${id}`);
+    const textarea = document.getElementById(`wheel-input-${id}`);
+    if (!fromEl || !toEl || !textarea) return;
+
+    const from = parseInt(fromEl.value, 10);
+    const to   = parseInt(toEl.value, 10);
+
+    if (isNaN(from) || isNaN(to) || from < 1 || to < from) {
+        if (typeof showDockToast === 'function') {
+            showDockToast('⚠️ กรุณาตรวจสอบช่วงเลขที่ให้ถูกต้อง');
+        }
+        return;
+    }
+
+    const limit = 200;
+    if ((to - from + 1) > limit) {
+        if (typeof showDockToast === 'function') {
+            showDockToast(`⚠️ สร้างได้สูงสุด ${limit} รายการ`);
+        }
+        toEl.value = from + limit - 1;
+        return;
+    }
+
+    const numbers = [];
+    for (let n = from; n <= to; n++) {
+        numbers.push(n);
+    }
+
+    textarea.value = numbers.join('\n');
+    onWheelInputChanged(id);
+    debouncedSaveWidgetsState();
+
+    if (typeof showDockToast === 'function') {
+        showDockToast(`🔢 สร้างเลขที่ ${from}–${to} ลงวงล้อแล้ว (${numbers.length} รายการ)`);
+    }
+}
+
+
 function toggleWheelSettings(id) {
     const panel = document.getElementById(`wheel-settings-panel-${id}`);
     const btn = document.getElementById(`wheel-settings-toggle-${id}`);
@@ -2476,7 +2645,13 @@ function toggleWheelSettings(id) {
 
     if (isHidden) {
         panel.style.display = 'flex';
-        if (btn) btn.classList.add('active', 'btn-info');
+        if (btn) {
+            // Active state: bright, clearly visible
+            btn.style.background = 'rgba(99, 102, 241, 0.85)';
+            btn.style.color = '#ffffff';
+            btn.style.border = '1.5px solid rgba(129, 140, 248, 0.9)';
+            btn.style.boxShadow = '0 2px 12px rgba(99,102,241,0.5)';
+        }
         if (widget) {
             widget.classList.remove('wheel-settings-collapsed');
             if (!widget.classList.contains('is-expanded')) {
@@ -2489,7 +2664,13 @@ function toggleWheelSettings(id) {
         }
     } else {
         panel.style.display = 'none';
-        if (btn) btn.classList.remove('active', 'btn-info');
+        if (btn) {
+            // Inactive state: subtle, still visible
+            btn.style.background = 'rgba(255,255,255,0.12)';
+            btn.style.color = '#e2e8f0';
+            btn.style.border = '1.5px solid rgba(255,255,255,0.3)';
+            btn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+        }
         if (widget) {
             widget.classList.add('wheel-settings-collapsed');
             if (!widget.classList.contains('is-expanded')) {
@@ -2504,6 +2685,7 @@ function toggleWheelSettings(id) {
     }
     debouncedSaveWidgetsState();
 }
+
 
 async function populateWheelClassrooms(id, isManualRefresh = false) {
     const selectEl = document.getElementById(`wheel-class-select-${id}`);
@@ -2796,49 +2978,55 @@ function initWidgetCanvas(id) {
     activeWidgets[id].lineWidth = activeWidgets[id].lineWidth || 5;
     activeWidgets[id].mode = activeWidgets[id].mode || 'pen';
 
-    // Auto-fit canvas resolution to container and keep previous strokes intact
+    // Auto-fit canvas resolution to container (overflow:hidden prevents feedback loop)
+    let _resizing = false;
     function resizeCanvas() {
-        const rect = container.getBoundingClientRect();
-        const width = Math.floor(rect.width);
-        const height = Math.floor(rect.height);
+        if (_resizing) return;   // Guard: prevent re-entrancy
+        _resizing = true;
+
+        // offsetWidth/Height reads the container's OWN layout size
+        // (canvas is position:absolute so it doesn't inflate the container)
+        const width  = Math.floor(container.offsetWidth);
+        const height = Math.floor(container.offsetHeight);
+        _resizing = false;
 
         if (width <= 0 || height <= 0) return;
         if (canvas.width === width && canvas.height === height) return;
 
-        // Save current canvas drawing
+        // Preserve existing drawing
         let tempCanvas = null;
         if (canvas.width > 0 && canvas.height > 0) {
             tempCanvas = document.createElement('canvas');
             tempCanvas.width = canvas.width;
             tempCanvas.height = canvas.height;
-            const tempCtx = tempCanvas.getContext('2d');
-            tempCtx.drawImage(canvas, 0, 0);
+            tempCanvas.getContext('2d').drawImage(canvas, 0, 0);
         }
 
-        canvas.width = width;
+        canvas.width  = width;
         canvas.height = height;
 
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, width, height);
 
-        if (tempCanvas) {
-            ctx.drawImage(tempCanvas, 0, 0);
-        }
+        if (tempCanvas) ctx.drawImage(tempCanvas, 0, 0);
     }
 
     // Run initial sizing
     setTimeout(resizeCanvas, 40);
     setTimeout(resizeCanvas, 150);
 
-    // Watch for window resize or widget resize
+    // Watch for widget resize — debounced 30ms to avoid triggering during canvas resize
     if (window.ResizeObserver) {
+        let _roTimer = null;
         const ro = new ResizeObserver(() => {
-            resizeCanvas();
+            clearTimeout(_roTimer);
+            _roTimer = setTimeout(resizeCanvas, 30);
         });
         ro.observe(container);
         const prevCleanup = activeWidgets[id].cleanup;
         activeWidgets[id].cleanup = () => {
             ro.disconnect();
+            clearTimeout(_roTimer);
             if (prevCleanup) prevCleanup();
         };
     }
@@ -3141,6 +3329,39 @@ function updateGroupNamesBadge(id) {
     if (!textarea || !badge) return;
     const count = textarea.value.split('\n').map(s => s.trim()).filter(Boolean).length;
     badge.textContent = `รายชื่อ (${count} คน)`;
+}
+
+function generateGroupNumbers(id) {
+    const fromEl = document.getElementById(`group-num-from-${id}`);
+    const toEl   = document.getElementById(`group-num-to-${id}`);
+    const textarea = document.getElementById(`group-names-input-${id}`);
+    if (!fromEl || !toEl || !textarea) return;
+
+    const from = parseInt(fromEl.value, 10);
+    const to   = parseInt(toEl.value, 10);
+
+    if (isNaN(from) || isNaN(to) || from < 1 || to < from) {
+        if (typeof showDockToast === 'function') showDockToast('⚠️ กรุณาตรวจสอบช่วงเลขที่ให้ถูกต้อง');
+        return;
+    }
+
+    const limit = 200;
+    if ((to - from + 1) > limit) {
+        if (typeof showDockToast === 'function') showDockToast(`⚠️ สร้างได้สูงสุด ${limit} รายการ`);
+        toEl.value = from + limit - 1;
+        return;
+    }
+
+    const numbers = [];
+    for (let n = from; n <= to; n++) numbers.push(n);
+
+    textarea.value = numbers.join('\n');
+    updateGroupNamesBadge(id);
+    debouncedSaveWidgetsState();
+
+    if (typeof showDockToast === 'function') {
+        showDockToast(`🔢 สร้างเลขที่ ${from}–${to} ลงรายชื่อแล้ว (${numbers.length} คน)`);
+    }
 }
 
 function clearGroupNames(id) {

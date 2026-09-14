@@ -329,6 +329,7 @@ body.classroom-mode #cs-widget-canvas {
     user-select: none;
 }
 
+
 .cs-widget-resizer::after {
     content: '';
     width: 9px;
@@ -565,7 +566,17 @@ body.classroom-mode #cs-widget-canvas {
 }
 
 /* 8. 🎨 Whiteboard / Drawing Widget */
+.draw-canvas-container {
+    position: relative;
+    overflow: hidden;  /* CRITICAL: prevents canvas from pushing container bigger */
+}
+
 .drawing-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100% !important;
+    height: 100% !important;
     background: #ffffff;
     border-radius: var(--cs-radius-md);
     cursor: crosshair;
@@ -615,10 +626,11 @@ body.classroom-mode #cs-widget-canvas {
     justify-content: space-between;
     height: 100%;
     min-height: 0;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.09);
+    background: rgba(30, 41, 59, 0.75);
+    border: 1px solid rgba(148, 163, 184, 0.2);
     border-radius: 14px;
     padding: 10px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
 }
 
 .cs-widget.wheel-settings-collapsed .wheel-left-col {
