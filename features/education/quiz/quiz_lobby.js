@@ -377,6 +377,8 @@ function setupLobbyRealtime() {
                 handleStudentLeftEvent(msg.student);
             } else if (msg.type === 'STUDENT_SUBMIT') {
                 handleStudentSubmittedEvent(msg.result);
+            } else if (msg.type === 'STUDENT_PROGRESS') {
+                handleStudentProgressEvent(msg);
             }
         };
     }
@@ -403,6 +405,10 @@ function setupLobbyRealtime() {
                 })
                 .on('broadcast', { event: 'student_submitted' }, (payload) => {
                     handleStudentSubmittedEvent(payload.payload);
+                })
+                // 📈 Real-time progress from students on OTHER devices
+                .on('broadcast', { event: 'student_progress' }, (payload) => {
+                    handleStudentProgressEvent(payload.payload);
                 })
                 .subscribe();
         } catch (e) {
@@ -744,6 +750,20 @@ async function startLiveExam() {
 }
 
 /**
+ * 📡 Handle real-time progress update from student tab
+ */
+function handleStudentProgressEvent(msg) {
+    if (!lobbyData) return;
+    const p = (lobbyData.players || []).find(x => x.name === msg.studentName);
+    if (p && p.status !== 'SUBMITTED') {
+        p.answeredCount = msg.answeredCount;
+        p.totalQuestions = msg.totalQuestions;
+        if (msg.startedAt) p.startedAt = msg.startedAt;
+    }
+    renderMonitoringUI();
+}
+
+/**
  * 📊 Render Live Exam Monitoring Dashboard
  */
 function renderMonitoringUI() {
@@ -760,8 +780,33 @@ function renderMonitoringUI() {
     }
 
     if (!grid) return;
+
+    // Calculate exam time limit for fast-submission detection
+    const timeLimitSec = (currentQuiz?.settings?.timeLimit || 15) * 60;
+
     grid.innerHTML = players.map(p => {
         const isDone = p.status === 'SUBMITTED';
+
+        // --- Progress calculation for in-progress students ---
+        const answered  = p.answeredCount || 0;
+        const total     = p.totalQuestions || 0;
+        const pct       = total > 0 ? Math.round((answered / total) * 100) : 0;
+
+        // Elapsed time since student started
+        let elapsedLabel = '';
+        let isSuspiciouslyFast = false;
+        if (isDone && p.startedAt && p.submittedAt) {
+            const secs = Math.round((new Date(p.submittedAt) - new Date(p.startedAt)) / 1000);
+            const mins = Math.floor(secs / 60);
+            const ss   = secs % 60;
+            elapsedLabel = `${mins}:${String(ss).padStart(2,'0')} น.`;
+            // "Suspicious" = finished faster than 30% of total time
+            isSuspiciouslyFast = secs < timeLimitSec * 0.30;
+        }
+
+        // Progress bar color: red < 30%, yellow < 70%, green >= 70%
+        const barColor = pct < 30 ? 'bg-danger' : pct < 70 ? 'bg-warning' : 'bg-success';
+
         return `
             <div class="col-12 col-md-6 col-lg-4 col-xl-3">
                 <div class="monitor-student-card ${isDone ? 'is-submitted' : ''}">
@@ -769,9 +814,12 @@ function renderMonitoringUI() {
                         <span class="badge bg-warning text-dark font-mono">
                             <i class="bi bi-shield-fill me-1"></i>${escapeHtml(p.assignedVariantName || 'ชุดพิเศษ')}
                         </span>
-                        <span class="badge bg-${isDone ? 'success' : 'secondary'}">
-                            ${isDone ? 'ส่งแล้ว ✅' : 'กำลังทำข้อสอบ...'}
-                        </span>
+                        <div class="d-flex align-items-center gap-1">
+                            ${isSuspiciouslyFast ? `<span class="badge bg-danger" title="ส่งเร็วมากผิดปกติ ควรตรวจสอบ"><i class="bi bi-lightning-charge-fill"></i> เร็วมาก!</span>` : ''}
+                            <span class="badge bg-${isDone ? 'success' : 'secondary'}">
+                                ${isDone ? 'ส่งแล้ว ✅' : 'กำลังทำข้อสอบ...'}
+                            </span>
+                        </div>
                     </div>
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="student-avatar" style="width: 36px; height: 36px; font-size: 0.9rem;">
@@ -783,13 +831,28 @@ function renderMonitoringUI() {
                         </div>
                     </div>
                     ${isDone ? `
-                        <div class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary">
+                        <div class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary mb-1">
                             <span class="small text-subtle">คะแนนที่ได้:</span>
                             <span class="fw-bold fs-5 text-quiz font-mono">${p.score} / ${p.total} (${p.percent}%)</span>
                         </div>
+                        ${elapsedLabel ? `<div class="d-flex justify-content-between align-items-center">
+                            <span class="small text-subtle">เวลาทำข้อสอบ:</span>
+                            <span class="small fw-semibold ${isSuspiciouslyFast ? 'text-danger' : 'text-info'}">
+                                <i class="bi bi-stopwatch me-1"></i>${elapsedLabel}
+                            </span>
+                        </div>` : ''}
                     ` : `
-                        <div class="progress" style="height: 6px;">
-                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning" style="width: 60%"></div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small text-subtle">ตอบแล้ว:</span>
+                            <span class="small fw-bold text-white">${answered} / ${total > 0 ? total : '?'} ข้อ</span>
+                        </div>
+                        <div class="progress" style="height: 8px; border-radius: 8px; background: rgba(255,255,255,0.08);">
+                            <div class="progress-bar ${barColor} ${pct < 100 ? 'progress-bar-striped progress-bar-animated' : ''}" 
+                                 style="width: ${total > 0 ? pct : 0}%; border-radius: 8px; transition: width 0.5s ease;">
+                            </div>
+                        </div>
+                        <div class="text-end mt-1">
+                            <span class="small text-subtle" style="font-size: 0.7rem;">${total > 0 ? pct : 0}%</span>
                         </div>
                     `}
                 </div>

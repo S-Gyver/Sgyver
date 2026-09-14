@@ -651,6 +651,47 @@ async function checkAndLaunchExam(freshLobby) {
     document.getElementById('exam-variant-badge').innerHTML = `<i class="bi bi-shield-lock-fill me-1"></i>${escapeHtml(assignedVariant.variantName)} (เฉพาะตัวคุณ)`;
     document.getElementById('exam-student-label').textContent = `${studentProfile.name} ${studentProfile.room ? `(${studentProfile.room})` : ''}`;
 
+    // 📈 Record exam start time + total questions for teacher progress tracking
+    const totalQ = assignedVariant.questions?.length || 0;
+    const nowIso = new Date().toISOString();
+    const localLobby = getLocalLobby(roomPin);
+    if (localLobby && Array.isArray(localLobby.players)) {
+        const myEntry = localLobby.players.find(x => x.name === studentProfile.name);
+        if (myEntry) {
+            myEntry.startedAt = nowIso;
+            myEntry.totalQuestions = totalQ;
+            myEntry.answeredCount = 0;
+            myEntry.status = 'RUNNING';
+        }
+        saveLocalLobby(localLobby);
+        // Local tab broadcast
+        if (localBC) {
+            localBC.postMessage({
+                type: 'STUDENT_PROGRESS',
+                roomCode: roomPin,
+                studentName: studentProfile.name,
+                answeredCount: 0,
+                totalQuestions: totalQ,
+                startedAt: nowIso
+            });
+        }
+        // 🌐 Cross-device: broadcast via Supabase Realtime
+        if (window.supabaseClient) {
+            try {
+                await window.supabaseClient.channel(`quiz_lobby_channel_${roomPin}`).send({
+                    type: 'broadcast',
+                    event: 'student_progress',
+                    payload: {
+                        studentName: studentProfile.name,
+                        answeredCount: 0,
+                        totalQuestions: totalQ,
+                        startedAt: nowIso
+                    }
+                });
+            } catch (e) {}
+        }
+    }
+
     saveStudentSession({ activeView: 'exam' });
     renderLiveQuestions();
     startStudentExamTimer();
@@ -754,6 +795,7 @@ function selectStudentRadio(qId, val, el) {
         el.classList.add('selected');
     }
     saveStudentSession();
+    broadcastStudentProgress();
 }
 
 function toggleStudentCheckbox(qId, val, el) {
@@ -769,6 +811,53 @@ function toggleStudentCheckbox(qId, val, el) {
         el.classList.remove('selected');
     }
     saveStudentSession();
+    broadcastStudentProgress();
+}
+
+/**
+ * 📡 Broadcast real-time progress to teacher tab
+ */
+// Debounce timer for Supabase progress broadcast (avoid spamming)
+let _progressBroadcastTimer = null;
+
+function broadcastStudentProgress() {
+    if (!assignedVariant) return;
+    const totalQ = assignedVariant.questions?.length || 0;
+    const answered = Object.keys(studentAnswers).filter(qId => {
+        const v = studentAnswers[qId];
+        return v !== null && v !== undefined && v !== '' && !(Array.isArray(v) && v.length === 0);
+    }).length;
+
+    const payload = {
+        type: 'STUDENT_PROGRESS',
+        roomCode: roomPin,
+        studentName: studentProfile.name,
+        answeredCount: answered,
+        totalQuestions: totalQ,
+        startedAt: null   // already sent on exam start
+    };
+
+    // Local broadcast (same device, instant)
+    if (localBC) localBC.postMessage(payload);
+
+    // 🌐 Cross-device: Supabase Realtime broadcast (debounced 800ms to avoid spam)
+    clearTimeout(_progressBroadcastTimer);
+    _progressBroadcastTimer = setTimeout(() => {
+        if (window.supabaseClient && roomPin) {
+            try {
+                window.supabaseClient.channel(`quiz_lobby_channel_${roomPin}`).send({
+                    type: 'broadcast',
+                    event: 'student_progress',
+                    payload: {
+                        studentName: studentProfile.name,
+                        answeredCount: answered,
+                        totalQuestions: totalQ,
+                        startedAt: null
+                    }
+                });
+            } catch (e) {}
+        }
+    }, 800);
 }
 
 function startStudentExamTimer() {
