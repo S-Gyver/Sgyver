@@ -379,6 +379,8 @@ function setupLobbyRealtime() {
                 handleStudentSubmittedEvent(msg.result);
             } else if (msg.type === 'STUDENT_PROGRESS') {
                 handleStudentProgressEvent(msg);
+            } else if (msg.type === 'STUDENT_LOCKDOWN_ALERT') {
+                handleStudentLockdownAlert(msg);
             }
         };
     }
@@ -409,6 +411,10 @@ function setupLobbyRealtime() {
                 // 📈 Real-time progress from students on OTHER devices
                 .on('broadcast', { event: 'student_progress' }, (payload) => {
                     handleStudentProgressEvent(payload.payload);
+                })
+                // 🚨 Real-time Anti-Cheat Lockdown alert
+                .on('broadcast', { event: 'student_lockdown_alert' }, (payload) => {
+                    handleStudentLockdownAlert(payload.payload);
                 })
                 .subscribe();
         } catch (e) {
@@ -761,6 +767,30 @@ function handleStudentProgressEvent(msg) {
         if (msg.startedAt) p.startedAt = msg.startedAt;
     }
     renderMonitoringUI();
+}
+
+function handleStudentLockdownAlert(msg) {
+    if (!msg || !msg.studentName) return;
+    console.warn('[Teacher Alert] Cheating/Lockdown:', msg);
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            icon: 'warning',
+            title: `🚨 แจ้งเตือนการทุจริต: ${msg.studentName}`,
+            html: `
+                <div class="text-start p-2">
+                    <p class="text-danger fw-bold mb-1"><i class="bi bi-shield-slash-fill me-1"></i>${msg.reason}</p>
+                    <p class="text-subtle small mb-1">เวลา: ${msg.time || 'เมื่อสักครู่'}</p>
+                    <p class="text-warning small m-0">ครั้งที่: ${msg.violationCount || 1} (หน้าจอเด็กถูกล็อกแล้ว)</p>
+                </div>
+            `,
+            toast: true,
+            position: 'top-end',
+            timer: 8000,
+            showConfirmButton: false,
+            background: '#1e1018',
+            color: '#fff'
+        });
+    }
 }
 
 /**

@@ -10,6 +10,10 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@600;700;800&family=Kanit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
+    <!-- CodeMirror (Code Editor) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
+
     <!-- Supabase SDK & Custom CSS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../../../assets/js/supabaseClient.js"></script>
@@ -195,9 +199,54 @@
         </div>
     </div>
 
+    <!-- 🚨 Anti-Cheat Lockdown Shield Overlay -->
+    <div id="lockdown-shield-overlay" class="lockdown-shield-overlay d-none">
+        <div class="lockdown-shield-card">
+            <div class="lockdown-pulse-icon">
+                <i class="bi bi-shield-slash-fill text-danger fs-1"></i>
+            </div>
+            <h3 class="text-danger fw-bold mb-2">หน้าจอถูกระงับการสอบ! 🚨</h3>
+            <div class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-1.5 mb-3 font-mono">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i>SECURITY LOCKDOWN
+            </div>
+            <p id="lockdown-reason-text" class="text-white mb-2 fs-6">ตรวจพบการสลับหน้าต่าง ยุบหน้าจอ หรือหลุดจากโหมดเต็มจอ</p>
+            <p class="text-subtle small mb-4">ระบบทำการล็อกหน้าจอเพื่อป้องกันการทุจริตและการแอบใช้ AI ค้นหาคำตอบ<br><strong class="text-warning">กรุณาแจ้งคุณครูผู้คุมสอบเพื่อปลดล็อกหน้าจอ</strong></p>
+
+            <div class="p-3 bg-dark border border-secondary rounded-3 mb-4 text-start">
+                <div class="d-flex justify-content-between text-subtle small mb-1">
+                    <span>เวลาที่ตรวจพบ:</span>
+                    <span id="lockdown-time-label" class="text-white font-mono">-</span>
+                </div>
+                <div class="d-flex justify-content-between text-subtle small">
+                    <span>จำนวนครั้งที่ถูกล็อก:</span>
+                    <span id="lockdown-violation-count" class="text-danger fw-bold font-mono">1 ครั้ง</span>
+                </div>
+            </div>
+
+            <div class="mx-auto" style="max-width: 320px;">
+                <label class="form-label text-subtle small fw-bold"><i class="bi bi-key-fill text-warning me-1"></i>รหัส PIN คุณครู (Teacher Unlock)</label>
+                <div class="input-group mb-3">
+                    <input type="password" id="lockdown-teacher-pin" class="form-control form-control-cyber text-center font-mono fs-4 fw-bold" placeholder="PIN" maxlength="8" autocomplete="off">
+                    <button class="btn btn-danger fw-bold px-3" onclick="unlockExamByTeacherPin()">
+                        <i class="bi bi-unlock-fill me-1"></i>ปลดล็อก
+                    </button>
+                </div>
+                <div id="lockdown-pin-error" class="text-danger small fw-bold d-none">
+                    <i class="bi bi-x-circle me-1"></i>รหัส PIN ไม่ถูกต้อง!
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bootstrap 5 JS & SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- CodeMirror JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+    <!-- Skulpt (In-Browser Python 3 Engine) -->
+    <script src="https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt-stdlib.js"></script>
     <script src="quiz_student.js"></script>
 </body>
 </html>

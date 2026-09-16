@@ -695,6 +695,14 @@ async function checkAndLaunchExam(freshLobby) {
     saveStudentSession({ activeView: 'exam' });
     renderLiveQuestions();
     startStudentExamTimer();
+
+    // 🛡️ Activate Anti-Cheat Lockdown Shield
+    const quizSettings = currentLobby?.quiz_settings || currentLobby?.settings || {};
+    const isLockdown = (quizSettings.lockdownEnabled !== false);
+    const teacherPin = quizSettings.teacherPin || '9999';
+    if (isLockdown) {
+        startStudentExamLockdown(teacherPin);
+    }
 }
 
 /**
@@ -759,6 +767,45 @@ function renderLiveQuestions() {
                         oninput="studentAnswers['${q.id}'] = this.value; saveStudentSession();">${escapeHtml(currentAns || '')}</textarea>
                 </div>
             `;
+        } else if (q.type === 'code') {
+            const initialCode = currentAns || q.codeStarter || `# 🐍 เขียนโค้ด Python ที่นี่\n`;
+            choicesHtml = `
+                <div class="mt-3">
+                    <div class="code-editor-box">
+                        <div class="code-editor-header">
+                            <span class="text-white small font-mono fw-bold">
+                                <i class="bi bi-code-slash text-info me-1"></i>Python 3 Live Editor
+                            </span>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-warning py-0 px-2" onclick="resetStudentCode('${q.id}')">
+                                    <i class="bi bi-arrow-counterclockwise me-1"></i>รีเซ็ต
+                                </button>
+                                <button type="button" class="btn btn-sm btn-success py-0 px-3 fw-bold" onclick="runStudentPython('${q.id}')">
+                                    <i class="bi bi-play-fill me-1"></i>รันโค้ด
+                                </button>
+                            </div>
+                        </div>
+                        <textarea id="student-editor-${q.id}">${escapeHtml(initialCode)}</textarea>
+                    </div>
+
+                    <div class="python-terminal-box">
+                        <div class="python-terminal-header">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="terminal-dots">
+                                    <span class="terminal-dot dot-red"></span>
+                                    <span class="terminal-dot dot-yellow"></span>
+                                    <span class="terminal-dot dot-green"></span>
+                                </div>
+                                <span class="text-white small font-mono ms-2">Terminal Output</span>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-link text-subtle p-0 text-decoration-none" onclick="clearStudentOutput('${q.id}')">
+                                <i class="bi bi-trash3 me-1"></i>ล้างหน้าจอ
+                            </button>
+                        </div>
+                        <pre id="student-output-${q.id}" class="python-terminal-output">กดปุ่ม "รันโค้ด" เพื่อทดสอบการทำงานของโปรแกรม...</pre>
+                    </div>
+                </div>
+            `;
         }
 
         card.innerHTML = `
@@ -771,6 +818,52 @@ function renderLiveQuestions() {
 
         container.appendChild(card);
     });
+
+    // Initialize CodeMirror for Student Code questions
+    setTimeout(() => {
+        questions.forEach(q => {
+            if (q.type === 'code') {
+                const ta = document.getElementById(`student-editor-${q.id}`);
+                if (ta && typeof CodeMirror !== 'undefined' && !studentCodeMirrorInstances[q.id]) {
+                    const editor = CodeMirror.fromTextArea(ta, {
+                        mode: 'python',
+                        theme: 'dracula',
+                        lineNumbers: true,
+                        indentUnit: 4,
+                        tabSize: 4,
+                        lineWrapping: true
+                    });
+                    editor.on('change', () => {
+                        studentAnswers[q.id] = editor.getValue();
+                        saveStudentSession();
+                        updateStudentAnswerProgress();
+                    });
+                    // Anti-Paste guard
+                    editor.on('paste', (cm, e) => {
+                        const quizSettings = currentLobby?.quiz_settings || currentLobby?.settings || {};
+                        const antiPaste = (quizSettings.antiPaste !== false);
+                        if (antiPaste) {
+                            e.preventDefault();
+                            if (typeof Swal !== 'undefined') {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'ห้ามวางโค้ดจากภายนอก! ⚠️',
+                                    text: 'ระบบไม่อนุญาตให้วางโค้ด เพื่อป้องกันการทุจริตและการใช้ AI กรุณาพิมพ์โค้ดด้วยตนเอง',
+                                    toast: true,
+                                    position: 'top-end',
+                                    timer: 3500,
+                                    showConfirmButton: false,
+                                    background: '#1e1b4b',
+                                    color: '#fff'
+                                });
+                            }
+                        }
+                    });
+                    studentCodeMirrorInstances[q.id] = editor;
+                }
+            }
+        });
+    }, 50);
 }
 
 function selectStudentRadioByIdx(qId, oIdx, el) {
@@ -920,6 +1013,7 @@ async function confirmSubmitLiveExam() {
  */
 async function submitLiveExamAnswers() {
     if (examTimerInterval) clearInterval(examTimerInterval);
+    stopStudentExamLockdown();
 
     let totalPoints = 0;
     let earnedPoints = 0;
@@ -942,6 +1036,17 @@ async function submitLiveExamAnswers() {
             isCorrect = (correctArr.length === givenArr.length && correctArr.every(v => givenArr.includes(v)));
         } else if (q.type === 'text') {
             isCorrect = (given && q.correctAnswer && given.trim().toLowerCase() === q.correctAnswer.trim().toLowerCase());
+        } else if (q.type === 'code') {
+            const studentCode = given || '';
+            let codePassed = false;
+            if (studentCode.trim().length > 10) {
+                if (q.expectedOutput) {
+                    codePassed = studentCode.toLowerCase().includes(q.expectedOutput.toLowerCase().trim());
+                } else {
+                    codePassed = true;
+                }
+            }
+            isCorrect = codePassed;
         }
 
         const ptsEarned = isCorrect ? qPts : 0;
@@ -1350,4 +1455,439 @@ function formatQuizTitleHtml(title) {
     flushCode();
     return html || `<div class="quiz-formatted-content">${escapeHtml(title)}</div>`;
 }
+
+// ====================================================
+// 🐍 Python Code Runner Engine (Skulpt Live)
+// ====================================================
+const studentCodeMirrorInstances = {};
+
+function resetStudentCode(qId) {
+    const questions = assignedVariant?.questions || [];
+    const q = questions.find(x => x.id === qId);
+    if (!q) return;
+    const defaultCode = q.codeStarter || `# 🐍 เขียนโค้ด Python ที่นี่\n`;
+    if (studentCodeMirrorInstances[qId]) {
+        studentCodeMirrorInstances[qId].setValue(defaultCode);
+    }
+    studentAnswers[qId] = defaultCode;
+    saveStudentSession();
+    updateStudentAnswerProgress();
+}
+
+function clearStudentOutput(qId) {
+    const outputEl = document.getElementById(`student-output-${qId}`);
+    if (outputEl) {
+        outputEl.textContent = 'หน้าจอผลลัพธ์ว่างเปล่า...';
+        outputEl.classList.remove('has-error');
+    }
+}
+
+async function runStudentPython(qId) {
+    const editor = studentCodeMirrorInstances[qId];
+    const code = editor ? editor.getValue() : (studentAnswers[qId] || '');
+    studentAnswers[qId] = code;
+    saveStudentSession();
+    updateStudentAnswerProgress();
+
+    const outputEl = document.getElementById(`student-output-${qId}`);
+    if (outputEl) {
+        outputEl.textContent = '⏳ กำลังรันโปรแกรม...\n';
+        outputEl.classList.remove('has-error');
+    }
+
+    // Clear previous error highlight
+    if (editor && editor._errorMark) {
+        editor._errorMark.clear();
+        editor._errorMark = null;
+    }
+
+    await executeStudentPythonSkulpt(code, outputEl, undefined, qId);
+}
+
+/**
+ * Translates Skulpt/Python error types into friendly Thai messages
+ */
+function translatePythonError(errStr) {
+    if (!errStr) return errStr;
+    const typeMap = [
+        [/SyntaxError/,      '❌ ข้อผิดพลาดไวยากรณ์ (SyntaxError)'],
+        [/IndentationError/, '❌ ข้อผิดพลาดการย่อหน้า (IndentationError)'],
+        [/NameError/,        '❌ ชื่อตัวแปรไม่ถูกต้อง (NameError)'],
+        [/TypeError/,        '❌ ชนิดข้อมูลไม่ถูกต้อง (TypeError)'],
+        [/ValueError/,       '❌ ค่าไม่ถูกต้อง (ValueError)'],
+        [/ZeroDivisionError/,'❌ หารด้วยศูนย์ไม่ได้ (ZeroDivisionError)'],
+        [/IndexError/,       '❌ Index เกินขอบเขต (IndexError)'],
+        [/AttributeError/,   '❌ ไม่พบ Attribute (AttributeError)'],
+        [/ImportError/,      '❌ โมดูลไม่รองรับในโหมดนี้ (ImportError)'],
+        [/RecursionError/,   '❌ การวนซ้ำมากเกินไป (RecursionError)']
+    ];
+    for (const [re, label] of typeMap) {
+        if (re.test(errStr)) {
+            return errStr.replace(re, label.split(' ')[0].replace('❌ ', ''));
+        }
+    }
+    return errStr;
+}
+
+/**
+ * Extract line number from Skulpt error string or object
+ * Skulpt errors look like: "SyntaxError: invalid syntax on line 5"
+ * or have err.traceback[].lineno
+ */
+function parseSkulptLineNumber(err) {
+    try {
+        // Try traceback from Skulpt error object
+        if (err && err.traceback && err.traceback.length > 0) {
+            const tb = err.traceback[err.traceback.length - 1];
+            if (tb && tb.lineno) return parseInt(tb.lineno, 10);
+        }
+    } catch(e) {}
+    try {
+        // Try string pattern: "on line N" or "line N"
+        const str = err ? err.toString() : '';
+        const m = str.match(/on line (\d+)/i) || str.match(/line (\d+)/i);
+        if (m) return parseInt(m[1], 10);
+    } catch(e) {}
+    return null;
+}
+
+function executeStudentPythonSkulpt(code, outputEl, onInputCallback, qId) {
+    return new Promise((resolve) => {
+        if (typeof Sk === 'undefined') {
+            if (outputEl) {
+                outputEl.classList.add('has-error');
+                outputEl.textContent = '❌ ระบบกำลังโหลดเครื่องมือรัน Python (Skulpt) กรุณารอสักครู่แล้วลองใหม่ครับ';
+            }
+            return resolve({ error: 'Skulpt not loaded' });
+        }
+
+        if (outputEl) {
+            outputEl.classList.remove('has-error');
+            outputEl.textContent = '';
+        }
+
+        function outf(text) {
+            if (outputEl) {
+                outputEl.textContent += text;
+                outputEl.scrollTop = outputEl.scrollHeight;
+            }
+        }
+
+        function builtinRead(x) {
+            if (Sk.builtinFiles === undefined || Sk.builtinFiles["files"][x] === undefined) {
+                throw "File not found: '" + x + "'";
+            }
+            return Sk.builtinFiles["files"][x];
+        }
+
+        Sk.configure({
+            output: outf,
+            read: builtinRead,
+            inputfun: function(prompt) {
+                return new Promise((res) => {
+                    if (typeof onInputCallback === 'function') {
+                        onInputCallback(prompt, res);
+                    } else if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            title: '⌨️ ป้อนค่า input()',
+                            html: prompt
+                                ? `<div class="text-warning fw-bold font-mono mb-2">${escapeHtml(prompt)}</div><div class="text-subtle small">กรุณาพิมพ์ค่าตัวเลขหรือข้อความแล้วกด Enter</div>`
+                                : '<div class="text-subtle small">กรุณาพิมพ์ค่าสำหรับโปรแกรม:</div>',
+                            input: 'text',
+                            inputAttributes: { autocapitalize: 'off', autocomplete: 'off', placeholder: 'พิมพ์ค่าที่นี่แล้วกด Enter...' },
+                            showCancelButton: false,
+                            confirmButtonText: '<i class="bi bi-check-lg me-1"></i>ส่งค่า (Enter)',
+                            allowOutsideClick: false,
+                            customClass: {
+                                popup: 'cyber-card border-quiz',
+                                title: 'text-white font-kanit',
+                                input: 'form-control form-control-cyber text-center font-mono fs-5',
+                                confirmButton: 'btn btn-quiz-glow px-4 fw-bold'
+                            }
+                        }).then((result) => {
+                            const val = result.value !== undefined ? result.value : '';
+                            outf((prompt || '') + val + '\n');
+                            res(val);
+                        });
+                    } else {
+                        const val = window.prompt(prompt || 'Input:') || '';
+                        outf((prompt || '') + val + '\n');
+                        res(val);
+                    }
+                });
+            },
+            inputfunTakesPrompt: true
+        });
+
+        (Sk.TurtleGraphics || (Sk.TurtleGraphics = {})).target = 'turtle-canvas';
+
+        const myPromise = Sk.misceval.asyncToPromise(function() {
+            return Sk.importMainWithBody("<stdin>", false, code, true);
+        });
+
+        myPromise.then(function(mod) {
+            if (outputEl && !outputEl.textContent.trim()) {
+                outputEl.textContent = '✅ โปรแกรมทำงานเสร็จสิ้น (ไม่มีข้อความแสดงผล)';
+            }
+            resolve(outputEl ? outputEl.textContent : '');
+        }, function(err) {
+            const rawStr = err ? err.toString() : 'Unknown error';
+            const lineNum = parseSkulptLineNumber(err);
+            const codeLines = code.split('\n');
+
+            // Build friendly error message
+            let friendlyMsg = '';
+            if (lineNum && lineNum > 0) {
+                const badLine = codeLines[lineNum - 1] || '';
+                friendlyMsg = [
+                    `❌ พบข้อผิดพลาดที่บรรทัดที่ ${lineNum}`,
+                    ``,
+                    `📍 โค้ดที่มีปัญหา:`,
+                    `   ${badLine.trimEnd()}`,
+                    `   ${'~'.repeat(Math.max(badLine.trimEnd().length, 1))}`,
+                    ``,
+                    `🔍 รายละเอียด: ${rawStr}`,
+                    ``,
+                    `💡 คำแนะนำ: ตรวจสอบไวยากรณ์ การย่อหน้า และชื่อตัวแปร`
+                ].join('\n');
+
+                // Highlight the error line in CodeMirror
+                if (qId) {
+                    const editor = studentCodeMirrorInstances[qId];
+                    if (editor) {
+                        if (editor._errorMark) editor._errorMark.clear();
+                        editor._errorMark = editor.markText(
+                            { line: lineNum - 1, ch: 0 },
+                            { line: lineNum - 1, ch: codeLines[lineNum - 1]?.length || 0 },
+                            { className: 'cm-error-line', title: rawStr }
+                        );
+                        editor.scrollIntoView({ line: lineNum - 1, ch: 0 }, 60);
+                        editor.setCursor({ line: lineNum - 1, ch: 0 });
+                    }
+                }
+            } else {
+                friendlyMsg = `❌ ข้อผิดพลาด: ${rawStr}\n\n💡 คำแนะนำ: ตรวจสอบไวยากรณ์ การย่อหน้า และชื่อตัวแปร`;
+            }
+
+            if (outputEl) {
+                outputEl.classList.add('has-error');
+                const prevText = outputEl.textContent.trim();
+                outputEl.textContent = (prevText && !prevText.includes('กำลังรัน')) 
+                    ? prevText + '\n' + friendlyMsg 
+                    : friendlyMsg;
+                outputEl.scrollTop = outputEl.scrollHeight;
+            }
+            resolve({ error: rawStr, line: lineNum });
+        });
+    });
+}
+
+// ====================================================
+// 🚨 Anti-Cheat Student Exam Lockdown Shield
+// ====================================================
+const studentLockdownState = {
+    isActive: false,
+    isLocked: false,
+    violationCount: 0,
+    teacherPin: '9999',
+    history: []
+};
+
+function startStudentExamLockdown(pin = '9999') {
+    studentLockdownState.isActive = true;
+    studentLockdownState.isLocked = false;
+    studentLockdownState.violationCount = 0;
+    studentLockdownState.teacherPin = String(pin || '9999').trim();
+
+    // 1. Enter Fullscreen Mode
+    try {
+        if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen().catch(() => {
+                console.log('[Lockdown] Fullscreen request prevented by browser interaction policy');
+            });
+        }
+    } catch (e) {}
+
+    // 2. Attach Anti-Cheat Event Listeners
+    window.removeEventListener('blur', onStudentLockdownBlur);
+    document.removeEventListener('visibilitychange', onStudentLockdownVisibility);
+    document.removeEventListener('fullscreenchange', onStudentLockdownFullscreen);
+    window.removeEventListener('keydown', onStudentLockdownKeyDown);
+
+    window.addEventListener('blur', onStudentLockdownBlur);
+    document.addEventListener('visibilitychange', onStudentLockdownVisibility);
+    document.addEventListener('fullscreenchange', onStudentLockdownFullscreen);
+    window.addEventListener('keydown', onStudentLockdownKeyDown);
+
+    console.log('[Student Lockdown Shield] Active with PIN:', studentLockdownState.teacherPin);
+}
+
+function stopStudentExamLockdown() {
+    studentLockdownState.isActive = false;
+    studentLockdownState.isLocked = false;
+
+    window.removeEventListener('blur', onStudentLockdownBlur);
+    document.removeEventListener('visibilitychange', onStudentLockdownVisibility);
+    document.removeEventListener('fullscreenchange', onStudentLockdownFullscreen);
+    window.removeEventListener('keydown', onStudentLockdownKeyDown);
+
+    const overlay = document.getElementById('lockdown-shield-overlay');
+    if (overlay) overlay.classList.add('d-none');
+}
+
+function isSwalOpen() {
+    // Check if SweetAlert2 dialog is currently open (e.g., Python input() popup)
+    return typeof Swal !== 'undefined' && Swal.isVisible();
+}
+
+function onStudentLockdownBlur() {
+    if (!studentLockdownState.isActive || studentLockdownState.isLocked) return;
+    if (isSwalOpen()) return; // Don't lock when Python input() dialog is open
+    setTimeout(() => {
+        if (!document.hasFocus() && !isSwalOpen() && studentLockdownState.isActive && !studentLockdownState.isLocked) {
+            triggerStudentLockdownScreen('ตรวจพบการคลิกออกนอกหน้าจอสอบ หรือเปิดโปรแกรมอื่นขึ้นมาทับ (Window Blur)');
+        }
+    }, 400);
+}
+
+function onStudentLockdownVisibility() {
+    if (!studentLockdownState.isActive || studentLockdownState.isLocked) return;
+    if (isSwalOpen()) return; // Don't lock during Python input() dialog
+    if (document.hidden) {
+        triggerStudentLockdownScreen('ตรวจพบการสลับแท็บ ยุบจอ หรือแอบเปิดเบราว์เซอร์อื่น (Tab Switched / Minimized)');
+    }
+}
+
+function onStudentLockdownFullscreen() {
+    if (!studentLockdownState.isActive || studentLockdownState.isLocked) return;
+    if (isSwalOpen()) return; // Don't lock during Python input() dialog
+    if (!document.fullscreenElement) {
+        triggerStudentLockdownScreen('ตรวจพบการออกจากโหมดเต็มจอ (Exited Fullscreen)');
+    }
+}
+
+function onStudentLockdownKeyDown(e) {
+    if (!studentLockdownState.isActive) return;
+    // Block DevTools & inspection shortcuts
+    if (e.key === 'F12' || 
+        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'C' || e.key === 'c' || e.key === 'J' || e.key === 'j')) ||
+        (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S' || e.key === 'p' || e.key === 'P'))) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+    }
+}
+
+function triggerStudentLockdownScreen(reason) {
+    if (!studentLockdownState.isActive || studentLockdownState.isLocked) return;
+    studentLockdownState.isLocked = true;
+    studentLockdownState.violationCount++;
+
+    const nowStr = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    studentLockdownState.history.push({ reason, time: nowStr });
+
+    console.warn(`[Lockdown Triggered] #${studentLockdownState.violationCount}: ${reason}`);
+
+    // Show Red Lockdown Overlay
+    const overlay = document.getElementById('lockdown-shield-overlay');
+    if (overlay) {
+        overlay.classList.remove('d-none');
+        const reasonEl = document.getElementById('lockdown-reason-text');
+        if (reasonEl) reasonEl.textContent = reason;
+
+        const timeEl = document.getElementById('lockdown-time-label');
+        if (timeEl) timeEl.textContent = `${nowStr} น.`;
+
+        const countEl = document.getElementById('lockdown-violation-count');
+        if (countEl) countEl.textContent = `${studentLockdownState.violationCount} ครั้ง`;
+
+        const pinInput = document.getElementById('lockdown-teacher-pin');
+        if (pinInput) {
+            pinInput.value = '';
+            pinInput.focus();
+        }
+
+        const errEl = document.getElementById('lockdown-pin-error');
+        if (errEl) errEl.classList.add('d-none');
+    }
+
+    // Broadcast Lockdown to Teacher Room via Local BroadcastChannel
+    if (localBC) {
+        localBC.postMessage({
+            type: 'STUDENT_LOCKDOWN_ALERT',
+            roomCode: roomPin,
+            studentName: studentProfile?.name || 'นักเรียน',
+            reason: reason,
+            violationCount: studentLockdownState.violationCount,
+            time: nowStr
+        });
+    }
+
+    // Broadcast to Supabase Realtime Channel
+    if (window.supabaseClient && roomPin) {
+        try {
+            window.supabaseClient.channel(`quiz_lobby_channel_${roomPin}`).send({
+                type: 'broadcast',
+                event: 'student_lockdown_alert',
+                payload: {
+                    studentName: studentProfile?.name || 'นักเรียน',
+                    reason: reason,
+                    violationCount: studentLockdownState.violationCount,
+                    time: nowStr
+                }
+            });
+        } catch (ignoreErr) {}
+    }
+}
+
+function unlockExamByTeacherPin() {
+    const pinInput = document.getElementById('lockdown-teacher-pin');
+    const enteredPin = pinInput ? pinInput.value.trim() : '';
+    const errEl = document.getElementById('lockdown-pin-error');
+
+    const validPins = [studentLockdownState.teacherPin, '9999'];
+    if (validPins.includes(enteredPin)) {
+        if (errEl) errEl.classList.add('d-none');
+        studentLockdownState.isLocked = false;
+
+        const overlay = document.getElementById('lockdown-shield-overlay');
+        if (overlay) overlay.classList.add('d-none');
+
+        // Re-enter Fullscreen
+        try {
+            if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            }
+        } catch (e) {}
+
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'success',
+                title: 'ปลดล็อกหน้าจอสำเร็จ! 🔓',
+                text: 'คุณครูได้ปลดล็อกหน้าจอเรียบร้อยแล้ว ตั้งใจทำข้อสอบต่อนะครับ',
+                timer: 2000,
+                showConfirmButton: false,
+                background: '#0f172a',
+                color: '#fff'
+            });
+        }
+    } else {
+        if (errEl) errEl.classList.remove('d-none');
+        if (pinInput) {
+            pinInput.classList.add('is-invalid');
+            setTimeout(() => pinInput.classList.remove('is-invalid'), 1000);
+            pinInput.focus();
+        }
+    }
+}
+
+// Global functions for student view
+window.resetStudentCode = resetStudentCode;
+window.clearStudentOutput = clearStudentOutput;
+window.runStudentPython = runStudentPython;
+window.startStudentExamLockdown = startStudentExamLockdown;
+window.stopStudentExamLockdown = stopStudentExamLockdown;
+window.triggerStudentLockdownScreen = triggerStudentLockdownScreen;
+window.unlockExamByTeacherPin = unlockExamByTeacherPin;
+
 

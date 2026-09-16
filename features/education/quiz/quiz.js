@@ -16,7 +16,9 @@ let studentAnswers = {}; // { questionId: value | [values] }
 let examTimerInterval = null;
 let remainingSeconds = 0;
 let lastExamResult = null;
+let lastQuizResult = null;
 let activeExamQuestions = [];
+
 
 // 🌟 SweetAlert2 Cyber Dialog Helpers
 function getCyberSwal() {
@@ -406,6 +408,12 @@ function renderBuilderView() {
     document.getElementById('setting-cert-enabled').checked = currentQuiz.settings?.certEnabled ?? true;
     document.getElementById('setting-show-answers').checked = currentQuiz.settings?.showAnswers ?? true;
 
+    // 🛡️ Anti-Cheat Lockdown Settings
+    const lockdownEl = document.getElementById('setting-lockdown-enabled');
+    if (lockdownEl) lockdownEl.checked = (currentQuiz.settings?.lockdownEnabled !== undefined) ? currentQuiz.settings.lockdownEnabled : true;
+    const pinEl = document.getElementById('setting-teacher-pin');
+    if (pinEl) pinEl.value = currentQuiz.settings?.teacherPin || '9999';
+
     // Question Pool setting (Default to true / enabled!)
     const totalQ = (currentQuiz.questions || []).length;
     const isPoolActive = (currentQuiz.settings?.poolEnabled !== undefined) ? currentQuiz.settings.poolEnabled : true;
@@ -497,6 +505,54 @@ function renderQuestionsBuilder() {
                         oninput="q_setAnswer('${q.id}', this.value)">${escapeHtml(q.correctAnswer || '')}</textarea>
                 </div>
             `;
+        } else if (q.type === 'code') {
+            const starterRows = Math.min(Math.max((q.codeStarter || '').split('\n').length + 1, 6), 16);
+            optionsHtml = `
+                <div class="mt-3 p-3 rounded-3" style="background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(56, 189, 248, 0.3);">
+                    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                        <label class="form-label text-info small fw-bold m-0">
+                            <i class="bi bi-file-earmark-code me-1"></i>โค้ดเริ่มต้นสำหรับนักเรียน (Python Starter Code)
+                        </label>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-info" onclick="testRunBuilderPython('${q.id}')">
+                                <i class="bi bi-play-circle me-1"></i>ทดสอบรันโค้ด
+                            </button>
+                        </div>
+                    </div>
+                    <textarea class="form-control form-control-cyber font-mono small choice-textarea" rows="${starterRows}" 
+                        id="code-starter-${q.id}"
+                        placeholder="# เขียนโค้ด Python เริ่มต้น หรือโจทย์ให้นักเรียนต่อยอด..."
+                        oninput="updateQuestionCodeStarter('${q.id}', this.value)">${escapeHtml(q.codeStarter || '')}</textarea>
+
+                    <div class="row g-2 mt-2">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label text-subtle small fw-bold"><i class="bi bi-bullseye me-1"></i>คีย์เวิร์ดผลลัพธ์ที่คาดหวัง (Expected Output / Keyword)</label>
+                            <input type="text" class="form-control form-control-cyber form-control-sm font-mono" 
+                                value="${escapeHtml(q.expectedOutput || '')}" 
+                                placeholder="เช่น เกรด 4 หรือ grade"
+                                oninput="updateQuestionExpectedOutput('${q.id}', this.value)">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label text-subtle small fw-bold"><i class="bi bi-lightbulb me-1"></i>แนวทางเฉลย / คำใบ้</label>
+                            <input type="text" class="form-control form-control-cyber form-control-sm" 
+                                value="${escapeHtml(q.correctAnswer || '')}" 
+                                placeholder="เช่น ใช้ if score >= 80: print('เกรด 4')"
+                                oninput="q_setAnswer('${q.id}', this.value)">
+                        </div>
+                    </div>
+
+                    <!-- Test Output Console for Teacher -->
+                    <div id="builder-terminal-${q.id}" class="python-terminal-box d-none mt-2">
+                        <div class="python-terminal-header">
+                            <span class="text-white small font-mono"><i class="bi bi-terminal me-1 text-info"></i>ผลการทดสอบรัน (Python Output)</span>
+                            <button type="button" class="btn btn-sm btn-link text-subtle p-0 text-decoration-none" onclick="document.getElementById('builder-terminal-${q.id}').classList.add('d-none')">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        <pre id="builder-output-${q.id}" class="python-terminal-output"></pre>
+                    </div>
+                </div>
+            `;
         }
 
         const titleLineCount = (q.title || '').split('\n').length;
@@ -546,13 +602,22 @@ function addQuestion(type = 'radio') {
 
     let options = ['ตัวเลือกที่ 1', 'ตัวเลือกที่ 2', 'ตัวเลือกที่ 3', 'ตัวเลือกที่ 4'];
     let correctAnswer = 'ตัวเลือกที่ 1';
+    let codeStarter = '';
+    let expectedOutput = '';
+    let defaultTitle = `ข้อที่ ${currentQuiz.questions.length + 1}: พิมพ์คำถาม...`;
+    let defaultPoints = 1;
 
     if (type === 'tf') {
         options = ['ถูก', 'ผิด'];
         correctAnswer = 'ถูก';
-    } else if (type === 'star') {
-        options = ['⭐ 1 ดาว', '⭐⭐ 2 ดาว', '⭐⭐⭐ 3 ดาว', '⭐⭐⭐⭐ 4 ดาว', '⭐⭐⭐⭐⭐ 5 ดาว'];
-        correctAnswer = '⭐⭐⭐⭐⭐ 5 ดาว';
+    } else if (type === 'code' || type === 'star') {
+        type = 'code';
+        options = [];
+        correctAnswer = 'if score >= 80:\n    print("เกรด 4")';
+        expectedOutput = 'เกรด';
+        defaultTitle = `ข้อที่ ${currentQuiz.questions.length + 1}: 🐍 เขียนโปรแกรมคำนวณตัดเกรดจากคะแนนที่รับเข้ามา`;
+        defaultPoints = 10;
+        codeStarter = `# 🐍 โจทย์: จงเขียนโปรแกรมรับคะแนน (0-100) แล้วคำนวณเกรด\n# เงื่อนไข: >=80 ได้เกรด 4, >=70 ได้เกรด 3, >=60 ได้เกรด 2, >=50 ได้เกรด 1, <50 ได้เกรด 0\n\nscore = int(input("กรุณากรอกคะแนน (0-100): "))\n\n# เขียนโค้ดเงื่อนไข if-elif-else ต่อจากตรงนี้\nif score >= 80:\n    print("เกรด 4")\nelif score >= 70:\n    print("เกรด 3")\nelif score >= 60:\n    print("เกรด 2")\nelif score >= 50:\n    print("เกรด 1")\nelse:\n    print("เกรด 0")\n`;
     } else if (type === 'text') {
         options = [];
         correctAnswer = '';
@@ -562,16 +627,44 @@ function addQuestion(type = 'radio') {
 
     const newQ = {
         id: generateId(),
-        title: `ข้อที่ ${currentQuiz.questions.length + 1}: พิมพ์คำถาม...`,
+        title: defaultTitle,
         type: type,
-        points: 1,
+        points: defaultPoints,
         correctAnswer: correctAnswer,
-        explanation: '',
+        codeStarter: codeStarter,
+        expectedOutput: expectedOutput,
+        explanation: (type === 'code') ? 'ใช้คำสั่ง if-elif-else ตรวจสอบช่วงคะแนนตามเงื่อนไข' : '',
         options: options
     };
 
     currentQuiz.questions.push(newQ);
     renderQuestionsBuilder();
+}
+
+function updateQuestionCodeStarter(qId, code) {
+    const q = currentQuiz?.questions?.find(x => x.id === qId);
+    if (q) q.codeStarter = code;
+}
+
+function updateQuestionExpectedOutput(qId, output) {
+    const q = currentQuiz?.questions?.find(x => x.id === qId);
+    if (q) q.expectedOutput = output;
+}
+
+async function testRunBuilderPython(qId) {
+    const q = currentQuiz?.questions?.find(x => x.id === qId);
+    if (!q) return;
+    const starterEl = document.getElementById(`code-starter-${qId}`);
+    const code = starterEl ? starterEl.value : (q.codeStarter || '');
+
+    const terminalBox = document.getElementById(`builder-terminal-${qId}`);
+    const outputEl = document.getElementById(`builder-output-${qId}`);
+    if (terminalBox) terminalBox.classList.remove('d-none');
+    if (outputEl) {
+        outputEl.textContent = '⏳ กำลังทดสอบรัน Python...\n';
+    }
+
+    await executePythonSkulpt(code, outputEl);
 }
 
 function removeQuestion(qId) {
@@ -667,13 +760,18 @@ async function saveCurrentQuiz(options = { redirect: true }) {
     const poolEnabled = document.getElementById('setting-pool-enabled')?.checked || false;
     const poolCount = Number(document.getElementById('setting-pool-count')?.value) || 20;
 
+    const lockdownEnabled = document.getElementById('setting-lockdown-enabled')?.checked ?? true;
+    const teacherPin = document.getElementById('setting-teacher-pin')?.value.trim() || '9999';
+
     currentQuiz.settings = {
         passingScore: Number(document.getElementById('setting-passing-score').value) || 70,
         timeLimit: Number(document.getElementById('setting-time-limit').value) || 0,
         certEnabled: document.getElementById('setting-cert-enabled').checked,
         showAnswers: document.getElementById('setting-show-answers').checked,
         poolEnabled: poolEnabled,
-        poolCount: poolCount
+        poolCount: poolCount,
+        lockdownEnabled: lockdownEnabled,
+        teacherPin: teacherPin
     };
     currentQuiz.updatedAt = new Date().toISOString();
 
@@ -1039,6 +1137,11 @@ function startTakingQuiz() {
     document.getElementById('active-exam-title').textContent = currentQuiz.title;
     document.getElementById('active-student-badge').textContent = `ผู้เข้าสอบ: ${name} ${room ? `(${room})` : ''}`;
 
+    // 🛡️ Activate Anti-Cheat Lockdown Shield
+    if (currentQuiz.settings?.lockdownEnabled !== false) {
+        startExamLockdown(currentQuiz.settings?.teacherPin || '9999');
+    }
+
     // Prepare Active Exam Questions (Random subset if Question Pool enabled)
     const totalQ = (currentQuiz.questions || []).length;
     const isPool = (currentQuiz.settings?.poolEnabled === false) ? false : (totalQ > 20 || !!currentQuiz.settings?.poolEnabled);
@@ -1183,6 +1286,45 @@ function renderTakerQuestions() {
                         oninput="studentAnswers['${q.id}'] = this.value; saveTakerSession();">${escapeHtml(currentAns || '')}</textarea>
                 </div>
             `;
+        } else if (q.type === 'code') {
+            const initialCode = currentAns || q.codeStarter || `# 🐍 เขียนโค้ด Python ที่นี่\n`;
+            choicesHtml = `
+                <div class="mt-3">
+                    <div class="code-editor-box">
+                        <div class="code-editor-header">
+                            <span class="text-white small font-mono fw-bold">
+                                <i class="bi bi-code-slash text-info me-1"></i>Python 3 Code Editor
+                            </span>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-warning py-0 px-2" onclick="resetTakerCode('${q.id}')">
+                                    <i class="bi bi-arrow-counterclockwise me-1"></i>รีเซ็ต
+                                </button>
+                                <button type="button" class="btn btn-sm btn-success py-0 px-3 fw-bold" onclick="runTakerPython('${q.id}')">
+                                    <i class="bi bi-play-fill me-1"></i>รันโค้ด
+                                </button>
+                            </div>
+                        </div>
+                        <textarea id="taker-editor-${q.id}">${escapeHtml(initialCode)}</textarea>
+                    </div>
+
+                    <div class="python-terminal-box">
+                        <div class="python-terminal-header">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="terminal-dots">
+                                    <span class="terminal-dot dot-red"></span>
+                                    <span class="terminal-dot dot-yellow"></span>
+                                    <span class="terminal-dot dot-green"></span>
+                                </div>
+                                <span class="text-white small font-mono ms-2">Terminal Console</span>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-link text-subtle p-0 text-decoration-none" onclick="clearTakerOutput('${q.id}')">
+                                <i class="bi bi-trash3 me-1"></i>ล้างหน้าจอ
+                            </button>
+                        </div>
+                        <pre id="taker-output-${q.id}" class="python-terminal-output">กดปุ่ม "รันโค้ด" ด้านบนเพื่อดูผลลัพธ์การทำงานของโปรแกรม...</pre>
+                    </div>
+                </div>
+            `;
         }
 
         card.innerHTML = `
@@ -1195,6 +1337,49 @@ function renderTakerQuestions() {
 
         listEl.appendChild(card);
     });
+
+    // Initialize CodeMirror for Code questions
+    setTimeout(() => {
+        questionsToRender.forEach(q => {
+            if (q.type === 'code') {
+                const ta = document.getElementById(`taker-editor-${q.id}`);
+                if (ta && typeof CodeMirror !== 'undefined' && !codeMirrorInstances[q.id]) {
+                    const editor = CodeMirror.fromTextArea(ta, {
+                        mode: 'python',
+                        theme: 'dracula',
+                        lineNumbers: true,
+                        indentUnit: 4,
+                        tabSize: 4,
+                        lineWrapping: true
+                    });
+                    editor.on('change', () => {
+                        studentAnswers[q.id] = editor.getValue();
+                        saveTakerSession();
+                    });
+                    editor.on('paste', (cm, e) => {
+                        const isLockdown = (currentQuiz.settings?.lockdownEnabled !== false);
+                        if (isLockdown) {
+                            e.preventDefault();
+                            if (typeof Swal !== 'undefined') {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'ห้ามวางโค้ดจากภายนอก! ⚠️',
+                                    text: 'ระบบไม่อนุญาตให้วางโค้ด เพื่อป้องกันการทุจริตและการใช้ AI กรุณาพิมพ์โค้ดด้วยตนเอง',
+                                    toast: true,
+                                    position: 'top-end',
+                                    timer: 3500,
+                                    showConfirmButton: false,
+                                    background: '#1e1b4b',
+                                    color: '#fff'
+                                });
+                            }
+                        }
+                    });
+                    codeMirrorInstances[q.id] = editor;
+                }
+            }
+        });
+    }, 50);
 }
 
 function selectRadioChoiceByIdx(qId, oIdx, el) {
@@ -1264,6 +1449,7 @@ async function confirmSubmitQuiz() {
 
 function autoSubmitQuiz() {
     stopTimer();
+    stopExamLockdown();
 
     let totalPoints = 0;
     let earnedPoints = 0;
@@ -1286,6 +1472,17 @@ function autoSubmitQuiz() {
             isCorrect = (correctArr.length === givenArr.length && correctArr.every(v => givenArr.includes(v)));
         } else if (q.type === 'text') {
             isCorrect = (given && q.correctAnswer && given.trim().toLowerCase() === q.correctAnswer.trim().toLowerCase());
+        } else if (q.type === 'code') {
+            const studentCode = given || '';
+            let codePassed = false;
+            if (studentCode.trim().length > 10) {
+                if (q.expectedOutput) {
+                    codePassed = studentCode.toLowerCase().includes(q.expectedOutput.toLowerCase().trim());
+                } else {
+                    codePassed = true;
+                }
+            }
+            isCorrect = codePassed;
         }
 
         const ptsEarned = isCorrect ? qPts : 0;
@@ -2685,6 +2882,364 @@ function importSelectedQBQuestions() {
     }
 }
 
+// ====================================================
+// 🐍 Python Code Runner Engine (Skulpt In-Browser)
+// ====================================================
+const codeMirrorInstances = {};
+
+function resetTakerCode(qId) {
+    const questionsToSearch = (activeExamQuestions && activeExamQuestions.length > 0) ? activeExamQuestions : (currentQuiz?.questions || []);
+    const q = questionsToSearch.find(x => x.id === qId);
+    if (!q) return;
+    const defaultCode = q.codeStarter || `# 🐍 เขียนโค้ด Python ที่นี่\n`;
+    if (codeMirrorInstances[qId]) {
+        codeMirrorInstances[qId].setValue(defaultCode);
+    }
+    studentAnswers[qId] = defaultCode;
+    saveTakerSession();
+}
+
+function clearTakerOutput(qId) {
+    const outputEl = document.getElementById(`taker-output-${qId}`);
+    if (outputEl) {
+        outputEl.textContent = 'หน้าจอผลลัพธ์ว่างเปล่า...';
+        outputEl.classList.remove('has-error');
+    }
+}
+
+async function runTakerPython(qId) {
+    const editor = codeMirrorInstances[qId];
+    const code = editor ? editor.getValue() : (studentAnswers[qId] || '');
+    studentAnswers[qId] = code;
+    saveTakerSession();
+
+    const outputEl = document.getElementById(`taker-output-${qId}`);
+    if (outputEl) {
+        outputEl.textContent = '⏳ กำลังรันโปรแกรม...\n';
+        outputEl.classList.remove('has-error');
+    }
+
+    // Clear previous error highlight
+    if (editor && editor._errorMark) {
+        editor._errorMark.clear();
+        editor._errorMark = null;
+    }
+
+    await executePythonSkulpt(code, outputEl, undefined, qId);
+}
+
+/**
+ * Extract line number from Skulpt error string or object
+ */
+function parseSkulptLineNumberQ(err) {
+    try {
+        if (err && err.traceback && err.traceback.length > 0) {
+            const tb = err.traceback[err.traceback.length - 1];
+            if (tb && tb.lineno) return parseInt(tb.lineno, 10);
+        }
+    } catch(e) {}
+    try {
+        const str = err ? err.toString() : '';
+        const m = str.match(/on line (\d+)/i) || str.match(/line (\d+)/i);
+        if (m) return parseInt(m[1], 10);
+    } catch(e) {}
+    return null;
+}
+
+function executePythonSkulpt(code, outputEl, onInputCallback, qId) {
+    return new Promise((resolve) => {
+        if (typeof Sk === 'undefined') {
+            if (outputEl) {
+                outputEl.classList.add('has-error');
+                outputEl.textContent = '❌ ระบบกำลังโหลดเครื่องมือรัน Python (Skulpt) กรุณารอสักครู่แล้วลองใหม่ครับ';
+            }
+            return resolve({ error: 'Skulpt not loaded' });
+        }
+
+        if (outputEl) {
+            outputEl.classList.remove('has-error');
+            outputEl.textContent = '';
+        }
+
+        function outf(text) {
+            if (outputEl) {
+                outputEl.textContent += text;
+                outputEl.scrollTop = outputEl.scrollHeight;
+            }
+        }
+
+        function builtinRead(x) {
+            if (Sk.builtinFiles === undefined || Sk.builtinFiles["files"][x] === undefined) {
+                throw "File not found: '" + x + "'";
+            }
+            return Sk.builtinFiles["files"][x];
+        }
+
+        Sk.configure({
+            output: outf,
+            read: builtinRead,
+            inputfun: function(prompt) {
+                return new Promise((res) => {
+                    if (typeof onInputCallback === 'function') {
+                        onInputCallback(prompt, res);
+                    } else if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            title: '⌨️ ป้อนค่า input()',
+                            html: prompt
+                                ? `<div class="text-warning fw-bold font-mono mb-2">${escapeHtml(prompt)}</div><div class="text-subtle small">กรุณาพิมพ์ค่าตัวเลขหรือข้อความแล้วกด Enter</div>`
+                                : '<div class="text-subtle small">กรุณาพิมพ์ค่าสำหรับโปรแกรม:</div>',
+                            input: 'text',
+                            inputAttributes: { autocapitalize: 'off', autocomplete: 'off', placeholder: 'พิมพ์ค่าที่นี่แล้วกด Enter...' },
+                            showCancelButton: false,
+                            confirmButtonText: '<i class="bi bi-check-lg me-1"></i>ส่งค่า (Enter)',
+                            allowOutsideClick: false,
+                            customClass: {
+                                popup: 'cyber-card border-quiz',
+                                title: 'text-white font-kanit',
+                                input: 'form-control form-control-cyber text-center font-mono fs-5',
+                                confirmButton: 'btn btn-quiz-glow px-4 fw-bold'
+                            }
+                        }).then((result) => {
+                            const val = result.value !== undefined ? result.value : '';
+                            outf((prompt || '') + val + '\n');
+                            res(val);
+                        });
+                    } else {
+                        const val = window.prompt(prompt || 'Input:') || '';
+                        outf((prompt || '') + val + '\n');
+                        res(val);
+                    }
+                });
+            },
+            inputfunTakesPrompt: true
+        });
+
+        (Sk.TurtleGraphics || (Sk.TurtleGraphics = {})).target = 'turtle-canvas';
+
+        const myPromise = Sk.misceval.asyncToPromise(function() {
+            return Sk.importMainWithBody("<stdin>", false, code, true);
+        });
+
+        myPromise.then(function(mod) {
+            if (outputEl && !outputEl.textContent.trim()) {
+                outputEl.textContent = '✅ โปรแกรมทำงานเสร็จสิ้น (ไม่มีข้อความแสดงผล)';
+            }
+            resolve(outputEl ? outputEl.textContent : '');
+        }, function(err) {
+            const rawStr = err ? err.toString() : 'Unknown error';
+            const lineNum = parseSkulptLineNumberQ(err);
+            const codeLines = code.split('\n');
+
+            let friendlyMsg = '';
+            if (lineNum && lineNum > 0) {
+                const badLine = codeLines[lineNum - 1] || '';
+                friendlyMsg = [
+                    `❌ พบข้อผิดพลาดที่บรรทัดที่ ${lineNum}`,
+                    ``,
+                    `📍 โค้ดที่มีปัญหา:`,
+                    `   ${badLine.trimEnd()}`,
+                    `   ${'~'.repeat(Math.max(badLine.trimEnd().length, 1))}`,
+                    ``,
+                    `🔍 รายละเอียด: ${rawStr}`,
+                    ``,
+                    `💡 คำแนะนำ: ตรวจสอบไวยากรณ์ การย่อหน้า และชื่อตัวแปร`
+                ].join('\n');
+
+                // Highlight the error line in CodeMirror (taker/teacher view)
+                if (qId) {
+                    const editor = codeMirrorInstances[qId];
+                    if (editor) {
+                        if (editor._errorMark) editor._errorMark.clear();
+                        editor._errorMark = editor.markText(
+                            { line: lineNum - 1, ch: 0 },
+                            { line: lineNum - 1, ch: codeLines[lineNum - 1]?.length || 0 },
+                            { className: 'cm-error-line', title: rawStr }
+                        );
+                        editor.scrollIntoView({ line: lineNum - 1, ch: 0 }, 60);
+                        editor.setCursor({ line: lineNum - 1, ch: 0 });
+                    }
+                }
+            } else {
+                friendlyMsg = `❌ ข้อผิดพลาด: ${rawStr}\n\n💡 คำแนะนำ: ตรวจสอบไวยากรณ์ การย่อหน้า และชื่อตัวแปร`;
+            }
+
+            if (outputEl) {
+                outputEl.classList.add('has-error');
+                const prevText = outputEl.textContent.trim();
+                outputEl.textContent = (prevText && !prevText.includes('กำลังรัน'))
+                    ? prevText + '\n' + friendlyMsg
+                    : friendlyMsg;
+                outputEl.scrollTop = outputEl.scrollHeight;
+            }
+            resolve({ error: rawStr, line: lineNum });
+        });
+    });
+}
+
+// ====================================================
+// 🚨 Anti-Cheat Exam Lockdown Shield Controller
+// ====================================================
+const examLockdownState = {
+    isActive: false,
+    isLocked: false,
+    violationCount: 0,
+    teacherPin: '9999',
+    history: []
+};
+
+function startExamLockdown(pin = '9999') {
+    examLockdownState.isActive = true;
+    examLockdownState.isLocked = false;
+    examLockdownState.violationCount = 0;
+    examLockdownState.teacherPin = String(pin || '9999').trim();
+
+    // 1. Enter Fullscreen Mode
+    try {
+        if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen().catch(() => {
+                console.log('[Lockdown] Fullscreen request prevented by user interaction policy');
+            });
+        }
+    } catch (e) {}
+
+    // 2. Attach Anti-Cheat Event Listeners
+    window.removeEventListener('blur', onLockdownWindowBlur);
+    document.removeEventListener('visibilitychange', onLockdownVisibilityChange);
+    document.removeEventListener('fullscreenchange', onLockdownFullscreenChange);
+    window.removeEventListener('keydown', onLockdownKeyDown);
+
+    window.addEventListener('blur', onLockdownWindowBlur);
+    document.addEventListener('visibilitychange', onLockdownVisibilityChange);
+    document.addEventListener('fullscreenchange', onLockdownFullscreenChange);
+    window.addEventListener('keydown', onLockdownKeyDown);
+
+    console.log('[Lockdown Shield] Active with PIN:', examLockdownState.teacherPin);
+}
+
+function stopExamLockdown() {
+    examLockdownState.isActive = false;
+    examLockdownState.isLocked = false;
+
+    window.removeEventListener('blur', onLockdownWindowBlur);
+    document.removeEventListener('visibilitychange', onLockdownVisibilityChange);
+    document.removeEventListener('fullscreenchange', onLockdownFullscreenChange);
+    window.removeEventListener('keydown', onLockdownKeyDown);
+
+    const overlay = document.getElementById('lockdown-shield-overlay');
+    if (overlay) overlay.classList.add('d-none');
+}
+
+function onLockdownWindowBlur() {
+    if (!examLockdownState.isActive || examLockdownState.isLocked) return;
+    // Debounce slightly in case user clicked prompt
+    setTimeout(() => {
+        if (!document.hasFocus() && examLockdownState.isActive && !examLockdownState.isLocked) {
+            triggerLockdownScreen('ตรวจพบการคลิกออกนอกหน้าจอสอบ หรือเปิดแอปอื่นทับ (Window Blur)');
+        }
+    }, 200);
+}
+
+function onLockdownVisibilityChange() {
+    if (!examLockdownState.isActive || examLockdownState.isLocked) return;
+    if (document.hidden) {
+        triggerLockdownScreen('ตรวจพบการสลับแท็บ หรือยุบหน้าต่างเบราว์เซอร์ (Tab Switched / Minimized)');
+    }
+}
+
+function onLockdownFullscreenChange() {
+    if (!examLockdownState.isActive || examLockdownState.isLocked) return;
+    if (!document.fullscreenElement) {
+        triggerLockdownScreen('ตรวจพบการออกจากโหมดเต็มจอ (Exited Fullscreen)');
+    }
+}
+
+function onLockdownKeyDown(e) {
+    if (!examLockdownState.isActive) return;
+    // Block DevTools & inspection shortcuts
+    if (e.key === 'F12' || 
+        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'C' || e.key === 'c' || e.key === 'J' || e.key === 'j')) ||
+        (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S' || e.key === 'p' || e.key === 'P'))) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+    }
+}
+
+function triggerLockdownScreen(reason) {
+    if (!examLockdownState.isActive || examLockdownState.isLocked) return;
+    examLockdownState.isLocked = true;
+    examLockdownState.violationCount++;
+
+    const nowStr = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    examLockdownState.history.push({ reason, time: nowStr });
+
+    console.warn(`[Lockdown Triggered] #${examLockdownState.violationCount}: ${reason}`);
+
+    const overlay = document.getElementById('lockdown-shield-overlay');
+    if (overlay) {
+        overlay.classList.remove('d-none');
+        const reasonEl = document.getElementById('lockdown-reason-text');
+        if (reasonEl) reasonEl.textContent = reason;
+
+        const timeEl = document.getElementById('lockdown-time-label');
+        if (timeEl) timeEl.textContent = `${nowStr} น.`;
+
+        const countEl = document.getElementById('lockdown-violation-count');
+        if (countEl) countEl.textContent = `${examLockdownState.violationCount} ครั้ง`;
+
+        const pinInput = document.getElementById('lockdown-teacher-pin');
+        if (pinInput) {
+            pinInput.value = '';
+            pinInput.focus();
+        }
+
+        const errEl = document.getElementById('lockdown-pin-error');
+        if (errEl) errEl.classList.add('d-none');
+    }
+}
+
+function unlockExamByTeacherPin() {
+    const pinInput = document.getElementById('lockdown-teacher-pin');
+    const enteredPin = pinInput ? pinInput.value.trim() : '';
+    const errEl = document.getElementById('lockdown-pin-error');
+
+    // Accept teacher's configured PIN or universal master PIN '9999'
+    const validPins = [examLockdownState.teacherPin, '9999'];
+    if (validPins.includes(enteredPin)) {
+        if (errEl) errEl.classList.add('d-none');
+        examLockdownState.isLocked = false;
+
+        const overlay = document.getElementById('lockdown-shield-overlay');
+        if (overlay) overlay.classList.add('d-none');
+
+        // Try re-entering fullscreen
+        try {
+            if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            }
+        } catch (e) {}
+
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'success',
+                title: 'ปลดล็อกหน้าจอสำเร็จ! 🔓',
+                text: 'คุณครูได้ปลดล็อกหน้าจอให้เรียบร้อยแล้ว สามารถทำข้อสอบต่อได้',
+                timer: 2000,
+                showConfirmButton: false,
+                background: '#0f172a',
+                color: '#fff'
+            });
+        }
+    } else {
+        if (errEl) errEl.classList.remove('d-none');
+        if (pinInput) {
+            pinInput.classList.add('is-invalid');
+            setTimeout(() => pinInput.classList.remove('is-invalid'), 1000);
+            pinInput.focus();
+        }
+    }
+}
+
 // Expose globals for HTML onclick handlers
 window.getPythonExamPresetText = getPythonExamPresetText;
 window.PYTHON_EXAM_PRESET_TEXT = PYTHON_EXAM_PRESET_TEXT;
@@ -2698,3 +3253,12 @@ window.renderQBQuestionsList = renderQBQuestionsList;
 window.toggleQBQuestionSelection = toggleQBQuestionSelection;
 window.toggleSelectAllQB = toggleSelectAllQB;
 window.importSelectedQBQuestions = importSelectedQBQuestions;
+window.resetTakerCode = resetTakerCode;
+window.clearTakerOutput = clearTakerOutput;
+window.runTakerPython = runTakerPython;
+window.executePythonSkulpt = executePythonSkulpt;
+window.startExamLockdown = startExamLockdown;
+window.stopExamLockdown = stopExamLockdown;
+window.triggerLockdownScreen = triggerLockdownScreen;
+window.unlockExamByTeacherPin = unlockExamByTeacherPin;
+
