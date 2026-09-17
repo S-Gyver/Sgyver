@@ -1259,6 +1259,8 @@ function deleteLobbyKeepalive() {
     if (isLobbyCleanedUp || !roomCode) return;
     isLobbyCleanedUp = true;
 
+    const quizId = currentQuiz?.id || lobbyData?.quiz_id;
+
     // 1. ส่งสัญญาณกระจายบอกเครื่องนักเรียนว่าห้องปิดแล้ว
     if (localBC) {
         try { localBC.postMessage({ type: 'ROOM_CLOSED', roomCode: roomCode }); } catch (e) {}
@@ -1272,18 +1274,32 @@ function deleteLobbyKeepalive() {
                 payload: { roomCode: roomCode }
             }).catch(() => {});
 
+            // ลบห้องสอบออกจากตาราง lobbies
             window.supabaseClient
                 .from('lobbies')
                 .delete()
                 .eq('room_code', roomCode)
                 .then(() => {})
                 .catch(() => {});
+
+            // 🧹 ลบประวัติคำตอบและคะแนนใน gyver_quiz_responses อัตโนมัติ (Clean เกลี้ยงทุกรอบ)
+            if (quizId) {
+                window.supabaseClient
+                    .from('gyver_quiz_responses')
+                    .delete()
+                    .eq('quiz_id', quizId)
+                    .then(() => {})
+                    .catch(() => {});
+            }
         } catch (e) {}
     }
 
     // 2. ลบข้อมูลจาก LocalStorage
     try {
         localStorage.removeItem(`gyver_lobby_${roomCode}`);
+        if (quizId) {
+            localStorage.removeItem(`gyver_quiz_responses_${quizId}`);
+        }
     } catch (e) {}
 
     // 3. เคลียร์ตัวนับเวลา
@@ -1296,6 +1312,7 @@ function deleteLobbyKeepalive() {
         const supabaseKey = window.SUPABASE_KEY || (window.supabaseClient && window.supabaseClient.supabaseKey);
 
         if (supabaseUrl && supabaseKey) {
+            // Delete lobby
             const url = `${supabaseUrl}/rest/v1/lobbies?room_code=eq.${encodeURIComponent(roomCode)}`;
             fetch(url, {
                 method: 'DELETE',
@@ -1309,21 +1326,48 @@ function deleteLobbyKeepalive() {
                 },
                 keepalive: true
             }).catch(() => {});
+
+            // Delete responses for this quiz
+            if (quizId) {
+                const respUrl = `${supabaseUrl}/rest/v1/gyver_quiz_responses?quiz_id=eq.${encodeURIComponent(quizId)}`;
+                fetch(respUrl, {
+                    method: 'DELETE',
+                    headers: {
+                        'apikey': supabaseKey,
+                        'Authorization': `Bearer ${supabaseKey}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=minimal',
+                        'Accept-Profile': 'public',
+                        'Content-Profile': 'public'
+                    },
+                    keepalive: true
+                }).catch(() => {});
+            }
         }
     } catch (e) {}
 }
 
 /**
- * 🗑️ ปิดห้องสอบ และลบข้อมูลห้อง (PIN) ออกจาก Supabase และ LocalStorage
+ * 🗑️ ปิดห้องสอบ และลบข้อมูลห้อง (PIN) พร้อมล้างประวัติคำตอบใน Supabase ออกทั้งหมด
  */
 async function confirmCloseAndDeleteLobby() {
+    const quizId = currentQuiz?.id || lobbyData?.quiz_id;
+
     if (CyberSwal) {
         const confirm = await CyberSwal.fire({
             title: 'ยืนยันปิดห้องสอบ?',
-            text: `รหัสห้องสอบ ${roomCode} จะถูกลบออกจากฐานข้อมูล Supabase ทันที นักเรียนจะไม่สามารถใช้รหัสนี้เข้าห้องสอบได้อีก`,
+            html: `
+                <div class="text-start p-2">
+                    <p class="mb-2">รหัสห้องสอบ <b>${escapeHtml(roomCode)}</b> จะถูกลบออกจากฐานข้อมูล Supabase ทันที นักเรียนจะไม่สามารถใช้รหัสนี้ได้อีก</p>
+                    <div class="alert alert-danger bg-danger-subtle border border-danger-subtle text-danger small p-2 m-0 rounded-3">
+                        <i class="bi bi-trash3-fill me-1"></i>
+                        <b>ระบบจะล้างประวัติคำตอบและคะแนนใน Supabase (gyver_quiz_responses) ออกทั้งหมดทันที</b> เพื่อให้ชุดนี้สะอาดเกลี้ยงพร้อมสำหรับการเปิดสอบรอบใหม่
+                    </div>
+                </div>
+            `,
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: '<i class="bi bi-trash-fill me-1"></i> ปิดและลบห้องสอบ',
+            confirmButtonText: '<i class="bi bi-trash-fill me-1"></i> ปิดห้องและล้างข้อมูลทั้งหมด',
             cancelButtonText: 'ยกเลิก',
             customClass: {
                 confirmButton: 'btn btn-danger px-4 py-2 fw-bold',
@@ -1332,7 +1376,7 @@ async function confirmCloseAndDeleteLobby() {
         });
         if (!confirm.isConfirmed) return;
     } else {
-        if (!confirm(`ยืนยันปิดห้องสอบรหัส ${roomCode}? นักเรียนจะไม่สามารถใช้รหัสนี้ได้อีก`)) return;
+        if (!confirm(`ยืนยันปิดห้องสอบรหัส ${roomCode}? ระบบจะลบ PIN และล้างประวัติคำตอบของชุดนี้ในฐานข้อมูลออกทั้งหมด`)) return;
     }
 
     await closeAndDeleteLobby(true);
@@ -1343,9 +1387,49 @@ async function closeAndDeleteLobby(skipConfirm = false) {
         return confirmCloseAndDeleteLobby();
     }
 
+    // แสดงหน้าจอแจ้งเตือนว่ากำลังล้างข้อมูล
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'กำลังปิดห้องและล้างข้อมูล...',
+            html: '<span class="text-subtle small">กำลังลบ PIN และเคลียร์ประวัติคะแนนใน Supabase...</span>',
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            didOpen: () => {
+                Swal.showLoading();
+            },
+            background: 'rgba(15, 23, 42, 0.96)',
+            color: '#fff'
+        });
+    }
+
+    const quizId = currentQuiz?.id || lobbyData?.quiz_id;
+
+    // 1. รอ Supabase delete gyver_quiz_responses ให้เสร็จอย่างแน่นอน
+    if (window.supabaseClient && quizId) {
+        try {
+            await window.supabaseClient
+                .from('gyver_quiz_responses')
+                .delete()
+                .eq('quiz_id', quizId);
+        } catch (e) {
+            console.warn('Error clearing gyver_quiz_responses:', e);
+        }
+    }
+
+    // 2. เคลียร์ LocalStorage
+    if (quizId) {
+        try {
+            localStorage.removeItem(`gyver_quiz_responses_${quizId}`);
+        } catch (e) {}
+    }
+
+    // 3. ปิดห้องและลบจากตาราง lobbies
     deleteLobbyKeepalive();
 
-    // Redirect back to Quiz List
+    // รอเล็กน้อยเพื่อให้คำสั่งทำงานเรียบร้อย
+    await new Promise(r => setTimeout(r, 400));
+
+    // Redirect กลับไปหน้า Quiz Dashboard
     window.location.href = 'quiz.html';
 }
 
