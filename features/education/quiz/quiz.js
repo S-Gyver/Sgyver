@@ -1447,9 +1447,23 @@ async function confirmSubmitQuiz() {
     }
 }
 
+let isQuizSubmitting = false;
+
 function autoSubmitQuiz() {
+    if (isQuizSubmitting) return;
+    isQuizSubmitting = true;
+
     stopTimer();
     stopExamLockdown();
+
+    // 🔒 ล็อกปุ่มและอินพุตทั้งหมดในหน้าข้อสอบทันที
+    document.querySelectorAll('#view-taker-container input, #view-taker-container textarea, #view-taker-container button, #view-taker-container select').forEach(el => {
+        el.disabled = true;
+    });
+
+    try {
+        clearTakerSession();
+    } catch (e) {}
 
     let totalPoints = 0;
     let earnedPoints = 0;

@@ -503,6 +503,12 @@ function handleStudentSubmittedEvent(result) {
     if (!result) return;
     const player = (lobbyData.players || []).find(p => p.name === result.studentName);
     if (player) {
+        // 🛡️ ป้องกันการส่งคะแนนซ้ำ (Strict Anti-Score Overwrite)
+        if (player.status === 'SUBMITTED') {
+            console.warn(`[Anti-Cheat] ผู้เข้าสอบ "${player.name}" เคยส่งข้อสอบไปแล้วด้วยคะแนน ${player.score}/${player.total}. ปฏิเสธการส่งคะแนนซ้ำ!`);
+            return;
+        }
+
         player.submittedAt = result.submittedAt || new Date().toISOString();
         player.score = result.score;
         player.total = result.total;
@@ -942,11 +948,25 @@ async function finishExam() {
     lobbyData.status = 'FINISHED';
     saveLocalLobby(lobbyData);
 
+    // 📡 ส่งสัญญาณแจ้งนักเรียนทุกคนว่าการสอบสิ้นสุดแล้ว (ปลดล็อกเฉลย)
+    if (localBC) {
+        localBC.postMessage({
+            type: 'EXAM_FINISHED',
+            roomCode: roomCode
+        });
+    }
+
     if (window.supabaseClient) {
         try {
             await window.supabaseClient.from('lobbies').update({
                 status: 'FINISHED'
             }).eq('room_code', roomCode);
+
+            await window.supabaseClient.channel(`quiz_lobby_channel_${roomCode}`).send({
+                type: 'broadcast',
+                event: 'exam_finished',
+                payload: { roomCode: roomCode, status: 'FINISHED' }
+            });
         } catch (e) {}
     }
 
