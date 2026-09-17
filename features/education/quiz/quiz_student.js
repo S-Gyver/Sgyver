@@ -441,6 +441,10 @@ function listenForExamStart() {
                 if (msg.studentName === studentProfile.name || (studentProfile.id && msg.id === studentProfile.id)) {
                     handleStudentKicked();
                 }
+            } else if (msg.type === 'TEACHER_UNLOCK_STUDENT') {
+                if (msg.studentName === studentProfile.name) {
+                    handleRemoteUnlockByTeacher();
+                }
             } else if (msg.type === 'LOBBY_STATE' && msg.data) {
                 if (msg.data.status === 'RUNNING') {
                     checkAndLaunchExam(msg.data);
@@ -485,6 +489,12 @@ function listenForExamStart() {
                     const resultView = document.getElementById('view-student-result');
                     if (resultView && !resultView.classList.contains('d-none')) {
                         renderStudentResultUI();
+                    }
+                })
+                .on('broadcast', { event: 'teacher_unlock_student' }, (payload) => {
+                    const data = payload?.payload || payload;
+                    if (data && data.studentName === studentProfile.name) {
+                        handleRemoteUnlockByTeacher();
                     }
                 })
                 .subscribe();
@@ -2068,6 +2078,27 @@ function unlockExamByTeacherPin() {
                 color: '#fff'
             });
         }
+
+        // Broadcast to Teacher Dashboard that this student is unlocked
+        if (localBC) {
+            localBC.postMessage({
+                type: 'STUDENT_UNLOCKED',
+                roomCode: roomPin,
+                studentName: studentProfile?.name || 'นักเรียน'
+            });
+        }
+        if (window.supabaseClient && roomPin) {
+            try {
+                window.supabaseClient.channel(`quiz_lobby_channel_${roomPin}`).send({
+                    type: 'broadcast',
+                    event: 'student_unlocked',
+                    payload: {
+                        roomCode: roomPin,
+                        studentName: studentProfile?.name || 'นักเรียน'
+                    }
+                });
+            } catch (ignoreErr) {}
+        }
     } else {
         if (errEl) errEl.classList.remove('d-none');
         if (pinInput) {
@@ -2075,6 +2106,50 @@ function unlockExamByTeacherPin() {
             setTimeout(() => pinInput.classList.remove('is-invalid'), 1000);
             pinInput.focus();
         }
+    }
+}
+
+/**
+ * 🔓 Remote unlock triggered by teacher from monitor screen
+ */
+function handleRemoteUnlockByTeacher() {
+    studentLockdownState.isLocked = false;
+
+    const overlay = document.getElementById('lockdown-shield-overlay');
+    if (overlay) overlay.classList.add('d-none');
+
+    const pinInput = document.getElementById('lockdown-teacher-pin');
+    if (pinInput) pinInput.value = '';
+
+    const errEl = document.getElementById('lockdown-pin-error');
+    if (errEl) errEl.classList.add('d-none');
+
+    // Re-enter Fullscreen
+    try {
+        if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen().catch(() => {});
+        }
+    } catch (e) {}
+
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            icon: 'success',
+            title: 'คุณครูปลดล็อกหน้าจอให้แล้ว! 🔓',
+            text: 'ระบบได้รับการปลดล็อกทางไกลจากคุณครู สามารถทำข้อสอบต่อได้ทันทีครับ',
+            timer: 2500,
+            showConfirmButton: false,
+            background: '#0f172a',
+            color: '#fff'
+        });
+    }
+
+    // Confirm back to teacher
+    if (localBC) {
+        localBC.postMessage({
+            type: 'STUDENT_UNLOCKED',
+            roomCode: roomPin,
+            studentName: studentProfile?.name || 'นักเรียน'
+        });
     }
 }
 
