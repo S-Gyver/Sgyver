@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gyver Live Studio - ศูนย์รวมห้องเรียนออนไลน์ & คลังเอกสาร</title>
+    <meta name="description" content="Gyver Live Studio — สร้างห้องเรียนสดสไตล์ Discord และจัดเก็บประวัติการสอน แชท และเอกสารการเรียนรู้ตลอดกาล">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500;700&family=Kanit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Supabase Client (shared) -->
+    <script src="../../../assets/js/supabaseClient.js"></script>
+    <!-- Toast Shared -->
+    <link rel="stylesheet" href="../../../assets/css/toast_shared.css">
+    <script src="../../../assets/js/toast_shared.js"></script>
+    <!-- Live Studio CSS -->
+    <link rel="stylesheet" href="live_studio.css">
+</head>
+<body style="overflow:auto">
+
+<div class="lobby-container">
+
+    <!-- ── HEADER ── -->
+    <header class="lobby-header">
+        <div class="lobby-brand">
+            <div class="lobby-logo">🎙️</div>
+            <div>
+                <h1 class="lobby-title">Gyver <span>Live Studio</span></h1>
+                <p class="lobby-desc">ห้องเรียนสดออนไลน์เสมือนจริง · บันทึกแชทและคลังไฟล์ถาวรบน Cloud</p>
+            </div>
+        </div>
+        <div class="lobby-actions">
+            <a href="../../../my_workspace.html" class="btn-cyber-outline">
+                <i class="bi bi-grid-3x3-gap-fill"></i> Workspace
+            </a>
+            <button class="btn-cyber-primary" onclick="openCreateModal()">
+                <i class="bi bi-plus-circle-fill"></i> สร้างห้องเรียนใหม่
+            </button>
+        </div>
+    </header>
+
+    <!-- ── QUICK JOIN BAR ── -->
+    <div class="quick-join-bar">
+        <div class="quick-join-label">
+            <i class="bi bi-key-fill" style="color:var(--cyber-pink)"></i>
+            <span>เข้าห้องด่วนด้วย PIN:</span>
+        </div>
+        <input type="text" class="quick-join-input" id="quick-pin-input" placeholder="เช่น 7829" maxlength="8" onkeydown="handleQuickJoinKey(event)">
+        <input type="text" class="quick-join-input" id="quick-name-input" placeholder="ชื่อของคุณ" maxlength="30" style="letter-spacing:normal;font-family:'Kanit',sans-serif">
+        <button class="btn-cyber-primary" onclick="handleQuickJoin()" style="padding:8px 18px">
+            <i class="bi bi-box-arrow-in-right"></i> เข้าร่วม
+        </button>
+    </div>
+
+    <!-- ── FILTER TABS ── -->
+    <div class="lobby-tabs">
+        <button class="lobby-tab active" id="tab-btn-live" onclick="setLobbyFilter('live')">
+            <i class="bi bi-broadcast" style="color:#23a55a"></i> กำลังสอนสด (Live)
+            <span class="tab-badge" id="badge-live-count">0</span>
+        </button>
+        <button class="lobby-tab" id="tab-btn-archived" onclick="setLobbyFilter('archived')">
+            <i class="bi bi-archive-fill" style="color:#facc15"></i> คลังย้อนหลัง & ไฟล์
+            <span class="tab-badge" id="badge-archived-count">0</span>
+        </button>
+        <button class="lobby-tab" id="tab-btn-my" onclick="setLobbyFilter('my')">
+            <i class="bi bi-star-fill" style="color:var(--cyber-pink)"></i> ห้องของฉัน
+            <span class="tab-badge" id="badge-my-count">0</span>
+        </button>
+    </div>
+
+    <!-- ── ROOMS GRID ── -->
+    <div class="room-grid" id="room-grid">
+        <!-- Injected dynamically via live_studio.js -->
+        <div class="lobby-empty" id="lobby-loading">
+            <i class="bi bi-arrow-repeat spin"></i>
+            <div>กำลังโหลดข้อมูลห้องเรียน...</div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ════════════════════════════════════════════════
+     CREATE ROOM MODAL
+════════════════════════════════════════════════ -->
+<div class="lobby-modal" id="create-modal">
+    <div class="lobby-modal-card">
+        <button class="lobby-modal-close" onclick="closeCreateModal()">&times;</button>
+        <h3 style="font-size:1.25rem;font-weight:700;color:#fff;margin-bottom:4px;display:flex;align-items:center;gap:8px">
+            <i class="bi bi-mortarboard-fill" style="color:var(--cyber-pink)"></i> สร้างห้องเรียนสดใหม่
+        </h3>
+        <p style="font-size:0.82rem;color:var(--discord-muted);margin-bottom:20px">
+            ตั้งชื่อห้องเรียนและเริ่มการสอนได้ทันที ข้อมูลแชทและไฟล์จะถูกบันทึกถาวรจนกว่าคุณจะลบ
+        </p>
+
+        <!-- Room Title -->
+        <div class="form-group">
+            <label class="form-label" for="modal-room-title">ชื่อวิชา / หัวข้อการสอน</label>
+            <input class="form-input" id="modal-room-title" type="text" maxlength="60"
+                   placeholder="เช่น วิทยาการคำนวณ: การเขียนโปรแกรมหุ่นยนต์">
+        </div>
+
+        <!-- Host Name -->
+        <div class="form-group">
+            <label class="form-label" for="modal-host-name">ชื่อครูผู้สอน</label>
+            <input class="form-input" id="modal-host-name" type="text" maxlength="40"
+                   placeholder="เช่น ครูซัน หรือ อ.สมชาย">
+        </div>
+
+        <!-- Room PIN with Auto-Gen -->
+        <div class="form-group">
+            <label class="form-label" for="modal-room-pin">รหัสห้อง (PIN 4-6 หลัก)</label>
+            <div style="display:flex;gap:8px;align-items:center">
+                <input class="form-input" id="modal-room-pin" type="text" maxlength="8"
+                       placeholder="เช่น 8492" style="font-family:'Fira Code',monospace;font-size:1.1rem;letter-spacing:2px;text-transform:uppercase">
+                <button type="button" onclick="randomizeModalPin()" title="สุ่ม PIN ใหม่"
+                        style="width:42px;height:42px;border-radius:8px;border:1.5px solid rgba(255,255,255,.15);background:transparent;color:#949ba4;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.1rem">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+            </div>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:24px">
+            <button class="btn-cyber-outline" onclick="closeCreateModal()" style="flex:1;justify-content:center">
+                ยกเลิก
+            </button>
+            <button class="btn-cyber-primary" id="btn-submit-create" onclick="submitCreateRoom()" style="flex:2;justify-content:center">
+                <i class="bi bi-broadcast me-1"></i>เปิดห้องเรียนสด
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Lobby Controller JS -->
+<script src="live_studio.js"></script>
+</body>
+</html>

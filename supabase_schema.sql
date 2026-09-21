@@ -153,3 +153,101 @@ BEGIN
         ALTER PUBLICATION supabase_realtime ADD TABLE public.gyver_quiz_responses;
     END IF;
 END $$;
+
+-- ------------------------------------------------------------------------------
+-- 7. ตาราง live_studio_rooms (ห้องเรียนสด Gyver Live Studio)
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.live_studio_rooms (
+    pin TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    host_name TEXT NOT NULL,
+    host_secret TEXT,
+    status TEXT DEFAULT 'LIVE',  -- 'LIVE' | 'ENDED'
+    is_locked BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    ended_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.live_studio_rooms ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all access to live_studio_rooms" ON public.live_studio_rooms;
+CREATE POLICY "Allow all access to live_studio_rooms" ON public.live_studio_rooms
+    FOR ALL
+    TO anon, authenticated
+    USING (true)
+    WITH CHECK (true);
+
+-- ------------------------------------------------------------------------------
+-- 8. ตาราง live_studio_messages (บันทึกข้อความแชทถาวรในห้องเรียน)
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.live_studio_messages (
+    id BIGSERIAL PRIMARY KEY,
+    room_pin TEXT NOT NULL REFERENCES public.live_studio_rooms(pin) ON DELETE CASCADE,
+    sender_name TEXT NOT NULL,
+    sender_role TEXT DEFAULT 'student',
+    sender_avatar TEXT,
+    message TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_live_studio_messages_pin ON public.live_studio_messages(room_pin, created_at);
+
+ALTER TABLE public.live_studio_messages ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all access to live_studio_messages" ON public.live_studio_messages;
+CREATE POLICY "Allow all access to live_studio_messages" ON public.live_studio_messages
+    FOR ALL
+    TO anon, authenticated
+    USING (true)
+    WITH CHECK (true);
+
+-- ------------------------------------------------------------------------------
+-- 9. ตาราง live_studio_files (บันทึกไฟล์แนบในห้องเรียนที่เก็บไว้บน Cloudinary)
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.live_studio_files (
+    id BIGSERIAL PRIMARY KEY,
+    room_pin TEXT NOT NULL REFERENCES public.live_studio_rooms(pin) ON DELETE CASCADE,
+    sender_name TEXT NOT NULL,
+    file_name TEXT NOT NULL,
+    file_url TEXT NOT NULL,
+    file_type TEXT,
+    file_size BIGINT DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_live_studio_files_pin ON public.live_studio_files(room_pin, created_at);
+
+ALTER TABLE public.live_studio_files ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all access to live_studio_files" ON public.live_studio_files;
+CREATE POLICY "Allow all access to live_studio_files" ON public.live_studio_files
+    FOR ALL
+    TO anon, authenticated
+    USING (true)
+    WITH CHECK (true);
+
+-- ------------------------------------------------------------------------------
+-- 10. เปิด Realtime สำหรับ Live Studio (Rooms, Messages, Files)
+-- ------------------------------------------------------------------------------
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' AND tablename = 'live_studio_rooms'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.live_studio_rooms;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' AND tablename = 'live_studio_messages'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.live_studio_messages;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' AND tablename = 'live_studio_files'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.live_studio_files;
+    END IF;
+END $$;
+

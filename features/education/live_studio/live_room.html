@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gyver Live Studio - ห้องเรียนเสมือนจริง</title>
+    <meta name="description" content="Gyver Live Studio — ห้องเรียนสดสไตล์ Discord พร้อม Screen Share, กล้อง, ไมค์, แชท และคลังไฟล์บน Cloud">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500;700&family=Kanit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Supabase Client (shared) -->
+    <script src="../../../assets/js/supabaseClient.js"></script>
+    <!-- Toast Shared -->
+    <link rel="stylesheet" href="../../../assets/css/toast_shared.css">
+    <script src="../../../assets/js/toast_shared.js"></script>
+    <!-- QRCode.js -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <!-- Live Studio CSS -->
+    <link rel="stylesheet" href="live_studio.css">
+    <style>
+        .ended-banner {
+            background: linear-gradient(90deg, rgba(234, 179, 8, 0.15), rgba(249, 115, 22, 0.15));
+            border-bottom: 1px solid rgba(234, 179, 8, 0.35);
+            color: #facc15;
+            padding: 8px 16px;
+            font-size: 0.88rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            z-index: 100;
+        }
+        .file-upload-progress {
+            display: none;
+            padding: 6px 12px;
+            background: rgba(88, 101, 242, 0.2);
+            border-radius: 8px;
+            font-size: 0.78rem;
+            color: #818cf8;
+            margin: 4px 12px;
+            align-items: center;
+            gap: 8px;
+        }
+        .file-badge-cloud {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.65rem;
+            background: rgba(56, 189, 248, 0.15);
+            color: #38bdf8;
+            border-radius: 4px;
+            padding: 2px 5px;
+            margin-left: 6px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════
+     JOIN / ENTRY SCREEN (if direct access without name)
+════════════════════════════════════════════════ -->
+<div class="join-screen" id="join-screen">
+    <div class="join-card">
+        <div class="join-logo">🎙️</div>
+        <h1 class="join-title" id="entry-title">Gyver Live Studio</h1>
+        <p class="join-sub" id="entry-subtitle">กรุณาระบุชื่อของคุณเพื่อเข้าร่วมห้องเรียน</p>
+
+        <!-- Role Toggle -->
+        <div class="join-role-toggle" id="role-toggle">
+            <button class="role-btn active host" id="role-host" onclick="selectRole('host')">
+                <i class="bi bi-mortarboard-fill"></i> ครูผู้สอน
+            </button>
+            <button class="role-btn student" id="role-student" onclick="selectRole('student')">
+                <i class="bi bi-person-fill"></i> นักเรียน
+            </button>
+        </div>
+
+        <!-- PIN row (read-only if in URL) -->
+        <div class="form-group">
+            <label class="form-label" for="input-pin">รหัสห้อง (PIN)</label>
+            <input class="form-input" id="input-pin" type="text" maxlength="8"
+                   placeholder="เช่น 7829" autocomplete="off" oninput="syncJoinBtn()">
+        </div>
+
+        <!-- Display Name -->
+        <div class="form-group">
+            <label class="form-label" for="input-name">ชื่อที่ใช้แสดง</label>
+            <input class="form-input" id="input-name" type="text" maxlength="40"
+                   placeholder="ชื่อของคุณ" autocomplete="off" oninput="syncJoinBtn()">
+        </div>
+
+        <button class="join-btn" id="join-btn" onclick="enterStudio()" disabled>
+            <i class="bi bi-box-arrow-in-right me-2"></i>เข้าสู่ห้องเรียน
+        </button>
+
+        <a href="live_studio.html" style="display:block;margin-top:14px;color:#949ba4;font-size:0.85rem;text-decoration:none">
+            <i class="bi bi-arrow-left me-1"></i>กลับหน้ารวมห้องเรียน (Lobby)
+        </a>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     QR MODAL (inside studio)
+════════════════════════════════════════════════ -->
+<div id="qr-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);
+     z-index:9990;align-items:center;justify-content:center;padding:20px">
+    <div style="background:#2b2d31;border:1px solid rgba(255,255,255,.12);border-radius:16px;
+                padding:28px 32px;max-width:340px;width:100%;text-align:center;
+                position:relative;box-shadow:0 20px 60px rgba(0,0,0,.6)">
+        <div style="position:absolute;top:0;left:0;right:0;height:3px;border-radius:16px 16px 0 0;
+                    background:linear-gradient(90deg,#ec4899,#d946ef)"></div>
+        <button onclick="closeQrModal()" title="ปิด"
+                style="position:absolute;top:10px;right:12px;background:transparent;border:none;
+                       color:#949ba4;font-size:1.3rem;cursor:pointer;line-height:1">&times;</button>
+        <div style="font-size:1.05rem;font-weight:800;color:#f2f3f5;margin-bottom:4px">
+            <i class="bi bi-qr-code me-2" style="color:#ec4899"></i>QR เข้าห้อง
+        </div>
+        <div style="font-size:.8rem;color:#949ba4;margin-bottom:16px">
+            สแกนด้วยกล้องมือถือ หรือแชร์ลิงก์ด้านล่าง
+        </div>
+        <!-- PIN display -->
+        <div id="modal-pin-display"
+             style="font-family:'Fira Code',monospace;font-size:2.2rem;font-weight:800;
+                    letter-spacing:10px;color:#ec4899;
+                    text-shadow:0 0 18px rgba(236,72,153,.7);margin-bottom:14px"></div>
+        <!-- QR canvas -->
+        <div id="modal-qr-canvas"
+             style="background:#fff;border-radius:12px;padding:8px;
+                    display:inline-flex;align-items:center;justify-content:center;
+                    margin-bottom:14px"></div>
+        <!-- URL copy -->
+        <div id="modal-qr-url"
+             style="font-size:.72rem;color:#60a5fa;word-break:break-all;
+                    cursor:pointer;text-decoration:underline;margin-bottom:16px"
+             onclick="copyJoinUrl()"></div>
+        <!-- Action buttons -->
+        <div style="display:flex;gap:8px">
+            <button onclick="copyJoinUrl()" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid rgba(88,101,242,.4);
+                    background:rgba(88,101,242,.12);color:#818cf8;font-family:'Kanit',sans-serif;
+                    font-size:.88rem;font-weight:600;cursor:pointer;transition:all .2s">
+                <i class="bi bi-link-45deg me-1"></i>คัดลอกลิงก์
+            </button>
+            <button onclick="copyPin()" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid rgba(236,72,153,.4);
+                    background:rgba(236,72,153,.12);color:#ec4899;font-family:'Kanit',sans-serif;
+                    font-size:.88rem;font-weight:600;cursor:pointer;transition:all .2s">
+                <i class="bi bi-clipboard me-1"></i>คัดลอก PIN
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     APP SHELL  (3-column layout – hidden until joined)
+════════════════════════════════════════════════ -->
+<div class="studio-app" id="studio-app" style="display:none">
+
+    <!-- Ended Notice Banner (if room is archived) -->
+    <div id="ended-banner" class="ended-banner" style="display:none">
+        <div>
+            <i class="bi bi-archive-fill me-2"></i>
+            <strong>ห้องเรียนนี้จบการสอนแล้ว:</strong> ประวัติแชทและคลังไฟล์ยังคงเปิดให้อ่านและดาวน์โหลดได้ตลอดเวลา
+        </div>
+        <div id="ended-actions" style="display:flex;gap:8px">
+            <button onclick="window.location.href='live_studio.html'" style="padding:4px 12px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:6px;color:#fff;font-size:0.8rem;cursor:pointer">
+                <i class="bi bi-arrow-left me-1"></i>กลับ Lobby
+            </button>
+            <button id="btn-delete-archived" onclick="deleteRoomPermanently()" style="display:none;padding:4px 12px;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);border-radius:6px;color:#f87171;font-size:0.8rem;cursor:pointer">
+                <i class="bi bi-trash-fill me-1"></i>ลบห้องนี้ถาวร
+            </button>
+        </div>
+    </div>
+
+    <div style="display:flex;flex:1;min-height:0;width:100%">
+        <!-- ── 1. LEFT SIDEBAR ── -->
+        <aside class="studio-sidebar">
+            <!-- Room Header -->
+            <div class="sidebar-header" onclick="copyPin()">
+                <span class="sidebar-room-name" id="sb-room-name">ห้องเรียนสด</span>
+                <span class="sidebar-pin-badge" id="sb-pin-badge" title="คัดลอก PIN">📋 ----</span>
+            </div>
+
+            <!-- Channel / Section List -->
+            <div class="channel-list">
+                <div class="channel-category">ห้องเรียน</div>
+                <div class="channel-item active" id="ch-main" onclick="switchChannel('main')">
+                    <i class="bi bi-display ch-icon"></i>
+                    <span>ห้องหลัก / สื่อสด</span>
+                </div>
+                <div class="channel-item" id="ch-lobby" onclick="window.location.href='live_studio.html'">
+                    <i class="bi bi-grid-fill ch-icon" style="color:#60a5fa"></i>
+                    <span>หน้ารวมห้อง (Lobby)</span>
+                </div>
+
+                <div class="channel-category">
+                    เสียง / วีดีโอ
+                    <span class="vc-count" id="vc-member-count">0</span>
+                </div>
+                <div class="channel-item active" id="ch-voice" onclick="switchChannel('voice')">
+                    <i class="bi bi-volume-up-fill ch-icon" style="color:#23a55a"></i>
+                    <span id="vc-label">ห้องบรรยายสด</span>
+                </div>
+
+                <!-- Voice Members List (dynamic) -->
+                <div id="voice-members-list"></div>
+
+                <div class="channel-category">
+                    คลังสื่อและเอกสาร
+                    <span class="file-badge-cloud"><i class="bi bi-cloud-check-fill"></i> Cloudinary</span>
+                </div>
+                <div class="channel-item" id="ch-files" onclick="switchTab('files')">
+                    <i class="bi bi-folder2-open ch-icon"></i>
+                    <span>ไฟล์แนบทั้งหมด (<span id="files-badge-count">0</span>)</span>
+                </div>
+            </div>
+
+            <!-- User Panel -->
+            <div class="user-panel">
+                <div class="user-panel-info">
+                    <img id="up-avatar" src="https://api.dicebear.com/8.x/thumbs/svg?seed=default" alt="avatar">
+                    <div>
+                        <div class="user-panel-name" id="up-name">—</div>
+                        <div class="user-panel-role" id="up-role">—</div>
+                    </div>
+                </div>
+                <div class="user-panel-controls">
+                    <button class="panel-icon-btn" id="panel-mic-btn" title="ไมค์" onclick="toggleMic()">
+                        <i class="bi bi-mic-fill"></i>
+                    </button>
+                    <button class="panel-icon-btn" id="panel-cam-btn" title="กล้อง" onclick="toggleCamera()">
+                        <i class="bi bi-camera-video-fill"></i>
+                    </button>
+                    <button class="panel-icon-btn" title="ตั้งค่า" onclick="showToast('info','ตั้งค่า','ระบบทำงานปกติ',2000)">
+                        <i class="bi bi-gear-fill"></i>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ── 2. MAIN STAGE (CENTER) ── -->
+        <main class="studio-stage">
+
+            <!-- Stage Top Bar -->
+            <div class="stage-topbar">
+                <div class="topbar-left">
+                    <i class="bi bi-broadcast" style="color:#ec4899;font-size:1.1rem"></i>
+                    <span class="topbar-title" id="stage-room-title">ห้องเรียนสด</span>
+                    <span class="badge-live" id="badge-live">● LIVE</span>
+                    <span style="color:var(--discord-muted);font-size:.8rem;margin-left:4px" id="stage-time">00:00:00</span>
+                </div>
+                <div class="topbar-right">
+                    <!-- QR Code button -->
+                    <button class="topbar-btn" id="btn-show-qr" onclick="openQrModal()" title="แสดง QR เข้าห้อง">
+                        <i class="bi bi-qr-code"></i> QR
+                    </button>
+                    <!-- Host only controls -->
+                    <button class="topbar-btn" id="btn-lock-room" onclick="toggleRoomLock()" title="ล็อกห้อง" style="display:none">
+                        <i class="bi bi-lock-fill"></i> ล็อกห้อง
+                    </button>
+                    <button class="topbar-btn" id="btn-raise-hand" onclick="raiseHand()">
+                        <i class="bi bi-hand-index-thumb"></i> ยกมือ
+                    </button>
+                    <!-- Host End Session button -->
+                    <button class="topbar-btn" id="btn-end-session" onclick="promptEndSession()" title="จบการสอน (ห้องจะยังอยู่ให้นักเรียนอ่านแชทและโหลดไฟล์)" style="display:none;background:rgba(234,179,8,0.2);color:#facc15;border-color:rgba(234,179,8,0.4)">
+                        <i class="bi bi-check2-circle"></i> จบการสอน
+                    </button>
+                    <!-- Host Delete Room button -->
+                    <button class="topbar-btn danger" id="btn-delete-room" onclick="deleteRoomPermanently()" title="ลบห้องนี้ถาวร" style="display:none">
+                        <i class="bi bi-trash-fill"></i> ลบห้อง
+                    </button>
+                    <button class="topbar-btn danger" id="btn-leave" onclick="leaveRoom()">
+                        <i class="bi bi-box-arrow-right"></i> ออก
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stage Content: Screen + Video Grid -->
+            <div class="stage-content">
+
+                <!-- Main Screen Box (Screen Share / Cam Pin) -->
+                <div class="main-screen-box" id="main-screen-box">
+                    <video id="screen-video" autoplay playsinline muted style="display:none"></video>
+
+                    <!-- Placeholder -->
+                    <div class="screen-placeholder" id="screen-placeholder">
+                        <i class="bi bi-display"></i>
+                        <h5>ยังไม่มีการแชร์หน้าจอ</h5>
+                        <p id="screen-hint">กด <strong>แชร์หน้าจอ</strong> ที่ Control Bar ด้านล่าง เพื่อเริ่ม</p>
+                    </div>
+
+                    <!-- Pinned Label -->
+                    <div class="screen-label" id="screen-label">
+                        <i class="bi bi-display me-1"></i><span id="screen-label-text">กำลังแชร์หน้าจอ</span>
+                    </div>
+                </div>
+
+                <!-- Bottom Video Tile Grid -->
+                <div class="video-grid" id="video-grid">
+                    <!-- Self Tile -->
+                    <div class="video-tile self-tile" id="self-video-tile">
+                        <video id="self-video" autoplay playsinline muted style="display:none"></video>
+                        <img class="tile-avatar" id="self-avatar-img" src="https://api.dicebear.com/8.x/thumbs/svg?seed=default" alt="you">
+                        <div class="tile-name" id="self-tile-name">คุณ</div>
+                        <div class="tile-mic-badge muted" id="self-mic-badge"><i class="bi bi-mic-mute-fill"></i></div>
+                    </div>
+                    <!-- Remote tiles injected by JS -->
+                </div>
+            </div>
+
+            <!-- Control Deck -->
+            <div class="control-deck" id="control-deck">
+                <div class="ctrl-group">
+                    <!-- Mic -->
+                    <button class="ctrl-btn off" id="ctrl-mic" title="ไมค์ (M)" onclick="toggleMic()">
+                        <i class="bi bi-mic-mute-fill" id="ctrl-mic-icon"></i>
+                    </button>
+                    <!-- Camera -->
+                    <button class="ctrl-btn off" id="ctrl-cam" title="กล้อง (V)" onclick="toggleCamera()">
+                        <i class="bi bi-camera-video-off-fill" id="ctrl-cam-icon"></i>
+                    </button>
+                </div>
+
+                <div class="ctrl-divider"></div>
+
+                <!-- Screen Share (host only visible) -->
+                <div class="ctrl-group">
+                    <button class="ctrl-btn" id="ctrl-screen" title="แชร์หน้าจอ (S)" onclick="toggleScreenShare()">
+                        <i class="bi bi-display" id="ctrl-screen-icon"></i>
+                    </button>
+                    <!-- Raise Hand -->
+                    <button class="ctrl-btn" id="ctrl-hand" title="ยกมือ (H)" onclick="raiseHand()">
+                        <i class="bi bi-hand-index-thumb" id="ctrl-hand-icon"></i>
+                    </button>
+                    <!-- Emoji Reaction -->
+                    <button class="ctrl-btn" id="ctrl-emoji" title="ส่ง Reaction" onclick="sendReaction()">
+                        <i class="bi bi-emoji-smile"></i>
+                    </button>
+                </div>
+
+                <div class="ctrl-divider"></div>
+
+                <div class="ctrl-group">
+                    <!-- End / Leave -->
+                    <button class="ctrl-btn off" id="ctrl-end" title="ออกจากห้อง" onclick="leaveRoom()"
+                            style="border-radius:14px;width:auto;padding:0 18px;font-size:.82rem;font-family:'Kanit',sans-serif;gap:6px;display:flex;align-items:center">
+                        <i class="bi bi-telephone-x-fill"></i>
+                        <span id="ctrl-end-label">ออก</span>
+                    </button>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- ── 3. RIGHT CHAT SIDEBAR ── -->
+        <aside class="studio-chat">
+            <!-- Header -->
+            <div class="chat-header">
+                <i class="bi bi-chat-dots-fill" style="color:var(--blurple)"></i>
+                <span>ห้องสนทนา & คลังไฟล์</span>
+                <span style="margin-left:auto;font-size:.75rem;color:var(--discord-muted)" id="online-count">0 คนออนไลน์</span>
+            </div>
+
+            <!-- Tabs: Chat / Participants / Files -->
+            <div class="chat-tab">
+                <button class="chat-tab-btn active" id="tab-chat" onclick="switchTab('chat')">
+                    <i class="bi bi-chat-text"></i> แชท
+                </button>
+                <button class="chat-tab-btn" id="tab-participants" onclick="switchTab('participants')">
+                    <i class="bi bi-people-fill"></i> ผู้เข้าร่วม
+                </button>
+                <button class="chat-tab-btn" id="tab-files" onclick="switchTab('files')">
+                    <i class="bi bi-folder2-open"></i> ไฟล์ (<span id="tab-files-count">0</span>)
+                </button>
+            </div>
+
+            <!-- Chat Panel -->
+            <div id="panel-chat" style="display:flex;flex-direction:column;flex:1;min-height:0">
+                <div class="chat-messages" id="chat-messages">
+                    <!-- Date Divider -->
+                    <div class="msg-date-divider" id="chat-date-divider">วันนี้</div>
+                    <!-- System welcome message -->
+                    <div class="msg-system" id="msg-welcome">
+                        <i class="bi bi-shield-check me-1" style="color:#23a55a"></i>
+                        ประวัติแชทและไฟล์ถูกบันทึกถาวรลงในระบบ ปลอดภัยและเรียกดูย้อนหลังได้ตลอดเวลา
+                    </div>
+                    <!-- Messages injected by JS -->
+                </div>
+
+                <!-- File Uploading Status Indicator -->
+                <div class="file-upload-progress" id="file-upload-progress">
+                    <i class="bi bi-arrow-repeat spin"></i>
+                    <span id="upload-status-text">กำลังอัปโหลดไฟล์ขึ้น Cloudinary (25GB)...</span>
+                </div>
+
+                <!-- Chat Input -->
+                <div class="chat-input-area" id="chat-input-area">
+                    <input type="file" id="file-input" style="display:none" onchange="handleFileUpload(this)">
+                    <div class="chat-input-wrapper">
+                        <button class="chat-input-file-btn" title="แนบไฟล์ (อัปโหลดขึ้น Cloudinary อัตโนมัติ)" onclick="document.getElementById('file-input').click()">
+                            <i class="bi bi-paperclip"></i>
+                        </button>
+                        <input class="chat-input" id="chat-input" placeholder="ส่งข้อความบันทึกถาวร..." maxlength="500"
+                               onkeydown="chatKeyDown(event)" oninput="syncSendBtn()">
+                        <button class="chat-send-btn" id="chat-send-btn" onclick="sendChatMessage()">
+                            <i class="bi bi-send-fill"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Participants Panel (hidden by default) -->
+            <div id="panel-participants" style="display:none;flex:1;flex-direction:column;min-height:0">
+                <div class="participants-list" id="participants-list">
+                    <!-- injected by JS -->
+                </div>
+            </div>
+
+            <!-- Files Panel (hidden by default) -->
+            <div id="panel-files" style="display:none;flex:1;flex-direction:column;min-height:0;overflow-y:auto;padding:14px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                    <span style="font-size:0.8rem;color:var(--discord-muted);font-weight:600">คลังไฟล์บน Cloudinary</span>
+                    <button onclick="document.getElementById('file-input').click()" style="padding:4px 10px;border-radius:6px;background:rgba(88,101,242,0.15);border:1px solid rgba(88,101,242,0.4);color:#818cf8;font-size:0.75rem;cursor:pointer">
+                        <i class="bi bi-upload me-1"></i>อัปโหลดไฟล์
+                    </button>
+                </div>
+                <div id="files-list" style="display:flex;flex-direction:column;gap:8px">
+                    <div id="files-empty-state" style="color:var(--discord-muted);font-size:.85rem;text-align:center;margin-top:20px">
+                        <i class="bi bi-folder2" style="font-size:2rem;display:block;margin-bottom:8px"></i>
+                        ยังไม่มีไฟล์ที่แชร์ในห้องนี้
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+</div><!-- end .studio-app -->
+
+<!-- Live Room JS -->
+<script src="live_room.js"></script>
+</body>
+</html>

@@ -516,6 +516,15 @@
                             <div class="launchpad-desc">สร้างแบบทดสอบออนไลน์ ตรวจคำตอบและตัดเกรด</div>
                         </div>
                     </div>
+
+                    <div class="launchpad-app-item" draggable="true" ondragstart="onLaunchpadDragStart(event, 'app_live_studio')" onclick="launchTool('app_live_studio')" data-app-name="Gyver Live Studio ห้องเรียนสด Screen Share" title="Gyver Live Studio: ห้องเรียนสดสไตล์ Discord (ลากไปวางที่ Dock หรือคลิกเปิด)">
+                        <button type="button" class="launchpad-pin-btn" onclick="togglePinTool(event, 'app_live_studio')" title="ปักหมุดที่ Dock"><i class="bi bi-pin-angle-fill"></i></button>
+                        <div class="launchpad-icon" style="background: linear-gradient(145deg, #06b6d4, #a855f7, #7c3aed);"><i class="bi bi-broadcast-pin"></i></div>
+                        <div class="launchpad-content">
+                            <div class="launchpad-title">Live Studio</div>
+                            <div class="launchpad-desc">ห้องเรียนสดสไตล์ Discord — Screen Share, ไมค์, แชท</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -803,10 +812,10 @@
                             class="bi bi-broadcast text-danger me-2"></i>เข้าสู่ห้องเรียน (PIN)</h5>
                 </div>
                 <div class="modal-body">
-                    <p class="text-muted small">กรอกรหัส PIN 6 หลักที่ได้รับจากผู้สอนเพื่อเข้าสู่ห้องเรียน</p>
+                    <p class="text-muted small">กรอกรหัส PIN (เช่น Live Studio หรือ Quiz) เพื่อเข้าสู่ห้องเรียน</p>
                     <input type="text" id="join-pin-input"
                         class="form-control form-control-lg bg-dark text-white border-danger text-center fw-bold font-monospace fs-2 mb-3"
-                        placeholder="000000" maxlength="6">
+                        placeholder="8817" maxlength="8" onkeydown="if(event.key==='Enter') submitJoinRoomPIN()">
                     <button class="btn btn-danger w-100 btn-lg fw-bold rounded-pill shadow"
                         onclick="submitJoinRoomPIN()">
                         <i class="bi bi-box-arrow-in-right me-1"></i>เข้าสู่ห้องเรียน
@@ -867,14 +876,54 @@
             new bootstrap.Modal(document.getElementById('joinRoomModal')).show();
         }
 
-        function submitJoinRoomPIN() {
-            const pin = document.getElementById('join-pin-input').value.trim();
+        async function submitJoinRoomPIN() {
+            const pin = document.getElementById('join-pin-input').value.trim().toUpperCase();
             if (!pin || pin.length < 4) {
-                alert('กรุณากรอกรหัส PIN ให้ถูกต้อง');
+                alert('กรุณากรอกรหัส PIN ให้ถูกต้อง (อย่างน้อย 4 ตัวอักษร)');
                 return;
             }
-            window.location.href = `auth/student_join/student_join.html?pin=${pin}`;
+
+            const btn = document.querySelector('#joinRoomModal button.btn-danger');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>กำลังตรวจสอบห้อง...';
+            }
+
+            const client = getClient();
+            if (client) {
+                try {
+                    // 1. ตรวจสอบว่าเป็นห้อง Live Studio หรือไม่
+                    const { data: liveRoom } = await client
+                        .from('live_studio_rooms')
+                        .select('pin')
+                        .eq('pin', pin)
+                        .maybeSingle();
+
+                    if (liveRoom) {
+                        window.location.href = `features/education/live_studio/live_room.html?pin=${encodeURIComponent(pin)}`;
+                        return;
+                    }
+
+                    // 2. ตรวจสอบว่าเป็นห้องสอบ Gyver Quiz หรือไม่
+                    const { data: quizRoom } = await client
+                        .from('lobbies')
+                        .select('room_code')
+                        .eq('room_code', pin)
+                        .maybeSingle();
+
+                    if (quizRoom) {
+                        window.location.href = `features/education/quiz/quiz_student.html?pin=${encodeURIComponent(pin)}`;
+                        return;
+                    }
+                } catch (err) {
+                    console.warn('[Smart PIN Routing]', err);
+                }
+            }
+
+            // ถ้าไม่มีใน Quiz และเป็น 4 หลัก หรือตรวจไม่พบ ให้มุ่งไป Live Studio เป็นค่าหลัก
+            window.location.href = `features/education/live_studio/live_room.html?pin=${encodeURIComponent(pin)}`;
         }
+
 
         function logoutMainSystem() {
             if (getClient()) {
@@ -1095,6 +1144,7 @@
             'app_race': { id: 'app_race', title: 'Code Race', icon: 'bi bi-controller', colorClass: 'text-pink', type: 'link', url: 'features/education/gyver Code Race/race_home.html' },
             'app_forms': { id: 'app_forms', title: 'Forms', icon: 'bi bi-file-earmark-text-fill', colorClass: 'text-purple', type: 'link', url: 'features/education/forms/forms.html' },
             'app_quiz': { id: 'app_quiz', title: 'Quiz', icon: 'bi bi-patch-question-fill', colorClass: 'text-warning', type: 'link', url: 'features/education/quiz/quiz.html' },
+            'app_live_studio': { id: 'app_live_studio', title: 'Live Studio', icon: 'bi bi-broadcast-pin', colorClass: 'text-info', type: 'link', url: 'features/education/live_studio/live_studio.html' },
             'app_bank': { id: 'app_bank', title: 'คลังข้อสอบ', icon: 'bi bi-journal-bookmark-fill', colorClass: 'text-warning', type: 'link', url: 'features/education/question_bank/question_bank.html' },
             'app_manage': { id: 'app_manage', title: 'จัดการ นร.', icon: 'bi bi-people-fill', colorClass: 'text-success', type: 'link', url: 'auth/classroom_manage/classroom_manage.html' },
             'app_history': { id: 'app_history', title: 'ประวัติ', icon: 'bi bi-clock-history', colorClass: 'text-info', type: 'link', url: 'auth/history/history.html' },

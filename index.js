@@ -580,6 +580,24 @@ async function handleModalJoinRoom(event) {
         if (bsModal) bsModal.hide();
     }
 
+    // Smart Routing: ตรวจสอบว่าเป็นห้อง Live Studio หรือ Quiz
+    if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+        try {
+            const { data: liveRoom } = await supabaseClient
+                .from('live_studio_rooms')
+                .select('pin')
+                .eq('pin', pin)
+                .maybeSingle();
+
+            if (liveRoom) {
+                window.location.href = `features/education/live_studio/live_room.html?pin=${encodeURIComponent(pin)}`;
+                return;
+            }
+        } catch (e) {
+            console.warn('[Smart PIN Check]', e);
+        }
+    }
+
     // Direct เข้าสู่หน้าสอบนักเรียนพร้อม PIN ทันที
     window.location.href = `features/education/quiz/quiz_student.html?pin=${encodeURIComponent(pin)}`;
 }
