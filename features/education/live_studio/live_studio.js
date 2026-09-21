@@ -214,7 +214,7 @@ function renderRoomGrid() {
             </div>
 
             <div class="room-card-actions">
-                <a href="live_room.html?pin=${encodeURIComponent(room.pin)}" class="btn-enter-room ${isLive ? '' : 'archive-btn'}">
+                <a href="live_room.html?pin=${encodeURIComponent(room.pin)}${isMyRoom ? '&role=host' : '&role=student'}" class="btn-enter-room ${isLive ? '' : 'archive-btn'}">
                     <i class="bi ${isLive ? 'bi-box-arrow-in-right' : 'bi-folder2-open'}"></i>
                     ${isLive ? 'เข้าร่วมห้องเรียน' : 'เข้าดูประวัติ & โหลดไฟล์'}
                 </a>
@@ -357,7 +357,7 @@ function handleQuickJoin() {
         localStorage.setItem('gyver_user_name', name);
     }
 
-    window.location.href = `live_room.html?pin=${encodeURIComponent(pin)}${name ? `&name=${encodeURIComponent(name)}` : ''}`;
+    window.location.href = `live_room.html?pin=${encodeURIComponent(pin)}${name ? `&name=${encodeURIComponent(name)}` : ''}&role=student`;
 }
 
 // ── DELETE ROOM ACTION ─────────────────────────────────────────

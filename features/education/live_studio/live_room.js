@@ -12,6 +12,7 @@ const CLOUDINARY = {
 
 // ── STATE ──────────────────────────────────────────────────────
 const STATE = {
+    myId:          'usr_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now().toString(36),
     myName:        '',
     myRole:        'student',   // 'host' | 'student'
     roomPin:       '',
@@ -73,29 +74,41 @@ document.addEventListener('DOMContentLoaded', async () => {
         el('input-pin').style.background = 'rgba(255,255,255,0.05)';
     }
 
-    // Check if host from localStorage
-    const hostRooms = getStoredHostRooms();
-    const isOwner = hostRooms[pinParam] !== undefined;
-
-    if (roleParam === 'host' || isOwner) {
-        selectRole('host');
-    } else {
-        selectRole('student');
+    // Auto-enter ONLY IF both PIN and NAME were explicitly provided in the URL query string
+    // (e.g. Teacher just created the room and was redirected with ?pin=...&name=...&role=host)
+    if (pinParam && nameParam) {
+        if (roleParam === 'host') {
+            selectRole('host');
+        } else {
+            selectRole('student');
+        }
+        el('input-name').value = nameParam;
+        enterStudio();
+        return;
     }
 
-    if (nameParam) {
-        el('input-name').value = nameParam;
-    } else {
+    // Otherwise (participant joining via link, QR code, or room card without explicit nameParam):
+    // DO NOT auto-enter with teacher's saved name!
+    el('join-screen').style.display = 'flex';
+    el('studio-app').style.display  = 'none';
+
+    // Default to student role for all general joiners
+    if (roleParam === 'host') {
+        selectRole('host');
         const savedName = localStorage.getItem('gyver_user_name') || '';
         if (savedName) el('input-name').value = savedName;
+    } else {
+        selectRole('student');
+        el('input-name').value = '';
+        el('input-name').placeholder = 'กรุณาระบุชื่อของคุณ (เช่น น้องพิมพ์, โบ๊ท)';
     }
 
     syncJoinBtn();
 
-    // If both pin and name are available, auto-enter!
-    if (pinParam && el('input-name').value.trim()) {
-        enterStudio();
-    }
+    setTimeout(() => {
+        const nameInput = el('input-name');
+        if (nameInput) nameInput.focus();
+    }, 150);
 });
 
 // ── LOCAL STORAGE HELPERS ──────────────────────────────────────
@@ -118,9 +131,7 @@ function selectRole(role) {
     STATE.myRole = role;
     STATE.isHost = (role === 'host');
     el('role-host').classList.toggle('active', role === 'host');
-    el('role-host').classList.toggle('host',   role === 'host');
     el('role-student').classList.toggle('active', role === 'student');
-    el('role-student').classList.toggle('student', role === 'student');
     syncJoinBtn();
 }
 
@@ -172,10 +183,18 @@ async function enterStudio() {
         el('btn-delete-room').style.display = '';
         el('btn-delete-archived').style.display = '';
         el('ctrl-end-label').textContent  = 'จบ/ออก';
+        if (el('ctrl-screen')) el('ctrl-screen').style.display = '';
+    } else {
+        el('btn-lock-room').style.display = 'none';
+        el('btn-end-session').style.display = 'none';
+        el('btn-delete-room').style.display = 'none';
+        el('btn-delete-archived').style.display = 'none';
+        el('ctrl-end-label').textContent  = 'ออก';
+        if (el('ctrl-screen')) el('ctrl-screen').style.display = 'none';
     }
 
     startClock();
-    addParticipant({ name, role: STATE.myRole, micOn: false, camOn: false, speaking: false });
+    addParticipant({ id: STATE.myId, name, role: STATE.myRole, micOn: false, camOn: false, speaking: false });
 
     // Setup Realtime signaling & WebRTC immediately
     setupRealtimeChannel(pin);
@@ -197,6 +216,21 @@ async function enterStudio() {
 
                 el('sb-room-name').textContent     = STATE.roomTitle;
                 el('stage-room-title').textContent = STATE.roomTitle;
+
+                // Host identity check: Only the actual room creator can act as host
+                const hostRooms = getStoredHostRooms();
+                const isOwner = hostRooms[pin] !== undefined;
+                if (roomData.host_name && STATE.isHost && STATE.myName !== roomData.host_name && !isOwner) {
+                    STATE.isHost = false;
+                    STATE.myRole = 'student';
+                    el('up-role').textContent = '🎓 นักเรียน';
+                    el('btn-lock-room').style.display = 'none';
+                    el('btn-end-session').style.display = 'none';
+                    el('btn-delete-room').style.display = 'none';
+                    el('btn-delete-archived').style.display = 'none';
+                    el('ctrl-end-label').textContent  = 'ออก';
+                    if (el('ctrl-screen')) el('ctrl-screen').style.display = 'none';
+                }
 
                 if (STATE.roomStatus === 'ENDED') {
                     applyEndedRoomState();
@@ -445,7 +479,7 @@ function setupRealtimeChannel(pin) {
 
     const channelName = `live_room_${pin}`;
     STATE.channel = supabaseClient.channel(channelName, {
-        config: { presence: { key: STATE.myName } }
+        config: { presence: { key: STATE.myId } }
     });
 
     // 1. Broadcast Events
@@ -492,8 +526,9 @@ function setupRealtimeChannel(pin) {
         })
         .on('presence', { event: 'join' }, ({ key, newPresences }) => {
             const p = newPresences[0];
-            if (p && p.name !== STATE.myName) {
-                showToast('info', 'มีผู้เข้าร่วม', `${p.name} เข้าร่วมห้องเรียน`, 2000);
+            if (p && p.id !== STATE.myId && p.name !== STATE.myName) {
+                const roleLabel = (p.role === 'host') ? 'ครูผู้สอน' : 'นักเรียน';
+                showToast('info', 'มีผู้เข้าร่วม', `${p.name} (${roleLabel}) เข้าร่วมห้องเรียน`, 2500);
                 // If host, offer WebRTC connection to student
                 if (STATE.isHost && (STATE.camOn || STATE.micOn || STATE.screenOn)) {
                     initiatePeerConnection(p.name);
@@ -502,7 +537,7 @@ function setupRealtimeChannel(pin) {
         })
         .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
             const p = leftPresences[0];
-            if (p) {
+            if (p && p.id !== STATE.myId) {
                 removeParticipant(p.name);
                 closePeerConnection(p.name);
             }
@@ -512,6 +547,7 @@ function setupRealtimeChannel(pin) {
     STATE.channel.subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
             await STATE.channel.track({
+                id:       STATE.myId,
                 name:     STATE.myName,
                 role:     STATE.myRole,
                 micOn:    STATE.micOn,
@@ -704,14 +740,15 @@ function updateOnlineList(presenceState) {
     el('vc-member-count').textContent = count;
 
     allUsers.forEach(p => {
+        const isMe = (p.id ? p.id === STATE.myId : p.name === STATE.myName);
         // Participants Tab Item
         const item = document.createElement('div');
         item.className = 'participant-item';
         item.innerHTML = `
             <img class="participant-avatar" src="https://api.dicebear.com/8.x/thumbs/svg?seed=${encodeURIComponent(p.name)}" alt="${escapeHtml(p.name)}">
             <div class="participant-info">
-                <div class="participant-name">${escapeHtml(p.name)}${p.name === STATE.myName ? ' (คุณ)' : ''}</div>
-                <div class="participant-role">${p.role === 'host' ? 'ครูผู้สอน' : 'นักเรียน'}</div>
+                <div class="participant-name">${escapeHtml(p.name)}${isMe ? ' (คุณ)' : ''}</div>
+                <div class="participant-role">${p.role === 'host' ? '👩‍🏫 ครูผู้สอน' : '🎓 นักเรียน'}</div>
             </div>
             <div class="participant-icons">
                 <i class="bi ${p.micOn ? 'bi-mic-fill text-success' : 'bi-mic-mute-fill text-muted'}"></i>
