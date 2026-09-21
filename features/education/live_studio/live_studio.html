@@ -21,7 +21,7 @@
     <!-- Live Studio CSS -->
     <link rel="stylesheet" href="live_studio.css">
 </head>
-<body style="overflow:auto">
+<body style="overflow-y:auto">
 
 <div class="lobby-container">
 
@@ -35,7 +35,10 @@
             </div>
         </div>
         <div class="lobby-actions">
-            <a href="../../../my_workspace.html" class="btn-cyber-outline">
+            <a href="../../../index.html" class="btn-cyber-outline" title="กลับสู่หน้าแรก Gyver Studio">
+                <i class="bi bi-house-door-fill"></i> หน้าแรก
+            </a>
+            <a href="../../../my_workspace.html" class="btn-cyber-outline" title="ไปยัง My Workspace">
                 <i class="bi bi-grid-3x3-gap-fill"></i> Workspace
             </a>
             <button class="btn-cyber-primary" onclick="openCreateModal()">
@@ -51,7 +54,7 @@
             <span>เข้าห้องด่วนด้วย PIN:</span>
         </div>
         <input type="text" class="quick-join-input" id="quick-pin-input" placeholder="เช่น 7829" maxlength="8" onkeydown="handleQuickJoinKey(event)">
-        <input type="text" class="quick-join-input" id="quick-name-input" placeholder="ชื่อของคุณ" maxlength="30" style="letter-spacing:normal;font-family:'Kanit',sans-serif">
+        <input type="text" class="quick-join-input" id="quick-name-input" placeholder="ชื่อของคุณ" maxlength="30" style="letter-spacing:normal;font-family:'Kanit',sans-serif" onkeydown="handleQuickJoinKey(event)">
         <button class="btn-cyber-primary" onclick="handleQuickJoin()" style="padding:8px 18px">
             <i class="bi bi-box-arrow-in-right"></i> เข้าร่วม
         </button>

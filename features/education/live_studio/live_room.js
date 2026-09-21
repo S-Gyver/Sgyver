@@ -1060,6 +1060,17 @@ function switchTab(tab) {
         if (btn)   btn.classList.toggle('active', t === tab);
         if (panel) panel.style.display = (t === tab) ? 'flex' : 'none';
     });
+
+    // Synchronize left channel active indicator
+    if (tab === 'files') {
+        $$('.channel-item').forEach(c => c.classList.remove('active'));
+        const chFiles = el('ch-files');
+        if (chFiles) chFiles.classList.add('active');
+    } else if (tab === 'chat') {
+        $$('.channel-item').forEach(c => c.classList.remove('active'));
+        const chMain = el('ch-main');
+        if (chMain) chMain.classList.add('active');
+    }
 }
 
 function switchChannel(ch) {

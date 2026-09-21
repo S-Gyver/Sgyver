@@ -184,8 +184,7 @@ html,body{height:100%;overflow:hidden;background-color:var(--discord-bg);color:v
     max-width: 1200px;
     margin: 0 auto;
     padding: 32px 24px 60px 24px;
-    height: 100vh;
-    overflow-y: auto;
+    min-height: 100vh;
 }
 .lobby-header {
     display: flex;
@@ -220,6 +219,7 @@ html,body{height:100%;overflow:hidden;background-color:var(--discord-bg);color:v
 .lobby-title span {
     background: linear-gradient(90deg, var(--cyber-pink), #a855f7);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 .lobby-desc {

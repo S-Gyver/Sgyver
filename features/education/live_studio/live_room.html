@@ -191,7 +191,7 @@
                     <i class="bi bi-display ch-icon"></i>
                     <span>ห้องหลัก / สื่อสด</span>
                 </div>
-                <div class="channel-item" id="ch-lobby" onclick="window.location.href='live_studio.html'">
+                <div class="channel-item" id="ch-lobby" onclick="leaveRoom()" title="ออกจากห้องเรียนและกลับสู่หน้ารวมห้อง">
                     <i class="bi bi-grid-fill ch-icon" style="color:#60a5fa"></i>
                     <span>หน้ารวมห้อง (Lobby)</span>
                 </div>
@@ -200,7 +200,7 @@
                     เสียง / วีดีโอ
                     <span class="vc-count" id="vc-member-count">0</span>
                 </div>
-                <div class="channel-item active" id="ch-voice" onclick="switchChannel('voice')">
+                <div class="channel-item" id="ch-voice" onclick="switchChannel('voice')">
                     <i class="bi bi-volume-up-fill ch-icon" style="color:#23a55a"></i>
                     <span id="vc-label">ห้องบรรยายสด</span>
                 </div>
@@ -212,7 +212,7 @@
                     คลังสื่อและเอกสาร
                     <span class="file-badge-cloud"><i class="bi bi-cloud-check-fill"></i> Cloudinary</span>
                 </div>
-                <div class="channel-item" id="ch-files" onclick="switchTab('files')">
+                <div class="channel-item" id="ch-files" onclick="switchChannel('files')">
                     <i class="bi bi-folder2-open ch-icon"></i>
                     <span>ไฟล์แนบทั้งหมด (<span id="files-badge-count">0</span>)</span>
                 </div>
