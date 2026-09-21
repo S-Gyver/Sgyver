@@ -381,6 +381,8 @@ function setupLobbyRealtime() {
                 handleStudentProgressEvent(msg);
             } else if (msg.type === 'STUDENT_LOCKDOWN_ALERT') {
                 handleStudentLockdownAlert(msg);
+            } else if (msg.type === 'STUDENT_UNLOCKED') {
+                handleStudentUnlockedEvent(msg);
             }
         };
     }
@@ -416,6 +418,10 @@ function setupLobbyRealtime() {
                 .on('broadcast', { event: 'student_lockdown_alert' }, (payload) => {
                     handleStudentLockdownAlert(payload.payload);
                 })
+                // 🔓 Real-time Anti-Cheat Unlock alert
+                .on('broadcast', { event: 'student_unlocked' }, (payload) => {
+                    handleStudentUnlockedEvent(payload.payload);
+                })
                 .subscribe();
         } catch (e) {
             console.warn('Realtime subscription error:', e);
@@ -449,6 +455,27 @@ function setupLobbyRealtime() {
 
 function handleLobbyUpdate(updatedLobby) {
     if (!updatedLobby) return;
+
+    // Merge transient student lockdown & progress states
+    if (lobbyData && lobbyData.players && updatedLobby.players) {
+        updatedLobby.players.forEach(newP => {
+            const oldP = lobbyData.players.find(p => p.name === newP.name);
+            if (oldP) {
+                if (newP.isLocked === undefined && oldP.isLocked !== undefined) {
+                    newP.isLocked = oldP.isLocked;
+                    newP.lockReason = oldP.lockReason;
+                    newP.violationCount = oldP.violationCount;
+                    newP.lastLockedAt = oldP.lastLockedAt;
+                }
+                if (newP.answeredCount === undefined && oldP.answeredCount !== undefined) {
+                    newP.answeredCount = oldP.answeredCount;
+                    newP.totalQuestions = oldP.totalQuestions;
+                    newP.startedAt = oldP.startedAt;
+                }
+            }
+        });
+    }
+
     lobbyData = updatedLobby;
     saveLocalLobby(lobbyData);
 
@@ -778,26 +805,142 @@ function handleStudentProgressEvent(msg) {
 function handleStudentLockdownAlert(msg) {
     if (!msg || !msg.studentName) return;
     console.warn('[Teacher Alert] Cheating/Lockdown:', msg);
+
+    // 🔒 Update player's locked state in dashboard
+    const player = (lobbyData.players || []).find(p => p.name === msg.studentName);
+    if (player) {
+        player.isLocked = true;
+        player.lockReason = msg.reason || 'ตรวจพบการคลิกออกนอกหน้าจอสอบ';
+        player.violationCount = msg.violationCount || ((player.violationCount || 0) + 1);
+        player.lastLockedAt = msg.time || new Date().toLocaleTimeString('th-TH');
+        saveLocalLobby(lobbyData);
+        syncLobbyPlayersToSupabase();
+        renderMonitoringUI();
+    }
+
     if (typeof Swal !== 'undefined') {
         Swal.fire({
             icon: 'warning',
             title: `🚨 แจ้งเตือนการทุจริต: ${msg.studentName}`,
             html: `
                 <div class="text-start p-2">
-                    <p class="text-danger fw-bold mb-1"><i class="bi bi-shield-slash-fill me-1"></i>${msg.reason}</p>
-                    <p class="text-subtle small mb-1">เวลา: ${msg.time || 'เมื่อสักครู่'}</p>
-                    <p class="text-warning small m-0">ครั้งที่: ${msg.violationCount || 1} (หน้าจอเด็กถูกล็อกแล้ว)</p>
+                    <p class="text-danger fw-bold mb-1"><i class="bi bi-shield-slash-fill me-1"></i>${escapeHtml(msg.reason || 'ตรวจพบการออกจากหน้าจอสอบ')}</p>
+                    <p class="text-subtle small mb-1">เวลา: ${escapeHtml(msg.time || 'เมื่อสักครู่')}</p>
+                    <p class="text-warning small mb-2">ครั้งที่: ${msg.violationCount || 1} (หน้าจอเด็กถูกล็อกแล้ว)</p>
                 </div>
             `,
             toast: true,
             position: 'top-end',
-            timer: 8000,
-            showConfirmButton: false,
+            timer: 10000,
+            showConfirmButton: true,
+            confirmButtonText: '<i class="bi bi-unlock-fill me-1"></i>ปลดล็อกให้เด็ก',
+            showCancelButton: true,
+            cancelButtonText: 'ปิด',
             background: '#1e1018',
+            color: '#fff'
+        }).then((res) => {
+            if (res.isConfirmed) {
+                teacherUnlockStudent(msg.studentName);
+            }
+        });
+    }
+}
+
+/**
+ * 🔓 Handle notification when a student screen is unlocked (via PIN or remote)
+ */
+function handleStudentUnlockedEvent(msg) {
+    if (!msg || !msg.studentName) return;
+    const player = (lobbyData.players || []).find(p => p.name === msg.studentName);
+    if (player) {
+        player.isLocked = false;
+        saveLocalLobby(lobbyData);
+        syncLobbyPlayersToSupabase();
+        renderMonitoringUI();
+    }
+}
+
+/**
+ * 🔓 Teacher Remotely Unlocks Student Screen
+ */
+async function teacherUnlockStudent(studentName) {
+    if (!studentName) return;
+
+    let shouldUnlock = true;
+    if (typeof Swal !== 'undefined') {
+        const result = await Swal.fire({
+            title: 'ปลดล็อกหน้าจอสอบ?',
+            html: `ต้องการปลดล็อกหน้าจอให้ <b>${escapeHtml(studentName)}</b> หรือไม่?<br><span class="text-subtle small">เมื่อยืนยัน ระบบจะปลดล็อกหน้าจอนักเรียนทันทีโดยไม่ต้องใส่ PIN</span>`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: '<i class="bi bi-unlock-fill me-1"></i>ยืนยันปลดล็อก',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#64748b',
+            background: 'rgba(15, 23, 42, 0.98)',
+            color: '#fff'
+        });
+        shouldUnlock = result.isConfirmed;
+    }
+
+    if (!shouldUnlock) return;
+
+    // 1. Update teacher's local player state
+    const player = (lobbyData.players || []).find(p => p.name === studentName);
+    if (player) {
+        player.isLocked = false;
+        saveLocalLobby(lobbyData);
+        syncLobbyPlayersToSupabase();
+        renderMonitoringUI();
+    }
+
+    // 2. Broadcast via Local BroadcastChannel
+    if (localBC) {
+        localBC.postMessage({
+            type: 'TEACHER_UNLOCK_STUDENT',
+            roomCode: roomCode,
+            studentName: studentName
+        });
+    }
+
+    // 3. Broadcast via Supabase Realtime
+    if (window.supabaseClient && roomCode) {
+        try {
+            await window.supabaseClient.channel(`quiz_lobby_channel_${roomCode}`).send({
+                type: 'broadcast',
+                event: 'teacher_unlock_student',
+                payload: {
+                    roomCode: roomCode,
+                    studentName: studentName
+                }
+            });
+        } catch (e) {
+            console.warn('[Teacher Unlock] Realtime broadcast error:', e);
+        }
+    }
+
+    // 4. Show success toast to teacher
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            icon: 'success',
+            title: 'ปลดล็อกหน้าจอแล้ว! 🔓',
+            text: `ส่งคำสั่งปลดล็อกให้ ${studentName} สำเร็จ`,
+            toast: true,
+            position: 'top-end',
+            timer: 3000,
+            showConfirmButton: false,
+            background: '#0f172a',
             color: '#fff'
         });
     }
 }
+window.teacherUnlockStudent = teacherUnlockStudent;
+
+function onTeacherUnlockClick(btn) {
+    const name = btn.getAttribute('data-student-name');
+    if (name) teacherUnlockStudent(name);
+}
+window.onTeacherUnlockClick = onTeacherUnlockClick;
 
 /**
  * 📊 Render Live Exam Monitoring Dashboard
@@ -845,26 +988,37 @@ function renderMonitoringUI() {
 
         return `
             <div class="col-12 col-md-6 col-lg-4 col-xl-3">
-                <div class="monitor-student-card ${isDone ? 'is-submitted' : ''}">
+                <div class="monitor-student-card ${isDone ? 'is-submitted' : (p.isLocked ? 'is-locked' : '')}">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span class="badge bg-warning text-dark font-mono">
                             <i class="bi bi-shield-fill me-1"></i>${escapeHtml(p.assignedVariantName || 'ชุดพิเศษ')}
                         </span>
                         <div class="d-flex align-items-center gap-1">
                             ${isSuspiciouslyFast ? `<span class="badge bg-danger" title="ส่งเร็วมากผิดปกติ ควรตรวจสอบ"><i class="bi bi-lightning-charge-fill"></i> เร็วมาก!</span>` : ''}
-                            <span class="badge bg-${isDone ? 'success' : 'secondary'}">
-                                ${isDone ? 'ส่งแล้ว ✅' : 'กำลังทำข้อสอบ...'}
-                            </span>
+                            ${p.isLocked ? `
+                                <span class="badge bg-danger pulse-badge" title="หน้าจอถูกระงับการสอบ">
+                                    <i class="bi bi-lock-fill me-1"></i>โดนล็อกแล้ว (${p.violationCount || 1})
+                                </span>
+                            ` : `
+                                <span class="badge bg-${isDone ? 'success' : 'secondary'}">
+                                    ${isDone ? 'ส่งแล้ว ✅' : 'กำลังทำข้อสอบ...'}
+                                </span>
+                            `}
                         </div>
                     </div>
                     <div class="d-flex align-items-center gap-2 mb-2">
-                        <div class="student-avatar" style="width: 36px; height: 36px; font-size: 0.9rem;">
+                        <div class="student-avatar ${p.isLocked ? 'is-locked-avatar' : ''}" style="width: 36px; height: 36px; font-size: 0.9rem;">
                             ${escapeHtml((p.name || 'S').charAt(0).toUpperCase())}
                         </div>
-                        <div class="text-truncate">
+                        <div class="text-truncate flex-grow-1">
                             <div class="fw-bold text-white text-truncate">${escapeHtml(p.name)}</div>
                             <div class="small text-subtle">${escapeHtml(p.room || '-')}</div>
                         </div>
+                        ${p.isLocked ? `
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle font-mono" style="font-size: 0.72rem;">
+                                <i class="bi bi-exclamation-octagon-fill me-1"></i>LOCKED
+                            </span>
+                        ` : ''}
                     </div>
                     ${isDone ? `
                         <div class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary mb-1">
@@ -890,6 +1044,20 @@ function renderMonitoringUI() {
                         <div class="text-end mt-1">
                             <span class="small text-subtle" style="font-size: 0.7rem;">${total > 0 ? pct : 0}%</span>
                         </div>
+
+                        ${p.isLocked ? `
+                            <div class="mt-2 pt-2 border-top border-danger-subtle">
+                                <div class="small text-danger fw-semibold d-flex align-items-center gap-1 mb-2">
+                                    <i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i>
+                                    <span class="text-truncate" title="${escapeHtml(p.lockReason || 'ตรวจพบการออกจากหน้าจอ')}">${escapeHtml(p.lockReason || 'ตรวจพบการออกจากหน้าจอ')}</span>
+                                </div>
+                                <button type="button" class="btn btn-danger btn-sm w-100 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2 py-2"
+                                        data-student-name="${escapeHtml(p.name)}"
+                                        onclick="onTeacherUnlockClick(this)">
+                                    <i class="bi bi-unlock-fill"></i> ปลดล็อกหน้าจอ
+                                </button>
+                            </div>
+                        ` : ''}
                     `}
                 </div>
             </div>
@@ -1091,6 +1259,8 @@ function deleteLobbyKeepalive() {
     if (isLobbyCleanedUp || !roomCode) return;
     isLobbyCleanedUp = true;
 
+    const quizId = currentQuiz?.id || lobbyData?.quiz_id;
+
     // 1. ส่งสัญญาณกระจายบอกเครื่องนักเรียนว่าห้องปิดแล้ว
     if (localBC) {
         try { localBC.postMessage({ type: 'ROOM_CLOSED', roomCode: roomCode }); } catch (e) {}
@@ -1104,18 +1274,32 @@ function deleteLobbyKeepalive() {
                 payload: { roomCode: roomCode }
             }).catch(() => {});
 
+            // ลบห้องสอบออกจากตาราง lobbies
             window.supabaseClient
                 .from('lobbies')
                 .delete()
                 .eq('room_code', roomCode)
                 .then(() => {})
                 .catch(() => {});
+
+            // 🧹 ลบประวัติคำตอบและคะแนนใน gyver_quiz_responses อัตโนมัติ (Clean เกลี้ยงทุกรอบ)
+            if (quizId) {
+                window.supabaseClient
+                    .from('gyver_quiz_responses')
+                    .delete()
+                    .eq('quiz_id', quizId)
+                    .then(() => {})
+                    .catch(() => {});
+            }
         } catch (e) {}
     }
 
     // 2. ลบข้อมูลจาก LocalStorage
     try {
         localStorage.removeItem(`gyver_lobby_${roomCode}`);
+        if (quizId) {
+            localStorage.removeItem(`gyver_quiz_responses_${quizId}`);
+        }
     } catch (e) {}
 
     // 3. เคลียร์ตัวนับเวลา
@@ -1128,6 +1312,7 @@ function deleteLobbyKeepalive() {
         const supabaseKey = window.SUPABASE_KEY || (window.supabaseClient && window.supabaseClient.supabaseKey);
 
         if (supabaseUrl && supabaseKey) {
+            // Delete lobby
             const url = `${supabaseUrl}/rest/v1/lobbies?room_code=eq.${encodeURIComponent(roomCode)}`;
             fetch(url, {
                 method: 'DELETE',
@@ -1141,21 +1326,48 @@ function deleteLobbyKeepalive() {
                 },
                 keepalive: true
             }).catch(() => {});
+
+            // Delete responses for this quiz
+            if (quizId) {
+                const respUrl = `${supabaseUrl}/rest/v1/gyver_quiz_responses?quiz_id=eq.${encodeURIComponent(quizId)}`;
+                fetch(respUrl, {
+                    method: 'DELETE',
+                    headers: {
+                        'apikey': supabaseKey,
+                        'Authorization': `Bearer ${supabaseKey}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=minimal',
+                        'Accept-Profile': 'public',
+                        'Content-Profile': 'public'
+                    },
+                    keepalive: true
+                }).catch(() => {});
+            }
         }
     } catch (e) {}
 }
 
 /**
- * 🗑️ ปิดห้องสอบ และลบข้อมูลห้อง (PIN) ออกจาก Supabase และ LocalStorage
+ * 🗑️ ปิดห้องสอบ และลบข้อมูลห้อง (PIN) พร้อมล้างประวัติคำตอบใน Supabase ออกทั้งหมด
  */
 async function confirmCloseAndDeleteLobby() {
+    const quizId = currentQuiz?.id || lobbyData?.quiz_id;
+
     if (CyberSwal) {
         const confirm = await CyberSwal.fire({
             title: 'ยืนยันปิดห้องสอบ?',
-            text: `รหัสห้องสอบ ${roomCode} จะถูกลบออกจากฐานข้อมูล Supabase ทันที นักเรียนจะไม่สามารถใช้รหัสนี้เข้าห้องสอบได้อีก`,
+            html: `
+                <div class="text-start p-2">
+                    <p class="mb-2">รหัสห้องสอบ <b>${escapeHtml(roomCode)}</b> จะถูกลบออกจากฐานข้อมูล Supabase ทันที นักเรียนจะไม่สามารถใช้รหัสนี้ได้อีก</p>
+                    <div class="alert alert-danger bg-danger-subtle border border-danger-subtle text-danger small p-2 m-0 rounded-3">
+                        <i class="bi bi-trash3-fill me-1"></i>
+                        <b>ระบบจะล้างประวัติคำตอบและคะแนนใน Supabase (gyver_quiz_responses) ออกทั้งหมดทันที</b> เพื่อให้ชุดนี้สะอาดเกลี้ยงพร้อมสำหรับการเปิดสอบรอบใหม่
+                    </div>
+                </div>
+            `,
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: '<i class="bi bi-trash-fill me-1"></i> ปิดและลบห้องสอบ',
+            confirmButtonText: '<i class="bi bi-trash-fill me-1"></i> ปิดห้องและล้างข้อมูลทั้งหมด',
             cancelButtonText: 'ยกเลิก',
             customClass: {
                 confirmButton: 'btn btn-danger px-4 py-2 fw-bold',
@@ -1164,7 +1376,7 @@ async function confirmCloseAndDeleteLobby() {
         });
         if (!confirm.isConfirmed) return;
     } else {
-        if (!confirm(`ยืนยันปิดห้องสอบรหัส ${roomCode}? นักเรียนจะไม่สามารถใช้รหัสนี้ได้อีก`)) return;
+        if (!confirm(`ยืนยันปิดห้องสอบรหัส ${roomCode}? ระบบจะลบ PIN และล้างประวัติคำตอบของชุดนี้ในฐานข้อมูลออกทั้งหมด`)) return;
     }
 
     await closeAndDeleteLobby(true);
@@ -1175,9 +1387,49 @@ async function closeAndDeleteLobby(skipConfirm = false) {
         return confirmCloseAndDeleteLobby();
     }
 
+    // แสดงหน้าจอแจ้งเตือนว่ากำลังล้างข้อมูล
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'กำลังปิดห้องและล้างข้อมูล...',
+            html: '<span class="text-subtle small">กำลังลบ PIN และเคลียร์ประวัติคะแนนใน Supabase...</span>',
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            didOpen: () => {
+                Swal.showLoading();
+            },
+            background: 'rgba(15, 23, 42, 0.96)',
+            color: '#fff'
+        });
+    }
+
+    const quizId = currentQuiz?.id || lobbyData?.quiz_id;
+
+    // 1. รอ Supabase delete gyver_quiz_responses ให้เสร็จอย่างแน่นอน
+    if (window.supabaseClient && quizId) {
+        try {
+            await window.supabaseClient
+                .from('gyver_quiz_responses')
+                .delete()
+                .eq('quiz_id', quizId);
+        } catch (e) {
+            console.warn('Error clearing gyver_quiz_responses:', e);
+        }
+    }
+
+    // 2. เคลียร์ LocalStorage
+    if (quizId) {
+        try {
+            localStorage.removeItem(`gyver_quiz_responses_${quizId}`);
+        } catch (e) {}
+    }
+
+    // 3. ปิดห้องและลบจากตาราง lobbies
     deleteLobbyKeepalive();
 
-    // Redirect back to Quiz List
+    // รอเล็กน้อยเพื่อให้คำสั่งทำงานเรียบร้อย
+    await new Promise(r => setTimeout(r, 400));
+
+    // Redirect กลับไปหน้า Quiz Dashboard
     window.location.href = 'quiz.html';
 }
 
