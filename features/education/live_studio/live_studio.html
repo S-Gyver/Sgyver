@@ -62,17 +62,17 @@
 
     <!-- ── FILTER TABS ── -->
     <div class="lobby-tabs">
-        <button class="lobby-tab active" id="tab-btn-live" onclick="setLobbyFilter('live')">
-            <i class="bi bi-broadcast" style="color:#23a55a"></i> กำลังสอนสด (Live)
+        <button class="lobby-tab active" id="tab-btn-my" onclick="setLobbyFilter('my')">
+            <i class="bi bi-star-fill" style="color:var(--cyber-pink)"></i> ห้องของฉัน
+            <span class="tab-badge" id="badge-my-count">0</span>
+        </button>
+        <button class="lobby-tab" id="tab-btn-live" onclick="setLobbyFilter('live')">
+            <i class="bi bi-broadcast" style="color:#23a55a"></i> ห้องเรียนสดทั้งหมด
             <span class="tab-badge" id="badge-live-count">0</span>
         </button>
         <button class="lobby-tab" id="tab-btn-archived" onclick="setLobbyFilter('archived')">
             <i class="bi bi-archive-fill" style="color:#facc15"></i> คลังย้อนหลัง & ไฟล์
             <span class="tab-badge" id="badge-archived-count">0</span>
-        </button>
-        <button class="lobby-tab" id="tab-btn-my" onclick="setLobbyFilter('my')">
-            <i class="bi bi-star-fill" style="color:var(--cyber-pink)"></i> ห้องของฉัน
-            <span class="tab-badge" id="badge-my-count">0</span>
         </button>
     </div>
 

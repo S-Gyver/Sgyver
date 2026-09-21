@@ -8,17 +8,43 @@ const LOBBY_STATE = {
     rooms:        [],
     msgCounts:    {},
     fileCounts:   {},
-    activeFilter: 'live', // 'live' | 'archived' | 'my'
+    activeFilter: 'my', // 'my' | 'live' | 'archived'
     channel:      null,
 };
+
+let currentAuthUser = null;
+let currentUserId   = null;
+let currentUserName = '';
 
 // ── DOM HELPERS ────────────────────────────────────────────────
 function el(id) { return document.getElementById(id); }
 
-// ── LOCAL STORAGE HELPERS ──────────────────────────────────────
+// ── AUTH CHECK ─────────────────────────────────────────────────
+async function initAuthUser() {
+    if (window.supabaseClient && window.supabaseClient.auth) {
+        try {
+            const { data: { session } } = await window.supabaseClient.auth.getSession();
+            if (session?.user) {
+                currentAuthUser = session.user;
+                currentUserId   = session.user.id;
+                currentUserName = session.user.user_metadata?.nickname 
+                    || session.user.user_metadata?.username 
+                    || session.user.email?.split('@')[0] || '';
+            }
+        } catch (e) {
+            console.warn('[Live Studio Auth check]', e);
+        }
+    }
+}
+
+// ── USER-SCOPED STORAGE HELPERS ────────────────────────────────
+function getStorageKey() {
+    return currentUserId ? `gyver_live_host_rooms_${currentUserId}` : 'gyver_live_host_rooms';
+}
+
 function getMyHostRooms() {
     try {
-        return JSON.parse(localStorage.getItem('gyver_live_host_rooms') || '{}');
+        return JSON.parse(localStorage.getItem(getStorageKey()) || '{}');
     } catch {
         return {};
     }
@@ -27,28 +53,53 @@ function getMyHostRooms() {
 function saveMyHostRoom(pin) {
     const rooms = getMyHostRooms();
     rooms[pin] = 'host';
-    localStorage.setItem('gyver_live_host_rooms', JSON.stringify(rooms));
+    localStorage.setItem(getStorageKey(), JSON.stringify(rooms));
 }
 
 function removeMyHostRoom(pin) {
     const rooms = getMyHostRooms();
     delete rooms[pin];
-    localStorage.setItem('gyver_live_host_rooms', JSON.stringify(rooms));
+    localStorage.setItem(getStorageKey(), JSON.stringify(rooms));
+}
+
+// Check whether current user is the owner of this room
+function isUserOwnerOfRoom(room) {
+    if (!room) return false;
+    // 1. If room has host_secret, match with currentUserId or email
+    if (currentUserId && room.host_secret) {
+        return (room.host_secret === currentUserId || (currentAuthUser?.email && room.host_secret === currentAuthUser.email));
+    }
+    // 2. User-scoped local storage check
+    const myRoomsMap = getMyHostRooms();
+    if (myRoomsMap[room.pin] !== undefined) {
+        // If room is owned by another specific user ID, don't allow claiming it
+        if (room.host_secret && currentUserId && room.host_secret !== currentUserId) {
+            return false;
+        }
+        return true;
+    }
+    return false;
 }
 
 // ── INIT ───────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-    // Fill saved user name if exists
-    const savedName = localStorage.getItem('gyver_user_name') || '';
-    if (savedName) {
-        const qName = el('quick-name-input');
-        if (qName) qName.value = savedName;
+    // 1. Load logged-in user
+    await initAuthUser();
+
+    // 2. Default filter: 'my' for logged-in teachers so each user only sees their own rooms
+    const defaultFilter = currentUserId ? 'my' : 'live';
+    setLobbyFilter(defaultFilter);
+
+    // 3. Fill user name if available
+    const qName = el('quick-name-input');
+    if (qName) {
+        qName.value = currentUserName || '';
     }
 
-    // Load rooms
+    // 4. Load rooms
     await fetchRooms();
 
-    // Subscribe to realtime room updates
+    // 5. Subscribe to realtime room updates
     setupLobbyRealtime();
 });
 
@@ -72,8 +123,6 @@ async function fetchRooms() {
 
         // 2. Fetch stats (message counts & file counts)
         if (rooms && rooms.length > 0) {
-            const pins = rooms.map(r => r.pin);
-
             // Message counts
             const { data: msgStats } = await supabaseClient
                 .from('live_studio_messages')
@@ -114,9 +163,7 @@ async function fetchRooms() {
 function updateBadgeCounts() {
     const liveCount = LOBBY_STATE.rooms.filter(r => r.status === 'LIVE').length;
     const archivedCount = LOBBY_STATE.rooms.filter(r => r.status === 'ENDED').length;
-    
-    const myRoomsMap = getMyHostRooms();
-    const myCount = LOBBY_STATE.rooms.filter(r => myRoomsMap[r.pin] !== undefined).length;
+    const myCount = LOBBY_STATE.rooms.filter(r => isUserOwnerOfRoom(r)).length;
 
     if (el('badge-live-count')) el('badge-live-count').textContent = liveCount;
     if (el('badge-archived-count')) el('badge-archived-count').textContent = archivedCount;
@@ -137,15 +184,14 @@ function renderRoomGrid() {
     const grid = el('room-grid');
     if (!grid) return;
 
-    const myRoomsMap = getMyHostRooms();
     let filtered = [];
 
-    if (LOBBY_STATE.activeFilter === 'live') {
+    if (LOBBY_STATE.activeFilter === 'my') {
+        filtered = LOBBY_STATE.rooms.filter(r => isUserOwnerOfRoom(r));
+    } else if (LOBBY_STATE.activeFilter === 'live') {
         filtered = LOBBY_STATE.rooms.filter(r => r.status === 'LIVE');
     } else if (LOBBY_STATE.activeFilter === 'archived') {
         filtered = LOBBY_STATE.rooms.filter(r => r.status === 'ENDED');
-    } else if (LOBBY_STATE.activeFilter === 'my') {
-        filtered = LOBBY_STATE.rooms.filter(r => myRoomsMap[r.pin] !== undefined);
     }
 
     if (filtered.length === 0) {
@@ -172,7 +218,7 @@ function renderRoomGrid() {
     grid.innerHTML = '';
     filtered.forEach(room => {
         const isLive = (room.status === 'LIVE');
-        const isMyRoom = (myRoomsMap[room.pin] !== undefined);
+        const isMyRoom = isUserOwnerOfRoom(room);
         const msgCount = LOBBY_STATE.msgCounts[room.pin] || 0;
         const fileCount = LOBBY_STATE.fileCounts[room.pin] || 0;
 
@@ -247,8 +293,8 @@ function openCreateModal() {
     // Generate fresh PIN
     randomizeModalPin();
 
-    // Pre-fill name if available
-    const savedName = localStorage.getItem('gyver_user_name') || '';
+    // Pre-fill name from current logged-in user or stored name
+    const savedName = currentUserName || localStorage.getItem('gyver_user_name') || '';
     if (savedName) el('modal-host-name').value = savedName;
 
     el('create-modal').style.display = 'flex';
@@ -310,19 +356,20 @@ async function submitCreateRoom() {
             return;
         }
 
-        // Insert new room
+        // Insert new room with host_secret bound to current user ID
         const { error } = await supabaseClient
             .from('live_studio_rooms')
             .insert([{
-                pin:       pin,
-                title:     title,
-                host_name: host,
-                status:    'LIVE'
+                pin:         pin,
+                title:       title,
+                host_name:   host,
+                status:      'LIVE',
+                host_secret: currentUserId || host
             }]);
 
         if (error) throw error;
 
-        // Remember as my room
+        // Remember as my room in user-scoped storage
         saveMyHostRoom(pin);
 
         showToast('success', 'สร้างห้องสำเร็จ', `กำลังพาคุณเข้าสู่ห้องเรียน ${pin}...`, 2000);
@@ -362,6 +409,12 @@ function handleQuickJoin() {
 
 // ── DELETE ROOM ACTION ─────────────────────────────────────────
 async function confirmDeleteRoom(pin) {
+    const room = LOBBY_STATE.rooms.find(r => r.pin === pin);
+    if (room && !isUserOwnerOfRoom(room)) {
+        showToast('error', 'ไม่มีสิทธิ์', 'คุณไม่ใช่เจ้าของห้องเรียนนี้ ไม่สามารถลบได้', 3000);
+        return;
+    }
+
     const confirmed = confirm(`⚠️ คุณต้องการลบห้องเรียน [PIN: ${pin}] ถาวรใช่หรือไม่?\n\n• ประวัติแชททั้งหมดจะถูกลบ\n• รายการไฟล์ทั้งหมดจะถูกลบ\n• การกระทำนี้ไม่สามารถย้อนกลับได้`);
     if (!confirmed) return;
 

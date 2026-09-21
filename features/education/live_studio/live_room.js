@@ -60,8 +60,52 @@ const $  = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 function el(id)  { return document.getElementById(id); }
 
+// ── AUTH CHECK & USER-SCOPED STORAGE ───────────────────────────
+let currentAuthUser = null;
+let currentUserId   = null;
+let currentUserName = '';
+
+async function initAuthUser() {
+    if (window.supabaseClient && window.supabaseClient.auth) {
+        try {
+            const { data: { session } } = await window.supabaseClient.auth.getSession();
+            if (session?.user) {
+                currentAuthUser = session.user;
+                currentUserId   = session.user.id;
+                currentUserName = session.user.user_metadata?.nickname 
+                    || session.user.user_metadata?.username 
+                    || session.user.email?.split('@')[0] || '';
+            }
+        } catch (e) {
+            console.warn('[Live Room Auth check]', e);
+        }
+    }
+}
+
+function getStorageKey() {
+    return currentUserId ? `gyver_live_host_rooms_${currentUserId}` : 'gyver_live_host_rooms';
+}
+
+// ── LOCAL STORAGE HELPERS ──────────────────────────────────────
+function getStoredHostRooms() {
+    try {
+        return JSON.parse(localStorage.getItem(getStorageKey()) || '{}');
+    } catch {
+        return {};
+    }
+}
+
+function saveHostRoom(pin, secret) {
+    const rooms = getStoredHostRooms();
+    rooms[pin] = secret || 'host';
+    localStorage.setItem(getStorageKey(), JSON.stringify(rooms));
+}
+
 // ── INITIALIZATION ON PAGE LOAD ────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
+    // 0. Check logged-in user
+    await initAuthUser();
+
     // 1. Read URL query params
     const params = new URLSearchParams(window.location.search);
     const pinParam = (params.get('pin') || '').trim().toUpperCase();
@@ -95,7 +139,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Default to student role for all general joiners
     if (roleParam === 'host') {
         selectRole('host');
-        const savedName = localStorage.getItem('gyver_user_name') || '';
+        const savedName = currentUserName || localStorage.getItem('gyver_user_name') || '';
         if (savedName) el('input-name').value = savedName;
     } else {
         selectRole('student');
@@ -110,21 +154,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (nameInput) nameInput.focus();
     }, 150);
 });
-
-// ── LOCAL STORAGE HELPERS ──────────────────────────────────────
-function getStoredHostRooms() {
-    try {
-        return JSON.parse(localStorage.getItem('gyver_live_host_rooms') || '{}');
-    } catch {
-        return {};
-    }
-}
-
-function saveHostRoom(pin, secret) {
-    const rooms = getStoredHostRooms();
-    rooms[pin] = secret || 'host';
-    localStorage.setItem('gyver_live_host_rooms', JSON.stringify(rooms));
-}
 
 // ── JOIN SCREEN LOGIC ──────────────────────────────────────────
 function selectRole(role) {
@@ -219,8 +248,11 @@ async function enterStudio() {
 
                 // Host identity check: Only the actual room creator can act as host
                 const hostRooms = getStoredHostRooms();
-                const isOwner = hostRooms[pin] !== undefined;
-                if (roomData.host_name && STATE.isHost && STATE.myName !== roomData.host_name && !isOwner) {
+                const isOwnerByStorage = hostRooms[pin] !== undefined;
+                const isOwnerByAuth = !!(currentUserId && roomData.host_secret && (roomData.host_secret === currentUserId || (currentAuthUser?.email && roomData.host_secret === currentAuthUser.email)));
+                const isOwner = isOwnerByAuth || isOwnerByStorage;
+
+                if (STATE.isHost && !isOwner) {
                     STATE.isHost = false;
                     STATE.myRole = 'student';
                     el('up-role').textContent = '🎓 นักเรียน';
@@ -241,7 +273,8 @@ async function enterStudio() {
                     pin,
                     title: STATE.roomTitle,
                     host_name: name,
-                    status: 'LIVE'
+                    status: 'LIVE',
+                    host_secret: currentUserId || name
                 }]);
                 saveHostRoom(pin, 'host');
             }
@@ -705,7 +738,7 @@ async function deleteRoomPermanently() {
         // Remove from local host list
         const hostRooms = getStoredHostRooms();
         delete hostRooms[STATE.roomPin];
-        localStorage.setItem('gyver_live_host_rooms', JSON.stringify(hostRooms));
+        localStorage.setItem(getStorageKey(), JSON.stringify(hostRooms));
 
         showToast('success', 'ลบห้องเรียบร้อย', 'กำลังกลับสู่หน้ารวมห้องเรียน...', 2000);
         setTimeout(() => {
