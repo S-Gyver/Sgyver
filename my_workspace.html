@@ -101,7 +101,7 @@
             </button>
 
             <!-- 🖼️ Background Switcher -->
-            <button class="cs-btn-text d-none d-sm-inline-flex" data-bs-toggle="modal" data-bs-target="#bgModal" title="เปลี่ยนภาพพื้นหลัง">
+            <button class="cs-btn-text d-none d-sm-inline-flex" onclick="openBgSwitcherModal()" title="เปลี่ยนภาพพื้นหลัง">
                 <i class="bi bi-image tool-bg"></i>
                 <span class="d-none d-md-inline">พื้นหลัง</span>
             </button>
@@ -425,13 +425,15 @@
 
             <!-- 🎨 3. สื่อการสอน & กระดานทำงาน (Teaching Canvas & Media) -->
             <div class="launchpad-category">
-                <div class="launchpad-category-title">
+                <div class="launchpad-category-title d-flex align-items-center">
                     <span>🎨 3. สื่อการสอน & กระดานทำงาน (Canvas & Media)</span>
+                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle ms-2 launchpad-member-badge" style="font-size: 0.68rem; display: none;"><i class="bi bi-lock-fill me-1"></i>สมาชิก</span>
                 </div>
                 <div class="launchpad-grid">
                     <!-- กระดานวาดรูป -->
-                    <div class="launchpad-app-item" draggable="true" ondragstart="onLaunchpadDragStart(event, 'draw')" onclick="launchTool('draw')" data-widget-type="draw" data-app-name="กระดานวาดรูป Drawing Pad ไวท์บอร์ด" title="กระดานวาดรูป: วาดภาพ ไฮไลท์ เขียนสูตร (ลากไปวางที่ Dock หรือคลิกเปิด)">
+                    <div class="launchpad-app-item" data-member-only="true" draggable="true" ondragstart="onLaunchpadDragStart(event, 'draw')" onclick="launchTool('draw')" data-widget-type="draw" data-app-name="กระดานวาดรูป Drawing Pad ไวท์บอร์ด" title="กระดานวาดรูป: วาดภาพ ไฮไลท์ เขียนสูตร (ลากไปวางที่ Dock หรือคลิกเปิด)">
                         <button type="button" class="launchpad-pin-btn" onclick="togglePinTool(event, 'draw')" title="ปักหมุดที่ Dock"><i class="bi bi-pin-angle-fill"></i></button>
+                        <span class="launchpad-lock-pill"><i class="bi bi-lock-fill"></i> สมาชิก</span>
                         <div class="launchpad-icon" style="background: linear-gradient(145deg, #06b6d4, #0891b2, #0e7490);"><i class="bi bi-pen-fill"></i></div>
                         <div class="launchpad-content">
                             <div class="launchpad-title">กระดานวาดรูป</div>
@@ -440,8 +442,9 @@
                     </div>
 
                     <!-- โน้ตสั่งงาน -->
-                    <div class="launchpad-app-item" draggable="true" ondragstart="onLaunchpadDragStart(event, 'text')" onclick="launchTool('text')" data-widget-type="text" data-app-name="โน้ตสั่งงาน Text Note บันทึกข้อความ" title="โน้ตสั่งงาน: พิมพ์ข้อความคำสั่งหรือการบ้าน (ลากไปวางที่ Dock หรือคลิกเปิด)">
+                    <div class="launchpad-app-item" data-member-only="true" draggable="true" ondragstart="onLaunchpadDragStart(event, 'text')" onclick="launchTool('text')" data-widget-type="text" data-app-name="โน้ตสั่งงาน Text Note บันทึกข้อความ" title="โน้ตสั่งงาน: พิมพ์ข้อความคำสั่งหรือการบ้าน (ลากไปวางที่ Dock หรือคลิกเปิด)">
                         <button type="button" class="launchpad-pin-btn" onclick="togglePinTool(event, 'text')" title="ปักหมุดที่ Dock"><i class="bi bi-pin-angle-fill"></i></button>
+                        <span class="launchpad-lock-pill"><i class="bi bi-lock-fill"></i> สมาชิก</span>
                         <div class="launchpad-icon" style="background: linear-gradient(145deg, #f59e0b, #d97706, #78350f);"><i class="bi bi-journal-text"></i></div>
                         <div class="launchpad-content">
                             <div class="launchpad-title">โน้ตสั่งงาน</div>
@@ -450,8 +453,9 @@
                     </div>
 
                     <!-- สื่อ YouTube -->
-                    <div class="launchpad-app-item" draggable="true" ondragstart="onLaunchpadDragStart(event, 'media')" onclick="launchTool('media')" data-widget-type="media" data-app-name="แทรกวิดีโอ YouTube Media วิดีโอช่วยสอน" title="แทรกวิดีโอ YouTube: เปิดคลิปการสอนบนหน้าจอ (ลากไปวางที่ Dock หรือคลิกเปิด)">
+                    <div class="launchpad-app-item" data-member-only="true" draggable="true" ondragstart="onLaunchpadDragStart(event, 'media')" onclick="launchTool('media')" data-widget-type="media" data-app-name="แทรกวิดีโอ YouTube Media วิดีโอช่วยสอน" title="แทรกวิดีโอ YouTube: เปิดคลิปการสอนบนหน้าจอ (ลากไปวางที่ Dock หรือคลิกเปิด)">
                         <button type="button" class="launchpad-pin-btn" onclick="togglePinTool(event, 'media')" title="ปักหมุดที่ Dock"><i class="bi bi-pin-angle-fill"></i></button>
+                        <span class="launchpad-lock-pill"><i class="bi bi-lock-fill"></i> สมาชิก</span>
                         <div class="launchpad-icon" style="background: linear-gradient(145deg, #ef4444, #dc2626, #991b1b);"><i class="bi bi-youtube"></i></div>
                         <div class="launchpad-content">
                             <div class="launchpad-title">สื่อ/วิดีโอ</div>
@@ -460,8 +464,9 @@
                     </div>
 
                     <!-- QR Code -->
-                    <div class="launchpad-app-item" draggable="true" ondragstart="onLaunchpadDragStart(event, 'qr')" onclick="launchTool('qr')" data-widget-type="qr" data-app-name="สร้าง QR Code ทันที QR Generator" title="สร้าง QR Code: แปลงลิงก์ใดๆ เป็นคิวอาร์โค้ด (ลากไปวางที่ Dock หรือคลิกเปิด)">
+                    <div class="launchpad-app-item" data-member-only="true" draggable="true" ondragstart="onLaunchpadDragStart(event, 'qr')" onclick="launchTool('qr')" data-widget-type="qr" data-app-name="สร้าง QR Code ทันที QR Generator" title="สร้าง QR Code: แปลงลิงก์ใดๆ เป็นคิวอาร์โค้ด (ลากไปวางที่ Dock หรือคลิกเปิด)">
                         <button type="button" class="launchpad-pin-btn" onclick="togglePinTool(event, 'qr')" title="ปักหมุดที่ Dock"><i class="bi bi-pin-angle-fill"></i></button>
+                        <span class="launchpad-lock-pill"><i class="bi bi-lock-fill"></i> สมาชิก</span>
                         <div class="launchpad-icon" style="background: linear-gradient(145deg, #d946ef, #c026d3, #86198f);"><i class="bi bi-qr-code"></i></div>
                         <div class="launchpad-content">
                             <div class="launchpad-title">QR Code</div>
@@ -470,8 +475,9 @@
                     </div>
 
                     <!-- ภาพพื้นหลัง -->
-                    <div class="launchpad-app-item" draggable="true" ondragstart="onLaunchpadDragStart(event, 'bg')" onclick="launchTool('bg')" data-app-name="เปลี่ยนภาพพื้นหลัง Wallpaper Background" title="เปลี่ยนภาพพื้นหลัง: เลือกภาพสวยงามหรือสีพื้น (ลากไปวางที่ Dock หรือคลิกเปิด)">
+                    <div class="launchpad-app-item" data-member-only="true" draggable="true" ondragstart="onLaunchpadDragStart(event, 'bg')" onclick="launchTool('bg')" data-app-name="เปลี่ยนภาพพื้นหลัง Wallpaper Background" title="เปลี่ยนภาพพื้นหลัง: เลือกภาพสวยงามหรือสีพื้น (ลากไปวางที่ Dock หรือคลิกเปิด)">
                         <button type="button" class="launchpad-pin-btn" onclick="togglePinTool(event, 'bg')" title="ปักหมุดที่ Dock"><i class="bi bi-pin-angle-fill"></i></button>
+                        <span class="launchpad-lock-pill"><i class="bi bi-lock-fill"></i> สมาชิก</span>
                         <div class="launchpad-icon" style="background: linear-gradient(145deg, #38bdf8, #0284c7, #075985);"><i class="bi bi-image"></i></div>
                         <div class="launchpad-content">
                             <div class="launchpad-title">พื้นหลัง</div>
@@ -483,12 +489,14 @@
 
             <!-- 🎮 4. กิจกรรมห้องเรียน & แข่งขัน (Interactive Games & Live) -->
             <div class="launchpad-category">
-                <div class="launchpad-category-title">
+                <div class="launchpad-category-title d-flex align-items-center">
                     <span>🎮 4. กิจกรรม & ห้องเรียนสด (Live Games & Studio)</span>
+                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle ms-2 launchpad-member-badge" style="font-size: 0.68rem; display: none;"><i class="bi bi-lock-fill me-1"></i>สมาชิก</span>
                 </div>
                 <div class="launchpad-grid">
-                    <div class="launchpad-app-item" draggable="true" ondragstart="onLaunchpadDragStart(event, 'app_wheel_live')" onclick="launchTool('app_wheel_live')" data-app-name="Gyver Wheel Live วงล้อเรียลไทม์" title="Gyver Wheel (Live): ระบบวงล้อสมาชิกเรียลไทม์ (ลากไปวางที่ Dock หรือคลิกเปิด)">
+                    <div class="launchpad-app-item" data-member-only="true" draggable="true" ondragstart="onLaunchpadDragStart(event, 'app_wheel_live')" onclick="launchTool('app_wheel_live')" data-app-name="Gyver Wheel Live วงล้อเรียลไทม์" title="Gyver Wheel (Live): ระบบวงล้อสมาชิกเรียลไทม์ (ลากไปวางที่ Dock หรือคลิกเปิด)">
                         <button type="button" class="launchpad-pin-btn" onclick="togglePinTool(event, 'app_wheel_live')" title="ปักหมุดที่ Dock"><i class="bi bi-pin-angle-fill"></i></button>
+                        <span class="launchpad-lock-pill"><i class="bi bi-lock-fill"></i> สมาชิก</span>
                         <span class="launchpad-badge-pill launchpad-badge-live">LIVE</span>
                         <div class="launchpad-icon" style="background: linear-gradient(145deg, #f43f5e, #e11d48, #9f1239);"><i class="bi bi-disc"></i></div>
                         <div class="launchpad-content">
@@ -497,8 +505,9 @@
                         </div>
                     </div>
 
-                    <div class="launchpad-app-item" draggable="true" ondragstart="onLaunchpadDragStart(event, 'app_race')" onclick="launchTool('app_race')" data-app-name="Gyver Code Race เกมแข่งพิมพ์โค้ด" title="Gyver Code Race: เกมแข่งพิมพ์โค้ดออนไลน์ สะสมคะแนน Real-time (ลากไปวางที่ Dock หรือคลิกเปิด)">
+                    <div class="launchpad-app-item" data-member-only="true" draggable="true" ondragstart="onLaunchpadDragStart(event, 'app_race')" onclick="launchTool('app_race')" data-app-name="Gyver Code Race เกมแข่งพิมพ์โค้ด" title="Gyver Code Race: เกมแข่งพิมพ์โค้ดออนไลน์ สะสมคะแนน Real-time (ลากไปวางที่ Dock หรือคลิกเปิด)">
                         <button type="button" class="launchpad-pin-btn" onclick="togglePinTool(event, 'app_race')" title="ปักหมุดที่ Dock"><i class="bi bi-pin-angle-fill"></i></button>
+                        <span class="launchpad-lock-pill"><i class="bi bi-lock-fill"></i> สมาชิก</span>
                         <div class="launchpad-icon" style="background: linear-gradient(145deg, #ec4899, #db2777, #9d174d);"><i class="bi bi-controller"></i></div>
                         <div class="launchpad-content">
                             <div class="launchpad-title">Code Race</div>
@@ -506,8 +515,9 @@
                         </div>
                     </div>
 
-                    <div class="launchpad-app-item" draggable="true" ondragstart="onLaunchpadDragStart(event, 'app_live_studio')" onclick="launchTool('app_live_studio')" data-app-name="Gyver Live Studio ห้องเรียนสด Screen Share" title="Gyver Live Studio: ห้องเรียนสดสไตล์ Discord (ลากไปวางที่ Dock หรือคลิกเปิด)">
+                    <div class="launchpad-app-item" data-member-only="true" draggable="true" ondragstart="onLaunchpadDragStart(event, 'app_live_studio')" onclick="launchTool('app_live_studio')" data-app-name="Gyver Live Studio ห้องเรียนสด Screen Share" title="Gyver Live Studio: ห้องเรียนสดสไตล์ Discord (ลากไปวางที่ Dock หรือคลิกเปิด)">
                         <button type="button" class="launchpad-pin-btn" onclick="togglePinTool(event, 'app_live_studio')" title="ปักหมุดที่ Dock"><i class="bi bi-pin-angle-fill"></i></button>
+                        <span class="launchpad-lock-pill"><i class="bi bi-lock-fill"></i> สมาชิก</span>
                         <div class="launchpad-icon" style="background: linear-gradient(145deg, #06b6d4, #a855f7, #7c3aed);"><i class="bi bi-broadcast-pin"></i></div>
                         <div class="launchpad-content">
                             <div class="launchpad-title">Live Studio</div>
@@ -519,12 +529,14 @@
 
             <!-- 📋 5. วัดผล & แบบทดสอบ (Assessment & Evaluation) -->
             <div class="launchpad-category">
-                <div class="launchpad-category-title">
+                <div class="launchpad-category-title d-flex align-items-center">
                     <span>📋 5. วัดผล & ประเมิน (Assessment & Quiz)</span>
+                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle ms-2 launchpad-member-badge" style="font-size: 0.68rem; display: none;"><i class="bi bi-lock-fill me-1"></i>สมาชิก</span>
                 </div>
                 <div class="launchpad-grid">
-                    <div class="launchpad-app-item" draggable="true" ondragstart="onLaunchpadDragStart(event, 'app_forms')" onclick="launchTool('app_forms')" data-app-name="Gyver Forms แบบสอบถาม แบบประเมิน" title="Gyver Forms: สร้างแบบสอบถาม แบบประเมิน สรุปผลด้วยกราฟ (ลากไปวางที่ Dock หรือคลิกเปิด)">
+                    <div class="launchpad-app-item" data-member-only="true" draggable="true" ondragstart="onLaunchpadDragStart(event, 'app_forms')" onclick="launchTool('app_forms')" data-app-name="Gyver Forms แบบสอบถาม แบบประเมิน" title="Gyver Forms: สร้างแบบสอบถาม แบบประเมิน สรุปผลด้วยกราฟ (ลากไปวางที่ Dock หรือคลิกเปิด)">
                         <button type="button" class="launchpad-pin-btn" onclick="togglePinTool(event, 'app_forms')" title="ปักหมุดที่ Dock"><i class="bi bi-pin-angle-fill"></i></button>
+                        <span class="launchpad-lock-pill"><i class="bi bi-lock-fill"></i> สมาชิก</span>
                         <div class="launchpad-icon" style="background: linear-gradient(145deg, #a855f7, #9333ea, #6b21a8);"><i class="bi bi-file-earmark-text-fill"></i></div>
                         <div class="launchpad-content">
                             <div class="launchpad-title">Gyver Forms</div>
@@ -532,8 +544,9 @@
                         </div>
                     </div>
 
-                    <div class="launchpad-app-item" draggable="true" ondragstart="onLaunchpadDragStart(event, 'app_quiz')" onclick="launchTool('app_quiz')" data-app-name="Gyver Quiz แบบทดสอบออนไลน์ ตรวจคำตอบ" title="Gyver Quiz: สร้างแบบทดสอบออนไลน์ ตรวจคำตอบและตัดเกรด (ลากไปวางที่ Dock หรือคลิกเปิด)">
+                    <div class="launchpad-app-item" data-member-only="true" draggable="true" ondragstart="onLaunchpadDragStart(event, 'app_quiz')" onclick="launchTool('app_quiz')" data-app-name="Gyver Quiz แบบทดสอบออนไลน์ ตรวจคำตอบ" title="Gyver Quiz: สร้างแบบทดสอบออนไลน์ ตรวจคำตอบและตัดเกรด (ลากไปวางที่ Dock หรือคลิกเปิด)">
                         <button type="button" class="launchpad-pin-btn" onclick="togglePinTool(event, 'app_quiz')" title="ปักหมุดที่ Dock"><i class="bi bi-pin-angle-fill"></i></button>
+                        <span class="launchpad-lock-pill"><i class="bi bi-lock-fill"></i> สมาชิก</span>
                         <div class="launchpad-icon" style="background: linear-gradient(145deg, #ff6b4a, #ea580c, #c2410c);"><i class="bi bi-patch-question-fill"></i></div>
                         <div class="launchpad-content">
                             <div class="launchpad-title">Gyver Quiz</div>
@@ -545,12 +558,14 @@
 
             <!-- 🎓 6. บริหารผู้สอน & คลังสื่อ (Teacher Studio) -->
             <div class="launchpad-category">
-                <div class="launchpad-category-title">
+                <div class="launchpad-category-title d-flex align-items-center">
                     <span>🎓 6. บริหารผู้สอน & คลังสื่อ (Teacher Studio)</span>
+                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle ms-2 launchpad-member-badge" style="font-size: 0.68rem; display: none;"><i class="bi bi-lock-fill me-1"></i>สมาชิก</span>
                 </div>
                 <div class="launchpad-grid">
-                    <div class="launchpad-app-item" draggable="true" ondragstart="onLaunchpadDragStart(event, 'app_bank')" onclick="launchTool('app_bank')" data-app-name="Gyver Question Bank คลังคำถาม ข้อสอบ" title="Gyver Question Bank: คลังคำถามและข้อสอบ (ลากไปวางที่ Dock หรือคลิกเปิด)">
+                    <div class="launchpad-app-item" data-member-only="true" draggable="true" ondragstart="onLaunchpadDragStart(event, 'app_bank')" onclick="launchTool('app_bank')" data-app-name="Gyver Question Bank คลังคำถาม ข้อสอบ" title="Gyver Question Bank: คลังคำถามและข้อสอบ (ลากไปวางที่ Dock หรือคลิกเปิด)">
                         <button type="button" class="launchpad-pin-btn" onclick="togglePinTool(event, 'app_bank')" title="ปักหมุดที่ Dock"><i class="bi bi-pin-angle-fill"></i></button>
+                        <span class="launchpad-lock-pill"><i class="bi bi-lock-fill"></i> สมาชิก</span>
                         <div class="launchpad-icon" style="background: linear-gradient(145deg, #fbbf24, #d97706, #92400e);"><i class="bi bi-journal-bookmark-fill"></i></div>
                         <div class="launchpad-content">
                             <div class="launchpad-title">Question Bank</div>
@@ -558,8 +573,9 @@
                         </div>
                     </div>
 
-                    <div class="launchpad-app-item" draggable="true" ondragstart="onLaunchpadDragStart(event, 'app_manage')" onclick="launchTool('app_manage')" data-app-name="Classroom Management จัดการห้องเรียน นักเรียน" title="Classroom Management: สร้างห้องเรียน จัดการรายชื่อนักเรียน และ QR Code (ลากไปวางที่ Dock หรือคลิกเปิด)">
+                    <div class="launchpad-app-item" data-member-only="true" draggable="true" ondragstart="onLaunchpadDragStart(event, 'app_manage')" onclick="launchTool('app_manage')" data-app-name="Classroom Management จัดการห้องเรียน นักเรียน" title="Classroom Management: สร้างห้องเรียน จัดการรายชื่อนักเรียน และ QR Code (ลากไปวางที่ Dock หรือคลิกเปิด)">
                         <button type="button" class="launchpad-pin-btn" onclick="togglePinTool(event, 'app_manage')" title="ปักหมุดที่ Dock"><i class="bi bi-pin-angle-fill"></i></button>
+                        <span class="launchpad-lock-pill"><i class="bi bi-lock-fill"></i> สมาชิก</span>
                         <div class="launchpad-icon" style="background: linear-gradient(145deg, #34d399, #10b981, #047857);"><i class="bi bi-people-fill"></i></div>
                         <div class="launchpad-content">
                             <div class="launchpad-title">ห้องเรียน & นร.</div>
@@ -567,8 +583,9 @@
                         </div>
                     </div>
 
-                    <div class="launchpad-app-item" draggable="true" ondragstart="onLaunchpadDragStart(event, 'app_history')" onclick="launchTool('app_history')" data-app-name="Activity History ประวัติกิจกรรม สถิติ" title="Activity History: ดูสถิติการเล่น ประวัติคะแนน และผลกิจกรรมย้อนหลัง (ลากไปวางที่ Dock หรือคลิกเปิด)">
+                    <div class="launchpad-app-item" data-member-only="true" draggable="true" ondragstart="onLaunchpadDragStart(event, 'app_history')" onclick="launchTool('app_history')" data-app-name="Activity History ประวัติกิจกรรม สถิติ" title="Activity History: ดูสถิติการเล่น ประวัติคะแนน และผลกิจกรรมย้อนหลัง (ลากไปวางที่ Dock หรือคลิกเปิด)">
                         <button type="button" class="launchpad-pin-btn" onclick="togglePinTool(event, 'app_history')" title="ปักหมุดที่ Dock"><i class="bi bi-pin-angle-fill"></i></button>
+                        <span class="launchpad-lock-pill"><i class="bi bi-lock-fill"></i> สมาชิก</span>
                         <div class="launchpad-icon" style="background: linear-gradient(145deg, #38bdf8, #0ea5e9, #0369a1);"><i class="bi bi-clock-history"></i></div>
                         <div class="launchpad-content">
                             <div class="launchpad-title">ประวัติ & สถิติ</div>
@@ -585,8 +602,9 @@
                         </div>
                     </div>
 
-                    <div class="launchpad-app-item" draggable="true" ondragstart="onLaunchpadDragStart(event, 'app_profile')" onclick="launchTool('app_profile')" data-app-name="จัดการโปรไฟล์ครูผู้สอน Profile Settings" title="จัดการโปรไฟล์ครูผู้สอน: แก้ไขชื่อ รูปโปรไฟล์ และข้อมูลส่วนตัว (ลากไปวางที่ Dock หรือคลิกเปิด)">
+                    <div class="launchpad-app-item" data-member-only="true" draggable="true" ondragstart="onLaunchpadDragStart(event, 'app_profile')" onclick="launchTool('app_profile')" data-app-name="จัดการโปรไฟล์ครูผู้สอน Profile Settings" title="จัดการโปรไฟล์ครูผู้สอน: แก้ไขชื่อ รูปโปรไฟล์ และข้อมูลส่วนตัว (ลากไปวางที่ Dock หรือคลิกเปิด)">
                         <button type="button" class="launchpad-pin-btn" onclick="togglePinTool(event, 'app_profile')" title="ปักหมุดที่ Dock"><i class="bi bi-pin-angle-fill"></i></button>
+                        <span class="launchpad-lock-pill"><i class="bi bi-lock-fill"></i> สมาชิก</span>
                         <div class="launchpad-icon" style="background: linear-gradient(145deg, #64748b, #475569, #1e293b);"><i class="bi bi-person-gear"></i></div>
                         <div class="launchpad-content">
                             <div class="launchpad-title">โปรไฟล์ครู</div>
@@ -840,6 +858,48 @@
         </div>
     </div>
 
+    <!-- ====================================================
+         🔒 8. MEMBER EXCLUSIVE MODAL (แจ้งเตือนสิทธิ์การใช้งาน)
+         ==================================================== -->
+    <div class="modal fade cs-modal" id="memberLockModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 460px;">
+            <div class="modal-content text-center p-4 shadow-lg" style="background: rgba(15, 23, 42, 0.96); backdrop-filter: blur(24px); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 24px;">
+                <div class="mx-auto mb-3 d-flex align-items-center justify-content-center" style="width: 68px; height: 68px; border-radius: 20px; background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(244, 63, 94, 0.25)); border: 1px solid rgba(245, 158, 11, 0.5); box-shadow: 0 0 25px rgba(245, 158, 11, 0.35);">
+                    <i class="bi bi-lock-fill text-warning fs-1"></i>
+                </div>
+                <h4 class="fw-bold text-white mb-2" id="memberLockModalTitle">เฉพาะสมาชิก Gyver Studio</h4>
+                <p class="text-white-50 small mb-3" id="memberLockModalDesc">
+                    เครื่องมือนี้เปิดให้ใช้งานสำหรับสมาชิกฟรี เพื่อจัดเก็บข้อมูลและจัดการห้องเรียน
+                </p>
+
+                <!-- Free Features Guidance Pill Box -->
+                <div class="p-3 rounded-4 text-start mb-4" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);">
+                    <div class="d-flex align-items-start gap-2 mb-2">
+                        <i class="bi bi-check-circle-fill text-success mt-1"></i>
+                        <div class="small text-light">
+                            <strong class="text-info">ผู้ใช้ทั่วไป (ไม่ต้องสมัคร):</strong> ใช้ได้ทันทีเฉพาะ <strong>เครื่องมือด่วน (Quick Tools)</strong> และ <strong>บริหารเวลา (Time & Rules)</strong>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-start gap-2">
+                        <i class="bi bi-qr-code-scan text-warning mt-1"></i>
+                        <div class="small text-light">
+                            <strong class="text-warning">เข้าสอบหรือ Live:</strong> สแกน QR Code หรือกรอก PIN เข้าร่วมเป็นผู้ใช้ได้ทันทีโดยไม่ต้องเป็นสมาชิก
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex flex-column gap-2">
+                    <button type="button" class="btn btn-primary fw-bold py-2 rounded-pill shadow" onclick="openRegisterFromLock()" style="background: linear-gradient(135deg, var(--cs-primary), var(--cs-accent)); border: none;">
+                        <i class="bi bi-person-plus-fill me-2"></i>สมัครสมาชิก / เข้าสู่ระบบฟรี
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary text-white-50 rounded-pill py-2" data-bs-dismiss="modal">
+                        เข้าใจแล้ว
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bootstrap Bundle JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -852,19 +912,97 @@
             return window.supabaseClient || window._supabase;
         }
 
+        let isUserLoggedIn = false;
+        let currentWorkspaceUser = null;
+
+        // 🔒 Tools permitted for Guest / Non-members:
+        // 1. เครื่องมือด่วน (Quick Tools): app_wheel, name, dice, group, app_guess
+        // 2. บริหารเวลา (Time & Classroom Rules): timer, clock, traffic, sound, symbol
+        const GUEST_ALLOWED_TOOLS = new Set([
+            'app_wheel', 'wheel',
+            'name',
+            'dice',
+            'group',
+            'app_guess', 'guess',
+            'timer',
+            'clock',
+            'traffic',
+            'sound',
+            'symbol'
+        ]);
+
+        function isToolAllowedForGuest(toolId) {
+            if (!toolId) return false;
+            if (GUEST_ALLOWED_TOOLS.has(toolId)) return true;
+            if (typeof ALL_DOCK_TOOLS !== 'undefined' && ALL_DOCK_TOOLS[toolId]) {
+                const tool = ALL_DOCK_TOOLS[toolId];
+                if (tool.widget && GUEST_ALLOWED_TOOLS.has(tool.widget)) return true;
+            }
+            return false;
+        }
+
+        window.checkToolAccess = function(toolId, toolTitle, silent = false) {
+            if (isUserLoggedIn) return true;
+            if (isToolAllowedForGuest(toolId)) return true;
+
+            if (!silent) {
+                const name = toolTitle || (typeof ALL_DOCK_TOOLS !== 'undefined' && ALL_DOCK_TOOLS[toolId]?.title ? ALL_DOCK_TOOLS[toolId].title : toolId);
+                showMemberLockModal(name);
+            }
+            return false;
+        };
+
+        function showMemberLockModal(toolTitle) {
+            const modalEl = document.getElementById('memberLockModal');
+            if (!modalEl) return;
+            const titleEl = document.getElementById('memberLockModalTitle');
+            const descEl = document.getElementById('memberLockModalDesc');
+            if (titleEl) {
+                titleEl.textContent = toolTitle ? `เฉพาะสมาชิก Gyver (${toolTitle})` : 'เฉพาะสมาชิก Gyver Studio';
+            }
+            if (descEl) {
+                descEl.textContent = `เครื่องมือ "${toolTitle || 'นี้'}" สงวนสิทธิ์สำหรับสมาชิกฟรี เพื่อจัดเก็บข้อมูลและจัดการห้องเรียนอย่างเต็มรูปแบบ`;
+            }
+            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+        }
+
+        function openRegisterFromLock() {
+            const lockModal = bootstrap.Modal.getInstance(document.getElementById('memberLockModal'));
+            if (lockModal) lockModal.hide();
+            const regTab = document.getElementById('tab-modal-register');
+            if (regTab) {
+                bootstrap.Tab.getOrCreateInstance(regTab).show();
+            }
+            openLoginModal();
+        }
+
+        function openBgSwitcherModal() {
+            if (!window.checkToolAccess('bg', 'เปลี่ยนภาพพื้นหลัง')) return;
+            new bootstrap.Modal(document.getElementById('bgModal')).show();
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             await checkAuthStateWorkspace();
             initAuthForms();
+            checkAutoJoinFromUrl();
         });
 
         async function checkAuthStateWorkspace() {
-            if (!getClient()) return;
+            if (!getClient()) {
+                isUserLoggedIn = false;
+                document.body.classList.add('is-guest');
+                return;
+            }
             try {
                 const { data: { session } } = await getClient().auth.getSession();
                 const loginBtn = document.getElementById('auth-login-btn');
                 const userZone = document.getElementById('user-profile-zone');
 
                 if (session && session.user) {
+                    isUserLoggedIn = true;
+                    currentWorkspaceUser = session.user;
+                    document.body.classList.remove('is-guest');
                     if (loginBtn) loginBtn.classList.add('d-none');
                     if (userZone) {
                         userZone.classList.remove('d-none');
@@ -878,13 +1016,82 @@
                     if (navName) navName.innerText = displayName;
                     if (navAvatar) navAvatar.src = avatarUrl;
                 } else {
+                    isUserLoggedIn = false;
+                    currentWorkspaceUser = null;
+                    document.body.classList.add('is-guest');
                     if (loginBtn) loginBtn.classList.remove('d-none');
                     if (userZone) {
                         userZone.classList.add('d-none');
                         userZone.classList.remove('d-flex');
                     }
                 }
-            } catch (e) { }
+            } catch (e) {
+                isUserLoggedIn = false;
+                document.body.classList.add('is-guest');
+            }
+
+            // Refresh dock to reflect lock icons
+            if (typeof renderDock === 'function') {
+                renderDock();
+            }
+        }
+
+        // 🎯 Auto Join from QR Code or Link (e.g. ?pin=4892 or #pin=4892)
+        async function checkAutoJoinFromUrl() {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                let hashParams = null;
+                if (window.location.hash && window.location.hash.includes('=')) {
+                    hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+                }
+                const pin = params.get('pin') || params.get('room') || params.get('quiz') || (hashParams ? (hashParams.get('pin') || hashParams.get('room') || hashParams.get('quiz')) : null);
+                if (pin && pin.trim().length >= 4) {
+                    const cleanPin = pin.trim().toUpperCase();
+                    console.log('[QR/Link Entry] Auto joining room PIN:', cleanPin);
+                    autoJoinFromQrOrLink(cleanPin, params, hashParams);
+                }
+            } catch (err) {
+                console.warn('[AutoJoinUrl Error]', err);
+            }
+        }
+
+        async function autoJoinFromQrOrLink(pin, params, hashParams) {
+            const client = getClient();
+            if (client) {
+                try {
+                    // 1. Check if Live Studio Room
+                    const { data: liveRoom } = await client
+                        .from('live_studio_rooms')
+                        .select('pin')
+                        .eq('pin', pin)
+                        .maybeSingle();
+
+                    if (liveRoom) {
+                        const nameParam = params?.get('name') || hashParams?.get('name') || '';
+                        const roleParam = params?.get('role') || hashParams?.get('role') || 'student';
+                        const targetUrl = `features/education/live_studio/live_room.html?pin=${encodeURIComponent(pin)}${nameParam ? '&name=' + encodeURIComponent(nameParam) : ''}&role=${encodeURIComponent(roleParam)}`;
+                        openAppInWorkspace(targetUrl, `Live Room ${pin}`, 'app_live_studio');
+                        return;
+                    }
+
+                    // 2. Check if Gyver Quiz Room
+                    const { data: quizRoom } = await client
+                        .from('lobbies')
+                        .select('room_code')
+                        .eq('room_code', pin)
+                        .maybeSingle();
+
+                    if (quizRoom) {
+                        window.location.href = `features/education/quiz/quiz_student.html?pin=${encodeURIComponent(pin)}`;
+                        return;
+                    }
+                } catch (err) {
+                    console.warn('[Auto Join Routing Error]', err);
+                }
+            }
+            // Default fallback to Live Room
+            const targetUrl = `features/education/live_studio/live_room.html?pin=${encodeURIComponent(pin)}`;
+            openAppInWorkspace(targetUrl, `Live Room ${pin}`, 'app_live_studio');
         }
 
         function openJoinRoomModal() {
@@ -1207,6 +1414,9 @@
 
                 const btn = document.createElement('button');
                 btn.className = 'cs-tool-btn';
+                if (!isUserLoggedIn && !isToolAllowedForGuest(toolId)) {
+                    btn.classList.add('member-locked');
+                }
                 btn.setAttribute('draggable', 'true');
                 btn.setAttribute('data-tool-id', toolId);
                 btn.setAttribute('data-dock-index', index);
@@ -1218,6 +1428,11 @@
                 // Normal click / tap
                 btn.onclick = (e) => {
                     if (isDockEditMode) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return;
+                    }
+                    if (typeof window.checkToolAccess === 'function' && !window.checkToolAccess(toolId, tool.title)) {
                         e.preventDefault();
                         e.stopPropagation();
                         return;
@@ -1307,6 +1522,19 @@
         }
 
         function openAppInWorkspace(url, title, toolId) {
+            // Check if this is a student participant joining via QR code/PIN/link
+            const isStudentParticipant = url && (
+                url.includes('pin=') ||
+                url.includes('live_room.html') ||
+                url.includes('quiz_student.html')
+            );
+
+            if (!isStudentParticipant && toolId) {
+                if (typeof window.checkToolAccess === 'function' && !window.checkToolAccess(toolId, title)) {
+                    return;
+                }
+            }
+
             const vp = document.getElementById('cs-app-viewport');
             const frame = document.getElementById('cs-app-frame');
             const backBtn = document.getElementById('cs-app-back-btn');
@@ -1454,6 +1682,10 @@
             const tool = ALL_DOCK_TOOLS[toolId];
             if (!tool) return;
 
+            if (typeof window.checkToolAccess === 'function' && !window.checkToolAccess(toolId, tool.title)) {
+                return;
+            }
+
             // Close Launchpad drawer if open
             const drawerEl = document.getElementById('teacherMenuDrawer');
             if (drawerEl && drawerEl.classList.contains('show')) {
@@ -1489,6 +1721,10 @@
             }
             const tool = ALL_DOCK_TOOLS[toolId];
             if (!tool) return;
+
+            if (typeof window.checkToolAccess === 'function' && !window.checkToolAccess(toolId, tool.title)) {
+                return;
+            }
 
             const existingIndex = currentDockItems.indexOf(toolId);
             if (existingIndex !== -1) {
@@ -1567,6 +1803,11 @@
 
         // 🖐️ Drag & Drop Handlers
         function onLaunchpadDragStart(event, toolId) {
+            if (!isUserLoggedIn && !isToolAllowedForGuest(toolId)) {
+                event.preventDefault();
+                showMemberLockModal(ALL_DOCK_TOOLS[toolId]?.title || toolId);
+                return false;
+            }
             event.dataTransfer.setData('application/json', JSON.stringify({ source: 'launchpad', toolId }));
             event.dataTransfer.effectAllowed = 'copy';
         }

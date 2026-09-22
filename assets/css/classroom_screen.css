@@ -1881,3 +1881,65 @@ body.in-app-view #cs-widget-canvas {
     transform: translateX(-50%) translateY(0) !important;
 }
 
+/* ====================================================
+   🔒 Member-Only Lock Indicators & Badges
+   ==================================================== */
+.launchpad-lock-pill {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    background: rgba(15, 23, 42, 0.92);
+    border: 1px solid rgba(245, 158, 11, 0.7);
+    color: #fbbf24;
+    border-radius: 999px;
+    padding: 2px 7px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    display: none;
+    align-items: center;
+    gap: 3px;
+    z-index: 6;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+    pointer-events: none;
+}
+
+body.is-guest .launchpad-app-item[data-member-only="true"] .launchpad-lock-pill {
+    display: inline-flex !important;
+}
+
+body.is-guest .launchpad-app-item[data-member-only="true"] {
+    position: relative;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.is-guest .launchpad-app-item[data-member-only="true"]:hover {
+    border-color: rgba(245, 158, 11, 0.5);
+}
+
+body.is-guest .launchpad-member-badge {
+    display: inline-flex !important;
+}
+
+body.is-guest .cs-tool-btn.member-locked::after {
+    content: '\F47C'; /* bootstrap icon bi-lock-fill */
+    font-family: 'bootstrap-icons' !important;
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    font-size: 0.62rem;
+    color: #f59e0b;
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(245, 158, 11, 0.6);
+    border-radius: 50%;
+    width: 15px;
+    height: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+    z-index: 5;
+    pointer-events: none;
+}
+
+

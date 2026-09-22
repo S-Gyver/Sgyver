@@ -44,7 +44,7 @@ function restoreOpenWidgets() {
                     savedList.sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
                     savedList.forEach(item => {
                         if (item && item.type && widgetConfigs[item.type]) {
-                            spawnWidget(item.type, null, item);
+                            spawnWidget(item.type, null, item, true);
                         }
                     });
                     return;
@@ -58,17 +58,15 @@ function restoreOpenWidgets() {
         }
     }
 
-    // Spawn default welcome widgets if first time visit
+    // Spawn default welcome widgets if first time visit (use guest-friendly tools)
     if (!localStorage.getItem('cs_has_visited')) {
         localStorage.setItem('cs_has_visited', 'true');
-        spawnWidget('clock', { left: 40, top: 40 });
-        spawnWidget('traffic', { left: 420, top: 40 });
-        spawnWidget('symbol', { left: 600, top: 40 });
-        spawnWidget('text', { left: 40, top: 280 });
+        spawnWidget('clock', { left: 40, top: 40 }, null, true);
+        spawnWidget('traffic', { left: 420, top: 40 }, null, true);
+        spawnWidget('symbol', { left: 600, top: 40 }, null, true);
     } else {
-        // Default widgets
-        spawnWidget('clock', { left: 40, top: 40 });
-        spawnWidget('text', { left: 40, top: 280 });
+        // Default widget
+        spawnWidget('clock', { left: 40, top: 40 }, null, true);
     }
 }
 
@@ -885,7 +883,11 @@ function autoSaveNote(id, val) {
     debouncedSaveWidgetsState();
 }
 
-function spawnWidget(type, customPos = null, savedState = null) {
+function spawnWidget(type, customPos = null, savedState = null, silent = false) {
+    if (typeof window.checkToolAccess === 'function' && !window.checkToolAccess(type, null, silent)) {
+        return;
+    }
+
     let id = savedState && savedState.id ? savedState.id : ('widget-' + type + '-' + Date.now() + '-' + Math.floor(Math.random() * 1000));
     if (document.getElementById(id)) {
         id = 'widget-' + type + '-' + Date.now() + '-' + Math.floor(Math.random() * 10000);
