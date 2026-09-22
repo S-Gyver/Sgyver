@@ -30,6 +30,18 @@ async function initAuthUser() {
                 currentUserName = session.user.user_metadata?.nickname 
                     || session.user.user_metadata?.username 
                     || session.user.email?.split('@')[0] || '';
+
+                // Also check profiles table if nickname was not set in metadata
+                try {
+                    const { data: prof } = await window.supabaseClient
+                        .from('profiles')
+                        .select('nickname, username')
+                        .eq('id', session.user.id)
+                        .maybeSingle();
+                    if (prof && (prof.nickname || prof.username)) {
+                        currentUserName = prof.nickname || prof.username;
+                    }
+                } catch (_) {}
             }
         } catch (e) {
             console.warn('[Live Studio Auth check]', e);
@@ -293,9 +305,9 @@ function openCreateModal() {
     // Generate fresh PIN
     randomizeModalPin();
 
-    // Pre-fill name from current logged-in user or stored name
-    const savedName = currentUserName || localStorage.getItem('gyver_user_name') || '';
-    if (savedName) el('modal-host-name').value = savedName;
+    // Pre-fill name only if user is logged in, otherwise leave empty for manual typing
+    const savedName = currentUserName || '';
+    el('modal-host-name').value = savedName;
 
     el('create-modal').style.display = 'flex';
     setTimeout(() => el('modal-room-title').focus(), 100);

@@ -75,6 +75,18 @@ async function initAuthUser() {
                 currentUserName = session.user.user_metadata?.nickname 
                     || session.user.user_metadata?.username 
                     || session.user.email?.split('@')[0] || '';
+
+                // Also check profiles table if nickname was not set in metadata
+                try {
+                    const { data: prof } = await window.supabaseClient
+                        .from('profiles')
+                        .select('nickname, username')
+                        .eq('id', session.user.id)
+                        .maybeSingle();
+                    if (prof && (prof.nickname || prof.username)) {
+                        currentUserName = prof.nickname || prof.username;
+                    }
+                } catch (_) {}
             }
         } catch (e) {
             console.warn('[Live Room Auth check]', e);
@@ -131,18 +143,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-    // Otherwise (participant joining via link, QR code, or room card without explicit nameParam):
-    // DO NOT auto-enter with teacher's saved name!
+    // Otherwise show Join Screen
     el('join-screen').style.display = 'flex';
     el('studio-app').style.display  = 'none';
 
-    // Default to student role for all general joiners
+    // Set role
     if (roleParam === 'host') {
         selectRole('host');
-        const savedName = currentUserName || localStorage.getItem('gyver_user_name') || '';
-        if (savedName) el('input-name').value = savedName;
     } else {
         selectRole('student');
+    }
+
+    // 🎯 2 cases for join screen name:
+    // 1. Logged in / Registered -> Automatically pre-fill with username
+    // 2. Not logged in / Guest -> Leave blank for manual typing
+    if (currentUserName) {
+        el('input-name').value = currentUserName;
+    } else {
         el('input-name').value = '';
         el('input-name').placeholder = 'กรุณาระบุชื่อของคุณ (เช่น น้องพิมพ์, โบ๊ท)';
     }
