@@ -32,6 +32,8 @@ body.classroom-mode {
     padding: 0;
     width: 100vw;
     height: 100vh;
+    height: 100dvh;
+    min-height: -webkit-fill-available;
     overflow: hidden;
     font-family: 'Kanit', sans-serif;
     background-color: var(--cs-dark-bg);
@@ -877,18 +879,20 @@ body.in-app-view #cs-widget-canvas {
 .cs-toolbar-wrapper,
 .cs-dock-wrapper {
     position: fixed;
-    bottom: 16px;
+    bottom: max(14px, env(safe-area-inset-bottom, 14px));
     left: 50%;
     transform: translateX(-50%);
     z-index: 1000;
-    max-width: 96vw;
+    max-width: 98vw;
     display: flex;
     align-items: center;
     justify-content: center;
+    pointer-events: none; /* Allows canvas interaction around the dock */
 }
 
 .cs-toolbar,
 .cs-dock {
+    pointer-events: auto;
     background: var(--cs-glass-bg);
     backdrop-filter: blur(28px) saturate(190%);
     -webkit-backdrop-filter: blur(28px) saturate(190%);
@@ -900,6 +904,10 @@ body.in-app-view #cs-widget-canvas {
     gap: 0.45rem;
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55), inset 0 1px 1px rgba(255, 255, 255, 0.2);
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    touch-action: pan-x;
+    max-width: 100%;
     scrollbar-width: none;
 }
 
@@ -1568,13 +1576,204 @@ body.in-app-view #cs-widget-canvas {
     filter: invert(1);
 }
 
-/* Responsive adjust */
+/* ====================================================
+   📱 MOBILE & TABLET RESPONSIVE ADAPTATIONS
+   ==================================================== */
 @media (max-width: 768px) {
-    .cs-header { padding: 0 0.75rem; }
-    .cs-header-clock { display: none !important; }
-    .cs-tool-btn { width: 50px; height: 50px; border-radius: 14px; }
-    .cs-tool-btn i { font-size: 1.25rem; }
-    .cs-tool-btn span { font-size: 0.6rem; }
+    body.classroom-mode {
+        height: 100vh;
+        height: 100dvh;
+        overflow: hidden;
+    }
+
+    body.classroom-mode #cs-widget-canvas {
+        top: 54px;
+        height: calc(100dvh - 54px);
+    }
+
+    /* 📌 1. Header Bar Responsiveness */
+    .cs-header {
+        height: 54px;
+        padding: 0 0.5rem;
+        gap: 6px;
+    }
+
+    .cs-brand {
+        font-size: 0.95rem;
+        gap: 0.45rem;
+    }
+
+    .cs-brand-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 0.95rem;
+        border-radius: 8px;
+    }
+
+    .cs-btn-icon {
+        width: 34px;
+        height: 34px;
+        font-size: 0.9rem;
+    }
+
+    .cs-btn-text {
+        padding: 0.3rem 0.55rem;
+        font-size: 0.78rem;
+        gap: 0.25rem;
+    }
+
+    .cs-header-clock {
+        display: none !important;
+    }
+
+    /* Editable Title Box on Mobile */
+    .cs-title-box {
+        flex: 0 1 110px;
+        max-width: 120px;
+        min-width: 0;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.8rem;
+    }
+
+    .cs-title-box input {
+        min-width: 0;
+        width: 75px;
+        font-size: 0.78rem;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        overflow: hidden;
+        text-align: left;
+    }
+
+    .cs-header-actions {
+        gap: 0.25rem;
+        flex-shrink: 0;
+    }
+
+    /* 🪟 2. Floating Widgets on Mobile */
+    .cs-widget {
+        max-width: calc(100vw - 20px) !important;
+        border-radius: 16px;
+    }
+
+    .cs-widget-header {
+        height: 38px;
+        padding: 0 0.65rem;
+    }
+
+    .cs-widget-title {
+        font-size: 0.82rem;
+    }
+
+    .cs-widget-body {
+        padding: 0.75rem;
+    }
+
+    /* ⚓ 3. Bottom Dock on Mobile */
+    .cs-toolbar-wrapper,
+    .cs-dock-wrapper {
+        bottom: max(10px, env(safe-area-inset-bottom, 10px));
+        width: calc(100vw - 16px);
+        max-width: 100vw;
+        padding: 0;
+        justify-content: flex-start;
+    }
+
+    .cs-toolbar,
+    .cs-dock {
+        width: auto;
+        max-width: 100%;
+        padding: 0.35rem 0.5rem;
+        gap: 0.3rem;
+        border-radius: 28px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scroll-behavior: smooth;
+        scrollbar-width: none;
+        margin: 0 auto;
+    }
+
+    .cs-tool-btn {
+        width: 48px;
+        height: 48px;
+        min-width: 48px;
+        border-radius: 12px;
+        padding: 2px;
+    }
+
+    .cs-tool-btn i {
+        font-size: 1.15rem;
+        margin-bottom: 1px;
+    }
+
+    .cs-tool-btn span {
+        font-size: 0.56rem;
+    }
+
+    .cs-dock-divider {
+        height: 28px;
+        margin: 0 2px;
+    }
+
+    /* 🎲 Responsive Widget Internal Layouts (2-column -> 1-column stack) */
+    .wheel-main-layout,
+    .name-main-layout,
+    .guess-main-layout {
+        flex-direction: column !important;
+        overflow-y: auto !important;
+        gap: 10px !important;
+    }
+
+    .wheel-left-col,
+    .wheel-right-col,
+    .name-left-col,
+    .name-right-col,
+    .guess-left-col,
+    .guess-right-col {
+        min-width: 100% !important;
+        width: 100% !important;
+        flex: none !important;
+    }
+
+    .wheel-canvas-container {
+        max-height: 200px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .cs-header {
+        padding: 0 0.4rem;
+        gap: 4px;
+    }
+
+    .cs-brand span {
+        display: none;
+    }
+
+    .cs-title-box {
+        flex: 0 1 85px;
+        max-width: 90px;
+        padding: 0.2rem 0.4rem;
+    }
+
+    .cs-title-box input {
+        width: 55px;
+        font-size: 0.75rem;
+    }
+
+    .cs-tool-btn {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+    }
+
+    .cs-tool-btn i {
+        font-size: 1.08rem;
+    }
+
+    .cs-tool-btn span {
+        font-size: 0.52rem;
+    }
 }
 
 /* ====================================================

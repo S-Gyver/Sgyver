@@ -900,32 +900,9 @@ function spawnWidget(type, customPos = null, savedState = null) {
     }
     const currentZ = savedState && savedState.zIndex ? savedState.zIndex : highestZIndex;
 
-    const widgetCount = Object.keys(activeWidgets).length;
-    let defaultLeft = 60 + (widgetCount % 6) * 40;
-    let defaultTop = 40 + (widgetCount % 6) * 30;
-
-    if (savedState && savedState.left !== undefined) {
-        defaultLeft = savedState.left;
-        defaultTop = savedState.top;
-    } else if (customPos) {
-        defaultLeft = customPos.left;
-        defaultTop = customPos.top;
-    }
-
-    // Viewport boundaries safeguard
     const winW = window.innerWidth || 1200;
     const winH = window.innerHeight || 800;
-    if (defaultLeft > winW - 100) defaultLeft = Math.max(20, winW - 360);
-    if (defaultTop > winH - 100) defaultTop = Math.max(20, winH - 320);
-    if (defaultLeft < 0) defaultLeft = 20;
-    if (defaultTop < 0) defaultTop = 20;
-
-    const widgetEl = document.createElement('div');
-    widgetEl.className = `cs-widget cs-widget-${type}`;
-    widgetEl.id = id;
-    widgetEl.style.left = defaultLeft + 'px';
-    widgetEl.style.top = defaultTop + 'px';
-    widgetEl.style.zIndex = currentZ;
+    const isMobile = winW < 640;
 
     const defaultSizes = {
         wheel: { w: 610, h: 430 },
@@ -946,22 +923,59 @@ function spawnWidget(type, customPos = null, savedState = null) {
 
     const defSize = defaultSizes[type] || { w: 340, h: 280 };
 
-    if (savedState && savedState.width) {
+    let targetW = defSize.w;
+    let targetH = defSize.h;
+
+    if (isMobile) {
+        targetW = Math.min(defSize.w, winW - 24);
+        targetH = Math.min(defSize.h, winH - 160);
+    } else if (savedState && savedState.width) {
         if (type === 'wheel' && parseInt(savedState.width) < 560 && (!savedState.data || savedState.data.settingsOpen !== false)) {
-            widgetEl.style.width = Math.min(defSize.w, winW - 30) + 'px';
-            widgetEl.style.height = Math.min(defSize.h, winH - 60) + 'px';
+            targetW = Math.min(defSize.w, winW - 30);
+            targetH = Math.min(defSize.h, winH - 60);
         } else {
-            widgetEl.style.width = savedState.width;
+            targetW = parseInt(savedState.width);
         }
     } else {
-        widgetEl.style.width = Math.min(defSize.w, winW - 30) + 'px';
+        targetW = Math.min(defSize.w, winW - 30);
     }
 
-    if (savedState && savedState.height && !(type === 'wheel' && (parseInt(savedState.width) < 560 || parseInt(savedState.height) < 420) && (!savedState.data || savedState.data.settingsOpen !== false))) {
-        widgetEl.style.height = savedState.height;
-    } else {
-        widgetEl.style.height = Math.min(defSize.h, winH - 60) + 'px';
+    if (!isMobile && savedState && savedState.height && !(type === 'wheel' && (parseInt(savedState.width) < 560 || parseInt(savedState.height) < 420) && (!savedState.data || savedState.data.settingsOpen !== false))) {
+        targetH = parseInt(savedState.height);
+    } else if (!isMobile) {
+        targetH = Math.min(defSize.h, winH - 60);
     }
+
+    const widgetCount = Object.keys(activeWidgets).length;
+    let defaultLeft = 60 + (widgetCount % 6) * 40;
+    let defaultTop = 40 + (widgetCount % 6) * 30;
+
+    if (isMobile) {
+        // Center horizontally on mobile with safe screen margins
+        defaultLeft = Math.max(12, Math.floor((winW - targetW) / 2));
+        defaultTop = Math.max(68, Math.min(75 + (widgetCount % 4) * 20, winH - targetH - 90));
+    } else {
+        if (savedState && savedState.left !== undefined) {
+            defaultLeft = savedState.left;
+            defaultTop = savedState.top;
+        } else if (customPos) {
+            defaultLeft = customPos.left;
+            defaultTop = customPos.top;
+        }
+        if (defaultLeft + targetW > winW - 20) defaultLeft = Math.max(20, winW - targetW - 20);
+        if (defaultTop + targetH > winH - 60) defaultTop = Math.max(70, winH - targetH - 60);
+        if (defaultLeft < 20) defaultLeft = 20;
+        if (defaultTop < 70) defaultTop = 70;
+    }
+
+    const widgetEl = document.createElement('div');
+    widgetEl.className = `cs-widget cs-widget-${type}`;
+    widgetEl.id = id;
+    widgetEl.style.left = defaultLeft + 'px';
+    widgetEl.style.top = defaultTop + 'px';
+    widgetEl.style.width = targetW + 'px';
+    widgetEl.style.height = targetH + 'px';
+    widgetEl.style.zIndex = currentZ;
 
     const config = widgetConfigs[type] || widgetConfigs['text'];
 
@@ -1188,11 +1202,12 @@ function makeDraggable(element, handle) {
         let newLeft = element.offsetLeft - pos1;
 
         // Boundaries check
-        const maxTop = Math.max(10, window.innerHeight - 80);
-        const maxLeft = Math.max(10, window.innerWidth - 60);
+        const elWidth = element.offsetWidth || 120;
+        const maxTop = Math.max(60, window.innerHeight - 80);
+        const maxLeft = Math.max(8, window.innerWidth - elWidth - 8);
 
-        newTop = Math.max(10, Math.min(maxTop, newTop));
-        newLeft = Math.max(10, Math.min(maxLeft, newLeft));
+        newTop = Math.max(60, Math.min(maxTop, newTop));
+        newLeft = Math.max(8, Math.min(maxLeft, newLeft));
 
         element.style.top = newTop + "px";
         element.style.left = newLeft + "px";
@@ -1227,11 +1242,12 @@ function makeDraggable(element, handle) {
         let newLeft = element.offsetLeft - pos1;
 
         // Boundaries check for touch
-        const maxTop = Math.max(10, window.innerHeight - 80);
-        const maxLeft = Math.max(10, window.innerWidth - 60);
+        const elWidth = element.offsetWidth || 120;
+        const maxTop = Math.max(60, window.innerHeight - 80);
+        const maxLeft = Math.max(8, window.innerWidth - elWidth - 8);
 
-        newTop = Math.max(10, Math.min(maxTop, newTop));
-        newLeft = Math.max(10, Math.min(maxLeft, newLeft));
+        newTop = Math.max(60, Math.min(maxTop, newTop));
+        newLeft = Math.max(8, Math.min(maxLeft, newLeft));
 
         element.style.top = newTop + "px";
         element.style.left = newLeft + "px";

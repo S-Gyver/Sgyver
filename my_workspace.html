@@ -68,8 +68,8 @@
                 <div class="cs-brand-icon">
                     <i class="bi bi-grid-1x2-fill"></i>
                 </div>
-                <span>Gyver <span style="color:var(--cs-teal);">Workspace</span></span>
-                <span class="badge bg-primary-subtle text-info border border-info-subtle px-2 py-1 ms-1"
+                <span class="cs-brand-name">Gyver <span class="d-none d-sm-inline" style="color:var(--cs-teal);">Workspace</span></span>
+                <span class="badge bg-primary-subtle text-info border border-info-subtle px-2 py-1 ms-1 d-none d-md-inline-block"
                     style="font-size:0.68rem;">v2.0</span>
             </a>
         </div>
@@ -101,7 +101,7 @@
             </button>
 
             <!-- 🖼️ Background Switcher -->
-            <button class="cs-btn-text" data-bs-toggle="modal" data-bs-target="#bgModal" title="เปลี่ยนภาพพื้นหลัง">
+            <button class="cs-btn-text d-none d-sm-inline-flex" data-bs-toggle="modal" data-bs-target="#bgModal" title="เปลี่ยนภาพพื้นหลัง">
                 <i class="bi bi-image tool-bg"></i>
                 <span class="d-none d-md-inline">พื้นหลัง</span>
             </button>
@@ -112,7 +112,7 @@
             </button>
 
             <!-- ⛶ Fullscreen -->
-            <button class="cs-btn-icon" onclick="toggleFullscreen()" title="แสดงผลเต็มจอ">
+            <button class="cs-btn-icon cs-btn-fullscreen d-none d-md-inline-flex" onclick="toggleFullscreen()" title="แสดงผลเต็มจอ">
                 <i class="bi bi-arrows-fullscreen"></i>
             </button>
 
@@ -126,14 +126,14 @@
             <div class="d-none align-items-center cs-profile-dropdown" id="user-profile-zone">
                 <div class="dropdown">
                     <button
-                        class="btn btn-outline-light border-secondary rounded-pill d-flex align-items-center gap-2 px-3 py-1 dropdown-toggle shadow-sm"
+                        class="btn btn-outline-light border-secondary rounded-pill d-flex align-items-center gap-1 gap-sm-2 px-2 px-sm-3 py-1 dropdown-toggle shadow-sm"
                         type="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                         <img id="nav-user-avatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png"
                             class="rounded-circle border border-2 border-info"
-                            style="width: 28px; height: 28px; object-fit: cover;">
-                        <span id="nav-user-name" class="fw-bold text-white small">User</span>
+                            style="width: 26px; height: 26px; object-fit: cover;">
+                        <span id="nav-user-name" class="fw-bold text-white small d-none d-sm-inline">User</span>
                         <span id="nav-user-badge"
-                            class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Lv.1</span>
+                            class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 d-none d-md-inline-block">Lv.1</span>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-4 mt-2 p-2"
                         aria-labelledby="profileDropdown"
