@@ -46,6 +46,8 @@ const STATE = {
     // Persistent items
     chatMessages:  [],
     sharedFiles:   [],
+    renderedMessageSignatures: new Set(),
+    renderedFileSignatures:    new Set(),
 
     // Timers
     clockInterval: null,
@@ -302,6 +304,10 @@ async function enterStudio() {
     startClock();
     addParticipant({ id: STATE.myId, name, role: STATE.myRole, micOn: false, camOn: false, speaking: false });
 
+    // Load persistent history immediately (instant rendering from localStorage)
+    loadLocalHistory(pin);
+    setupChatPasteHandler();
+
     // Setup Realtime signaling & WebRTC immediately
     setupRealtimeChannel(pin);
 
@@ -392,11 +398,98 @@ function applyEndedRoomState() {
     el('screen-hint').innerHTML = 'ห้องนี้จบการสอนแล้ว — <strong>ประวัติแชทและคลังไฟล์ยังคงเปิดให้ศึกษาและดาวน์โหลดได้ตลอดเวลา</strong>';
 }
 
+// ── STORAGE & PERSISTENCE HELPERS ─────────────────────────────
+function getChatStorageKey(pin) {
+    return `gyver_live_chat_${pin}`;
+}
+
+function getFilesStorageKey(pin) {
+    return `gyver_live_files_${pin}`;
+}
+
+function getLocalMessages(pin) {
+    try {
+        const raw = localStorage.getItem(getChatStorageKey(pin));
+        return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function getLocalFiles(pin) {
+    try {
+        const raw = localStorage.getItem(getFilesStorageKey(pin));
+        return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveLocalMessage(pin, msg) {
+    if (!pin || !msg) return;
+    try {
+        const key = getChatStorageKey(pin);
+        let list = getLocalMessages(pin);
+        const exists = list.some(m => m.timestamp === msg.timestamp && m.name === msg.name && m.text === msg.text);
+        if (!exists) {
+            list.push(msg);
+            if (list.length > 250) list.shift();
+            localStorage.setItem(key, JSON.stringify(list));
+        }
+    } catch (e) {
+        console.warn('[saveLocalMessage]', e);
+    }
+}
+
+function saveLocalFile(pin, f) {
+    if (!pin || !f) return;
+    try {
+        const key = getFilesStorageKey(pin);
+        let list = getLocalFiles(pin);
+        const exists = list.some(item => (item.url && item.url === f.url) || (item.name === f.name && item.timestamp === f.timestamp));
+        if (!exists) {
+            list.unshift(f);
+            if (list.length > 100) list.pop();
+            localStorage.setItem(key, JSON.stringify(list));
+        }
+    } catch (e) {
+        console.warn('[saveLocalFile]', e);
+    }
+}
+
+function loadLocalHistory(pin) {
+    if (!pin) return;
+    const msgs = getLocalMessages(pin);
+    if (msgs && msgs.length > 0) {
+        msgs.forEach(m => renderChatMessage(m, false));
+    }
+    const files = getLocalFiles(pin);
+    if (files && files.length > 0) {
+        files.forEach(f => addFileToPanel(f, false));
+    }
+}
+
+async function ensureRoomExistsInDb(pin) {
+    if (!window.supabaseClient) return;
+    try {
+        await supabaseClient.from('live_studio_rooms').upsert([{
+            pin,
+            title: STATE.roomTitle || `ห้อง ${pin}`,
+            host_name: STATE.isHost ? STATE.myName : 'Host',
+            status: STATE.roomStatus || 'LIVE'
+        }], { onConflict: 'pin' });
+    } catch (e) {
+        // ignore
+    }
+}
+
 // ── LOAD DB HISTORY (CHAT & FILES) ─────────────────────────────
 async function loadDbHistory(pin) {
     if (!window.supabaseClient) return;
 
     try {
+        await ensureRoomExistsInDb(pin);
+
         // 1. Load Messages
         const { data: messages, error: msgErr } = await supabaseClient
             .from('live_studio_messages')
@@ -404,9 +497,7 @@ async function loadDbHistory(pin) {
             .eq('room_pin', pin)
             .order('created_at', { ascending: true });
 
-        if (msgErr) {
-            console.warn('💡 [Supabase Notice] ยังไม่ได้รันคำสั่ง SQL สร้างตาราง live_studio_messages:', msgErr.message);
-        } else if (messages && messages.length > 0) {
+        if (!msgErr && messages && messages.length > 0) {
             messages.forEach(msg => {
                 renderChatMessage({
                     name:      msg.sender_name,
@@ -415,7 +506,7 @@ async function loadDbHistory(pin) {
                     timestamp: new Date(msg.created_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
                     avatar:    msg.sender_avatar,
                     isHistory: true
-                });
+                }, true);
             });
         }
 
@@ -426,9 +517,7 @@ async function loadDbHistory(pin) {
             .eq('room_pin', pin)
             .order('created_at', { ascending: false });
 
-        if (fileErr) {
-            console.warn('💡 [Supabase Notice] ยังไม่ได้รันคำสั่ง SQL สร้างตาราง live_studio_files:', fileErr.message);
-        } else if (files && files.length > 0) {
+        if (!fileErr && files && files.length > 0) {
             files.forEach(f => {
                 addFileToPanel({
                     name:      f.file_name,
@@ -437,18 +526,240 @@ async function loadDbHistory(pin) {
                     type:      f.file_type,
                     uploader:  f.sender_name,
                     timestamp: new Date(f.created_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
-                });
+                }, true);
             });
         }
     } catch (err) {
-        console.warn('[loadDbHistory] Graceful skip:', err.message);
+        console.warn('[loadDbHistory] Notice:', err.message);
     }
 }
 
-// ── CLOUDINARY FILE UPLOAD ─────────────────────────────────────
+// ── CLOUDINARY & IMAGE HELPERS ─────────────────────────────────
+function isImage(url, filename = '') {
+    if (!url) return false;
+    const str = (url + ' ' + (filename || '')).toLowerCase();
+    return str.match(/\.(jpeg|jpg|gif|png|webp|svg|bmp)($|\?|\s)/i) ||
+           (url.includes('cloudinary.com') && !str.match(/\.(pdf|zip|rar|docx?|xlsx?|pptx?|mp4|webm)($|\?|\s)/i)) ||
+           url.startsWith('data:image/');
+}
+
+function parseChatBody(text) {
+    if (!text) return '';
+
+    // 1. File attachment pattern: 📎 ได้แนบไฟล์: [filename](url) (size)
+    const fileAttachRegex = /📎 ได้แนบไฟล์:\s*\[(.*?)\]\((https?:\/\/[^\s]+|data:image\/[^\s]+)\)(?:\s*\((.*?)\))?/;
+    const match = text.match(fileAttachRegex);
+    if (match) {
+        const fileName = match[1];
+        const fileUrl  = match[2];
+        const fileSize = match[3] || '';
+
+        if (isImage(fileUrl, fileName)) {
+            return `
+                <div class="chat-file-card-bubble">
+                    <div style="font-size:0.8rem;color:#94a3b8;margin-bottom:6px;display:flex;align-items:center;gap:6px">
+                        <i class="bi bi-image" style="color:#818cf8"></i>
+                        <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px">${escapeHtml(fileName)}</span>
+                    </div>
+                    <a href="${escapeHtml(fileUrl)}" target="_blank" class="chat-img-link" title="คลิกเพื่อดูรูปขนาดเต็ม">
+                        <img src="${escapeHtml(fileUrl)}" class="chat-embedded-image" alt="${escapeHtml(fileName)}" loading="lazy" />
+                    </a>
+                    <div style="margin-top:6px;display:flex;justify-content:space-between;align-items:center">
+                        <span style="font-size:0.75rem;color:#64748b">${escapeHtml(fileSize)}</span>
+                        <a href="${escapeHtml(fileUrl)}" target="_blank" download="${escapeHtml(fileName)}" style="font-size:0.75rem;color:#818cf8;text-decoration:none;display:inline-flex;align-items:center;gap:4px">
+                            <i class="bi bi-download"></i> ดาวน์โหลด
+                        </a>
+                    </div>
+                </div>
+            `;
+        } else {
+            return `
+                <div class="chat-file-card-bubble">
+                    <div style="display:flex;align-items:center;gap:10px">
+                        <div style="font-size:1.6rem;color:#818cf8"><i class="bi bi-file-earmark-arrow-down"></i></div>
+                        <div style="flex:1;min-width:0">
+                            <div style="font-size:0.85rem;font-weight:600;color:#f2f3f5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(fileName)}</div>
+                            <div style="font-size:0.72rem;color:#94a3b8">${escapeHtml(fileSize)}</div>
+                        </div>
+                        <a href="${escapeHtml(fileUrl)}" target="_blank" download="${escapeHtml(fileName)}" style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:6px;background:rgba(88,101,242,0.2);color:#818cf8;text-decoration:none">
+                            <i class="bi bi-download"></i>
+                        </a>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    // 2. Direct image markdown: ![alt](url)
+    const imgMdRegex = /!\[(.*?)\]\((https?:\/\/[^\s]+|data:image\/[^\s]+)\)/g;
+    if (imgMdRegex.test(text)) {
+        return text.replace(imgMdRegex, (m, alt, url) => {
+            return `
+                <div class="chat-file-card-bubble" style="padding:6px;background:transparent;border:none">
+                    <a href="${escapeHtml(url)}" target="_blank" class="chat-img-link" title="คลิกเพื่อดูรูปภาพ">
+                        <img src="${escapeHtml(url)}" class="chat-embedded-image" alt="${escapeHtml(alt || 'image')}" loading="lazy" />
+                    </a>
+                </div>
+            `;
+        });
+    }
+
+    // 3. Standalone image URL
+    const urlPattern = /^(https?:\/\/[^\s]+\.(?:jpeg|jpg|gif|png|webp|svg)(?:\?[^\s]*)?)$/i;
+    if (urlPattern.test(text.trim())) {
+        const url = text.trim();
+        return `
+            <div class="chat-file-card-bubble" style="padding:6px;background:transparent;border:none">
+                <a href="${escapeHtml(url)}" target="_blank" class="chat-img-link" title="คลิกเพื่อดูรูปภาพ">
+                    <img src="${escapeHtml(url)}" class="chat-embedded-image" alt="Image" loading="lazy" />
+                </a>
+            </div>
+        `;
+    }
+
+    // 4. Standard markdown links [text](url)
+    let bodyHtml = escapeHtml(text);
+    bodyHtml = bodyHtml.replace(/\[(.*?)\]\((https?:\/\/[^\s]+)\)/g, '<a href="$2" target="_blank" download style="color:#60a5fa;text-decoration:underline;word-break:break-all"><i class="bi bi-link-45deg me-1"></i>$1</a>');
+
+    // Auto-link remaining HTTP/HTTPS URLs (not inside quotes/tags)
+    bodyHtml = bodyHtml.replace(/(^|[^"'])(https?:\/\/[^\s<]+)/g, '$1<a href="$2" target="_blank" style="color:#60a5fa;text-decoration:underline;word-break:break-all">$2</a>');
+
+    return bodyHtml;
+}
+
+function setupChatPasteHandler() {
+    const input = el('chat-input');
+    if (!input || input.dataset.pasteAttached) return;
+    input.dataset.pasteAttached = 'true';
+
+    input.addEventListener('paste', async (e) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type && items[i].type.startsWith('image/')) {
+                const blob = items[i].getAsFile();
+                if (blob) {
+                    e.preventDefault();
+                    const pasteName = `screenshot_${new Date().toISOString().replace(/[:.]/g, '-')}.png`;
+                    showToast('info', 'กำลังส่งรูปภาพ...', 'ตรวจพบรูปภาพจากคลิปบอร์ด กำลังบันทึกและส่ง', 2000);
+                    await uploadAndSendImageBlob(blob, pasteName);
+                    break;
+                }
+            }
+        }
+    });
+}
+
+function fileToDataUrl(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+async function uploadAndSendImageBlob(file, defaultName = 'image.png') {
+    const progressEl = el('file-upload-progress');
+    const statusText = el('upload-status-text');
+
+    const fileName = file.name || defaultName;
+    if (progressEl) {
+        progressEl.style.display = 'flex';
+        statusText.textContent = `กำลังส่งรูปภาพ "${fileName}"...`;
+    }
+
+    try {
+        let fileUrl = null;
+        let fileSize = file.size || 0;
+
+        // Try Cloudinary
+        try {
+            const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY.cloudName}/auto/upload`;
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('upload_preset', CLOUDINARY.uploadPreset);
+
+            const res = await fetch(url, { method: 'POST', body: formData });
+            if (res.ok) {
+                const data = await res.json();
+                fileUrl = data.secure_url || data.url;
+                fileSize = file.size || data.bytes || fileSize;
+            }
+        } catch (cloudErr) {
+            console.warn('Cloudinary upload fallback to data URL:', cloudErr);
+        }
+
+        // Fallback to data URL if small image
+        if (!fileUrl && fileSize <= 2.5 * 1024 * 1024) {
+            fileUrl = await fileToDataUrl(file);
+        }
+
+        if (!fileUrl) {
+            throw new Error('ไม่สามารถอัปโหลดรูปภาพได้ กรุณาลองใหม่อีกครั้ง');
+        }
+
+        const fileType = file.type || 'image/png';
+        const timestamp = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+
+        const fileObj = {
+            name: fileName,
+            url: fileUrl,
+            size: fileSize,
+            type: fileType,
+            uploader: STATE.myName,
+            timestamp: timestamp
+        };
+
+        // 1. Add to Files tab & localStorage
+        addFileToPanel(fileObj, true);
+
+        // 2. Save in Supabase DB if Cloudinary URL
+        if (window.supabaseClient && !fileUrl.startsWith('data:')) {
+            ensureRoomExistsInDb(STATE.roomPin).then(() => {
+                supabaseClient.from('live_studio_files').insert([{
+                    room_pin: STATE.roomPin,
+                    sender_name: STATE.myName,
+                    file_name: fileName,
+                    file_url: fileUrl,
+                    file_type: fileType,
+                    file_size: fileSize
+                }]).then(() => {}).catch(() => {});
+            });
+        }
+
+        // 3. Post to chat
+        const sizeFormatted = formatFileSize(fileSize);
+        const chatMsg = `📎 ได้แนบไฟล์: [${fileName}](${fileUrl}) (${sizeFormatted})`;
+        await saveAndBroadcastMessage(chatMsg);
+
+        // 4. Broadcast file_shared
+        if (STATE.channel) {
+            STATE.channel.send({
+                type: 'broadcast',
+                event: 'file_shared',
+                payload: fileObj
+            });
+        }
+
+        showToast('success', 'ส่งรูปภาพสำเร็จ', `รูปภาพถูกบันทึกและส่งเข้าห้องแชทแล้ว`, 3000);
+    } catch (err) {
+        console.error('Image upload error:', err);
+        showToast('error', 'ส่งรูปภาพล้มเหลว', err.message || 'ไม่สามารถส่งรูปภาพได้', 4000);
+    } finally {
+        if (progressEl) progressEl.style.display = 'none';
+    }
+}
+
 async function handleFileUpload(input) {
     const file = input.files?.[0];
     if (!file) return;
+
+    if (file.type.startsWith('image/')) {
+        await uploadAndSendImageBlob(file, file.name);
+        input.value = '';
+        return;
+    }
 
     const progressEl = el('file-upload-progress');
     const statusText = el('upload-status-text');
@@ -459,70 +770,80 @@ async function handleFileUpload(input) {
     }
 
     try {
-        const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY.cloudName}/auto/upload`;
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('upload_preset', CLOUDINARY.uploadPreset);
-
-        const res = await fetch(url, { method: 'POST', body: formData });
-        if (!res.ok) {
-            const errData = await res.json().catch(() => ({}));
-            throw new Error(errData.error?.message || `HTTP ${res.status}`);
-        }
-
-        const data = await res.json();
-        const fileUrl = data.secure_url || data.url;
-        const fileSize = file.size || data.bytes || 0;
+        let fileUrl = null;
+        let fileSize = file.size || 0;
         const fileName = file.name;
-        const fileType = file.type || data.format || 'file';
+        const fileType = file.type || 'file';
 
-        // 1. Save file to Supabase DB
-        if (window.supabaseClient) {
-            await supabaseClient.from('live_studio_files').insert([{
-                room_pin:    STATE.roomPin,
-                sender_name: STATE.myName,
-                file_name:   fileName,
-                file_url:    fileUrl,
-                file_type:   fileType,
-                file_size:   fileSize
-            }]);
+        try {
+            const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY.cloudName}/auto/upload`;
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('upload_preset', CLOUDINARY.uploadPreset);
+
+            const res = await fetch(url, { method: 'POST', body: formData });
+            if (res.ok) {
+                const data = await res.json();
+                fileUrl = data.secure_url || data.url;
+                fileSize = file.size || data.bytes || fileSize;
+            }
+        } catch (e) {
+            console.warn('Cloudinary upload error:', e);
         }
 
-        // 2. Add to local Files tab
-        addFileToPanel({
-            name:     fileName,
-            url:      fileUrl,
-            size:     fileSize,
-            type:     fileType,
-            uploader: STATE.myName,
-            timestamp: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
-        });
+        if (!fileUrl && fileSize <= 2.5 * 1024 * 1024) {
+            fileUrl = await fileToDataUrl(file);
+        }
 
-        // 3. Post a message to chat with permanent download link
+        if (!fileUrl) {
+            throw new Error('ไม่สามารถอัปโหลดไฟล์ได้ กรุณาลองใหม่อีกครั้ง');
+        }
+
+        const timestamp = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+        const fileObj = {
+            name: fileName,
+            url: fileUrl,
+            size: fileSize,
+            type: fileType,
+            uploader: STATE.myName,
+            timestamp: timestamp
+        };
+
+        // 1. Add to local Files tab & localStorage
+        addFileToPanel(fileObj, true);
+
+        // 2. Save in DB
+        if (window.supabaseClient && !fileUrl.startsWith('data:')) {
+            ensureRoomExistsInDb(STATE.roomPin).then(() => {
+                supabaseClient.from('live_studio_files').insert([{
+                    room_pin: STATE.roomPin,
+                    sender_name: STATE.myName,
+                    file_name: fileName,
+                    file_url: fileUrl,
+                    file_type: fileType,
+                    file_size: fileSize
+                }]).then(() => {}).catch(() => {});
+            });
+        }
+
+        // 3. Post to chat
         const sizeFormatted = formatFileSize(fileSize);
         const chatMsg = `📎 ได้แนบไฟล์: [${fileName}](${fileUrl}) (${sizeFormatted})`;
         await saveAndBroadcastMessage(chatMsg);
 
-        // 4. Realtime broadcast for other users
+        // 4. Realtime broadcast
         if (STATE.channel) {
             STATE.channel.send({
                 type: 'broadcast',
                 event: 'file_shared',
-                payload: {
-                    name:      fileName,
-                    url:       fileUrl,
-                    size:      fileSize,
-                    type:      fileType,
-                    uploader:  STATE.myName,
-                    timestamp: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
-                }
+                payload: fileObj
             });
         }
 
-        showToast('success', 'อัปโหลดสำเร็จ', `ไฟล์ "${fileName}" ถูกบันทึกลง Cloudinary เรียบร้อยแล้ว`, 3500);
+        showToast('success', 'อัปโหลดสำเร็จ', `ไฟล์ "${fileName}" ถูกบันทึกเรียบร้อยแล้ว`, 3500);
 
     } catch (err) {
-        console.error('[Cloudinary Upload Error]', err);
+        console.error('[Upload Error]', err);
         showToast('error', 'อัปโหลดล้มเหลว', err.message || 'ไม่สามารถส่งไฟล์ได้', 4000);
     } finally {
         if (progressEl) progressEl.style.display = 'none';
@@ -538,15 +859,25 @@ function formatFileSize(bytes) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 
-function addFileToPanel(f) {
+function addFileToPanel(f, saveToStorage = true) {
+    if (!f || !f.name) return;
+
+    const fileSig = `${f.url || ''}_${f.name || ''}_${f.timestamp || ''}`;
+    if (!STATE.renderedFileSignatures) STATE.renderedFileSignatures = new Set();
+    if (STATE.renderedFileSignatures.has(fileSig)) return;
+    STATE.renderedFileSignatures.add(fileSig);
+
+    STATE.sharedFiles.push(f);
+    if (saveToStorage && STATE.roomPin) {
+        saveLocalFile(STATE.roomPin, f);
+    }
+
     const list = el('files-list');
     const emptyState = el('files-empty-state');
     if (emptyState) emptyState.style.display = 'none';
 
-    // Update count badge
-    STATE.sharedFiles.push(f);
-    el('files-badge-count').textContent = STATE.sharedFiles.length;
-    el('tab-files-count').textContent   = STATE.sharedFiles.length;
+    if (el('files-badge-count')) el('files-badge-count').textContent = STATE.sharedFiles.length;
+    if (el('tab-files-count')) el('tab-files-count').textContent   = STATE.sharedFiles.length;
 
     const fileCard = document.createElement('div');
     fileCard.style.cssText = `
@@ -560,24 +891,29 @@ function addFileToPanel(f) {
         transition: all .2s;
     `;
 
-    let iconClass = 'bi-file-earmark';
-    if (f.type.includes('image') || f.url.match(/\.(jpg|jpeg|png|gif|webp)$/i)) iconClass = 'bi-file-earmark-image';
-    else if (f.type.includes('pdf')) iconClass = 'bi-file-earmark-pdf';
-    else if (f.type.includes('video')) iconClass = 'bi-file-earmark-play';
-    else if (f.type.includes('zip') || f.type.includes('rar')) iconClass = 'bi-file-earmark-zip';
+    let iconOrThumb = `<div style="font-size:1.6rem;color:#818cf8"><i class="bi bi-file-earmark"></i></div>`;
+    if (isImage(f.url, f.name)) {
+        iconOrThumb = `<img src="${escapeHtml(f.url)}" style="width:40px;height:40px;border-radius:6px;object-fit:cover;border:1px solid rgba(255,255,255,0.15);flex-shrink:0" alt="thumb" />`;
+    } else if (f.type && f.type.includes('pdf')) {
+        iconOrThumb = `<div style="font-size:1.6rem;color:#ef4444"><i class="bi bi-file-earmark-pdf"></i></div>`;
+    } else if (f.type && f.type.includes('video')) {
+        iconOrThumb = `<div style="font-size:1.6rem;color:#f59e0b"><i class="bi bi-file-earmark-play"></i></div>`;
+    } else if (f.type && (f.type.includes('zip') || f.type.includes('rar'))) {
+        iconOrThumb = `<div style="font-size:1.6rem;color:#10b981"><i class="bi bi-file-earmark-zip"></i></div>`;
+    }
 
     fileCard.innerHTML = `
-        <div style="font-size:1.6rem;color:#818cf8"><i class="bi ${iconClass}"></i></div>
+        ${iconOrThumb}
         <div style="flex:1;min-width:0">
             <div style="font-size:0.85rem;font-weight:600;color:#f2f3f5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</div>
-            <div style="font-size:0.72rem;color:var(--discord-muted)">${escapeHtml(f.uploader)} · ${formatFileSize(f.size)} · ${f.timestamp || ''}</div>
+            <div style="font-size:0.72rem;color:var(--discord-muted)">${escapeHtml(f.uploader || 'ผู้ใช้')} · ${formatFileSize(f.size)} · ${f.timestamp || ''}</div>
         </div>
-        <a href="${escapeHtml(f.url)}" target="_blank" download="${escapeHtml(f.name)}" style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;background:rgba(88,101,242,0.15);color:#818cf8;text-decoration:none;border:1px solid rgba(88,101,242,0.3)">
+        <a href="${escapeHtml(f.url)}" target="_blank" download="${escapeHtml(f.name)}" title="ดาวน์โหลด" style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;background:rgba(88,101,242,0.15);color:#818cf8;text-decoration:none;border:1px solid rgba(88,101,242,0.3)">
             <i class="bi bi-download"></i>
         </a>
     `;
 
-    list.prepend(fileCard);
+    if (list) list.prepend(fileCard);
 }
 
 // ── REALTIME & SIGNALING ───────────────────────────────────────
@@ -595,10 +931,37 @@ function setupRealtimeChannel(pin) {
     // 1. Broadcast Events
     STATE.channel
         .on('broadcast', { event: 'chat' }, ({ payload }) => {
-            renderChatMessage(payload);
+            renderChatMessage(payload, true);
         })
         .on('broadcast', { event: 'file_shared' }, ({ payload }) => {
-            addFileToPanel(payload);
+            addFileToPanel(payload, true);
+        })
+        .on('broadcast', { event: 'request_history' }, ({ payload }) => {
+            if (payload && payload.requester !== STATE.myName) {
+                const msgs = getLocalMessages(STATE.roomPin);
+                const files = getLocalFiles(STATE.roomPin);
+                if (msgs.length > 0 || files.length > 0) {
+                    STATE.channel.send({
+                        type: 'broadcast',
+                        event: 'sync_history',
+                        payload: {
+                            target: payload.requester,
+                            messages: msgs,
+                            files: files
+                        }
+                    });
+                }
+            }
+        })
+        .on('broadcast', { event: 'sync_history' }, ({ payload }) => {
+            if (payload && payload.target === STATE.myName) {
+                if (payload.messages && payload.messages.length > 0) {
+                    payload.messages.forEach(m => renderChatMessage(m, true));
+                }
+                if (payload.files && payload.files.length > 0) {
+                    payload.files.forEach(f => addFileToPanel(f, true));
+                }
+            }
         })
         .on('broadcast', { event: 'reaction' }, ({ payload }) => {
             showFloatingReaction(payload.emoji, payload.name);
@@ -673,11 +1036,24 @@ function setupRealtimeChannel(pin) {
                 camOn:    STATE.camOn,
                 screenOn: STATE.screenOn,
             });
+
+            // Request history from peers if this client doesn't have cached history
+            if (getLocalMessages(pin).length === 0 && getLocalFiles(pin).length === 0) {
+                setTimeout(() => {
+                    if (STATE.channel) {
+                        STATE.channel.send({
+                            type: 'broadcast',
+                            event: 'request_history',
+                            payload: { requester: STATE.myName }
+                        });
+                    }
+                }, 800);
+            }
         }
     });
 }
 
-// ── CHAT SYSTEM (WITH DB PERSISTENCE) ──────────────────────────
+// ── CHAT SYSTEM (WITH DB PERSISTENCE & LOCAL CACHE) ─────────────
 async function sendChatMessage() {
     const input = el('chat-input');
     const text  = input.value.trim();
@@ -702,22 +1078,22 @@ async function saveAndBroadcastMessage(text) {
         timestamp: timestamp
     };
 
-    // 1. Render locally immediately
-    renderChatMessage(msgObj);
+    // 1. Render locally immediately and save in localStorage
+    renderChatMessage(msgObj, true);
 
     // 2. Save to Supabase DB (persistent)
     if (window.supabaseClient) {
-        try {
-            await supabaseClient.from('live_studio_messages').insert([{
+        ensureRoomExistsInDb(STATE.roomPin).then(() => {
+            supabaseClient.from('live_studio_messages').insert([{
                 room_pin:      STATE.roomPin,
                 sender_name:   STATE.myName,
                 sender_role:   STATE.myRole,
                 sender_avatar: avatarUrl,
                 message:       text
-            }]);
-        } catch (err) {
-            console.error('[Save Message DB Error]', err);
-        }
+            }]).then(() => {}).catch(err => {
+                console.warn('[Save Message DB Notice]:', err.message);
+            });
+        });
     }
 
     // 3. Broadcast to Realtime channel
@@ -737,7 +1113,20 @@ function chatKeyDown(e) {
     }
 }
 
-function renderChatMessage(msg) {
+function renderChatMessage(msg, saveToStorage = true) {
+    if (!msg || !msg.text) return;
+
+    // Deduplication check
+    const msgSig = `${msg.timestamp || ''}_${msg.name || ''}_${msg.text}`;
+    if (!STATE.renderedMessageSignatures) STATE.renderedMessageSignatures = new Set();
+    if (STATE.renderedMessageSignatures.has(msgSig)) return;
+    STATE.renderedMessageSignatures.add(msgSig);
+
+    // Save to localStorage for instant persistent reload
+    if (saveToStorage && STATE.roomPin) {
+        saveLocalMessage(STATE.roomPin, msg);
+    }
+
     const container = el('chat-messages');
     if (!container) return;
 
@@ -747,9 +1136,7 @@ function renderChatMessage(msg) {
     const roleBadge = msg.role === 'host' ? `<span class="host-badge">ครูผู้สอน</span>` : '';
     const avatarSrc = msg.avatar || `https://api.dicebear.com/8.x/thumbs/svg?seed=${encodeURIComponent(msg.name)}`;
 
-    // Convert markdown links e.g. [text](url) to HTML
-    let bodyHtml = escapeHtml(msg.text);
-    bodyHtml = bodyHtml.replace(/\[(.*?)\]\((https?:\/\/[^\s]+)\)/g, '<a href="$2" target="_blank" download style="color:#60a5fa;text-decoration:underline;word-break:break-all"><i class="bi bi-file-earmark-arrow-down me-1"></i>$1</a>');
+    const bodyHtml = parseChatBody(msg.text);
 
     div.innerHTML = `
         <img class="chat-msg-avatar" src="${escapeHtml(avatarSrc)}" alt="${escapeHtml(msg.name)}">
