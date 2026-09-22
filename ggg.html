@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>STARK LABS // J.A.R.V.I.S. Spatial Pick & Place HUD</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Three.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- MediaPipe Hands & Camera Utils -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@500;600;700&display=swap');
+
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #020611;
+      font-family: 'Rajdhani', sans-serif;
+      color: #38bdf8;
+      user-select: none;
+    }
+
+    .font-hud {
+      font-family: 'Orbitron', monospace;
+    }
+
+    .glow-hud {
+      text-shadow: 0 0 10px rgba(56, 189, 248, 0.75), 0 0 22px rgba(14, 165, 233, 0.45);
+    }
+    .glow-gold {
+      text-shadow: 0 0 10px rgba(251, 191, 36, 0.8), 0 0 20px rgba(217, 119, 6, 0.5);
+    }
+    .box-glow {
+      box-shadow: 0 0 18px rgba(56, 189, 248, 0.22), inset 0 0 14px rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+    }
+
+    /* Scanlines */
+    .scanlines {
+      background: linear-gradient(
+        to bottom,
+        rgba(255,255,255,0),
+        rgba(255,255,255,0) 50%,
+        rgba(0, 0, 0, 0.35) 50%,
+        rgba(0, 0, 0, 0.35)
+      );
+      background-size: 100% 4px;
+      pointer-events: none;
+    }
+
+    /* Corner HUD brackets */
+    .corner-bracket {
+      position: relative;
+    }
+    .corner-bracket::before, .corner-bracket::after {
+      content: '';
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-color: #38bdf8;
+      pointer-events: none;
+    }
+    .corner-bracket::before {
+      top: -2px; left: -2px;
+      border-top: 2px solid #38bdf8;
+      border-left: 2px solid #38bdf8;
+    }
+    .corner-bracket::after {
+      bottom: -2px; right: -2px;
+      border-bottom: 2px solid #38bdf8;
+      border-right: 2px solid #38bdf8;
+    }
+
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.9; }
+      50% { transform: scale(1.08); opacity: 0.35; }
+      100% { transform: scale(0.95); opacity: 0.9; }
+    }
+    .pulse-ring {
+      animation: pulse-ring 2.6s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="relative w-screen h-screen">
+
+  <!-- Scanlines & Vignette -->
+  <div class="absolute inset-0 scanlines z-10 pointer-events-none"></div>
+  <div class="absolute inset-0 pointer-events-none z-10" 
+       style="background: radial-gradient(circle at center, transparent 40%, rgba(2,6,17,0.88) 100%);"></div>
+
+  <!-- 3D ThreeJS Canvas Layer -->
+  <canvas id="webgl-canvas" class="absolute inset-0 w-full h-full z-0 cursor-crosshair"></canvas>
+
+  <header class="absolute top-0 left-0 w-full z-20 flex justify-between items-center px-6 py-3 border-b border-cyan-900/40 bg-slate-950/60 backdrop-blur-md">
+    <div class="flex items-center space-x-4">
+      <div class="w-8 h-8 rounded-full border border-cyan-400 flex items-center justify-center pulse-ring">
+        <div class="w-2.5 h-2.5 bg-cyan-400 rounded-full glow-hud"></div>
+      </div>
+      <div>
+        <div class="font-hud font-bold text-base md:text-lg tracking-wider text-cyan-300 flex items-center gap-2">
+          <span>STARK LABS // SPATIAL HUD</span>
+          <span class="text-[10px] px-2 py-0.5 bg-cyan-950 border border-cyan-500 rounded text-cyan-400">PICK & PLACE</span>
+        </div>
+        <div class="text-[10px] md:text-xs tracking-widest text-cyan-500 uppercase">J.A.R.V.I.S. TELEMETRY & ASSEMBLY DECK</div>
+      </div>
+    </div>
+
+    <!-- Center Interaction Banner -->
+    <div id="gesture-banner" class="hidden sm:flex items-center gap-3 px-5 py-1.5 rounded-full box-glow bg-cyan-950/50 backdrop-blur">
+      <div id="status-led" class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping"></div>
+      <span id="status-text" class="font-hud text-xs tracking-wider text-cyan-200 uppercase font-semibold">
+        HOVER OVER ARTIFACT TO LOCK
+      </span>
+    </div>
+
+    <!-- Quick HUD Action Controls -->
+    <div class="flex items-center space-x-2">
+      <button id="audio-toggle" class="px-3 py-1.5 rounded text-xs font-hud border border-cyan-500/50 bg-cyan-950/40 hover:bg-cyan-900/50 transition flex items-center gap-2">
+        <span id="audio-icon">🔊</span> <span id="audio-text" class="hidden md:inline">AUDIO ON</span>
+      </button>
+      <button id="reset-all-btn" class="px-3 py-1.5 rounded text-xs font-hud border border-cyan-500/50 bg-cyan-950/40 hover:bg-cyan-900/50 transition">
+        RESET POSITIONS
+      </button>
+    </div>
+  </header>
+
+  <!-- Left Diagnostics Panel -->
+  <aside class="absolute left-6 top-20 z-20 w-64 space-y-3 pointer-events-none hidden sm:block">
+    <div class="corner-bracket p-3.5 bg-slate-950/70 backdrop-blur-sm box-glow rounded">
+      <div class="text-[11px] font-hud text-cyan-400 border-b border-cyan-800/60 pb-1 mb-2 flex justify-between">
+        <span>MANIPULATION STATUS</span>
+        <span id="val-fps" class="text-cyan-300 font-mono">60 FPS</span>
+      </div>
+      <div class="space-y-1 text-xs">
+        <div class="flex justify-between">
+          <span class="text-slate-400">TARGET ARTIFACT:</span>
+          <span id="val-target" class="font-mono text-amber-300 font-bold">NONE</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">GRAB STATE:</span>
+          <span id="val-grab-state" class="font-mono text-cyan-300">RELEASED</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">HOVERED ZONE:</span>
+          <span id="val-hover-zone" class="font-mono text-emerald-300">NONE</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">PINCH GAP:</span>
+          <span id="val-pinch-gap" class="font-mono text-cyan-300">--</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Spatial Coordinates -->
+    <div class="corner-bracket p-3.5 bg-slate-950/70 backdrop-blur-sm box-glow rounded">
+      <div class="text-[11px] font-hud text-cyan-400 border-b border-cyan-800/60 pb-1 mb-2">POINTER 3D COORDINATES</div>
+      <div class="space-y-1 text-xs font-mono">
+        <div class="flex justify-between">
+          <span class="text-slate-400">X-POS:</span>
+          <span id="val-x" class="text-cyan-300">0.00</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">Y-POS:</span>
+          <span id="val-y" class="text-cyan-300">0.00</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">Z-DEPTH:</span>
+          <span id="val-z" class="text-cyan-300">0.00</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stark Manual Card -->
+    <div class="p-3 bg-cyan-950/30 border border-cyan-800/40 rounded text-[11px] text-cyan-300/80 leading-relaxed">
+      <span class="text-amber-300 font-bold block mb-1">TONY'S CONTROL MANUAL:</span>
+      • <span class="text-cyan-200 font-semibold">Hover hand</span> over any 3D artifact.<br>
+      • <span class="text-emerald-300 font-semibold">Pinch (Thumb + Index)</span> to grab & lift.<br>
+      • Move to <span class="text-cyan-300 font-semibold">Zone A, B or C</span>.<br>
+      • <span class="text-amber-300 font-semibold">Unpinch / Release</span> to snap into pedestal!<br>
+      • <span class="text-slate-400 font-medium">No Webcam?</span> Click & drag with mouse.
+    </div>
+  </aside>
+
+  <!-- Bottom-Right Optical Sensor PIP Monitor -->
+  <div class="absolute right-6 bottom-6 z-20 flex flex-col items-end pointer-events-auto">
+    <div class="corner-bracket p-2 bg-slate-950/85 backdrop-blur box-glow rounded relative overflow-hidden">
+      <div class="text-[10px] font-hud text-cyan-400 mb-1 flex items-center justify-between px-1 w-48 sm:w-60">
+        <span>OPTICAL FEED</span>
+        <span id="vision-state" class="text-emerald-400 text-[9px] uppercase tracking-wider font-bold">STANDBY</span>
+      </div>
+      
+      <!-- Video Element -->
+      <video id="webcam-video" class="hidden" playsinline></video>
+      
+      <!-- Hands Skeleton Canvas -->
+      <div class="relative w-48 h-36 sm:w-60 sm:h-44 bg-slate-900 rounded overflow-hidden border border-cyan-700/50">
+        <canvas id="hand-canvas" class="w-full h-full object-cover transform -scale-x-100"></canvas>
+        <div class="absolute inset-0 pointer-events-none border border-cyan-500/20 grid grid-cols-3 grid-rows-3"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fallback Notification Toast -->
+  <div id="fallback-notification" class="hidden fixed bottom-6 left-6 z-30 max-w-sm p-4 bg-slate-900/95 border border-amber-500/60 rounded box-glow text-amber-200 text-xs">
+    <div class="font-hud font-bold text-amber-300 mb-1">WEBCAM BYPASS ENGAGED</div>
+    Camera stream unavailable or denied. Mouse emulation active: Click & drag artifacts directly into the pedestals!
+  </div>
+
+  <script>
+    class StarkAudioEngine {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContext();
+        }
+      }
+
+      playHoverTone() {
+        if (!this.enabled || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(520, now);
+        osc.frequency.exponentialRampToValueAtTime(780, now + 0.05);
+
+        gain.gain.setValueAtTime(0.02, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.06);
+      }
+
+      playGrabSound() {
+        if (!this.enabled || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.09);
+
+        gain.gain.setValueAtTime(0.07, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.13);
+      }
+
+      playSnapSound() {
+        if (!this.enabled || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        
+        // Multi-frequency chime for assembly lock
+        [587.33, 880, 1174.66].forEach((freq, i) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + i * 0.04);
+
+          gain.gain.setValueAtTime(0.08, now + i * 0.04);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35 + i * 0.04);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + i * 0.04);
+          osc.stop(now + 0.4 + i * 0.04);
+        });
+      }
+
+      playReleaseSound() {
+        if (!this.enabled || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.exponentialRampToValueAtTime(240, now + 0.08);
+
+        gain.gain.setValueAtTime(0.04, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.1);
+      }
+    }
+
+    const starkAudio = new StarkAudioEngine();
+
+    document.getElementById('audio-toggle').addEventListener('click', () => {
+      starkAudio.init();
+      starkAudio.enabled = !starkAudio.enabled;
+      document.getElementById('audio-icon').textContent = starkAudio.enabled ? '🔊' : '🔇';
+      document.getElementById('audio-text').textContent = starkAudio.enabled ? 'AUDIO ON' : 'AUDIO MUTED';
+    });
+  </script>
+
+  <script>
+    const canvas3d = document.getElementById('webgl-canvas');
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x020611, 0.022);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 3.8, 10);
+    camera.lookAt(0, 0.5, 0);
+
+    const renderer = new THREE.WebGLRenderer({ canvas: canvas3d, antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    // Ambient & Sci-Fi Point Lighting
+    const ambientLight = new THREE.AmbientLight(0x0e3a5a, 1.2);
+    scene.add(ambientLight);
+
+    const coreLight = new THREE.PointLight(0x38bdf8, 2.5, 20);
+    coreLight.position.set(0, 4, 2);
+    scene.add(coreLight);
+
+    // Floor Grid
+    const gridHelper = new THREE.GridHelper(36, 36, 0x0284c7, 0x0c253b);
+    gridHelper.position.y = -1.8;
+    scene.add(gridHelper);
+
+    // Drop Zones / Assembly Pedestals
+    const dropZones = [
+      { id: 'zone_a', name: 'CORE CHAMBER (ZONE A)', x: -4.2, y: -1.4, z: 0.5, color: 0x06b6d4, radius: 1.4 },
+      { id: 'zone_b', name: 'ANALYSIS BAY (ZONE B)',  x: 0.0,  y: -1.4, z: -0.8, color: 0x3b82f6, radius: 1.4 },
+      { id: 'zone_c', name: 'STORAGE VAULT (ZONE C)', x: 4.2,  y: -1.4, z: 0.5, color: 0xf59e0b, radius: 1.4 }
+    ];
+
+    const dropZoneMeshes = [];
+    dropZones.forEach(zone => {
+      const zoneGroup = new THREE.Group();
+      zoneGroup.position.set(zone.x, zone.y, zone.z);
+
+      // Outer ring
+      const ringGeo = new THREE.RingGeometry(zone.radius - 0.15, zone.radius, 48);
+      const ringMat = new THREE.MeshBasicMaterial({ color: zone.color, side: THREE.DoubleSide, transparent: true, opacity: 0.65 });
+      const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+      ringMesh.rotation.x = -Math.PI / 2;
+      zoneGroup.add(ringMesh);
+
+      // Inner disc pedestal
+      const discGeo = new THREE.CylinderGeometry(zone.radius - 0.2, zone.radius - 0.2, 0.08, 32);
+      const discMat = new THREE.MeshBasicMaterial({ color: zone.color, wireframe: true, transparent: true, opacity: 0.35 });
+      const discMesh = new THREE.Mesh(discGeo, discMat);
+      discMesh.position.y = 0.04;
+      zoneGroup.add(discMesh);
+
+      // Vertical energy beacon line
+      const lineGeo = new THREE.CylinderGeometry(zone.radius - 0.05, zone.radius - 0.05, 1.8, 24, 1, true);
+      const lineMat = new THREE.MeshBasicMaterial({ color: zone.color, wireframe: true, transparent: true, opacity: 0.12 });
+      const beaconMesh = new THREE.Mesh(lineGeo, lineMat);
+      beaconMesh.position.y = 0.9;
+      zoneGroup.add(beaconMesh);
+
+      scene.add(zoneGroup);
+      zone.meshGroup = zoneGroup;
+      zone.ringMesh = ringMesh;
+      zone.beaconMesh = beaconMesh;
+      dropZoneMeshes.push(zone);
+    });
+
+    // Array of Pickable Holographic Objects
+    const pickableObjects = [];
+
+    // Helper: Create Artifact Object 1 - ARC REACTOR
+    function createArcReactor() {
+      const group = new THREE.Group();
+      group.name = "Arc Reactor Core";
+
+      const coreGeo = new THREE.IcosahedronGeometry(0.55, 1);
+      const coreMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, wireframe: true });
+      const core = new THREE.Mesh(coreGeo, coreMat);
+      group.add(core);
+
+      const glowSphere = new THREE.Mesh(
+        new THREE.SphereGeometry(0.3, 16, 16),
+        new THREE.MeshBasicMaterial({ color: 0x67e8f9, transparent: true, opacity: 0.7 })
+      );
+      group.add(glowSphere);
+
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(0.85, 0.035, 8, 36),
+        new THREE.MeshBasicMaterial({ color: 0x0284c7 })
+      );
+      group.add(ring);
+
+      group.initialPos = new THREE.Vector3(-3.2, 1.1, 0.5);
+      group.position.copy(group.initialPos);
+      group.targetPos = group.position.clone();
+      group.targetScale = 1.0;
+      return group;
+    }
+
+    // Helper: Create Artifact Object 2 - TESSERACT / DATA CUBE
+    function createDataCube() {
+      const group = new THREE.Group();
+      group.name = "Data Tesseract";
+
+      const cubeGeo = new THREE.BoxGeometry(0.85, 0.85, 0.85);
+      const cubeMat = new THREE.MeshBasicMaterial({ color: 0x60a5fa, wireframe: true });
+      const cube = new THREE.Mesh(cubeGeo, cubeMat);
+      group.add(cube);
+
+      const innerCube = new THREE.Mesh(
+        new THREE.BoxGeometry(0.45, 0.45, 0.45),
+        new THREE.MeshBasicMaterial({ color: 0x93c5fd, transparent: true, opacity: 0.75 })
+      );
+      group.add(innerCube);
+
+      group.initialPos = new THREE.Vector3(-1.0, 1.2, -0.2);
+      group.position.copy(group.initialPos);
+      group.targetPos = group.position.clone();
+      group.targetScale = 1.0;
+      return group;
+    }
+
+    // Helper: Create Artifact Object 3 - REPULSOR NODE
+    function createRepulsorNode() {
+      const group = new THREE.Group();
+      group.name = "Repulsor Node";
+
+      const discGeo = new THREE.CylinderGeometry(0.65, 0.65, 0.25, 24);
+      const discMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b, wireframe: true });
+      const node = new THREE.Mesh(discGeo, discMat);
+      group.add(node);
+
+      const ringOuter = new THREE.Mesh(
+        new THREE.TorusGeometry(0.8, 0.04, 8, 32),
+        new THREE.MeshBasicMaterial({ color: 0xfbbf24 })
+      );
+      ringOuter.rotation.x = Math.PI / 2;
+      group.add(ringOuter);
+
+      group.initialPos = new THREE.Vector3(1.1, 1.2, -0.2);
+      group.position.copy(group.initialPos);
+      group.targetPos = group.position.clone();
+      group.targetScale = 1.0;
+      return group;
+    }
+
+    // Helper: Create Artifact Object 4 - QUANTUM SPHERE
+    function createQuantumSphere() {
+      const group = new THREE.Group();
+      group.name = "Quantum Sphere";
+
+      const sphereGeo = new THREE.SphereGeometry(0.55, 16, 16);
+      const sphereMat = new THREE.MeshBasicMaterial({ color: 0xa855f7, wireframe: true });
+      const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+      group.add(sphere);
+
+      const innerOcta = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.35),
+        new THREE.MeshBasicMaterial({ color: 0xd8b4fe, transparent: true, opacity: 0.85 })
+      );
+      group.add(innerOcta);
+
+      group.initialPos = new THREE.Vector3(3.2, 1.1, 0.5);
+      group.position.copy(group.initialPos);
+      group.targetPos = group.position.clone();
+      group.targetScale = 1.0;
+      return group;
+    }
+
+    // Instantiate and add all 4 items to scene
+    const artifacts = [createArcReactor(), createDataCube(), createRepulsorNode(), createQuantumSphere()];
+    artifacts.forEach(item => {
+      scene.add(item);
+      pickableObjects.push(item);
+    });
+
+    // Reset All Positions button
+    document.getElementById('reset-all-btn').addEventListener('click', () => {
+      artifacts.forEach(item => {
+        item.targetPos.copy(item.initialPos);
+        item.targetScale = 1.0;
+      });
+      starkAudio.init();
+      starkAudio.playReleaseSound();
+    });
+  </script>
+
+  <script>
+    // 3D Visual Reticle Cursor for Hand Pointer
+    const cursorGroup = new THREE.Group();
+    
+    // Holographic Reticle Rings
+    const cursorRing1 = new THREE.Mesh(
+      new THREE.RingGeometry(0.18, 0.22, 32),
+      new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.85 })
+    );
+    const cursorRing2 = new THREE.Mesh(
+      new THREE.RingGeometry(0.32, 0.35, 32),
+      new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.45 })
+    );
+    const cursorCenterDot = new THREE.Mesh(
+      new THREE.SphereGeometry(0.06, 12, 12),
+      new THREE.MeshBasicMaterial({ color: 0x67e8f9 })
+    );
+
+    cursorGroup.add(cursorRing1);
+    cursorGroup.add(cursorRing2);
+    cursorGroup.add(cursorCenterDot);
+    cursorGroup.position.set(0, 0, 0);
+    scene.add(cursorGroup);
+
+    // Raycaster for 3D selection
+    const raycaster = new THREE.Raycaster();
+    const handPointer2D = new THREE.Vector2(0, 0); // Normalized device coords [-1 to 1]
+
+    let currentGrabbedObject = null;
+    let hoveredObject = null;
+    let activeHoverZone = null;
+    let isPinchingActive = false;
+
+    // Plane used for moving dragged objects along 3D camera depth
+    const dragPlane = new THREE.Plane();
+    const planeIntersectPoint = new THREE.Vector3();
+  </script>
+
+  <script>
+    const videoElement = document.getElementById('webcam-video');
+    const handCanvas = document.getElementById('hand-canvas');
+    const handCtx = handCanvas.getContext('2d');
+
+    // UI Telemetry indicators
+    const statusLed = document.getElementById('status-led');
+    const statusText = document.getElementById('status-text');
+    const valTarget = document.getElementById('val-target');
+    const valGrabState = document.getElementById('val-grab-state');
+    const valHoverZone = document.getElementById('val-hover-zone');
+    const valPinchGap = document.getElementById('val-pinch-gap');
+    const valX = document.getElementById('val-x');
+    const valY = document.getElementById('val-y');
+    const valZ = document.getElementById('val-z');
+    const valFps = document.getElementById('val-fps');
+    const visionState = document.getElementById('vision-state');
+
+    function drawSkeleton(landmarks, isPinching) {
+      const w = handCanvas.width;
+      const h = handCanvas.height;
+      const connections = [
+        [0,1],[1,2],[2,3],[3,4], [0,5],[5,6],[6,7],[7,8],
+        [0,9],[9,10],[10,11],[11,12], [0,13],[13,14],[14,15],[15,16],
+        [0,17],[17,18],[18,19],[19,20], [5,9],[9,13],[13,17]
+      ];
+
+      handCtx.strokeStyle = isPinching ? '#f59e0b' : '#38bdf8';
+      handCtx.lineWidth = 2;
+      connections.forEach(([i, j]) => {
+        handCtx.beginPath();
+        handCtx.moveTo(landmarks[i].x * w, landmarks[i].y * h);
+        handCtx.lineTo(landmarks[j].x * w, landmarks[j].y * h);
+        handCtx.stroke();
+      });
+
+      landmarks.forEach((pt, index) => {
+        handCtx.beginPath();
+        handCtx.arc(pt.x * w, pt.y * h, (index === 4 || index === 8) ? 4.5 : 2.5, 0, 2 * Math.PI);
+        handCtx.fillStyle = (index === 4 || index === 8)
+          ? (isPinching ? '#fbbf24' : '#00ffff')
+          : '#38bdf8';
+        handCtx.fill();
+      });
+    }
+
+    function processHandInteractions(results) {
+      handCtx.save();
+      handCtx.clearRect(0, 0, handCanvas.width, handCanvas.height);
+
+      // 📹 1. Render live camera frame onto PIP monitor canvas
+      if (results.image) {
+        handCtx.drawImage(results.image, 0, 0, handCanvas.width, handCanvas.height);
+        // Cyber HUD tint
+        handCtx.fillStyle = 'rgba(6, 182, 212, 0.08)';
+        handCtx.fillRect(0, 0, handCanvas.width, handCanvas.height);
+      }
+
+      if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
+        visionState.textContent = results.image ? 'SCANNING (SHOW HAND)' : 'STANDBY';
+        visionState.className = 'text-amber-400 text-[9px] uppercase tracking-wider font-bold';
+        valPinchGap.textContent = '--';
+        handCtx.restore();
+        return;
+      }
+
+      visionState.textContent = 'LOCKED';
+      visionState.className = 'text-emerald-400 text-[9px] uppercase tracking-wider font-bold';
+
+      const hand = results.multiHandLandmarks[0];
+      const thumbTip = hand[4];
+      const indexTip = hand[8];
+      const wrist = hand[0];
+
+      // Pinch gap distance (Euclidean)
+      const pinchDist = Math.hypot(thumbTip.x - indexTip.x, thumbTip.y - indexTip.y);
+      valPinchGap.textContent = (pinchDist * 100).toFixed(1) + ' cm';
+
+      const wasPinching = isPinchingActive;
+      isPinchingActive = pinchDist < 0.085; // Pinch threshold
+
+      drawSkeleton(hand, isPinchingActive);
+      handCtx.restore();
+
+      // Map hand position to normalized device coordinates [-1 to 1]
+      // Mirror X so movement aligns with user's intuitive orientation
+      const midPointX = (thumbTip.x + indexTip.x) / 2;
+      const midPointY = (thumbTip.y + indexTip.y) / 2;
+
+      handPointer2D.x = -(midPointX * 2 - 1);
+      handPointer2D.y = -(midPointY * 2 - 1);
+
+      // Depth estimation using palm size (distance between wrist & index knuckle)
+      const palmScale = Math.hypot(wrist.x - hand[5].x, wrist.y - hand[5].y);
+      // Normalized depth mapping
+      const estimatedZ = THREE.MathUtils.clamp((palmScale - 0.25) * 5, -1.5, 2.5);
+
+      handleSpatialRaycastAndDrag(handPointer2D.x, handPointer2D.y, estimatedZ, isPinchingActive, wasPinching);
+    }
+
+    const hands = new Hands({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+    });
+
+    hands.setOptions({
+      maxNumHands: 1,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.65,
+      minTrackingConfidence: 0.65
+    });
+
+    hands.onResults(processHandInteractions);
+
+    function startWebcam() {
+      handCanvas.width = 320;
+      handCanvas.height = 240;
+
+      // Check if running on file:// protocol
+      if (window.location.protocol === 'file:') {
+        const notif = document.getElementById('fallback-notification');
+        if (notif) {
+          notif.innerHTML = `
+            <div class="font-hud font-bold text-amber-300 mb-1 flex items-center gap-1">
+              <span>⚠️ RUNNING FROM LOCAL FILE (file://)</span>
+            </div>
+            <div class="text-[11px] leading-relaxed">
+              Google Chrome บล็อกการเข้าถึงกล้อง Webcam บน <code>file:///</code> เนื่องจากข้อจำกัดด้านความปลอดภัย<br>
+              • <b>แนะนำ:</b> เปิดไฟล์นี้ผ่าน <b>Live Server</b> ใน VS Code หรือรัน <code>npx serve .</code> แล้วเข้าผ่าน <b>http://localhost:...</b> เพื่อเปิดกล้องได้ 100%<br>
+              • <b>ขณะนี้:</b> คุณสามารถใช้ <b>เมาส์คลิกลากวัตถุ 3D</b> ไปวางบนแท่นวางได้ทันที!
+            </div>
+          `;
+          notif.classList.remove('hidden');
+        }
+      }
+
+      const cameraInstance = new Camera(videoElement, {
+        onFrame: async () => {
+          await hands.send({ image: videoElement });
+        },
+        width: 320,
+        height: 240
+      });
+
+      cameraInstance.start().catch((err) => {
+        console.warn('Webcam stream unavailable or denied:', err);
+        const notif = document.getElementById('fallback-notification');
+        if (notif) notif.classList.remove('hidden');
+        statusText.textContent = 'MOUSE EMULATION ACTIVE: CLICK & DRAG OBJECTS';
+        visionState.textContent = 'OFFLINE';
+        visionState.className = 'text-amber-500 text-[9px] uppercase tracking-wider';
+      });
+    }
+  </script>
+
+  <script>
+    function handleSpatialRaycastAndDrag(normX, normY, depthZ, isPinching, wasPinching) {
+      // 1. Position 3D Reticle in Scene
+      raycaster.setFromCamera({ x: normX, y: normY }, camera);
+      
+      // Calculate ray target on camera plane for 3D cursor position
+      const vector = new THREE.Vector3(normX, normY, 0.5);
+      vector.unproject(camera);
+      const dir = vector.sub(camera.position).normalize();
+      const distance = 8.5; 
+      const cursorTargetPos = camera.position.clone().add(dir.multiplyScalar(distance));
+      
+      cursorGroup.position.lerp(cursorTargetPos, 0.25);
+      cursorGroup.quaternion.copy(camera.quaternion);
+
+      valX.textContent = cursorGroup.position.x.toFixed(2);
+      valY.textContent = cursorGroup.position.y.toFixed(2);
+      valZ.textContent = cursorGroup.position.z.toFixed(2);
+
+      // Visual styling for Cursor depending on state
+      if (isPinching) {
+        cursorRing1.material.color.setHex(0xf59e0b); // Gold pinch
+        cursorRing2.material.color.setHex(0xfbbf24);
+        cursorCenterDot.material.color.setHex(0xffffff);
+      } else {
+        cursorRing1.material.color.setHex(0x38bdf8); // Cyan hover
+        cursorRing2.material.color.setHex(0x38bdf8);
+        cursorCenterDot.material.color.setHex(0x67e8f9);
+      }
+
+      // 2. Raycast against pickable holographic objects if nothing is grabbed
+      if (!currentGrabbedObject) {
+        // Collect child meshes of pickable groups
+        const meshList = [];
+        pickableObjects.forEach(obj => {
+          obj.traverse(child => {
+            if (child.isMesh) {
+              child.userData.parentGroup = obj;
+              meshList.push(child);
+            }
+          });
+        });
+
+        const intersects = raycaster.intersectObjects(meshList);
+
+        if (intersects.length > 0) {
+          const hitGroup = intersects[0].object.userData.parentGroup;
+          if (hoveredObject !== hitGroup) {
+            hoveredObject = hitGroup;
+            starkAudio.init();
+            starkAudio.playHoverTone();
+          }
+
+          valTarget.textContent = hoveredObject.name;
+          valTarget.className = "font-mono text-cyan-300 font-bold glow-hud";
+          statusText.textContent = `TARGET LOCKED: [${hoveredObject.name}] - PINCH TO GRAB`;
+          statusLed.className = 'w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping';
+        } else {
+          hoveredObject = null;
+          valTarget.textContent = 'NONE';
+          valTarget.className = "font-mono text-slate-400 font-bold";
+          statusText.textContent = 'SEARCHING FOR TARGET...';
+          statusLed.className = 'w-2.5 h-2.5 rounded-full bg-slate-500';
+        }
+      }
+
+      // 3. GRAB EVENT: Transition from unpinched -> pinched while hovering an object
+      if (isPinching && !wasPinching && hoveredObject && !currentGrabbedObject) {
+        currentGrabbedObject = hoveredObject;
+        valGrabState.textContent = 'LOCKED (CARRYING)';
+        valGrabState.className = 'font-mono text-amber-300 font-bold glow-gold';
+        
+        starkAudio.init();
+        starkAudio.playGrabSound();
+
+        // Setup dragging plane perpendicular to camera ray
+        dragPlane.setFromNormalAndCoplanarPoint(
+          camera.getWorldDirection(new THREE.Vector3()).negate(),
+          currentGrabbedObject.position
+        );
+      }
+
+      // 4. DRAG / CARRY EVENT: Object tracks hand cursor position in 3D
+      if (currentGrabbedObject) {
+        // Project ray onto drag plane
+        if (raycaster.ray.intersectPlane(dragPlane, planeIntersectPoint)) {
+          currentGrabbedObject.targetPos.copy(planeIntersectPoint);
+        }
+
+        currentGrabbedObject.targetScale = 1.25; // Bulge effect while holding
+
+        statusText.textContent = `MANIPULATING: [${currentGrabbedObject.name}] -> MOVE TO PEDESTAL`;
+        statusLed.className = 'w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping';
+
+        // Check proximity to drop zones
+        activeHoverZone = null;
+        dropZones.forEach(zone => {
+          const dist = currentGrabbedObject.position.distanceTo(new THREE.Vector3(zone.x, zone.y + 0.8, zone.z));
+          if (dist < zone.radius + 0.4) {
+            activeHoverZone = zone;
+          }
+        });
+
+        if (activeHoverZone) {
+          valHoverZone.textContent = activeHoverZone.name;
+          valHoverZone.className = 'font-mono text-emerald-400 font-bold';
+        } else {
+          valHoverZone.textContent = 'IN TRANSIT';
+          valHoverZone.className = 'font-mono text-slate-400';
+        }
+      }
+
+      // 5. RELEASE / DROP EVENT: Transition from pinched -> unpinched
+      if (!isPinching && wasPinching && currentGrabbedObject) {
+        valGrabState.textContent = 'RELEASED';
+        valGrabState.className = 'font-mono text-cyan-300';
+        currentGrabbedObject.targetScale = 1.0;
+
+        if (activeHoverZone) {
+          // Snap into Drop Zone Pedestal
+          currentGrabbedObject.targetPos.set(activeHoverZone.x, activeHoverZone.y + 0.85, activeHoverZone.z);
+          starkAudio.playSnapSound();
+          statusText.textContent = `ARTIFACT ASSEMBLED INTO ${activeHoverZone.name}`;
+          statusLed.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 animate-bounce';
+          
+          // Trigger pedestal ring flare animation
+          activeHoverZone.ringMesh.scale.set(1.4, 1.4, 1.4);
+        } else {
+          // Soft release in mid-air
+          starkAudio.playReleaseSound();
+          statusText.textContent = 'ARTIFACT RELEASED IN FREE SPACE';
+          statusLed.className = 'w-2.5 h-2.5 rounded-full bg-cyan-400';
+        }
+
+        currentGrabbedObject = null;
+        activeHoverZone = null;
+        valHoverZone.textContent = 'NONE';
+      }
+    }
+  </script>
+
+  <script>
+    let isMouseDown = false;
+    let mouseNDC = new THREE.Vector2();
+
+    window.addEventListener('mousedown', (e) => {
+      if (e.target.closest('header') || e.target.closest('aside') || e.target.closest('button')) return;
+      isMouseDown = true;
+      starkAudio.init();
+
+      mouseNDC.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouseNDC.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+      handleSpatialRaycastAndDrag(mouseNDC.x, mouseNDC.y, 0, true, false);
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      mouseNDC.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouseNDC.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+      handleSpatialRaycastAndDrag(mouseNDC.x, mouseNDC.y, 0, isMouseDown, isMouseDown);
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (isMouseDown) {
+        isMouseDown = false;
+        handleSpatialRaycastAndDrag(mouseNDC.x, mouseNDC.y, 0, false, true);
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+
+  <script>
+    let frameCount = 0;
+    let lastTime = performance.now();
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const time = performance.now() * 0.002;
+
+      // Holographic animations for pickable artifacts
+      pickableObjects.forEach((obj, idx) => {
+        // Smooth lerp to target position
+        obj.position.lerp(obj.targetPos, 0.14);
+
+        // Smooth scale
+        const currentS = obj.scale.x;
+        const nextS = THREE.MathUtils.lerp(currentS, obj.targetScale, 0.15);
+        obj.scale.set(nextS, nextS, nextS);
+
+        // Idle rotation when not manually dragged
+        if (obj !== currentGrabbedObject) {
+          obj.rotation.y += 0.015 + (idx * 0.004);
+          obj.rotation.x = Math.sin(time + idx) * 0.15;
+          // Gentle hovering bobbing if floating
+          if (obj.position.distanceTo(obj.initialPos) < 0.2) {
+            obj.position.y = obj.initialPos.y + Math.sin(time * 2 + idx) * 0.08;
+          }
+        } else {
+          obj.rotation.y += 0.04; // Spin faster while carrying
+        }
+      });
+
+      // Drop zones animation
+      dropZoneMeshes.forEach((zone, idx) => {
+        zone.ringMesh.rotation.z += 0.01;
+        // Return flared rings to normal scale
+        zone.ringMesh.scale.lerp(new THREE.Vector3(1, 1, 1), 0.08);
+
+        // Beacon pulsing opacity
+        const pulse = (Math.sin(time * 3 + idx) + 1) * 0.5;
+        zone.beaconMesh.material.opacity = (zone === activeHoverZone) ? 0.45 : 0.08 + (pulse * 0.08);
+      });
+
+      // Reticle rotation
+      cursorRing1.rotation.z += 0.02;
+      cursorRing2.rotation.z -= 0.015;
+
+      renderer.render(scene, camera);
+
+      // Calculate live FPS
+      frameCount++;
+      const now = performance.now();
+      if (now - lastTime >= 500) {
+        valFps.textContent = Math.round((frameCount * 1000) / (now - lastTime)) + ' FPS';
+        frameCount = 0;
+        lastTime = now;
+      }
+    }
+
+    window.onload = function() {
+      startWebcam();
+      animate();
+    };
+  </script>
+</body>
+</html>

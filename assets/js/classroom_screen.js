@@ -202,6 +202,11 @@ function applyBackground(val, bgSize, bgPos) {
     localStorage.setItem('cs_bg_size', finalSize);
     localStorage.setItem('cs_bg_pos', finalPos);
 
+    // ☁️ Auto-sync wallpaper changes to cloud
+    if (window.GyverWorkspaceCloudSync) {
+        window.GyverWorkspaceCloudSync.saveWallpaperDebounced();
+    }
+
     // Update upload preview status badge if present
     const previewWrap = document.getElementById('bg-upload-preview-wrap');
     if (previewWrap) {
@@ -456,6 +461,11 @@ function removeUploadedBg() {
     if (typeof showDockToast === 'function') {
         showDockToast('🔄 คืนค่าภาพพื้นหลังเริ่มต้นแล้ว');
     }
+
+    // ☁️ Auto-sync wallpaper reset to cloud
+    if (window.GyverWorkspaceCloudSync) {
+        window.GyverWorkspaceCloudSync.saveWallpaperDebounced();
+    }
 }
 
 function initBgDropzone() {
@@ -499,6 +509,10 @@ function initScreenTitle() {
         if (savedTitle) titleInput.value = savedTitle;
         titleInput.addEventListener('change', () => {
             localStorage.setItem('cs_screen_title', titleInput.value.trim());
+            // ☁️ Auto-sync title change to cloud
+            if (window.GyverWorkspaceCloudSync) {
+                window.GyverWorkspaceCloudSync.saveTitleDebounced();
+            }
         });
     }
 }
@@ -569,6 +583,11 @@ function saveOpenWidgetsState() {
         });
 
         localStorage.setItem('cs_open_widgets', JSON.stringify(savedList));
+
+        // ☁️ Auto-sync open widgets layout to cloud
+        if (window.GyverWorkspaceCloudSync) {
+            window.GyverWorkspaceCloudSync.saveWidgetsDebounced();
+        }
     } catch (e) {
         console.warn('Failed to save widgets state:', e);
     }
@@ -3969,3 +3988,12 @@ function loadBestGuessRecord(id) {
         bestEl.textContent = best ? `${best} ครั้ง` : '-';
     }
 }
+
+// ☁️ Global window exports for Cloud Synchronization & Inter-module Access
+window.applyBackground = applyBackground;
+window.initBackground = initBackground;
+window.restoreOpenWidgets = restoreOpenWidgets;
+window.updateUploadedBgUI = updateUploadedBgUI;
+window.saveOpenWidgetsState = saveOpenWidgetsState;
+window.removeWidget = removeWidget;
+window.activeWidgets = activeWidgets;

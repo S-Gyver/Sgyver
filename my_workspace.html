@@ -106,6 +106,12 @@
                 <span class="d-none d-md-inline">พื้นหลัง</span>
             </button>
 
+            <!-- ☁️ Cloud Sync Status & Manual Sync Button -->
+            <button class="cs-btn-text" id="cs-cloud-sync-btn" onclick="if(window.GyverWorkspaceCloudSync) window.GyverWorkspaceCloudSync.manualSync()" title="สถานะ Cloud Sync (ซิงก์ Wallpaper และหน้าจอข้ามเครื่อง)">
+                <i class="bi bi-cloud-check-fill text-info" id="cs-cloud-sync-icon"></i>
+                <span class="d-none d-lg-inline" id="cs-cloud-sync-text">คลาวด์</span>
+            </button>
+
             <!-- 🧹 Clear Widgets -->
             <button class="cs-btn-icon" onclick="clearAllWidgets()" title="ล้างเครื่องมือทั้งหมดบนกระดาน">
                 <i class="bi bi-trash3 text-danger"></i>
@@ -906,6 +912,9 @@
     <!-- Classroom Screen Engine Script -->
     <script src="assets/js/classroom_screen.js"></script>
 
+    <!-- ☁️ Gyver Workspace Cloud Synchronization Engine -->
+    <script src="assets/js/workspace_cloud_sync.js"></script>
+
     <!-- Supabase Auth & PIN Script -->
     <script>
         function getClient() {
@@ -1015,6 +1024,11 @@
                     const navAvatar = document.getElementById('nav-user-avatar');
                     if (navName) navName.innerText = displayName;
                     if (navAvatar) navAvatar.src = avatarUrl;
+
+                    // ☁️ Initialize Workspace Cloud Sync for this user
+                    if (window.GyverWorkspaceCloudSync) {
+                        window.GyverWorkspaceCloudSync.init(session.user.id);
+                    }
                 } else {
                     isUserLoggedIn = false;
                     currentWorkspaceUser = null;
@@ -1025,6 +1039,13 @@
                         userZone.classList.remove('d-flex');
                     }
                 }
+
+                // Listen for Auth changes in realtime
+                getClient().auth.onAuthStateChange((event, newSession) => {
+                    if (newSession && newSession.user && window.GyverWorkspaceCloudSync) {
+                        window.GyverWorkspaceCloudSync.init(newSession.user.id);
+                    }
+                });
             } catch (e) {
                 isUserLoggedIn = false;
                 document.body.classList.add('is-guest');
@@ -1396,6 +1417,10 @@
         function saveDockItems() {
             try {
                 localStorage.setItem('gyver_dock_items', JSON.stringify(currentDockItems));
+                // ☁️ Auto-sync dock items arrangement to cloud
+                if (window.GyverWorkspaceCloudSync) {
+                    window.GyverWorkspaceCloudSync.saveDockDebounced();
+                }
             } catch (_) {}
         }
 
@@ -2150,6 +2175,11 @@
                     }
                 }
             }
+
+            // ☁️ Export dock handlers to window for Cloud Synchronization
+            window.loadDockItems = loadDockItems;
+            window.renderDock = renderDock;
+            window.saveDockItems = saveDockItems;
         });
     </script>
 </body>

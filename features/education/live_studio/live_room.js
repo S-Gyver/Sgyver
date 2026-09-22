@@ -4,8 +4,16 @@
    ================================================================ */
 'use strict';
 
-// 🔕 Suppress all popup toast notifications completely per user request
-window.showToast = function() { return; };
+// 🔕 Suppress non-critical popup toasts, but allow error and warning alerts
+if (!window.showToast || window.showToast.toString().includes('return')) {
+    const originalToast = typeof window.showGyverToast === 'function' ? window.showGyverToast : null;
+    window.showToast = function(type, title, msg, duration) {
+        if (type === 'error' || type === 'warning' || type === 'info') {
+            if (originalToast) originalToast(type, title, msg, duration);
+            else console.log(`[${type.toUpperCase()}] ${title}: ${msg}`);
+        }
+    };
+}
 
 // ── CLOUDINARY CONFIG ──────────────────────────────────────────
 const CLOUDINARY = {
@@ -1360,49 +1368,77 @@ function removeParticipant(name) {
 async function toggleMic() {
     if (STATE.roomStatus === 'ENDED') return;
 
-    let audioTrack = STATE.localStream ? STATE.localStream.getAudioTracks()[0] : null;
+    if (!STATE.micOn) {
+        // 🟢 เปิดไมโครโฟน
+        let audioTrack = STATE.localStream ? STATE.localStream.getAudioTracks()[0] : null;
 
-    if (!audioTrack) {
-        try {
-            const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const newTrack = audioStream.getAudioTracks()[0];
-            if (STATE.localStream) {
-                STATE.localStream.addTrack(newTrack);
-            } else {
-                STATE.localStream = audioStream;
-            }
-            audioTrack = newTrack;
+        if (!audioTrack || audioTrack.readyState === 'ended') {
+            try {
+                const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const newTrack = audioStream.getAudioTracks()[0];
+                if (STATE.localStream) {
+                    STATE.localStream.getAudioTracks().forEach(t => STATE.localStream.removeTrack(t));
+                    STATE.localStream.addTrack(newTrack);
+                } else {
+                    STATE.localStream = audioStream;
+                }
+                audioTrack = newTrack;
 
-            // Add audio track to peer connections
-            STATE.peerConnections.forEach(pc => {
-                try {
-                    pc.addTrack(audioTrack, STATE.localStream);
-                } catch (e) {}
-            });
-        } catch (err) {
-            console.error('[Mic Error]:', err);
-            let msg = err.message || 'ไม่สามารถเข้าถึงไมโครโฟนได้';
-            if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-                msg = 'เบราว์เซอร์บล็อกการเข้าถึงไมค์: กรุณาคลิกไอคอนรูปแม่กุญแจ/Site Settings ที่หน้า URL เพื่อเลือก "อนุญาต (Allow)" ไมโครโฟน';
-            } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-                msg = 'ไม่พบอุปกรณ์ไมโครโฟนที่เชื่อมต่อกับคอมพิวเตอร์';
-            } else if (err.name === 'NotReadableError') {
-                msg = 'ไมโครโฟนกำลังถูกโปรแกรมอื่นใช้งานอยู่ หรือเกิดข้อผิดพลาดในการเปิดไมค์';
+                // Add or replace audio track in peer connections
+                STATE.peerConnections.forEach(async (pc, peerName) => {
+                    try {
+                        const senders = pc.getSenders();
+                        const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
+                        if (audioSender) {
+                            await audioSender.replaceTrack(audioTrack);
+                        } else {
+                            pc.addTrack(audioTrack, STATE.localStream);
+                            const offer = await pc.createOffer();
+                            await pc.setLocalDescription(offer);
+                            if (STATE.channel) {
+                                STATE.channel.send({
+                                    type: 'broadcast',
+                                    event: 'signal_offer',
+                                    payload: { target: peerName, sender: STATE.myName, sdp: offer }
+                                });
+                            }
+                        }
+                    } catch (e) {}
+                });
+            } catch (err) {
+                console.error('[Mic Error]:', err);
+                let msg = err.message || 'ไม่สามารถเข้าถึงไมโครโฟนได้';
+                if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError' || err.name === 'SecurityError') {
+                    msg = 'เบราว์เซอร์บล็อกการเข้าถึงไมค์: กรุณาคลิกไอคอนรูปแม่กุญแจ/Site Settings ที่หน้าแถบ URL ด้านบนเพื่อเลือก "อนุญาต (Allow)" ไมโครโฟน';
+                } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+                    msg = 'ไม่พบอุปกรณ์ไมโครโฟนที่เชื่อมต่อกับคอมพิวเตอร์';
+                } else if (err.name === 'NotReadableError') {
+                    msg = 'ไมโครโฟนกำลังถูกโปรแกรมอื่นใช้งานอยู่ หรือเกิดข้อผิดพลาดในการเปิดไมค์';
+                }
+                if (typeof window.showToast === 'function') window.showToast('error', 'ไมค์', msg, 5000);
+                else alert(msg);
+                return;
             }
-            showToast('error', 'ไมค์', msg, 5000);
-            return;
         }
-    }
 
-    if (audioTrack) {
-        audioTrack.enabled = !audioTrack.enabled;
-        STATE.micOn = audioTrack.enabled;
+        if (audioTrack) {
+            audioTrack.enabled = true;
+        }
+        STATE.micOn = true;
     } else {
-        STATE.micOn = !STATE.micOn;
+        // 🔴 ปิดไมโครโฟน (Mute)
+        if (STATE.localStream) {
+            STATE.localStream.getAudioTracks().forEach(track => {
+                track.enabled = false;
+            });
+        }
+        STATE.micOn = false;
     }
 
-    el('ctrl-mic').classList.toggle('off', !STATE.micOn);
-    el('ctrl-mic-icon').className = STATE.micOn ? 'bi bi-mic-fill' : 'bi bi-mic-mute-fill';
+    const ctrlMic = el('ctrl-mic');
+    if (ctrlMic) ctrlMic.classList.toggle('off', !STATE.micOn);
+    const ctrlMicIcon = el('ctrl-mic-icon');
+    if (ctrlMicIcon) ctrlMicIcon.className = STATE.micOn ? 'bi bi-mic-fill' : 'bi bi-mic-mute-fill';
     if (el('panel-mic-btn')) {
         el('panel-mic-btn').classList.toggle('muted', !STATE.micOn);
         el('panel-mic-btn').innerHTML = STATE.micOn ? '<i class="bi bi-mic-fill"></i>' : '<i class="bi bi-mic-mute-fill"></i>';
@@ -1481,6 +1517,7 @@ async function toggleCamera() {
     if (STATE.roomStatus === 'ENDED') return;
 
     if (!STATE.camOn) {
+        // 🟢 เปิดกล้อง
         let videoTrack = null;
         try {
             // Attempt to access physical webcam with mobile-friendly fallback
@@ -1497,25 +1534,30 @@ async function toggleCamera() {
                 throw new Error('อุปกรณ์ของคุณไม่รองรับการเข้าถึงกล้องผ่านเว็บ');
             }
 
-            videoTrack = videoStream.getVideoTracks()[0];
+            videoTrack = videoStream ? videoStream.getVideoTracks()[0] : null;
         } catch (err) {
             console.warn('[Camera Access Notice]:', err);
             // If computer doesn't have a webcam or not found, fallback to Virtual Camera Avatar!
             if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError' || (err.message && err.message.includes('not found'))) {
-                showToast('info', 'กล้องเสมือน (Virtual)', 'ไม่พบกล้องจริง ระบบเปิดกล้องเสมือนสำหรับทดสอบให้แล้ว', 4000);
+                if (typeof window.showToast === 'function') window.showToast('info', 'กล้องเสมือน (Virtual)', 'ไม่พบกล้องจริง ระบบเปิดกล้องเสมือนสำหรับทดสอบให้แล้ว', 4000);
                 const virtualStream = createVirtualCameraStream(STATE.myName);
                 videoTrack = virtualStream.getVideoTracks()[0];
             } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError' || err.name === 'SecurityError') {
-                showToast('error', 'กล้องถูกบล็อก', 'กรุณาแตะไอคอนรูปการตั้งค่า/แม่กุญแจหน้าแถบ URL ด้านบน แล้วเปลี่ยนเป็น "อนุญาต (Allow)" การใช้กล้อง', 6000);
+                const msg = 'เบราว์เซอร์บล็อกการเข้าถึงกล้อง: กรุณาแตะไอคอนรูปการตั้งค่า/แม่กุญแจหน้าแถบ URL ด้านบน แล้วเปลี่ยนเป็น "อนุญาต (Allow)" การใช้กล้อง';
+                if (typeof window.showToast === 'function') window.showToast('error', 'กล้องถูกบล็อก', msg, 6000);
+                else alert(msg);
                 return;
             } else {
-                showToast('error', 'กล้อง', 'ไม่สามารถเปิดกล้องได้: ' + err.message, 4500);
+                const msg = 'ไม่สามารถเปิดกล้องได้: ' + err.message;
+                if (typeof window.showToast === 'function') window.showToast('error', 'กล้อง', msg, 4500);
+                else alert(msg);
                 return;
             }
         }
 
         if (videoTrack) {
             if (STATE.localStream) {
+                STATE.localStream.getVideoTracks().forEach(t => STATE.localStream.removeTrack(t));
                 STATE.localStream.addTrack(videoTrack);
             } else {
                 STATE.localStream = new MediaStream([videoTrack]);
@@ -1572,6 +1614,7 @@ async function toggleCamera() {
             });
         }
     } else {
+        // 🔴 ปิดกล้อง
         if (STATE.localStream) {
             const videoTrack = STATE.localStream.getVideoTracks()[0];
             if (videoTrack) {
@@ -1579,6 +1622,15 @@ async function toggleCamera() {
                 STATE.localStream.removeTrack(videoTrack);
             }
         }
+        STATE.peerConnections.forEach(async (pc) => {
+            try {
+                const senders = pc.getSenders();
+                const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+                if (videoSender) {
+                    await videoSender.replaceTrack(null);
+                }
+            } catch (e) {}
+        });
         const selfVideo = el('self-video');
         const pipCam    = el('pip-camera');
         if (selfVideo) {
@@ -1603,8 +1655,10 @@ async function toggleCamera() {
         }
     }
 
-    el('ctrl-cam').classList.toggle('off', !STATE.camOn);
-    el('ctrl-cam-icon').className = STATE.camOn ? 'bi bi-camera-video-fill' : 'bi bi-camera-video-off-fill';
+    const ctrlCam = el('ctrl-cam');
+    if (ctrlCam) ctrlCam.classList.toggle('off', !STATE.camOn);
+    const ctrlCamIcon = el('ctrl-cam-icon');
+    if (ctrlCamIcon) ctrlCamIcon.className = STATE.camOn ? 'bi bi-camera-video-fill' : 'bi bi-camera-video-off-fill';
     if (el('panel-cam-btn')) {
         el('panel-cam-btn').classList.toggle('muted', !STATE.camOn);
         el('panel-cam-btn').innerHTML = STATE.camOn ? '<i class="bi bi-camera-video-fill"></i>' : '<i class="bi bi-camera-video-off-fill"></i>';
@@ -2643,14 +2697,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Shortcut 'F' for fullscreen toggle
+// Keyboard shortcuts: 'M' (Mic), 'V' (Cam), 'S' (Screen), 'H' (Hand), 'F' (Fullscreen)
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'f' || e.key === 'F') {
-        const tag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
-        if (tag !== 'input' && tag !== 'textarea' && !document.activeElement?.isContentEditable) {
-            e.preventDefault();
-            toggleFullScreen();
-        }
+    const tag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+    if (tag === 'input' || tag === 'textarea' || document.activeElement?.isContentEditable) return;
+
+    const key = e.key.toLowerCase();
+    if (key === 'f') {
+        e.preventDefault();
+        toggleFullScreen();
+    } else if (key === 'm') {
+        e.preventDefault();
+        toggleMic();
+    } else if (key === 'v') {
+        e.preventDefault();
+        toggleCamera();
+    } else if (key === 's') {
+        e.preventDefault();
+        toggleScreenShare();
+    } else if (key === 'h') {
+        e.preventDefault();
+        raiseHand();
     }
 });
 
