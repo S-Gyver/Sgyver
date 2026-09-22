@@ -1548,6 +1548,42 @@ function closePeerConnection(name) {
     }
 }
 
+// Send the current screen share track to a specific peer (used when a new participant joins mid-share)
+async function sendScreenTrackToPeer(peerName) {
+    if (!STATE.screenStream || !STATE.screenOn) return;
+
+    const screenTrack = STATE.screenStream.getVideoTracks()[0];
+    if (!screenTrack) return;
+
+    try {
+        // If already connected, just replace/add the video track
+        if (STATE.peerConnections.has(peerName)) {
+            const pc = STATE.peerConnections.get(peerName);
+            const senders = pc.getSenders();
+            const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+            if (videoSender) {
+                await videoSender.replaceTrack(screenTrack);
+            } else {
+                pc.addTrack(screenTrack, STATE.screenStream);
+            }
+        } else {
+            // Create new connection and offer screen share
+            await initiatePeerConnection(peerName);
+        }
+
+        // Notify receiver that we are sharing (in case they missed the broadcast)
+        if (STATE.channel) {
+            STATE.channel.send({
+                type: 'broadcast',
+                event: 'screen_share_start',
+                payload: { name: STATE.myName, role: STATE.myRole }
+            });
+        }
+    } catch (e) {
+        console.warn('[sendScreenTrackToPeer error]:', e);
+    }
+}
+
 // ── REACTIONS & RAISE HAND ─────────────────────────────────────
 function sendReaction() {
     const emojis = ['👍', '👏', '❤️', '🔥', '🎉', '💡', '😂', '✋'];
