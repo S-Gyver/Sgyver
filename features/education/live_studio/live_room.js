@@ -59,7 +59,9 @@ const ICE_SERVERS = {
         { urls: 'stun:stun1.l.google.com:19302' },
         { urls: 'stun:stun2.l.google.com:19302' },
         { urls: 'stun:stun3.l.google.com:19302' },
-        { urls: 'stun:stun4.l.google.com:19302' }
+        { urls: 'stun:stun4.l.google.com:19302' },
+        { urls: 'stun:stun.services.mozilla.com' },
+        { urls: 'stun:global.stun.twilio.com:3478' }
     ]
 };
 
@@ -1591,7 +1593,7 @@ function renderStreamSwitcher() {
 }
 
 function selectScreenStream(targetName) {
-    if (!STATE.activeScreenSharers.has(targetName)) return;
+    if (!targetName) return;
 
     STATE.currentViewingSharer = targetName;
     const isSelf = (targetName === STATE.myName);
@@ -1612,16 +1614,21 @@ function selectScreenStream(targetName) {
         if (screenVideo) {
             screenVideo.srcObject = stream;
             screenVideo.style.display = 'block';
-            screenVideo.play().catch(() => {});
+            screenVideo.play().catch(err => {
+                console.warn('Autoplay unmuted blocked, retrying muted:', err);
+                screenVideo.muted = true;
+                screenVideo.play().catch(e => console.error('Play error:', e));
+            });
         }
         if (placeholder) placeholder.style.display = 'none';
+        if (box) box.classList.add('sharing');
     } else {
         if (screenVideo) screenVideo.style.display = 'none';
         if (placeholder) placeholder.style.display = 'flex';
         const hint = el('screen-hint');
         if (hint) hint.innerHTML = `กำลังรอสัญญาณภาพจาก <strong>${escapeHtml(targetName)}</strong>...`;
 
-        // Poll until stream arrives (max 10 seconds)
+        // Poll until stream arrives (max 12 seconds)
         if (!isSelf) {
             let tries = 0;
             const poll = setInterval(() => {
@@ -1634,52 +1641,52 @@ function selectScreenStream(targetName) {
                         if (sv) {
                             sv.srcObject = s;
                             sv.style.display = 'block';
-                            sv.play().catch(() => {});
+                            sv.play().catch(err => {
+                                sv.muted = true;
+                                sv.play().catch(e => {});
+                            });
                         }
                         if (placeholder) placeholder.style.display = 'none';
+                        if (box) box.classList.add('sharing');
                     }
-                } else if (tries >= 20) {
+                } else if (tries >= 24) {
                     clearInterval(poll);
                 }
             }, 500);
         }
     }
 
-    if (label) label.style.display = 'flex';
-    if (labelText) {
-        labelText.innerHTML = `<span style="color:#ef4444;font-weight:800">● LIVE</span> รับชมจอของ: <strong>${escapeHtml(targetName)}</strong>${isSelf ? ' (คุณ)' : ''}`;
-    }
-    if (box) box.classList.add('sharing');
-
+    if (label) label.style.display = 'none';
     renderStreamSwitcher();
 }
 
 function handleRemoteScreenShareStart(payload) {
+    if (!payload || !payload.name || payload.name === STATE.myName) return;
+
     STATE.activeScreenSharers.set(payload.name, {
         name: payload.name,
         role: payload.role,
         isSelf: false
     });
-    showToast('info', 'มีการแชร์หน้าจอ', `${payload.name} กำลังแชร์หน้าจอ (คลิกเพื่อรับชม)`, 3500);
+    showToast('info', 'มีการแชร์หน้าจอ', `${payload.name} กำลังแชร์หน้าจอ`, 3000);
 
-    // Connect WebRTC if not yet connected
-    if (!STATE.peerConnections.has(payload.name)) {
-        initiatePeerConnection(payload.name);
-    }
-
-    // If viewer is not actively watching someone else, auto switch to this new streamer
-    if (!STATE.currentViewingSharer || STATE.currentViewingSharer === STATE.myName) {
-        selectScreenStream(payload.name);
-    } else {
-        renderStreamSwitcher();
-    }
+    // Auto select this screen for viewing without colliding WebRTC offers
+    selectScreenStream(payload.name);
 }
 
 function handleRemoteScreenShareStop(payload) {
+    if (!payload || !payload.name) return;
     STATE.activeScreenSharers.delete(payload.name);
     STATE.remoteScreenStreams.delete(payload.name);
     if (STATE.currentViewingSharer === payload.name) {
         STATE.currentViewingSharer = null;
+        const screenVideo = el('screen-video');
+        if (screenVideo) {
+            screenVideo.style.display = 'none';
+            screenVideo.srcObject = null;
+        }
+        if (el('screen-placeholder')) el('screen-placeholder').style.display = 'flex';
+        if (el('main-screen-box')) el('main-screen-box').classList.remove('sharing');
     }
     renderStreamSwitcher();
 }
@@ -1714,32 +1721,36 @@ async function toggleScreenShare() {
 
             // Send screen track to all connected peers
             const screenTrack = STATE.screenStream.getVideoTracks()[0];
-            const renegotiateNeeded = [];
 
-            STATE.peerConnections.forEach((pc, peerName) => {
+            // Re-negotiate on all existing peer connections
+            for (const [peerName, pc] of STATE.peerConnections.entries()) {
                 try {
                     const senders = pc.getSenders();
                     const videoSender = senders.find(s => s.track && s.track.kind === 'video');
                     if (videoSender) {
-                        // replaceTrack works silently - must renegotiate so remote gets the new track
-                        videoSender.replaceTrack(screenTrack);
-                        renegotiateNeeded.push(peerName);
+                        await videoSender.replaceTrack(screenTrack);
                     } else {
                         pc.addTrack(screenTrack, STATE.screenStream);
-                        renegotiateNeeded.push(peerName);
+                    }
+                    const offer = await pc.createOffer();
+                    await pc.setLocalDescription(offer);
+                    if (STATE.channel) {
+                        STATE.channel.send({
+                            type: 'broadcast',
+                            event: 'signal_offer',
+                            payload: {
+                                target: peerName,
+                                sender: STATE.myName,
+                                sdp: offer
+                            }
+                        });
                     }
                 } catch (e) {
-                    console.warn('[Screen track error]:', e);
+                    console.warn('[Screen track renegotiation error]:', e);
                 }
-            });
-
-            // Re-initiate offers for all peers that need renegotiation
-            for (const peerName of renegotiateNeeded) {
-                STATE.peerConnections.delete(peerName);
-                await initiatePeerConnection(peerName);
             }
 
-            // If any participant doesn't have a peer connection, initiate
+            // If any participant doesn't have a peer connection yet, initiate
             STATE.participants.forEach((p, pName) => {
                 if (pName !== STATE.myName && !STATE.peerConnections.has(pName)) {
                     initiatePeerConnection(pName);
@@ -1750,7 +1761,7 @@ async function toggleScreenShare() {
                 stopScreenShare();
             };
 
-            showToast('info', 'กำลังแชร์หน้าจอ', 'ทั้งครูและนักเรียนสามารถสลับดูหน้าจอของคุณได้แล้ว', 3000);
+            showToast('info', 'กำลังแชร์หน้าจอ', 'ทั้งครูและนักเรียนสามารถรับชมหน้าจอของคุณได้แล้ว', 3000);
         } catch (err) {
             if (err.name !== 'NotAllowedError') {
                 showToast('error', 'แชร์หน้าจอ', err.message, 3000);
@@ -1825,33 +1836,40 @@ function updatePeerMediaState(payload) {
 
 // ── WEBRTC CALL SETUP ──────────────────────────────────────────
 async function initiatePeerConnection(peerName) {
-    const pc = createPeerConnection(peerName);
-    if (STATE.localStream) {
-        STATE.localStream.getTracks().forEach(t => {
-            if (!pc.getSenders().some(s => s.track === t)) {
-                pc.addTrack(t, STATE.localStream);
-            }
-        });
-    }
-    if (STATE.screenStream) {
-        STATE.screenStream.getTracks().forEach(t => {
-            if (!pc.getSenders().some(s => s.track === t)) {
-                pc.addTrack(t, STATE.screenStream);
-            }
-        });
-    }
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-
-    STATE.channel.send({
-        type: 'broadcast',
-        event: 'signal_offer',
-        payload: {
-            target: peerName,
-            sender: STATE.myName,
-            sdp:    offer
+    if (!peerName || peerName === STATE.myName) return;
+    try {
+        const pc = createPeerConnection(peerName);
+        if (STATE.localStream) {
+            STATE.localStream.getTracks().forEach(t => {
+                if (!pc.getSenders().some(s => s.track === t)) {
+                    try { pc.addTrack(t, STATE.localStream); } catch(e){}
+                }
+            });
         }
-    });
+        if (STATE.screenStream) {
+            STATE.screenStream.getTracks().forEach(t => {
+                if (!pc.getSenders().some(s => s.track === t)) {
+                    try { pc.addTrack(t, STATE.screenStream); } catch(e){}
+                }
+            });
+        }
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+
+        if (STATE.channel) {
+            STATE.channel.send({
+                type: 'broadcast',
+                event: 'signal_offer',
+                payload: {
+                    target: peerName,
+                    sender: STATE.myName,
+                    sdp:    offer
+                }
+            });
+        }
+    } catch (err) {
+        console.warn('[initiatePeerConnection error]:', err);
+    }
 }
 
 function createPeerConnection(peerName) {
@@ -1859,6 +1877,7 @@ function createPeerConnection(peerName) {
         return STATE.peerConnections.get(peerName);
     }
     const pc = new RTCPeerConnection(ICE_SERVERS);
+    pc._pendingIceCandidates = [];
     STATE.peerConnections.set(peerName, pc);
 
     pc.onicecandidate = ({ candidate }) => {
@@ -1875,77 +1894,161 @@ function createPeerConnection(peerName) {
         }
     };
 
+    pc.oniceconnectionstatechange = () => {
+        console.log(`[ICE ${peerName}] state:`, pc.iceConnectionState);
+        if (pc.iceConnectionState === 'failed') {
+            try { pc.restartIce(); } catch(e){}
+        }
+    };
+
     pc.ontrack = (event) => {
         const track = event.track;
-        const stream = event.streams[0] || new MediaStream([track]);
+        console.log(`[ontrack from ${peerName}] kind:`, track.kind);
 
-        // Always store the latest stream from this peer
-        STATE.remoteScreenStreams.set(peerName, stream);
+        let peerStream = STATE.remoteScreenStreams.get(peerName);
+        if (!peerStream) {
+            peerStream = new MediaStream();
+            STATE.remoteScreenStreams.set(peerName, peerStream);
+        }
 
-        // Only update the screen video display if it's a video track
-        if (track.kind === 'video' && STATE.currentViewingSharer === peerName) {
-            const screenVideo = el('screen-video');
-            if (screenVideo) {
-                screenVideo.srcObject = stream;
-                screenVideo.style.display = 'block';
-                screenVideo.play().catch(() => {});
-                if (el('screen-placeholder')) el('screen-placeholder').style.display = 'none';
+        // Cleanly combine video and audio tracks without overwriting
+        if (track.kind === 'video') {
+            peerStream.getVideoTracks().forEach(t => {
+                if (t.id !== track.id) peerStream.removeTrack(t);
+            });
+        } else if (track.kind === 'audio') {
+            peerStream.getAudioTracks().forEach(t => {
+                if (t.id !== track.id) peerStream.removeTrack(t);
+            });
+        }
+        if (!peerStream.getTracks().some(t => t.id === track.id)) {
+            peerStream.addTrack(track);
+        }
+
+        // Directly attach to screen-video if viewing this peer
+        if (track.kind === 'video') {
+            if (!STATE.currentViewingSharer || STATE.currentViewingSharer === peerName || STATE.currentViewingSharer === STATE.myName) {
+                STATE.currentViewingSharer = peerName;
+                const screenVideo = el('screen-video');
+                if (screenVideo) {
+                    screenVideo.srcObject = peerStream;
+                    screenVideo.style.display = 'block';
+                    screenVideo.play().catch(err => {
+                        console.warn('Autoplay unmuted blocked, retrying muted:', err);
+                        screenVideo.muted = true;
+                        screenVideo.play().catch(e => console.error('Play error:', e));
+                    });
+                    if (el('screen-placeholder')) el('screen-placeholder').style.display = 'none';
+                }
+                if (el('main-screen-box')) el('main-screen-box').classList.add('sharing');
             }
         }
 
-        addRemoteTrack(peerName, stream);
+        addRemoteTrack(peerName, peerStream);
     };
 
     return pc;
 }
 
 async function handleSignalOffer(payload) {
+    if (!payload || payload.target !== STATE.myName) return;
     const pc = createPeerConnection(payload.sender);
-    await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
 
-    if (STATE.localStream) {
-        STATE.localStream.getTracks().forEach(t => {
-            if (!pc.getSenders().some(s => s.track === t)) {
-                pc.addTrack(t, STATE.localStream);
+    try {
+        const isPolite = STATE.myName < payload.sender;
+        const offerCollision = pc.signalingState !== 'stable';
+        if (offerCollision) {
+            if (!isPolite) {
+                console.warn('[WebRTC] Impolite peer ignoring collision offer from', payload.sender);
+                return;
             }
-        });
-    }
-    if (STATE.screenStream) {
-        STATE.screenStream.getTracks().forEach(t => {
-            if (!pc.getSenders().some(s => s.track === t)) {
-                pc.addTrack(t, STATE.screenStream);
-            }
-        });
-    }
-
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-
-    STATE.channel.send({
-        type: 'broadcast',
-        event: 'signal_answer',
-        payload: {
-            target: payload.sender,
-            sender: STATE.myName,
-            sdp:    answer
+            await pc.setLocalDescription({ type: 'rollback' });
         }
-    });
+
+        await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+
+        // Drain any pending ICE candidates
+        if (pc._pendingIceCandidates && pc._pendingIceCandidates.length > 0) {
+            for (const cand of pc._pendingIceCandidates) {
+                try {
+                    await pc.addIceCandidate(cand);
+                } catch (e) {}
+            }
+            pc._pendingIceCandidates = [];
+        }
+
+        if (STATE.localStream) {
+            STATE.localStream.getTracks().forEach(t => {
+                if (!pc.getSenders().some(s => s.track === t)) {
+                    try { pc.addTrack(t, STATE.localStream); } catch(e){}
+                }
+            });
+        }
+        if (STATE.screenStream) {
+            STATE.screenStream.getTracks().forEach(t => {
+                if (!pc.getSenders().some(s => s.track === t)) {
+                    try { pc.addTrack(t, STATE.screenStream); } catch(e){}
+                }
+            });
+        }
+
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+
+        if (STATE.channel) {
+            STATE.channel.send({
+                type: 'broadcast',
+                event: 'signal_answer',
+                payload: {
+                    target: payload.sender,
+                    sender: STATE.myName,
+                    sdp:    answer
+                }
+            });
+        }
+    } catch (err) {
+        console.error('[handleSignalOffer error]:', err);
+    }
 }
 
 async function handleSignalAnswer(payload) {
+    if (!payload || payload.target !== STATE.myName) return;
     const pc = STATE.peerConnections.get(payload.sender);
-    if (pc) {
-        await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+    if (!pc) return;
+
+    try {
+        if (pc.signalingState === 'have-local-offer') {
+            await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+
+            // Drain any pending ICE candidates
+            if (pc._pendingIceCandidates && pc._pendingIceCandidates.length > 0) {
+                for (const cand of pc._pendingIceCandidates) {
+                    try {
+                        await pc.addIceCandidate(cand);
+                    } catch (e) {}
+                }
+                pc._pendingIceCandidates = [];
+            }
+        }
+    } catch (err) {
+        console.error('[handleSignalAnswer error]:', err);
     }
 }
 
 async function handleSignalIce(payload) {
+    if (!payload || payload.target !== STATE.myName) return;
     const pc = STATE.peerConnections.get(payload.sender);
-    if (pc && payload.candidate) {
-        try {
-            await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
-        } catch (e) {}
-    }
+    if (!pc || !payload.candidate) return;
+
+    try {
+        const iceCandidate = new RTCIceCandidate(payload.candidate);
+        if (pc.remoteDescription && pc.remoteDescription.type) {
+            await pc.addIceCandidate(iceCandidate);
+        } else {
+            if (!pc._pendingIceCandidates) pc._pendingIceCandidates = [];
+            pc._pendingIceCandidates.push(iceCandidate);
+        }
+    } catch (e) {}
 }
 
 function addRemoteTrack(name, stream) {
@@ -1969,7 +2072,7 @@ function addRemoteTrack(name, stream) {
 function closePeerConnection(name) {
     const pc = STATE.peerConnections.get(name);
     if (pc) {
-        pc.close();
+        try { pc.close(); } catch(e){}
         STATE.peerConnections.delete(name);
     }
 }
@@ -1982,7 +2085,6 @@ async function sendScreenTrackToPeer(peerName) {
     if (!screenTrack) return;
 
     try {
-        // If already connected, just replace/add the video track
         if (STATE.peerConnections.has(peerName)) {
             const pc = STATE.peerConnections.get(peerName);
             const senders = pc.getSenders();
@@ -1992,12 +2094,23 @@ async function sendScreenTrackToPeer(peerName) {
             } else {
                 pc.addTrack(screenTrack, STATE.screenStream);
             }
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            if (STATE.channel) {
+                STATE.channel.send({
+                    type: 'broadcast',
+                    event: 'signal_offer',
+                    payload: {
+                        target: peerName,
+                        sender: STATE.myName,
+                        sdp: offer
+                    }
+                });
+            }
         } else {
-            // Create new connection and offer screen share
             await initiatePeerConnection(peerName);
         }
 
-        // Notify receiver that we are sharing (in case they missed the broadcast)
         if (STATE.channel) {
             STATE.channel.send({
                 type: 'broadcast',
