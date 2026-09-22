@@ -867,16 +867,40 @@ function removeParticipant(name) {
 async function toggleMic() {
     if (STATE.roomStatus === 'ENDED') return;
 
-    if (!STATE.localStream) {
+    let audioTrack = STATE.localStream ? STATE.localStream.getAudioTracks()[0] : null;
+
+    if (!audioTrack) {
         try {
-            STATE.localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const newTrack = audioStream.getAudioTracks()[0];
+            if (STATE.localStream) {
+                STATE.localStream.addTrack(newTrack);
+            } else {
+                STATE.localStream = audioStream;
+            }
+            audioTrack = newTrack;
+
+            // Add audio track to peer connections
+            STATE.peerConnections.forEach(pc => {
+                try {
+                    pc.addTrack(audioTrack, STATE.localStream);
+                } catch (e) {}
+            });
         } catch (err) {
-            showToast('error', 'ไมค์', 'ไม่สามารถเข้าถึงไมโครโฟนได้', 3000);
+            console.error('[Mic Error]:', err);
+            let msg = err.message || 'ไม่สามารถเข้าถึงไมโครโฟนได้';
+            if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                msg = 'เบราว์เซอร์บล็อกการเข้าถึงไมค์: กรุณาคลิกไอคอนรูปแม่กุญแจ/Site Settings ที่หน้า URL เพื่อเลือก "อนุญาต (Allow)" ไมโครโฟน';
+            } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+                msg = 'ไม่พบอุปกรณ์ไมโครโฟนที่เชื่อมต่อกับคอมพิวเตอร์';
+            } else if (err.name === 'NotReadableError') {
+                msg = 'ไมโครโฟนกำลังถูกโปรแกรมอื่นใช้งานอยู่ หรือเกิดข้อผิดพลาดในการเปิดไมค์';
+            }
+            showToast('error', 'ไมค์', msg, 5000);
             return;
         }
     }
 
-    const audioTrack = STATE.localStream.getAudioTracks()[0];
     if (audioTrack) {
         audioTrack.enabled = !audioTrack.enabled;
         STATE.micOn = audioTrack.enabled;
@@ -886,6 +910,10 @@ async function toggleMic() {
 
     el('ctrl-mic').classList.toggle('off', !STATE.micOn);
     el('ctrl-mic-icon').className = STATE.micOn ? 'bi bi-mic-fill' : 'bi bi-mic-mute-fill';
+    if (el('panel-mic-btn')) {
+        el('panel-mic-btn').classList.toggle('muted', !STATE.micOn);
+        el('panel-mic-btn').innerHTML = STATE.micOn ? '<i class="bi bi-mic-fill"></i>' : '<i class="bi bi-mic-mute-fill"></i>';
+    }
     if (el('self-mic-badge')) {
         el('self-mic-badge').classList.toggle('muted', !STATE.micOn);
         el('self-mic-badge').innerHTML = STATE.micOn ? '<i class="bi bi-mic-fill"></i>' : '<i class="bi bi-mic-mute-fill"></i>';
@@ -894,18 +922,98 @@ async function toggleMic() {
     broadcastMediaState();
 }
 
+function createVirtualCameraStream(userName) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 640;
+    canvas.height = 480;
+    const ctx = canvas.getContext('2d');
+    let frame = 0;
+
+    function renderVirtualFrame() {
+        if (!STATE.camOn) return;
+        frame++;
+
+        // Studio dark background gradient
+        const bg = ctx.createLinearGradient(0, 0, 640, 480);
+        bg.addColorStop(0, '#0f172a');
+        bg.addColorStop(0.5, '#1e1b4b');
+        bg.addColorStop(1, '#090d16');
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, 640, 480);
+
+        // Animated neon circles
+        const r1 = 80 + Math.sin(frame * 0.04) * 8;
+        ctx.beginPath();
+        ctx.arc(320, 200, r1, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(99, 102, 241, 0.15)';
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(320, 200, 60, 0, Math.PI * 2);
+        ctx.fillStyle = '#6366f1';
+        ctx.fill();
+
+        // White avatar robot icon
+        ctx.font = '50px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🤖', 320, 202);
+
+        // User name
+        ctx.font = 'bold 22px "Kanit", sans-serif';
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillText(userName || 'ผู้ใช้งาน', 320, 310);
+
+        // Virtual Camera Badge
+        ctx.fillStyle = 'rgba(236, 72, 153, 0.2)';
+        ctx.strokeStyle = '#ec4899';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(190, 340, 260, 32, 16);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.font = '600 13px "Kanit", sans-serif';
+        ctx.fillStyle = '#f472b6';
+        ctx.fillText('📷 กล้องเสมือน (Virtual Camera)', 320, 360);
+
+        requestAnimationFrame(renderVirtualFrame);
+    }
+
+    renderVirtualFrame();
+    return canvas.captureStream(30);
+}
+
 async function toggleCamera() {
     if (STATE.roomStatus === 'ENDED') return;
 
     if (!STATE.camOn) {
+        let videoTrack = null;
         try {
+            // Attempt to access physical webcam
             const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
-            const videoTrack = videoStream.getVideoTracks()[0];
+            videoTrack = videoStream.getVideoTracks()[0];
+        } catch (err) {
+            console.warn('[Camera Access Notice]:', err);
+            // If computer doesn't have a webcam or not found, fallback to Virtual Camera Avatar!
+            if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError' || (err.message && err.message.includes('not found'))) {
+                showToast('info', 'กล้องเสมือน (Virtual)', 'คอมพิวเตอร์ไม่มีกล้องจริง ระบบเปิดกล้องเสมือนสำหรับทดสอบให้แล้ว', 4000);
+                const virtualStream = createVirtualCameraStream(STATE.myName);
+                videoTrack = virtualStream.getVideoTracks()[0];
+            } else if (err.name === 'NotAllowedError') {
+                showToast('error', 'กล้อง', 'เบราว์เซอร์บล็อกการเข้าถึงกล้อง: กรุณาคลิกไอคอนหน้าแถบ URL เพื่อกด "อนุญาต (Allow)"', 4000);
+                return;
+            } else {
+                showToast('error', 'กล้อง', 'ไม่สามารถเปิดกล้องได้: ' + err.message, 3500);
+                return;
+            }
+        }
 
+        if (videoTrack) {
             if (STATE.localStream) {
                 STATE.localStream.addTrack(videoTrack);
             } else {
-                STATE.localStream = videoStream;
+                STATE.localStream = new MediaStream([videoTrack]);
             }
 
             const selfVideo = el('self-video');
@@ -917,9 +1025,19 @@ async function toggleCamera() {
             if (pipCam) pipCam.style.display = 'block';
             if (el('self-avatar-img')) el('self-avatar-img').style.display = 'none';
             STATE.camOn = true;
-        } catch (err) {
-            showToast('error', 'กล้อง', 'ไม่สามารถเปิดกล้องได้: ' + err.message, 3000);
-            return;
+
+            // Send video track to connected peers
+            STATE.peerConnections.forEach(pc => {
+                try {
+                    const senders = pc.getSenders();
+                    const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+                    if (videoSender) {
+                        videoSender.replaceTrack(videoTrack);
+                    } else {
+                        pc.addTrack(videoTrack, STATE.localStream);
+                    }
+                } catch (e) {}
+            });
         }
     } else {
         if (STATE.localStream) {
@@ -942,6 +1060,10 @@ async function toggleCamera() {
 
     el('ctrl-cam').classList.toggle('off', !STATE.camOn);
     el('ctrl-cam-icon').className = STATE.camOn ? 'bi bi-camera-video-fill' : 'bi bi-camera-video-off-fill';
+    if (el('panel-cam-btn')) {
+        el('panel-cam-btn').classList.toggle('muted', !STATE.camOn);
+        el('panel-cam-btn').innerHTML = STATE.camOn ? '<i class="bi bi-camera-video-fill"></i>' : '<i class="bi bi-camera-video-off-fill"></i>';
+    }
 
     broadcastMediaState();
 }
