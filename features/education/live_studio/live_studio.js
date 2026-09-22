@@ -111,9 +111,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 1. Load logged-in user
     await initAuthUser();
 
-    // 2. Default filter: 'my' for logged-in teachers so each user only sees their own rooms
-    const defaultFilter = currentUserId ? 'my' : 'live';
-    setLobbyFilter(defaultFilter);
+    // 2. Default filter: strictly 'my' (only user's own rooms, never public list)
+    setLobbyFilter('my');
 
     // 3. Fill user name if available
     const qName = el('quick-name-input');
@@ -121,22 +120,34 @@ document.addEventListener('DOMContentLoaded', async () => {
         qName.value = currentUserName || '';
     }
 
-    // 4. Load rooms
+    // 4. Load rooms (only owned by user)
     await fetchRooms();
 
     // 5. Subscribe to realtime room updates
     setupLobbyRealtime();
 });
 
-// ── FETCH ROOMS FROM SUPABASE ──────────────────────────────────
+// ── FETCH ROOMS FROM SUPABASE (STRICT PRIVACY: ONLY OWNED ROOMS) ──
 async function fetchRooms() {
     if (!window.supabaseClient) {
-        showEmptyState('ไม่สามารถเชื่อมต่อฐานข้อมูลได้ กรุณาลองใหม่อีกครั้ง');
+        renderRoomGrid();
         return;
     }
 
     try {
-        // 1. Get all rooms
+        const hasLocalHostRooms = Object.keys(getMyHostRooms()).length > 0;
+
+        // If user is neither logged in nor has locally created rooms, they own 0 rooms
+        if (!currentUserId && !hasLocalHostRooms) {
+            LOBBY_STATE.rooms = [];
+            LOBBY_STATE.msgCounts = {};
+            LOBBY_STATE.fileCounts = {};
+            updateBadgeCounts();
+            renderRoomGrid();
+            return;
+        }
+
+        // Get all rooms from DB
         const { data: rooms, error } = await supabaseClient
             .from('live_studio_rooms')
             .select('*')
@@ -144,15 +155,18 @@ async function fetchRooms() {
 
         if (error) throw error;
 
-        LOBBY_STATE.rooms = rooms || [];
+        // STRICT PRIVACY: Only retain rooms owned by current user
+        LOBBY_STATE.rooms = (rooms || []).filter(r => isUserOwnerOfRoom(r));
 
-        // 2. Fetch stats (message counts & file counts)
-        if (rooms && rooms.length > 0) {
-            // Message counts
+        // Fetch stats only for user's own rooms
+        if (LOBBY_STATE.rooms.length > 0) {
+            const pins = LOBBY_STATE.rooms.map(r => r.pin);
+
             const { data: msgStats } = await supabaseClient
                 .from('live_studio_messages')
-                .select('room_pin');
-            
+                .select('room_pin')
+                .in('room_pin', pins);
+
             if (msgStats) {
                 const mCounts = {};
                 msgStats.forEach(m => {
@@ -161,10 +175,10 @@ async function fetchRooms() {
                 LOBBY_STATE.msgCounts = mCounts;
             }
 
-            // File counts
             const { data: fileStats } = await supabaseClient
                 .from('live_studio_files')
-                .select('room_pin');
+                .select('room_pin')
+                .in('room_pin', pins);
 
             if (fileStats) {
                 const fCounts = {};
@@ -180,61 +194,90 @@ async function fetchRooms() {
 
     } catch (err) {
         console.error('[fetchRooms Error]', err);
-        showEmptyState('เกิดข้อผิดพลาดในการโหลดห้องเรียน');
+        renderRoomGrid();
     }
 }
 
 // ── UPDATE COUNTS & TABS ───────────────────────────────────────
 function updateBadgeCounts() {
-    const liveCount = LOBBY_STATE.rooms.filter(r => r.status === 'LIVE').length;
-    const archivedCount = LOBBY_STATE.rooms.filter(r => r.status === 'ENDED').length;
-    const myCount = LOBBY_STATE.rooms.filter(r => isUserOwnerOfRoom(r)).length;
+    const myRooms = LOBBY_STATE.rooms.filter(r => isUserOwnerOfRoom(r));
+    const liveMyCount = myRooms.filter(r => r.status === 'LIVE').length;
+    const archivedMyCount = myRooms.filter(r => r.status === 'ENDED').length;
 
-    if (el('badge-live-count')) el('badge-live-count').textContent = liveCount;
-    if (el('badge-archived-count')) el('badge-archived-count').textContent = archivedCount;
-    if (el('badge-my-count')) el('badge-my-count').textContent = myCount;
+    if (el('badge-my-count')) el('badge-my-count').textContent = liveMyCount;
+    if (el('badge-archived-count')) el('badge-archived-count').textContent = archivedMyCount;
+
+    const tabsEl = el('lobby-tabs');
+    if (tabsEl) {
+        // Only show tabs if user actually owns rooms
+        tabsEl.style.display = myRooms.length > 0 ? 'flex' : 'none';
+    }
 }
 
 function setLobbyFilter(filter) {
-    LOBBY_STATE.activeFilter = filter;
-    ['live', 'archived', 'my'].forEach(f => {
+    // Only 'my' or 'archived'
+    LOBBY_STATE.activeFilter = (filter === 'archived') ? 'archived' : 'my';
+    ['my', 'archived'].forEach(f => {
         const btn = el(`tab-btn-${f}`);
-        if (btn) btn.classList.toggle('active', f === filter);
+        if (btn) btn.classList.toggle('active', f === LOBBY_STATE.activeFilter);
     });
     renderRoomGrid();
 }
 
-// ── RENDER ROOM GRID ───────────────────────────────────────────
+// ── RENDER ROOM GRID (ZERO PUBLIC LEAKS) ─────────────────────────
 function renderRoomGrid() {
     const grid = el('room-grid');
     if (!grid) return;
 
-    let filtered = [];
+    const myRooms = LOBBY_STATE.rooms.filter(r => isUserOwnerOfRoom(r));
 
+    // When user has no rooms (e.g. Guest, Student, or new user): NEVER display any stranger's room!
+    if (myRooms.length === 0) {
+        grid.innerHTML = `
+            <div class="private-portal-card" style="grid-column: 1 / -1">
+                <div class="private-portal-icon">
+                    <i class="bi bi-shield-lock-fill"></i>
+                </div>
+                <h3 class="private-portal-title">ห้องเรียนออนไลน์เป็นระบบส่วนตัว</h3>
+                <p class="private-portal-desc">
+                    ห้องเรียนจะไม่แสดงสู่สาธารณะเพื่อความเป็นส่วนตัวและความปลอดภัยของชั้นเรียน<br>
+                    นักเรียนและผู้เข้าร่วมสามารถเข้าสู่ห้องเรียนได้โดยการกรอก <strong>รหัส PIN</strong> ด้านบนเท่านั้น
+                </p>
+                <div class="private-portal-guide">
+                    <div class="guide-item">
+                        <i class="bi bi-key text-pink me-1"></i>
+                        <span>1. รับรหัส PIN 4-6 หลักจากครูผู้สอน</span>
+                    </div>
+                    <div class="guide-item">
+                        <i class="bi bi-pencil-square text-pink me-1"></i>
+                        <span>2. กรอก PIN และชื่อของคุณในช่องด้านบน</span>
+                    </div>
+                    <div class="guide-item">
+                        <i class="bi bi-box-arrow-in-right text-pink me-1"></i>
+                        <span>3. กด "เข้าร่วมห้องเรียน" เพื่อเริ่มเรียนทันที</span>
+                    </div>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    let filtered = [];
     if (LOBBY_STATE.activeFilter === 'my') {
-        filtered = LOBBY_STATE.rooms.filter(r => isUserOwnerOfRoom(r));
-    } else if (LOBBY_STATE.activeFilter === 'live') {
-        filtered = LOBBY_STATE.rooms.filter(r => r.status === 'LIVE');
+        filtered = myRooms.filter(r => r.status === 'LIVE');
     } else if (LOBBY_STATE.activeFilter === 'archived') {
-        filtered = LOBBY_STATE.rooms.filter(r => r.status === 'ENDED');
+        filtered = myRooms.filter(r => r.status === 'ENDED');
     }
 
     if (filtered.length === 0) {
-        let msg = 'ยังไม่มีห้องเรียนสดที่เปิดอยู่ในขณะนี้';
-        let icon = 'bi-broadcast';
-        if (LOBBY_STATE.activeFilter === 'archived') {
-            msg = 'ยังไม่มีบันทึกห้องเรียนหรือคลังไฟล์ย้อนหลัง';
-            icon = 'bi-archive';
-        } else if (LOBBY_STATE.activeFilter === 'my') {
-            msg = 'คุณยังไม่ได้สร้างห้องเรียน';
-            icon = 'bi-folder-plus';
-        }
-
+        let msg = LOBBY_STATE.activeFilter === 'archived' 
+            ? 'คุณยังไม่มีคลังย้อนหลังของห้องที่คุณสอน' 
+            : 'ไม่มีห้องเรียนสดที่คุณเปิดสอนอยู่ในขณะนี้';
         grid.innerHTML = `
             <div class="lobby-empty" style="grid-column: 1 / -1">
-                <i class="bi ${icon}"></i>
+                <i class="bi bi-folder-check"></i>
                 <div style="font-size:1.05rem;font-weight:600;color:#fff;margin-bottom:4px">${msg}</div>
-                <div style="font-size:0.85rem">กดปุ่ม <strong>"+ สร้างห้องเรียนใหม่"</strong> ด้านบนเพื่อเริ่มการสอนได้ทันที</div>
+                <div style="font-size:0.85rem">กดปุ่ม <strong>"+ สร้างห้องเรียนใหม่"</strong> ด้านบนเพื่อเริ่มเปิดการสอน</div>
             </div>
         `;
         return;
@@ -243,7 +286,6 @@ function renderRoomGrid() {
     grid.innerHTML = '';
     filtered.forEach(room => {
         const isLive = (room.status === 'LIVE');
-        const isMyRoom = isUserOwnerOfRoom(room);
         const msgCount = LOBBY_STATE.msgCounts[room.pin] || 0;
         const fileCount = LOBBY_STATE.fileCounts[room.pin] || 0;
 
@@ -263,7 +305,7 @@ function renderRoomGrid() {
                     <i class="bi ${isLive ? 'bi-broadcast' : 'bi-archive-fill'}"></i>
                     ${isLive ? 'กำลังสอนสด (LIVE)' : 'จบการสอนแล้ว'}
                 </span>
-                <span class="room-card-pin" title="รหัส PIN เข้าห้อง">PIN: ${escapeHtml(room.pin)}</span>
+                <span class="room-card-pin" title="รหัส PIN สำหรับให้นักเรียนเข้า">PIN: ${escapeHtml(room.pin)}</span>
             </div>
 
             <div class="room-card-title">${escapeHtml(room.title || `ห้องเรียน ${room.pin}`)}</div>
@@ -271,7 +313,7 @@ function renderRoomGrid() {
             <div class="room-card-meta">
                 <div class="room-card-meta-row">
                     <i class="bi bi-person-badge-fill" style="color:var(--cyber-pink)"></i>
-                    <span>ครูผู้สอน: <strong>${escapeHtml(room.host_name || 'ไม่ระบุ')}</strong></span>
+                    <span>ครูผู้สอน: <strong>${escapeHtml(room.host_name || 'ไม่ระบุ')}</strong> (ห้องของคุณ)</span>
                 </div>
                 <div class="room-card-meta-row">
                     <i class="bi bi-calendar3"></i>
@@ -285,15 +327,13 @@ function renderRoomGrid() {
             </div>
 
             <div class="room-card-actions">
-                <button class="btn-enter-room ${isLive ? '' : 'archive-btn'}" onclick="enterRoomFromLobby('${escapeHtml(room.pin)}', '${isMyRoom ? 'host' : 'student'}')">
+                <button class="btn-enter-room ${isLive ? '' : 'archive-btn'}" onclick="enterRoomFromLobby('${escapeHtml(room.pin)}', 'host')">
                     <i class="bi ${isLive ? 'bi-box-arrow-in-right' : 'bi-folder2-open'}"></i>
-                    ${isLive ? 'เข้าร่วมห้องเรียน' : 'เข้าดูประวัติ & โหลดไฟล์'}
+                    ${isLive ? 'เข้าจัดการห้องเรียน' : 'ดูประวัติ & จัดการไฟล์'}
                 </button>
-                ${isMyRoom ? `
-                    <button class="btn-del-room" title="ลบห้องนี้ถาวร" onclick="confirmDeleteRoom('${escapeHtml(room.pin)}')">
-                        <i class="bi bi-trash-fill"></i>
-                    </button>
-                ` : ''}
+                <button class="btn-del-room" title="ลบห้องนี้ถาวร" onclick="confirmDeleteRoom('${escapeHtml(room.pin)}')">
+                    <i class="bi bi-trash-fill"></i>
+                </button>
             </div>
         `;
 
@@ -445,7 +485,7 @@ function handleQuickJoinKey(e) {
     if (e.key === 'Enter') handleQuickJoin();
 }
 
-function handleQuickJoin() {
+async function handleQuickJoin() {
     const pin  = el('quick-pin-input').value.trim().toUpperCase();
     const name = el('quick-name-input').value.trim();
 
@@ -456,8 +496,35 @@ function handleQuickJoin() {
     }
 
     const effectiveName = name || currentUserName || localStorage.getItem('gyver_user_name') || '';
-    if (effectiveName) {
-        localStorage.setItem('gyver_user_name', effectiveName);
+    if (!effectiveName) {
+        showToast('warning', 'ระบุชื่อของคุณ', 'กรุณากรอกชื่อของคุณก่อนเข้าร่วมห้องเรียน', 2500);
+        el('quick-name-input').focus();
+        return;
+    }
+
+    localStorage.setItem('gyver_user_name', effectiveName);
+
+    // Validate PIN with Supabase DB
+    if (window.supabaseClient) {
+        try {
+            const { data: room, error } = await supabaseClient
+                .from('live_studio_rooms')
+                .select('pin, title, status, is_locked')
+                .eq('pin', pin)
+                .maybeSingle();
+
+            if (!room) {
+                showToast('error', 'ไม่พบห้องเรียน', `ไม่พบห้องเรียนที่มีรหัส PIN "${pin}" กรุณาตรวจสอบรหัสอีกครั้ง`, 4000);
+                return;
+            }
+
+            if (room.is_locked) {
+                showToast('error', 'ห้องเรียนถูกล็อก', 'ห้องเรียนนี้ถูกล็อกโดยครูผู้สอน ไม่อนุญาตให้เข้าร่วมในขณะนี้', 4000);
+                return;
+            }
+        } catch (err) {
+            console.warn('[handleQuickJoin validation notice]:', err);
+        }
     }
 
     const sessionData = { pin, name: effectiveName, role: 'student' };
@@ -472,7 +539,7 @@ function handleQuickJoin() {
         }, '*');
     } catch (_) {}
 
-    window.location.href = `live_room.html?pin=${encodeURIComponent(pin)}${effectiveName ? `&name=${encodeURIComponent(effectiveName)}` : ''}&role=student`;
+    window.location.href = `live_room.html?pin=${encodeURIComponent(pin)}&name=${encodeURIComponent(effectiveName)}&role=student`;
 }
 
 // ── DELETE ROOM ACTION ─────────────────────────────────────────

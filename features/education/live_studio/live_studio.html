@@ -62,27 +62,23 @@
     <div class="quick-join-bar">
         <div class="quick-join-label">
             <i class="bi bi-key-fill" style="color:var(--cyber-pink)"></i>
-            <span>เข้าห้องด่วนด้วย PIN:</span>
+            <span>เข้าห้องด้วย PIN:</span>
         </div>
-        <input type="text" class="quick-join-input" id="quick-pin-input" placeholder="เช่น 7829" maxlength="8" onkeydown="handleQuickJoinKey(event)">
+        <input type="text" class="quick-join-input" id="quick-pin-input" placeholder="รหัส PIN เช่น 7829" maxlength="8" onkeydown="handleQuickJoinKey(event)">
         <input type="text" class="quick-join-input" id="quick-name-input" placeholder="ชื่อของคุณ" maxlength="30" style="letter-spacing:normal;font-family:'Kanit',sans-serif" onkeydown="handleQuickJoinKey(event)">
         <button class="btn-cyber-primary" onclick="handleQuickJoin()" style="padding:8px 18px">
-            <i class="bi bi-box-arrow-in-right"></i> เข้าร่วม
+            <i class="bi bi-box-arrow-in-right"></i> เข้าร่วมห้องเรียน
         </button>
     </div>
 
-    <!-- ── FILTER TABS ── -->
-    <div class="lobby-tabs">
+    <!-- ── FILTER TABS (Only shown if user has rooms) ── -->
+    <div class="lobby-tabs" id="lobby-tabs" style="display:none">
         <button class="lobby-tab active" id="tab-btn-my" onclick="setLobbyFilter('my')">
-            <i class="bi bi-star-fill" style="color:var(--cyber-pink)"></i> ห้องของฉัน
+            <i class="bi bi-star-fill" style="color:var(--cyber-pink)"></i> ห้องของฉัน (เปิดสอนสด)
             <span class="tab-badge" id="badge-my-count">0</span>
         </button>
-        <button class="lobby-tab" id="tab-btn-live" onclick="setLobbyFilter('live')">
-            <i class="bi bi-broadcast" style="color:#23a55a"></i> ห้องเรียนสดทั้งหมด
-            <span class="tab-badge" id="badge-live-count">0</span>
-        </button>
         <button class="lobby-tab" id="tab-btn-archived" onclick="setLobbyFilter('archived')">
-            <i class="bi bi-archive-fill" style="color:#facc15"></i> คลังย้อนหลัง & ไฟล์
+            <i class="bi bi-archive-fill" style="color:#facc15"></i> คลังย้อนหลังของฉัน
             <span class="tab-badge" id="badge-archived-count">0</span>
         </button>
     </div>

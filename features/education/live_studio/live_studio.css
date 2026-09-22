@@ -653,6 +653,63 @@ html,body{height:100%;overflow:hidden;background-color:var(--discord-bg);color:v
     color: rgba(255, 255, 255, 0.2);
 }
 
+/* ── PRIVATE PORTAL CARD ── */
+.private-portal-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1.5px dashed rgba(255, 255, 255, 0.12);
+    border-radius: 18px;
+    padding: 44px 28px;
+    text-align: center;
+    max-width: 620px;
+    margin: 15px auto 40px auto;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+.private-portal-icon {
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    background: rgba(236, 72, 153, 0.12);
+    color: var(--cyber-pink);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.2rem;
+    margin-bottom: 18px;
+    border: 1.5px solid rgba(236, 72, 153, 0.35);
+    box-shadow: 0 0 20px rgba(236, 72, 153, 0.2);
+}
+.private-portal-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 8px;
+}
+.private-portal-desc {
+    font-size: 0.92rem;
+    color: var(--discord-muted);
+    line-height: 1.6;
+    margin-bottom: 24px;
+}
+.private-portal-guide {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding-top: 18px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.private-portal-guide .guide-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: #cbd5e1;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
 /* ── RESPONSIVE ── */
 @media(max-width:900px){.studio-chat{display:none}:root{--sidebar-width:200px}}
 @media(max-width:640px){.studio-sidebar{display:none}.lobby-header{flex-direction:column;align-items:flex-start}}
