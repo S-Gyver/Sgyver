@@ -11,12 +11,12 @@
     --cyber-glow:rgba(236,72,153,.45);--cyber-glow-soft:rgba(236,72,153,.12);
     --sidebar-width:264px;--chat-width:320px;--control-h:72px;--topbar-h:50px
 }
-html,body{height:100%;overflow:hidden;background-color:var(--discord-bg);color:var(--discord-text);font-family:"Kanit","Segoe UI",sans-serif;font-size:14px}
+html,body{height:100%;height:100dvh;overflow:hidden;background-color:var(--discord-bg);color:var(--discord-text);font-family:"Kanit","Segoe UI",sans-serif;font-size:14px}
 ::-webkit-scrollbar{width:6px;height:6px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:99px}
 ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.22)}
-.studio-app{display:flex;height:100vh;width:100vw;overflow:hidden}
+.studio-app{display:flex;height:100%;height:100dvh;width:100vw;overflow:hidden;position:relative}
 
 /* ── SIDEBAR ── */
 .studio-sidebar{width:var(--sidebar-width);min-width:var(--sidebar-width);background-color:var(--discord-mid);display:flex;flex-direction:column;border-right:1px solid var(--discord-border);z-index:10}
@@ -711,9 +711,356 @@ html,body{height:100%;overflow:hidden;background-color:var(--discord-bg);color:v
     border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-/* ── RESPONSIVE ── */
-@media(max-width:900px){.studio-chat{display:none}:root{--sidebar-width:200px}}
-@media(max-width:640px){.studio-sidebar{display:none}.lobby-header{flex-direction:column;align-items:flex-start}}
+/* ── RESPONSIVE & MOBILE DESIGN ── */
+.mobile-only-btn {
+    display: none;
+}
+.mobile-stage-bar {
+    display: none;
+}
+.mobile-chat-close-btn {
+    display: none;
+}
+.mobile-drawer-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 9998;
+}
+.mobile-drawer-backdrop.active {
+    display: block;
+}
+
+/* Tablet: < 900px */
+@media (max-width: 900px) {
+    :root {
+        --sidebar-width: 200px;
+    }
+    .mobile-only-btn {
+        display: inline-flex !important;
+    }
+    .studio-chat {
+        position: fixed !important;
+        right: 0 !important;
+        top: 0 !important;
+        bottom: 0 !important;
+        width: 86vw !important;
+        max-width: 380px !important;
+        height: 100% !important;
+        height: 100dvh !important;
+        background: var(--discord-mid) !important;
+        border-left: 1px solid rgba(255, 255, 255, 0.12) !important;
+        box-shadow: -10px 0 35px rgba(0, 0, 0, 0.75) !important;
+        z-index: 9999 !important;
+        transform: translateX(105%);
+        transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    .studio-chat.mobile-open {
+        transform: translateX(0) !important;
+    }
+    .mobile-chat-close-btn {
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.08);
+        border: none;
+        color: #fff;
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        font-size: 1.2rem;
+        cursor: pointer;
+        margin-left: 8px;
+    }
+}
+
+/* Mobile: < 640px */
+@media (max-width: 640px) {
+    :root {
+        --topbar-h: 46px;
+        --control-h: 56px;
+    }
+    .studio-sidebar {
+        display: none !important;
+    }
+    .lobby-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    /* 1. Header (Stage Top Bar) - Compact, no overlap */
+    .stage-topbar {
+        height: var(--topbar-h) !important;
+        min-height: var(--topbar-h) !important;
+        padding: 0 10px !important;
+        gap: 6px !important;
+        background: #18191c !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+        justify-content: space-between !important;
+        flex-shrink: 0 !important;
+    }
+    .topbar-left {
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        min-width: 0 !important;
+        flex: 1 1 auto !important;
+        overflow: hidden !important;
+    }
+    .topbar-title {
+        font-size: 0.88rem !important;
+        font-weight: 700 !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        max-width: 85px !important;
+    }
+    .badge-live {
+        font-size: 0.6rem !important;
+        padding: 2px 5px !important;
+        border-radius: 4px !important;
+        flex-shrink: 0 !important;
+    }
+    #stage-time {
+        display: none !important; /* Hide second counter on mobile to eliminate all text collisions */
+    }
+    .topbar-right {
+        display: flex !important;
+        align-items: center !important;
+        gap: 5px !important;
+        flex-shrink: 0 !important;
+    }
+    .topbar-btn {
+        height: 32px !important;
+        min-width: 32px !important;
+        padding: 0 7px !important;
+        border-radius: 7px !important;
+        font-size: 0.85rem !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 3px !important;
+        flex-shrink: 0 !important;
+    }
+    .topbar-btn .btn-text {
+        display: none !important; /* Icon-only buttons on mobile */
+    }
+
+    /* 2. Main Stage Content & Video Area */
+    .stage-content {
+        padding: 6px 8px !important;
+        gap: 8px !important;
+        flex: 1 !important;
+        min-height: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        align-items: center !important;
+        overflow: hidden !important;
+    }
+    .main-screen-box {
+        width: 100% !important;
+        max-width: 100% !important;
+        aspect-ratio: 16 / 9 !important;
+        max-height: 52vh !important;
+        border-radius: 12px !important;
+        background: #000 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        position: relative !important;
+        overflow: hidden !important;
+        flex: 0 0 auto !important;
+        margin: auto 0 !important;
+    }
+    .main-screen-box.sharing {
+        border: 1.5px solid var(--cyber-pink) !important;
+        box-shadow: 0 0 16px var(--cyber-glow) !important;
+    }
+    #screen-video {
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: contain !important;
+        border-radius: 10px !important;
+    }
+    .btn-screen-fullscreen {
+        top: 8px !important;
+        right: 8px !important;
+        width: 30px !important;
+        height: 30px !important;
+        font-size: 0.85rem !important;
+        background: rgba(13, 14, 16, 0.75) !important;
+        border: 1px solid rgba(255, 255, 255, 0.25) !important;
+        border-radius: 6px !important;
+    }
+    .screen-placeholder {
+        padding: 12px !important;
+    }
+    .screen-placeholder i {
+        font-size: 2.4rem !important;
+        margin-bottom: 6px !important;
+    }
+    .screen-placeholder h5 {
+        font-size: 0.95rem !important;
+        margin-bottom: 4px !important;
+    }
+    .screen-placeholder p {
+        font-size: 0.78rem !important;
+        line-height: 1.35 !important;
+    }
+    .pip-camera {
+        width: 95px !important;
+        height: 65px !important;
+        bottom: 8px !important;
+        right: 8px !important;
+    }
+
+    /* 3. Mobile Stage Quick Action Bar */
+    .mobile-stage-bar {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        width: 100% !important;
+        background: rgba(255, 255, 255, 0.04) !important;
+        border: 1px solid rgba(255, 255, 255, 0.07) !important;
+        border-radius: 10px !important;
+        padding: 6px 10px !important;
+        gap: 8px !important;
+        flex-shrink: 0 !important;
+    }
+    .mobile-stream-info {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.78rem;
+        color: var(--discord-text);
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 140px;
+    }
+    .mobile-stream-info .live-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #ef4444;
+        animation: pulseLive 1.5s infinite;
+        flex-shrink: 0;
+    }
+    .mobile-quick-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .mobile-pill-btn {
+        background: rgba(88, 101, 242, 0.15);
+        border: 1px solid rgba(88, 101, 242, 0.35);
+        color: #818cf8;
+        font-family: "Kanit", sans-serif;
+        font-size: 0.76rem;
+        font-weight: 500;
+        padding: 4px 9px;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+    .mobile-pill-btn:active {
+        background: var(--blurple);
+        color: #fff;
+    }
+
+    /* 4. Bottom Control Deck - Perfectly sized, never clipped */
+    .control-deck {
+        height: var(--control-h) !important;
+        min-height: var(--control-h) !important;
+        padding: 0 6px !important;
+        padding-bottom: env(safe-area-inset-bottom, 4px) !important;
+        gap: 5px !important;
+        background: #111214 !important;
+        border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+        justify-content: center !important;
+        flex-shrink: 0 !important;
+        z-index: 20 !important;
+    }
+    .ctrl-group {
+        gap: 5px !important;
+    }
+    .ctrl-btn {
+        width: 38px !important;
+        height: 38px !important;
+        font-size: 1rem !important;
+        flex-shrink: 0 !important;
+    }
+    .ctrl-divider {
+        width: 1px !important;
+        height: 20px !important;
+        margin: 0 2px !important;
+        background: rgba(255, 255, 255, 0.1) !important;
+    }
+    #ctrl-end {
+        height: 38px !important;
+        padding: 0 10px !important;
+        border-radius: 10px !important;
+        font-size: 0.76rem !important;
+    }
+
+    /* 5. Join Screen on Mobile */
+    .join-card {
+        padding: 24px 18px !important;
+    }
+}
+
+/* Mobile Landscape (< 900px Landscape) */
+@media (max-width: 900px) and (orientation: landscape) {
+    .stage-topbar {
+        height: 36px !important;
+        min-height: 36px !important;
+        padding: 0 8px !important;
+    }
+    .topbar-title {
+        max-width: 140px !important;
+    }
+    .topbar-btn {
+        height: 28px !important;
+        min-width: 28px !important;
+        font-size: 0.8rem !important;
+        padding: 0 6px !important;
+    }
+    .stage-content {
+        padding: 2px 4px !important;
+    }
+    .main-screen-box {
+        aspect-ratio: auto !important;
+        width: 100% !important;
+        height: 100% !important;
+        max-height: 100% !important;
+        border-radius: 6px !important;
+        margin: 0 !important;
+        flex: 1 !important;
+    }
+    .mobile-stage-bar {
+        display: none !important;
+    }
+    .control-deck {
+        height: 44px !important;
+        min-height: 44px !important;
+        padding: 0 6px !important;
+    }
+    .ctrl-btn {
+        width: 32px !important;
+        height: 32px !important;
+        font-size: 0.9rem !important;
+    }
+}
 
 /* ── PERSISTENT CHAT & IMAGE CARDS ── */
 .chat-file-card-bubble {

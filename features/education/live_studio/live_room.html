@@ -253,30 +253,34 @@
                     <span style="color:var(--discord-muted);font-size:.8rem;margin-left:4px" id="stage-time">00:00:00</span>
                 </div>
                 <div class="topbar-right">
+                    <!-- Mobile Chat & Files toggle button -->
+                    <button class="topbar-btn mobile-only-btn" id="btn-mobile-chat" onclick="toggleMobileDrawer()" title="แชทและไฟล์">
+                        <i class="bi bi-chat-dots-fill"></i>
+                    </button>
                     <!-- QR Code button -->
                     <button class="topbar-btn" id="btn-show-qr" onclick="openQrModal()" title="แสดง QR เข้าห้อง">
-                        <i class="bi bi-qr-code"></i> QR
+                        <i class="bi bi-qr-code"></i> <span class="btn-text">QR</span>
                     </button>
                     <!-- Host only controls -->
                     <button class="topbar-btn" id="btn-lock-room" onclick="toggleRoomLock()" title="ล็อกห้อง" style="display:none">
-                        <i class="bi bi-lock-fill"></i> ล็อกห้อง
+                        <i class="bi bi-lock-fill"></i> <span class="btn-text">ล็อกห้อง</span>
                     </button>
-                    <button class="topbar-btn" id="btn-raise-hand" onclick="raiseHand()">
-                        <i class="bi bi-hand-index-thumb"></i> ยกมือ
+                    <button class="topbar-btn" id="btn-raise-hand" onclick="raiseHand()" title="ยกมือ (H)">
+                        <i class="bi bi-hand-index-thumb"></i> <span class="btn-text">ยกมือ</span>
                     </button>
                     <!-- Host End Session button -->
                     <button class="topbar-btn" id="btn-end-session" onclick="promptEndSession()" title="จบการสอน (ห้องจะยังอยู่ให้นักเรียนอ่านแชทและโหลดไฟล์)" style="display:none;background:rgba(234,179,8,0.2);color:#facc15;border-color:rgba(234,179,8,0.4)">
-                        <i class="bi bi-check2-circle"></i> จบการสอน
+                        <i class="bi bi-check2-circle"></i> <span class="btn-text">จบการสอน</span>
                     </button>
                     <!-- Host Delete Room button -->
                     <button class="topbar-btn danger" id="btn-delete-room" onclick="deleteRoomPermanently()" title="ลบห้องนี้ถาวร" style="display:none">
-                        <i class="bi bi-trash-fill"></i> ลบห้อง
+                        <i class="bi bi-trash-fill"></i> <span class="btn-text">ลบห้อง</span>
                     </button>
                     <button class="topbar-btn fullscreen-toggle-btn" id="topbar-fullscreen" onclick="toggleFullScreen()" title="เต็มจอ (F)">
-                        <i class="bi bi-arrows-fullscreen"></i> เต็มจอ
+                        <i class="bi bi-arrows-fullscreen"></i> <span class="btn-text">เต็มจอ</span>
                     </button>
-                    <button class="topbar-btn danger" id="btn-leave" onclick="leaveRoom()">
-                        <i class="bi bi-box-arrow-right"></i> ออก
+                    <button class="topbar-btn danger" id="btn-leave" onclick="leaveRoom()" title="ออกจากห้อง">
+                        <i class="bi bi-box-arrow-right"></i> <span class="btn-text">ออก</span>
                     </button>
                 </div>
             </div>
@@ -317,6 +321,24 @@
                     <div class="pip-camera" id="pip-camera" style="display:none">
                         <video id="self-video" autoplay playsinline muted></video>
                         <div class="pip-label"><i class="bi bi-camera-video-fill me-1"></i>กล้องของคุณ</div>
+                    </div>
+                </div>
+                <!-- Mobile Action & Status Bar (Portrait under screen) -->
+                <div class="mobile-stage-bar" id="mobile-stage-bar">
+                    <div class="mobile-stream-info">
+                        <span class="live-dot"></span>
+                        <span id="mobile-sharer-name">ถ่ายทอดสด</span>
+                    </div>
+                    <div class="mobile-quick-actions">
+                        <button class="mobile-pill-btn" onclick="openMobileTab('chat')">
+                            <i class="bi bi-chat-text-fill"></i> แชท
+                        </button>
+                        <button class="mobile-pill-btn" onclick="openMobileTab('participants')">
+                            <i class="bi bi-people-fill"></i> สมาชิก
+                        </button>
+                        <button class="mobile-pill-btn" onclick="openMobileTab('files')">
+                            <i class="bi bi-folder2-open"></i> ไฟล์
+                        </button>
                     </div>
                 </div>
 
@@ -378,6 +400,7 @@
                 <i class="bi bi-chat-dots-fill" style="color:var(--blurple)"></i>
                 <span>ห้องสนทนา & คลังไฟล์</span>
                 <span style="margin-left:auto;font-size:.75rem;color:var(--discord-muted)" id="online-count">0 คนออนไลน์</span>
+                <button class="mobile-chat-close-btn" onclick="toggleMobileDrawer()" title="ปิด">&times;</button>
             </div>
 
             <!-- Tabs: Chat / Participants / Files -->
@@ -454,6 +477,9 @@
     </div>
 
 </div><!-- end .studio-app -->
+
+<!-- Mobile Drawer Backdrop -->
+<div class="mobile-drawer-backdrop" id="mobile-drawer-backdrop" onclick="toggleMobileDrawer()"></div>
 
 <!-- Live Room JS -->
 <script src="live_room.js"></script>

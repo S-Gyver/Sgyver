@@ -1625,6 +1625,11 @@ function selectScreenStream(targetName) {
     const label = el('screen-label');
     const box = el('main-screen-box');
 
+    const mobSharer = el('mobile-sharer-name');
+    if (mobSharer) {
+        mobSharer.textContent = isSelf ? 'หน้าจอของคุณ' : `จอของ ${targetName}`;
+    }
+
     let stream = null;
     if (isSelf) {
         stream = STATE.screenStream;
@@ -2376,6 +2381,25 @@ function switchChannel(ch) {
     if (target) target.classList.add('active');
     if (ch === 'files') switchTab('files');
     else if (ch === 'main') switchTab('chat');
+}
+
+// ── MOBILE DRAWER & TABS ───────────────────────────────────────
+function toggleMobileDrawer() {
+    const chat = document.querySelector('.studio-chat');
+    const backdrop = el('mobile-drawer-backdrop');
+    if (!chat) return;
+    const isOpen = chat.classList.toggle('mobile-open');
+    if (backdrop) backdrop.classList.toggle('active', isOpen);
+}
+
+function openMobileTab(tab) {
+    switchTab(tab);
+    const chat = document.querySelector('.studio-chat');
+    const backdrop = el('mobile-drawer-backdrop');
+    if (chat && !chat.classList.contains('mobile-open')) {
+        chat.classList.add('mobile-open');
+        if (backdrop) backdrop.classList.add('active');
+    }
 }
 
 // ── QR CODE & SHARE ────────────────────────────────────────────
