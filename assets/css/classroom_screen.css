@@ -214,6 +214,66 @@ body.classroom-mode #cs-widget-canvas {
 }
 
 /* ====================================================
+   📱 2.5 EMBEDDED APP VIEWPORT (Unified Top Bar Shell)
+   ==================================================== */
+.cs-app-viewport {
+    position: fixed;
+    top: 60px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: calc(100vh - 60px);
+    z-index: 990;
+    background: #0f172a;
+    border: none;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    transition: opacity 0.2s ease;
+}
+
+.cs-app-viewport iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+    background: transparent;
+}
+
+/* When an app is open, hide the bottom dock and disable background canvas */
+body.in-app-view .cs-toolbar-wrapper {
+    display: none !important;
+}
+
+body.in-app-view #cs-widget-canvas {
+    pointer-events: none !important;
+    opacity: 0 !important;
+}
+
+/* 🔙 Back to Workspace Board Button in Header */
+.btn-back-to-workspace {
+    background: linear-gradient(135deg, rgba(67, 97, 238, 0.25), rgba(76, 201, 240, 0.25)) !important;
+    border: 1px solid rgba(76, 201, 240, 0.5) !important;
+    color: #4cc9f0 !important;
+    font-weight: 600 !important;
+    box-shadow: 0 0 15px rgba(76, 201, 240, 0.25) !important;
+    animation: pulseSoft 2.5s infinite;
+}
+
+.btn-back-to-workspace:hover {
+    background: linear-gradient(135deg, rgba(67, 97, 238, 0.45), rgba(76, 201, 240, 0.45)) !important;
+    color: #fff !important;
+    border-color: #4cc9f0 !important;
+    transform: translateY(-1px);
+}
+
+@keyframes pulseSoft {
+    0%, 100% { box-shadow: 0 0 10px rgba(76, 201, 240, 0.2); }
+    50% { box-shadow: 0 0 18px rgba(76, 201, 240, 0.45); }
+}
+
+/* ====================================================
    🪟 3. FLOATING WIDGET CARDS
    ==================================================== */
 .cs-widget {

@@ -64,7 +64,7 @@
             </button>
 
             <!-- Brand Logo & Version -->
-            <a class="cs-brand" href="index.html">
+            <a class="cs-brand" href="my_workspace.html" onclick="if(typeof isAppViewportOpen==='function'&&isAppViewportOpen()){ closeAppInWorkspace(); return false; }">
                 <div class="cs-brand-icon">
                     <i class="bi bi-grid-1x2-fill"></i>
                 </div>
@@ -75,11 +75,17 @@
         </div>
 
         <!-- Editable Screen Title -->
-        <div class="cs-title-box" title="คลิกเพื่อแก้ไขชื่อกระดานห้องเรียน">
+        <div class="cs-title-box" id="cs-header-title-box" title="คลิกเพื่อแก้ไขชื่อกระดานห้องเรียน">
             <i class="bi bi-pencil-square text-info"></i>
             <input type="text" id="screen-title-input" value="หน้ากระดานส่วนตัว (My Workspace)"
                 placeholder="พิมพ์ชื่อห้องเรียน...">
         </div>
+
+        <!-- 🔙 Back to Workspace Board Button (visible when app viewport is active) -->
+        <button id="cs-app-back-btn" class="cs-btn-text btn-back-to-workspace d-none" onclick="closeAppInWorkspace()" title="กลับสู่หน้ากระดานส่วนตัว">
+            <i class="bi bi-arrow-left-circle-fill"></i>
+            <span class="d-none d-sm-inline">กลับกระดาน</span>
+        </button>
 
         <!-- Live Clock Badge -->
         <div id="header-live-clock" class="cs-header-clock d-none d-lg-flex">
@@ -134,7 +140,7 @@
                         style="background: #0f172a; border: 1px solid rgba(255, 255, 255, 0.18) !important;">
                         <li>
                             <a class="dropdown-item d-flex align-items-center gap-3 py-2 px-3 rounded-3"
-                                href="auth/profile/profile.html">
+                                href="#" onclick="openAppInWorkspace('auth/profile/profile.html', 'จัดการโปรไฟล์', 'app_profile'); return false;">
                                 <i class="bi bi-person-gear text-primary fs-5"></i>
                                 <div>
                                     <div class="fw-medium text-white small" style="font-size: 0.92rem;">จัดการโปรไฟล์
@@ -145,7 +151,7 @@
                         </li>
                         <li>
                             <a class="dropdown-item d-flex align-items-center gap-3 py-2 px-3 rounded-3"
-                                href="auth/classroom_manage/classroom_manage.html">
+                                href="#" onclick="openAppInWorkspace('auth/classroom_manage/classroom_manage.html', 'จัดการห้องเรียน & นักเรียน', 'app_manage'); return false;">
                                 <i class="bi bi-people text-success fs-5"></i>
                                 <div>
                                     <div class="fw-medium text-white small" style="font-size: 0.92rem;">จัดการห้องเรียน
@@ -156,7 +162,7 @@
                         </li>
                         <li>
                             <a class="dropdown-item d-flex align-items-center gap-3 py-2 px-3 rounded-3"
-                                href="auth/history/history.html">
+                                href="#" onclick="openAppInWorkspace('auth/history/history.html', 'ประวัติกิจกรรม & คะแนน', 'app_history'); return false;">
                                 <i class="bi bi-clock-history text-info fs-5"></i>
                                 <div>
                                     <div class="fw-medium text-white small" style="font-size: 0.92rem;">ประวัติกิจกรรม &
@@ -167,7 +173,7 @@
                         </li>
                         <li>
                             <a class="dropdown-item d-flex align-items-center gap-3 py-2 px-3 rounded-3"
-                                href="auth/change_password/change_password.html">
+                                href="#" onclick="openAppInWorkspace('auth/change_password/change_password.html', 'เปลี่ยนรหัสผ่าน', 'app_change_pw'); return false;">
                                 <i class="bi bi-shield-lock text-warning fs-5"></i>
                                 <div>
                                     <div class="fw-medium text-white small" style="font-size: 0.92rem;">เปลี่ยนรหัสผ่าน
@@ -190,6 +196,16 @@
             </div>
         </div>
     </header>
+
+    <!-- ====================================================
+         📱 1.5 EMBEDDED APP VIEWPORT (Unified Top Bar Shell)
+         ==================================================== -->
+    <div id="cs-app-viewport" class="cs-app-viewport" style="display:none;">
+        <iframe id="cs-app-frame" name="cs-app-frame" 
+                allow="camera; microphone; display-capture; fullscreen; autoplay; clipboard-read; clipboard-write;"
+                sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts allow-downloads"
+                src=""></iframe>
+    </div>
 
     <!-- ====================================================
          🎨 2. MAIN WIDGET INTERACTIVE CANVAS
@@ -1148,7 +1164,8 @@
             'app_bank': { id: 'app_bank', title: 'คลังข้อสอบ', icon: 'bi bi-journal-bookmark-fill', colorClass: 'text-warning', type: 'link', url: 'features/education/question_bank/question_bank.html' },
             'app_manage': { id: 'app_manage', title: 'จัดการ นร.', icon: 'bi bi-people-fill', colorClass: 'text-success', type: 'link', url: 'auth/classroom_manage/classroom_manage.html' },
             'app_history': { id: 'app_history', title: 'ประวัติ', icon: 'bi bi-clock-history', colorClass: 'text-info', type: 'link', url: 'auth/history/history.html' },
-            'app_profile': { id: 'app_profile', title: 'โปรไฟล์ครู', icon: 'bi bi-person-gear', colorClass: 'text-secondary', type: 'link', url: 'auth/profile/profile.html' }
+            'app_profile': { id: 'app_profile', title: 'โปรไฟล์ครู', icon: 'bi bi-person-gear', colorClass: 'text-secondary', type: 'link', url: 'auth/profile/profile.html' },
+            'app_change_pw': { id: 'app_change_pw', title: 'เปลี่ยนรหัสผ่าน', icon: 'bi bi-shield-lock', colorClass: 'text-warning', type: 'link', url: 'auth/change_password/change_password.html' }
         };
 
         const DEFAULT_DOCK_ITEMS = ['bg', 'dice', 'name', 'sound', 'traffic', 'timer', 'clock', 'symbol', 'text', 'draw', 'qr', 'group', 'media'];
@@ -1280,6 +1297,95 @@
             updateLaunchpadPinBadges();
         }
 
+        // ====================================================
+        // 📱 Embedded App Viewport Controller (Unified Top Header Shell)
+        // ====================================================
+        let currentOpenAppToolId = null;
+
+        function isAppViewportOpen() {
+            const vp = document.getElementById('cs-app-viewport');
+            return vp && vp.style.display !== 'none';
+        }
+
+        function openAppInWorkspace(url, title, toolId) {
+            const vp = document.getElementById('cs-app-viewport');
+            const frame = document.getElementById('cs-app-frame');
+            const backBtn = document.getElementById('cs-app-back-btn');
+            if (!vp || !frame) return;
+
+            currentOpenAppToolId = toolId || null;
+
+            // Load iframe src only if changed
+            const currentSrc = frame.getAttribute('src');
+            if (currentSrc !== url) {
+                frame.src = url;
+            }
+
+            // Show viewport & set in-app-view class on body
+            vp.style.display = 'flex';
+            document.body.classList.add('in-app-view');
+
+            // Show Back to Board Button
+            if (backBtn) {
+                backBtn.classList.remove('d-none');
+            }
+
+            // Close Launchpad drawer if open
+            const drawerEl = document.getElementById('teacherMenuDrawer');
+            if (drawerEl && drawerEl.classList.contains('show')) {
+                const bsOffcanvas = bootstrap.Offcanvas.getInstance(drawerEl);
+                if (bsOffcanvas) bsOffcanvas.hide();
+            }
+
+            // Update browser URL query parameter without full reload
+            if (toolId) {
+                const newUrl = new URL(window.location.href);
+                newUrl.searchParams.set('app', toolId);
+                window.history.pushState({ app: toolId }, '', newUrl.toString());
+            }
+        }
+
+        function closeAppInWorkspace(pushHistory = true) {
+            const vp = document.getElementById('cs-app-viewport');
+            const backBtn = document.getElementById('cs-app-back-btn');
+            if (!vp) return;
+
+            vp.style.display = 'none';
+            document.body.classList.remove('in-app-view');
+
+            if (backBtn) {
+                backBtn.classList.add('d-none');
+            }
+
+            currentOpenAppToolId = null;
+
+            // Clear app query param from URL
+            if (pushHistory) {
+                const newUrl = new URL(window.location.href);
+                newUrl.searchParams.delete('app');
+                window.history.pushState({}, '', newUrl.pathname);
+            }
+        }
+
+        // Listen for messages from embedded iframes (e.g. child asking to return to workspace)
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.action === 'closeWorkspaceApp') {
+                closeAppInWorkspace();
+            }
+        });
+
+        // Listen for browser back/forward buttons
+        window.addEventListener('popstate', () => {
+            const params = new URLSearchParams(window.location.search);
+            const appParam = params.get('app');
+            if (appParam && ALL_DOCK_TOOLS[appParam]) {
+                const tool = ALL_DOCK_TOOLS[appParam];
+                openAppInWorkspace(tool.url, tool.title, appParam);
+            } else {
+                closeAppInWorkspace(false);
+            }
+        });
+
         function launchTool(toolId) {
             const tool = ALL_DOCK_TOOLS[toolId];
             if (!tool) return;
@@ -1292,6 +1398,9 @@
             }
 
             if (tool.type === 'widget') {
+                if (isAppViewportOpen()) {
+                    closeAppInWorkspace();
+                }
                 if (typeof spawnWidget === 'function') {
                     spawnWidget(tool.widget);
                 }
@@ -1303,7 +1412,7 @@
                 }
             } else if (tool.type === 'link') {
                 if (tool.url && tool.url !== '#') {
-                    window.location.href = tool.url;
+                    openAppInWorkspace(tool.url, tool.title, toolId);
                 }
             }
         }
@@ -1685,6 +1794,21 @@
                     }
                 }
             });
+
+            // 🚀 Check URL query param to open app immediately in workspace shell
+            const initialParams = new URLSearchParams(window.location.search);
+            const initialApp = initialParams.get('app');
+            if (initialApp) {
+                const toolKey = ALL_DOCK_TOOLS[initialApp] ? initialApp : (ALL_DOCK_TOOLS['app_' + initialApp] ? 'app_' + initialApp : null);
+                if (toolKey) {
+                    const tool = ALL_DOCK_TOOLS[toolKey];
+                    if (tool && tool.type === 'link') {
+                        openAppInWorkspace(tool.url, tool.title, toolKey);
+                    }
+                } else if (initialApp === 'live_studio' || initialApp === 'app_live_studio') {
+                    openAppInWorkspace('features/education/live_studio/live_studio.html', 'Live Studio', 'app_live_studio');
+                }
+            }
         });
     </script>
 </body>
