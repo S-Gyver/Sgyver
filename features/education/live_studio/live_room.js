@@ -1790,3 +1790,81 @@ function escapeHtml(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
 }
+
+// ── FULLSCREEN TOGGLE ─────────────────────────────────────────
+function toggleFullScreen() {
+    const target = el('main-screen-box') || el('screen-video');
+    if (!target) return;
+
+    const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+
+    if (!isFs) {
+        if (target.requestFullscreen) {
+            target.requestFullscreen().catch(err => {
+                const video = el('screen-video');
+                if (video && video.requestFullscreen) video.requestFullscreen();
+            });
+        } else if (target.webkitRequestFullscreen) {
+            target.webkitRequestFullscreen();
+        } else if (target.mozRequestFullScreen) {
+            target.mozRequestFullScreen();
+        } else if (target.msRequestFullscreen) {
+            target.msRequestFullscreen();
+        }
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+        } else if (document.mozCancelFullScreen) {
+            document.mozCancelFullScreen();
+        } else if (document.msExitFullscreen) {
+            document.msExitFullscreen();
+        }
+    }
+}
+
+function updateFullscreenUI() {
+    const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+    const box = el('main-screen-box');
+    if (box) {
+        if (isFs) box.classList.add('is-fullscreen');
+        else box.classList.remove('is-fullscreen');
+    }
+    const btns = document.querySelectorAll('.fullscreen-toggle-btn');
+    btns.forEach(btn => {
+        const icon = btn.querySelector('i');
+        if (icon) {
+            icon.className = isFs ? 'bi bi-fullscreen-exit' : 'bi bi-arrows-fullscreen';
+        }
+        btn.setAttribute('title', isFs ? 'ออกจากโหมดเต็มจอ (ESC หรือ F)' : 'เต็มจอ (Fullscreen - กด F)');
+    });
+}
+
+document.addEventListener('fullscreenchange', updateFullscreenUI);
+document.addEventListener('webkitfullscreenchange', updateFullscreenUI);
+document.addEventListener('mozfullscreenchange', updateFullscreenUI);
+document.addEventListener('MSFullscreenChange', updateFullscreenUI);
+
+// Double-click on main-screen-box to toggle fullscreen
+document.addEventListener('DOMContentLoaded', () => {
+    const box = el('main-screen-box');
+    if (box) {
+        box.addEventListener('dblclick', (e) => {
+            if (e.target.closest('button')) return;
+            toggleFullScreen();
+        });
+    }
+});
+
+// Shortcut 'F' for fullscreen toggle
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'f' || e.key === 'F') {
+        const tag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+        if (tag !== 'input' && tag !== 'textarea' && !document.activeElement?.isContentEditable) {
+            e.preventDefault();
+            toggleFullScreen();
+        }
+    }
+});
+

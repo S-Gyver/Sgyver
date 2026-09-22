@@ -272,6 +272,9 @@
                     <button class="topbar-btn danger" id="btn-delete-room" onclick="deleteRoomPermanently()" title="ลบห้องนี้ถาวร" style="display:none">
                         <i class="bi bi-trash-fill"></i> ลบห้อง
                     </button>
+                    <button class="topbar-btn fullscreen-toggle-btn" id="topbar-fullscreen" onclick="toggleFullScreen()" title="เต็มจอ (F)">
+                        <i class="bi bi-arrows-fullscreen"></i> เต็มจอ
+                    </button>
                     <button class="topbar-btn danger" id="btn-leave" onclick="leaveRoom()">
                         <i class="bi bi-box-arrow-right"></i> ออก
                     </button>
@@ -283,8 +286,8 @@
 
                 <!-- Main Screen Box (Screen Share / Cam Pin) -->
                 <div class="main-screen-box" id="main-screen-box">
-                    <!-- Stream Switcher Bar (Discord-style) -->
-                    <div class="stream-switcher-bar" id="stream-switcher-bar" style="display:none">
+                    <!-- Stream Switcher Bar (Hidden per user request) -->
+                    <div class="stream-switcher-bar" id="stream-switcher-bar" style="display:none !important">
                         <div class="stream-switcher-title">
                             <i class="bi bi-display-fill text-danger me-1"></i>กำลังถ่ายทอดสด:
                         </div>
@@ -293,6 +296,11 @@
 
                     <video id="screen-video" autoplay playsinline style="display:none"></video>
 
+                    <!-- Fullscreen Overlay Button -->
+                    <button class="btn-screen-fullscreen fullscreen-toggle-btn" id="btn-screen-fullscreen" title="เต็มจอ (F)" onclick="toggleFullScreen()">
+                        <i class="bi bi-arrows-fullscreen"></i>
+                    </button>
+
                     <!-- Placeholder -->
                     <div class="screen-placeholder" id="screen-placeholder">
                         <i class="bi bi-display"></i>
@@ -300,8 +308,8 @@
                         <p id="screen-hint">กด <strong>แชร์หน้าจอ</strong> ที่ Control Bar ด้านล่าง เพื่อเริ่ม (ทั้งครูและนักเรียนสามารถกดแชร์ได้ทุกคน)</p>
                     </div>
 
-                    <!-- Pinned Label -->
-                    <div class="screen-label" id="screen-label">
+                    <!-- Pinned Label (Hidden per user request) -->
+                    <div class="screen-label" id="screen-label" style="display:none !important">
                         <i class="bi bi-display me-1"></i><span id="screen-label-text">กำลังแชร์หน้าจอ</span>
                     </div>
 
@@ -331,10 +339,13 @@
 
                 <div class="ctrl-divider"></div>
 
-                <!-- Screen Share (host only visible) -->
+                <!-- Screen Share, Fullscreen, Reactions -->
                 <div class="ctrl-group">
                     <button class="ctrl-btn" id="ctrl-screen" title="แชร์หน้าจอ (S)" onclick="toggleScreenShare()">
                         <i class="bi bi-display" id="ctrl-screen-icon"></i>
+                    </button>
+                    <button class="ctrl-btn fullscreen-toggle-btn" id="ctrl-fullscreen" title="เต็มจอ (F)" onclick="toggleFullScreen()">
+                        <i class="bi bi-arrows-fullscreen" id="ctrl-fullscreen-icon"></i>
                     </button>
                     <!-- Raise Hand -->
                     <button class="ctrl-btn" id="ctrl-hand" title="ยกมือ (H)" onclick="raiseHand()">
