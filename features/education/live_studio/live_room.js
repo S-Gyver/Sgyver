@@ -118,14 +118,36 @@ function saveHostRoom(pin, secret) {
 
 // ── INITIALIZATION ON PAGE LOAD ────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-    // 0. Check logged-in user
-    await initAuthUser();
-
-    // 1. Read URL query params
+    // 1. Read URL query params & location.hash
     const params = new URLSearchParams(window.location.search);
-    const pinParam = (params.get('pin') || '').trim().toUpperCase();
-    const nameParam = (params.get('name') || '').trim();
-    const roleParam = (params.get('role') || '').trim().toLowerCase();
+    let pinParam = (params.get('pin') || '').trim().toUpperCase();
+    let nameParam = (params.get('name') || '').trim();
+    let roleParam = (params.get('role') || '').trim().toLowerCase();
+
+    // Check hash fallback (particularly helpful on file:// protocol)
+    if ((!pinParam || !nameParam) && window.location.hash) {
+        try {
+            const hParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+            if (!pinParam) pinParam = (hParams.get('pin') || hParams.get('live_pin') || '').trim().toUpperCase();
+            if (!nameParam) nameParam = (hParams.get('name') || '').trim();
+            if (!roleParam) roleParam = (hParams.get('role') || '').trim().toLowerCase();
+        } catch (_) {}
+    }
+
+    // 2. Check saved session (e.g. user refreshed the page while in room)
+    let savedSession = null;
+    try {
+        const raw = sessionStorage.getItem('gyver_active_live_room') || localStorage.getItem('gyver_active_live_room');
+        if (raw) savedSession = JSON.parse(raw);
+    } catch (e) {}
+
+    if (savedSession && savedSession.pin) {
+        if (!pinParam || pinParam === savedSession.pin) {
+            pinParam = savedSession.pin;
+            if (!nameParam && savedSession.name) nameParam = savedSession.name;
+            if (!roleParam && savedSession.role) roleParam = savedSession.role;
+        }
+    }
 
     if (pinParam) {
         el('input-pin').value = pinParam;
@@ -133,18 +155,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         el('input-pin').style.background = 'rgba(255,255,255,0.05)';
     }
 
-    // Auto-enter ONLY IF both PIN and NAME were explicitly provided in the URL query string
-    // (e.g. Teacher just created the room and was redirected with ?pin=...&name=...&role=host)
-    if (pinParam && nameParam) {
+    // 3. Kick off auth check asynchronously
+    const authPromise = initAuthUser();
+
+    // Auto-enter IF both PIN and NAME are known (from URL, active session, or local storage)
+    let effectiveName = nameParam || localStorage.getItem('gyver_user_name');
+    if (!effectiveName) {
+        await authPromise;
+        effectiveName = currentUserName || localStorage.getItem('gyver_user_name');
+    }
+
+    if (pinParam && effectiveName) {
         if (roleParam === 'host') {
             selectRole('host');
         } else {
             selectRole('student');
         }
-        el('input-name').value = nameParam;
+        el('input-name').value = effectiveName;
         enterStudio();
         return;
     }
+
+    // Await auth before showing Join Screen
+    await authPromise;
 
     // Otherwise show Join Screen
     el('join-screen').style.display = 'flex';
@@ -202,6 +235,27 @@ async function enterStudio() {
     if (!pin || !name) return;
 
     localStorage.setItem('gyver_user_name', name);
+
+    // Save active room session so browser refresh stays in room
+    const sessionData = { pin, name, role: STATE.myRole };
+    sessionStorage.setItem('gyver_active_live_room', JSON.stringify(sessionData));
+    localStorage.setItem('gyver_active_live_room', JSON.stringify(sessionData));
+
+    // Notify parent workspace (my_workspace.html) to keep URL and session in sync
+    try {
+        window.parent.postMessage({
+            action: 'updateLiveRoomState',
+            pin,
+            name,
+            role: STATE.myRole
+        }, '*');
+    } catch (e) {}
+
+    // Update query params in current window without reloading
+    try {
+        const roomQuery = `?pin=${encodeURIComponent(pin)}&name=${encodeURIComponent(name)}&role=${encodeURIComponent(STATE.myRole)}`;
+        history.replaceState(null, '', `live_room.html${roomQuery}`);
+    } catch (e) {}
 
     STATE.myName    = name;
     STATE.roomPin   = pin;
@@ -765,6 +819,15 @@ async function deleteRoomPermanently() {
         const hostRooms = getStoredHostRooms();
         delete hostRooms[STATE.roomPin];
         localStorage.setItem(getStorageKey(), JSON.stringify(hostRooms));
+
+        sessionStorage.removeItem('gyver_active_live_room');
+        localStorage.removeItem('gyver_active_live_room');
+        try {
+            window.parent.postMessage({
+                action: 'updateLiveRoomState',
+                pin: null
+            }, '*');
+        } catch (e) {}
 
         showToast('success', 'ลบห้องเรียบร้อย', 'กำลังกลับสู่หน้ารวมห้องเรียน...', 2000);
         setTimeout(() => {
@@ -1611,6 +1674,14 @@ function startClock() {
 }
 
 function leaveRoom() {
+    sessionStorage.removeItem('gyver_active_live_room');
+    localStorage.removeItem('gyver_active_live_room');
+    try {
+        window.parent.postMessage({
+            action: 'updateLiveRoomState',
+            pin: null
+        }, '*');
+    } catch (e) {}
     if (STATE.localStream) STATE.localStream.getTracks().forEach(t => t.stop());
     if (STATE.screenStream) STATE.screenStream.getTracks().forEach(t => t.stop());
     if (STATE.channel) STATE.channel.unsubscribe();

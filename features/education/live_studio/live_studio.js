@@ -95,6 +95,19 @@ function isUserOwnerOfRoom(room) {
 
 // ── INIT ───────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
+    // 0. Safety check: if user was already in a live room and didn't leave, restore back to live_room
+    try {
+        const raw = sessionStorage.getItem('gyver_active_live_room') || localStorage.getItem('gyver_active_live_room');
+        if (raw) {
+            const activeRoom = JSON.parse(raw);
+            if (activeRoom && activeRoom.pin) {
+                const targetUrl = `live_room.html?pin=${encodeURIComponent(activeRoom.pin)}${activeRoom.name ? '&name=' + encodeURIComponent(activeRoom.name) : ''}&role=${encodeURIComponent(activeRoom.role || 'student')}`;
+                window.location.replace(targetUrl);
+                return;
+            }
+        }
+    } catch (e) {}
+
     // 1. Load logged-in user
     await initAuthUser();
 
@@ -272,10 +285,10 @@ function renderRoomGrid() {
             </div>
 
             <div class="room-card-actions">
-                <a href="live_room.html?pin=${encodeURIComponent(room.pin)}${isMyRoom ? '&role=host' : '&role=student'}" class="btn-enter-room ${isLive ? '' : 'archive-btn'}">
+                <button class="btn-enter-room ${isLive ? '' : 'archive-btn'}" onclick="enterRoomFromLobby('${escapeHtml(room.pin)}', '${isMyRoom ? 'host' : 'student'}')">
                     <i class="bi ${isLive ? 'bi-box-arrow-in-right' : 'bi-folder2-open'}"></i>
                     ${isLive ? 'เข้าร่วมห้องเรียน' : 'เข้าดูประวัติ & โหลดไฟล์'}
-                </a>
+                </button>
                 ${isMyRoom ? `
                     <button class="btn-del-room" title="ลบห้องนี้ถาวร" onclick="confirmDeleteRoom('${escapeHtml(room.pin)}')">
                         <i class="bi bi-trash-fill"></i>
@@ -384,6 +397,19 @@ async function submitCreateRoom() {
         // Remember as my room in user-scoped storage
         saveMyHostRoom(pin);
 
+        // Pre-save active room session for instant restore
+        const sessionData = { pin, name: host, role: 'host' };
+        try {
+            sessionStorage.setItem('gyver_active_live_room', JSON.stringify(sessionData));
+            localStorage.setItem('gyver_active_live_room', JSON.stringify(sessionData));
+            window.parent.postMessage({
+                action: 'updateLiveRoomState',
+                pin,
+                name: host,
+                role: 'host'
+            }, '*');
+        } catch (_) {}
+
         showToast('success', 'สร้างห้องสำเร็จ', `กำลังพาคุณเข้าสู่ห้องเรียน ${pin}...`, 2000);
         setTimeout(() => {
             window.location.href = `live_room.html?pin=${encodeURIComponent(pin)}&name=${encodeURIComponent(host)}&role=host`;
@@ -395,6 +421,23 @@ async function submitCreateRoom() {
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-broadcast me-1"></i>เปิดห้องเรียนสด';
     }
+}
+
+// ── ENTER ROOM HELPER ──────────────────────────────────────────
+function enterRoomFromLobby(pin, role) {
+    const name = currentUserName || localStorage.getItem('gyver_user_name') || '';
+    const sessionData = { pin, name, role };
+    try {
+        sessionStorage.setItem('gyver_active_live_room', JSON.stringify(sessionData));
+        localStorage.setItem('gyver_active_live_room', JSON.stringify(sessionData));
+        window.parent.postMessage({
+            action: 'updateLiveRoomState',
+            pin,
+            name,
+            role
+        }, '*');
+    } catch (_) {}
+    window.location.href = `live_room.html?pin=${encodeURIComponent(pin)}${name ? `&name=${encodeURIComponent(name)}` : ''}&role=${encodeURIComponent(role)}`;
 }
 
 // ── QUICK JOIN BAR ─────────────────────────────────────────────
@@ -412,11 +455,24 @@ function handleQuickJoin() {
         return;
     }
 
-    if (name) {
-        localStorage.setItem('gyver_user_name', name);
+    const effectiveName = name || currentUserName || localStorage.getItem('gyver_user_name') || '';
+    if (effectiveName) {
+        localStorage.setItem('gyver_user_name', effectiveName);
     }
 
-    window.location.href = `live_room.html?pin=${encodeURIComponent(pin)}${name ? `&name=${encodeURIComponent(name)}` : ''}&role=student`;
+    const sessionData = { pin, name: effectiveName, role: 'student' };
+    try {
+        sessionStorage.setItem('gyver_active_live_room', JSON.stringify(sessionData));
+        localStorage.setItem('gyver_active_live_room', JSON.stringify(sessionData));
+        window.parent.postMessage({
+            action: 'updateLiveRoomState',
+            pin,
+            name: effectiveName,
+            role: 'student'
+        }, '*');
+    } catch (_) {}
+
+    window.location.href = `live_room.html?pin=${encodeURIComponent(pin)}${effectiveName ? `&name=${encodeURIComponent(effectiveName)}` : ''}&role=student`;
 }
 
 // ── DELETE ROOM ACTION ─────────────────────────────────────────

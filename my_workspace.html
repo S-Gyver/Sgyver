@@ -1337,10 +1337,27 @@
             }
 
             // Update browser URL query parameter without full reload
+            // Update browser URL query parameter without full reload
             if (toolId) {
-                const newUrl = new URL(window.location.href);
-                newUrl.searchParams.set('app', toolId);
-                window.history.pushState({ app: toolId }, '', newUrl.toString());
+                try {
+                    const newUrl = new URL(window.location.href);
+                    newUrl.searchParams.set('app', toolId);
+                    if (url.includes('?')) {
+                        const subParams = new URLSearchParams(url.split('?')[1]);
+                        subParams.forEach((val, key) => {
+                            newUrl.searchParams.set(key, val);
+                        });
+                    }
+                    window.history.replaceState({ app: toolId }, '', newUrl.toString());
+                } catch (e) {
+                    // Fallback for file:// origin where replaceState might throw DOMException
+                    if (toolId === 'app_live_studio' && url.includes('pin=')) {
+                        try {
+                            const subParams = new URLSearchParams(url.split('?')[1]);
+                            window.location.hash = `app=app_live_studio&pin=${encodeURIComponent(subParams.get('pin') || '')}&name=${encodeURIComponent(subParams.get('name') || '')}&role=${encodeURIComponent(subParams.get('role') || 'student')}`;
+                        } catch (_) {}
+                    }
+                }
             }
         }
 
@@ -1358,18 +1375,66 @@
 
             currentOpenAppToolId = null;
 
+            // Clear app hash if present
+            if (window.location.hash && window.location.hash.includes('app=')) {
+                try { window.location.hash = ''; } catch (_) {}
+            }
+
             // Clear app query param from URL
             if (pushHistory) {
-                const newUrl = new URL(window.location.href);
-                newUrl.searchParams.delete('app');
-                window.history.pushState({}, '', newUrl.pathname);
+                try {
+                    const newUrl = new URL(window.location.href);
+                    newUrl.searchParams.delete('app');
+                    newUrl.searchParams.delete('pin');
+                    newUrl.searchParams.delete('name');
+                    newUrl.searchParams.delete('role');
+                    window.history.pushState({}, '', newUrl.pathname);
+                } catch (_) {}
             }
         }
 
-        // Listen for messages from embedded iframes (e.g. child asking to return to workspace)
+        // Listen for messages from embedded iframes (e.g. child asking to return to workspace or live room state sync)
         window.addEventListener('message', (event) => {
-            if (event.data && event.data.action === 'closeWorkspaceApp') {
+            if (!event.data) return;
+            if (event.data.action === 'closeWorkspaceApp') {
                 closeAppInWorkspace();
+            } else if (event.data.action === 'updateLiveRoomState') {
+                try {
+                    const newUrl = new URL(window.location.href);
+                    newUrl.searchParams.set('app', 'app_live_studio');
+                    if (event.data.pin) {
+                        const roomObj = {
+                            pin: event.data.pin,
+                            name: event.data.name || '',
+                            role: event.data.role || 'student'
+                        };
+                        const roomJson = JSON.stringify(roomObj);
+                        sessionStorage.setItem('gyver_active_live_room', roomJson);
+                        localStorage.setItem('gyver_active_live_room', roomJson);
+                        newUrl.searchParams.set('pin', event.data.pin);
+                        if (event.data.name) newUrl.searchParams.set('name', event.data.name);
+                        if (event.data.role) newUrl.searchParams.set('role', event.data.role);
+
+                        // File protocol hash fallback
+                        try {
+                            window.location.hash = `app=app_live_studio&pin=${encodeURIComponent(event.data.pin)}&name=${encodeURIComponent(event.data.name || '')}&role=${encodeURIComponent(event.data.role || 'student')}`;
+                        } catch (_) {}
+                    } else {
+                        sessionStorage.removeItem('gyver_active_live_room');
+                        localStorage.removeItem('gyver_active_live_room');
+                        newUrl.searchParams.delete('pin');
+                        newUrl.searchParams.delete('name');
+                        newUrl.searchParams.delete('role');
+                        if (window.location.hash && window.location.hash.includes('app=')) {
+                            try { window.location.hash = ''; } catch (_) {}
+                        }
+                    }
+                    try {
+                        window.history.replaceState(null, '', newUrl.toString());
+                    } catch (_) {}
+                } catch (err) {
+                    console.warn('[Workspace Live Sync Error]', err);
+                }
             }
         });
 
@@ -1794,18 +1859,54 @@
                 }
             });
 
-            // 🚀 Check URL query param to open app immediately in workspace shell
+            // 🚀 Check URL query param or hash to open app immediately in workspace shell
             const initialParams = new URLSearchParams(window.location.search);
-            const initialApp = initialParams.get('app');
+            let initialApp = initialParams.get('app');
+
+            // Parse location.hash fallback (especially helpful on file:// protocol)
+            let hashPin = null;
+            let hashName = null;
+            let hashRole = null;
+            if (window.location.hash && window.location.hash.includes('app=')) {
+                try {
+                    const hParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+                    if (!initialApp) initialApp = hParams.get('app');
+                    hashPin = hParams.get('pin');
+                    hashName = hParams.get('name');
+                    hashRole = hParams.get('role');
+                } catch (_) {}
+            }
+
             if (initialApp) {
-                const toolKey = ALL_DOCK_TOOLS[initialApp] ? initialApp : (ALL_DOCK_TOOLS['app_' + initialApp] ? 'app_' + initialApp : null);
-                if (toolKey) {
-                    const tool = ALL_DOCK_TOOLS[toolKey];
-                    if (tool && tool.type === 'link') {
-                        openAppInWorkspace(tool.url, tool.title, toolKey);
+                if (initialApp === 'live_studio' || initialApp === 'app_live_studio') {
+                    let activeRoom = null;
+                    try {
+                        const raw = sessionStorage.getItem('gyver_active_live_room') || localStorage.getItem('gyver_active_live_room');
+                        if (raw) activeRoom = JSON.parse(raw);
+                    } catch (e) {}
+
+                    const roomPin = initialParams.get('pin') || hashPin;
+                    const roomName = initialParams.get('name') || hashName;
+                    const roomRole = initialParams.get('role') || hashRole;
+
+                    const targetPin = roomPin || activeRoom?.pin;
+                    const targetName = roomName || activeRoom?.name;
+                    const targetRole = roomRole || activeRoom?.role || 'student';
+
+                    if (targetPin) {
+                        const targetUrl = `features/education/live_studio/live_room.html?pin=${encodeURIComponent(targetPin)}${targetName ? '&name=' + encodeURIComponent(targetName) : ''}&role=${encodeURIComponent(targetRole)}`;
+                        openAppInWorkspace(targetUrl, `Live Room ${targetPin}`, 'app_live_studio');
+                    } else {
+                        openAppInWorkspace('features/education/live_studio/live_studio.html', 'Live Studio', 'app_live_studio');
                     }
-                } else if (initialApp === 'live_studio' || initialApp === 'app_live_studio') {
-                    openAppInWorkspace('features/education/live_studio/live_studio.html', 'Live Studio', 'app_live_studio');
+                } else {
+                    const toolKey = ALL_DOCK_TOOLS[initialApp] ? initialApp : (ALL_DOCK_TOOLS['app_' + initialApp] ? 'app_' + initialApp : null);
+                    if (toolKey) {
+                        const tool = ALL_DOCK_TOOLS[toolKey];
+                        if (tool && tool.type === 'link') {
+                            openAppInWorkspace(tool.url, tool.title, toolKey);
+                        }
+                    }
                 }
             }
         });
