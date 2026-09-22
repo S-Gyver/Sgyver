@@ -1221,10 +1221,11 @@ function selectScreenStream(targetName) {
         stream = STATE.remoteScreenStreams.get(targetName);
     }
 
-    if (stream) {
+    if (stream && stream.getVideoTracks().length > 0 && stream.getVideoTracks()[0].readyState !== 'ended') {
         if (screenVideo) {
             screenVideo.srcObject = stream;
             screenVideo.style.display = 'block';
+            screenVideo.play().catch(() => {});
         }
         if (placeholder) placeholder.style.display = 'none';
     } else {
@@ -1232,6 +1233,29 @@ function selectScreenStream(targetName) {
         if (placeholder) placeholder.style.display = 'flex';
         const hint = el('screen-hint');
         if (hint) hint.innerHTML = `กำลังรอสัญญาณภาพจาก <strong>${escapeHtml(targetName)}</strong>...`;
+
+        // Poll until stream arrives (max 10 seconds)
+        if (!isSelf) {
+            let tries = 0;
+            const poll = setInterval(() => {
+                tries++;
+                const s = STATE.remoteScreenStreams.get(targetName);
+                if (s && s.getVideoTracks().length > 0 && s.getVideoTracks()[0].readyState !== 'ended') {
+                    clearInterval(poll);
+                    if (STATE.currentViewingSharer === targetName) {
+                        const sv = el('screen-video');
+                        if (sv) {
+                            sv.srcObject = s;
+                            sv.style.display = 'block';
+                            sv.play().catch(() => {});
+                        }
+                        if (placeholder) placeholder.style.display = 'none';
+                    }
+                } else if (tries >= 20) {
+                    clearInterval(poll);
+                }
+            }, 500);
+        }
     }
 
     if (label) label.style.display = 'flex';
@@ -1303,20 +1327,30 @@ async function toggleScreenShare() {
 
             // Send screen track to all connected peers
             const screenTrack = STATE.screenStream.getVideoTracks()[0];
+            const renegotiateNeeded = [];
+
             STATE.peerConnections.forEach((pc, peerName) => {
                 try {
                     const senders = pc.getSenders();
                     const videoSender = senders.find(s => s.track && s.track.kind === 'video');
                     if (videoSender) {
+                        // replaceTrack works silently - must renegotiate so remote gets the new track
                         videoSender.replaceTrack(screenTrack);
+                        renegotiateNeeded.push(peerName);
                     } else {
                         pc.addTrack(screenTrack, STATE.screenStream);
-                        initiatePeerConnection(peerName);
+                        renegotiateNeeded.push(peerName);
                     }
                 } catch (e) {
                     console.warn('[Screen track error]:', e);
                 }
             });
+
+            // Re-initiate offers for all peers that need renegotiation
+            for (const peerName of renegotiateNeeded) {
+                STATE.peerConnections.delete(peerName);
+                await initiatePeerConnection(peerName);
+            }
 
             // If any participant doesn't have a peer connection, initiate
             STATE.participants.forEach((p, pName) => {
@@ -1455,18 +1489,23 @@ function createPeerConnection(peerName) {
     };
 
     pc.ontrack = (event) => {
-        const stream = event.streams[0];
-        if (stream) {
-            STATE.remoteScreenStreams.set(peerName, stream);
-            if (STATE.currentViewingSharer === peerName) {
-                const screenVideo = el('screen-video');
-                if (screenVideo) {
-                    screenVideo.srcObject = stream;
-                    screenVideo.style.display = 'block';
-                    if (el('screen-placeholder')) el('screen-placeholder').style.display = 'none';
-                }
+        const track = event.track;
+        const stream = event.streams[0] || new MediaStream([track]);
+
+        // Always store the latest stream from this peer
+        STATE.remoteScreenStreams.set(peerName, stream);
+
+        // Only update the screen video display if it's a video track
+        if (track.kind === 'video' && STATE.currentViewingSharer === peerName) {
+            const screenVideo = el('screen-video');
+            if (screenVideo) {
+                screenVideo.srcObject = stream;
+                screenVideo.style.display = 'block';
+                screenVideo.play().catch(() => {});
+                if (el('screen-placeholder')) el('screen-placeholder').style.display = 'none';
             }
         }
+
         addRemoteTrack(peerName, stream);
     };
 
