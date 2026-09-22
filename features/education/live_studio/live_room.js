@@ -55,6 +55,9 @@ const ICE_SERVERS = {
     iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' },
+        { urls: 'stun:stun3.l.google.com:19302' },
+        { urls: 'stun:stun4.l.google.com:19302' }
     ]
 };
 
@@ -640,10 +643,13 @@ function setupRealtimeChannel(pin) {
         .on('presence', { event: 'join' }, ({ key, newPresences }) => {
             const p = newPresences[0];
             if (p && p.id !== STATE.myId && p.name !== STATE.myName) {
+                STATE.participants.set(p.name, p);
                 const roleLabel = (p.role === 'host') ? 'ครูผู้สอน' : 'นักเรียน';
                 showToast('info', 'มีผู้เข้าร่วม', `${p.name} (${roleLabel}) เข้าร่วมห้องเรียน`, 2500);
                 // If this user has active media or screen share, initiate WebRTC connection
-                if (STATE.camOn || STATE.micOn || STATE.screenOn) {
+                if (STATE.screenOn) {
+                    sendScreenTrackToPeer(p.name);
+                } else if (STATE.camOn || STATE.micOn) {
                     initiatePeerConnection(p.name);
                 }
             }
@@ -849,14 +855,27 @@ function updateOnlineList(presenceState) {
 
     let count = 0;
     const allUsers = [];
+    const activeNames = new Set();
 
     for (const key in presenceState) {
         const presences = presenceState[key];
         presences.forEach(p => {
             count++;
             allUsers.push(p);
+            if (p.name) {
+                activeNames.add(p.name);
+                STATE.participants.set(p.name, p);
+            }
         });
     }
+
+    // Clean up participants that are no longer online
+    STATE.participants.forEach((_, pName) => {
+        if (!activeNames.has(pName) && pName !== STATE.myName) {
+            removeParticipant(pName);
+            closePeerConnection(pName);
+        }
+    });
 
     el('online-count').textContent = `${count} คนออนไลน์`;
     el('vc-member-count').textContent = count;
