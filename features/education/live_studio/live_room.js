@@ -1484,21 +1484,33 @@ async function toggleCamera() {
     if (!STATE.camOn) {
         let videoTrack = null;
         try {
-            // Attempt to access physical webcam
-            const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            // Attempt to access physical webcam with mobile-friendly fallback
+            let videoStream = null;
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                try {
+                    videoStream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: 'user', width: { ideal: 1280 } }
+                    });
+                } catch (e1) {
+                    videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                }
+            } else {
+                throw new Error('อุปกรณ์ของคุณไม่รองรับการเข้าถึงกล้องผ่านเว็บ');
+            }
+
             videoTrack = videoStream.getVideoTracks()[0];
         } catch (err) {
             console.warn('[Camera Access Notice]:', err);
             // If computer doesn't have a webcam or not found, fallback to Virtual Camera Avatar!
             if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError' || (err.message && err.message.includes('not found'))) {
-                showToast('info', 'กล้องเสมือน (Virtual)', 'คอมพิวเตอร์ไม่มีกล้องจริง ระบบเปิดกล้องเสมือนสำหรับทดสอบให้แล้ว', 4000);
+                showToast('info', 'กล้องเสมือน (Virtual)', 'ไม่พบกล้องจริง ระบบเปิดกล้องเสมือนสำหรับทดสอบให้แล้ว', 4000);
                 const virtualStream = createVirtualCameraStream(STATE.myName);
                 videoTrack = virtualStream.getVideoTracks()[0];
-            } else if (err.name === 'NotAllowedError') {
-                showToast('error', 'กล้อง', 'เบราว์เซอร์บล็อกการเข้าถึงกล้อง: กรุณาคลิกไอคอนหน้าแถบ URL เพื่อกด "อนุญาต (Allow)"', 4000);
+            } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError' || err.name === 'SecurityError') {
+                showToast('error', 'กล้องถูกบล็อก', 'กรุณาแตะไอคอนรูปการตั้งค่า/แม่กุญแจหน้าแถบ URL ด้านบน แล้วเปลี่ยนเป็น "อนุญาต (Allow)" การใช้กล้อง', 6000);
                 return;
             } else {
-                showToast('error', 'กล้อง', 'ไม่สามารถเปิดกล้องได้: ' + err.message, 3500);
+                showToast('error', 'กล้อง', 'ไม่สามารถเปิดกล้องได้: ' + err.message, 4500);
                 return;
             }
         }
@@ -1515,20 +1527,47 @@ async function toggleCamera() {
             if (selfVideo) {
                 selfVideo.srcObject = new MediaStream([videoTrack]);
                 selfVideo.style.display = 'block';
+                selfVideo.muted = true;
+                selfVideo.play().catch(e => console.warn('Self video play err:', e));
             }
             if (pipCam) pipCam.style.display = 'block';
             if (el('self-avatar-img')) el('self-avatar-img').style.display = 'none';
             STATE.camOn = true;
 
+            // If no screen share is active, display local camera on the main screen box
+            if (STATE.activeScreenSharers.size === 0 && !STATE.screenOn) {
+                const screenVideo = el('screen-video');
+                const placeholder = el('screen-placeholder');
+                const box = el('main-screen-box');
+                if (screenVideo) {
+                    screenVideo.srcObject = new MediaStream([videoTrack]);
+                    screenVideo.style.display = 'block';
+                    screenVideo.muted = true;
+                    screenVideo.play().catch(() => {});
+                }
+                if (placeholder) placeholder.style.display = 'none';
+                if (box) box.classList.add('sharing');
+                if (pipCam) pipCam.style.display = 'none'; // Hide duplicate PIP when on main stage
+            }
+
             // Send video track to connected peers
-            STATE.peerConnections.forEach(pc => {
+            STATE.peerConnections.forEach(async (pc, peerName) => {
                 try {
                     const senders = pc.getSenders();
                     const videoSender = senders.find(s => s.track && s.track.kind === 'video');
                     if (videoSender) {
-                        videoSender.replaceTrack(videoTrack);
+                        await videoSender.replaceTrack(videoTrack);
                     } else {
                         pc.addTrack(videoTrack, STATE.localStream);
+                        const offer = await pc.createOffer();
+                        await pc.setLocalDescription(offer);
+                        if (STATE.channel) {
+                            STATE.channel.send({
+                                type: 'broadcast',
+                                event: 'signal_offer',
+                                payload: { target: peerName, sender: STATE.myName, sdp: offer }
+                            });
+                        }
                     }
                 } catch (e) {}
             });
@@ -1550,6 +1589,19 @@ async function toggleCamera() {
         if (pipCam) pipCam.style.display = 'none';
         if (el('self-avatar-img')) el('self-avatar-img').style.display = 'block';
         STATE.camOn = false;
+
+        // If camera was showing on main screen and no screen share, restore placeholder
+        if (STATE.activeScreenSharers.size === 0 && !STATE.screenOn) {
+            const screenVideo = el('screen-video');
+            const placeholder = el('screen-placeholder');
+            const box = el('main-screen-box');
+            if (screenVideo) {
+                screenVideo.style.display = 'none';
+                screenVideo.srcObject = null;
+            }
+            if (placeholder) placeholder.style.display = 'flex';
+            if (box) box.classList.remove('sharing');
+        }
     }
 
     el('ctrl-cam').classList.toggle('off', !STATE.camOn);
@@ -1786,79 +1838,124 @@ async function toggleScreenShare() {
     if (STATE.roomStatus === 'ENDED') return;
 
     if (!STATE.screenOn) {
-        try {
-            STATE.screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-            STATE.screenOn = true;
+        let stream = null;
+        const hasDisplayMedia = !!(navigator.mediaDevices && typeof navigator.mediaDevices.getDisplayMedia === 'function');
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (window.innerWidth <= 768);
 
-            // Register in active sharers
-            STATE.activeScreenSharers.set(STATE.myName, {
-                name: STATE.myName,
-                role: STATE.myRole,
-                isSelf: true,
-                stream: STATE.screenStream
-            });
-
-            // Select own screen
-            selectScreenStream(STATE.myName);
-
-            // Broadcast start event
-            if (STATE.channel) {
-                STATE.channel.send({
-                    type: 'broadcast',
-                    event: 'screen_share_start',
-                    payload: { name: STATE.myName, role: STATE.myRole }
-                });
-            }
-
-            // Send screen track to all connected peers
-            const screenTrack = STATE.screenStream.getVideoTracks()[0];
-
-            // Re-negotiate on all existing peer connections
-            for (const [peerName, pc] of STATE.peerConnections.entries()) {
-                try {
-                    const senders = pc.getSenders();
-                    const videoSender = senders.find(s => s.track && s.track.kind === 'video');
-                    if (videoSender) {
-                        await videoSender.replaceTrack(screenTrack);
-                    } else {
-                        pc.addTrack(screenTrack, STATE.screenStream);
-                    }
-                    const offer = await pc.createOffer();
-                    await pc.setLocalDescription(offer);
-                    if (STATE.channel) {
-                        STATE.channel.send({
-                            type: 'broadcast',
-                            event: 'signal_offer',
-                            payload: {
-                                target: peerName,
-                                sender: STATE.myName,
-                                sdp: offer
-                            }
-                        });
-                    }
-                } catch (e) {
-                    console.warn('[Screen track renegotiation error]:', e);
+        // Try standard getDisplayMedia if supported
+        if (hasDisplayMedia) {
+            try {
+                stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+            } catch (err) {
+                if (err.name === 'NotAllowedError' || err.name === 'AbortError') {
+                    return; // User cancelled
+                }
+                console.warn('[getDisplayMedia error]:', err);
+                if (!isMobile) {
+                    showToast('error', 'แชร์หน้าจอ', 'ไม่สามารถแชร์หน้าจอได้: ' + (err.message || ''), 3500);
+                    return;
                 }
             }
-
-            // If any participant doesn't have a peer connection yet, initiate
-            STATE.participants.forEach((p, pName) => {
-                if (pName !== STATE.myName && !STATE.peerConnections.has(pName)) {
-                    initiatePeerConnection(pName);
-                }
-            });
-
-            screenTrack.onended = () => {
-                stopScreenShare();
-            };
-
-            showToast('info', 'กำลังแชร์หน้าจอ', 'ทั้งครูและนักเรียนสามารถรับชมหน้าจอของคุณได้แล้ว', 3000);
-        } catch (err) {
-            if (err.name !== 'NotAllowedError') {
-                showToast('error', 'แชร์หน้าจอ', err.message, 3000);
-            }
-            return;
         }
+
+        // If mobile browser doesn't support getDisplayMedia
+        if (!stream) {
+            if (isMobile || !hasDisplayMedia) {
+                const choice = confirm(
+                    '📱 เบราว์เซอร์บนมือถือ (iOS / Android) ยังไม่อนุญาตให้เว็บไซต์ดึงภาพหน้าจอโทรศัพท์โดยตรงเนื่องจากระบบความปลอดภัยของระบบปฏิบัติการ\n\n' +
+                    '👉 คุณต้องการ "เปิดกล้องหลัง/กล้องถ่ายทอดสด" เพื่อสตรีมภาพชิ้นงาน เอกสาร หรือสมุดจดแทนหรือไม่?\n\n' +
+                    '(หมายเหตุ: หากต้องการแชร์หน้าจอคอมพิวเตอร์ แนะนำให้เข้าใช้งานผ่าน PC หรือ Notebook ครับ)'
+                );
+
+                if (choice) {
+                    try {
+                        stream = await navigator.mediaDevices.getUserMedia({
+                            video: { facingMode: { ideal: 'environment' } },
+                            audio: true
+                        });
+                        showToast('info', 'ถ่ายทอดสดจากกล้อง', 'กำลังสตรีมภาพจากกล้องของคุณให้ทุกคนในห้องรับชม', 3500);
+                    } catch (camErr) {
+                        console.error('[Mobile camera stream error]:', camErr);
+                        showToast('error', 'เปิดกล้องไม่สำเร็จ', 'ไม่สามารถเข้าถึงกล้องเพื่อถ่ายทอดสดได้: ' + camErr.message, 3500);
+                        return;
+                    }
+                } else {
+                    return;
+                }
+            } else {
+                showToast('warning', 'ไม่รองรับ', 'เบราว์เซอร์นี้ไม่รองรับการแชร์หน้าจอ (แนะนำให้ใช้ Google Chrome หรือ Edge บนคอมพิวเตอร์)', 4000);
+                return;
+            }
+        }
+
+        if (!stream) return;
+
+        STATE.screenStream = stream;
+        STATE.screenOn = true;
+
+        // Register in active sharers
+        STATE.activeScreenSharers.set(STATE.myName, {
+            name: STATE.myName,
+            role: STATE.myRole,
+            isSelf: true,
+            stream: STATE.screenStream
+        });
+
+        // Select own screen
+        selectScreenStream(STATE.myName);
+
+        // Broadcast start event
+        if (STATE.channel) {
+            STATE.channel.send({
+                type: 'broadcast',
+                event: 'screen_share_start',
+                payload: { name: STATE.myName, role: STATE.myRole }
+            });
+        }
+
+        // Send screen track to all connected peers
+        const screenTrack = STATE.screenStream.getVideoTracks()[0];
+
+        // Re-negotiate on all existing peer connections
+        for (const [peerName, pc] of STATE.peerConnections.entries()) {
+            try {
+                const senders = pc.getSenders();
+                const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+                if (videoSender) {
+                    await videoSender.replaceTrack(screenTrack);
+                } else {
+                    pc.addTrack(screenTrack, STATE.screenStream);
+                }
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+                if (STATE.channel) {
+                    STATE.channel.send({
+                        type: 'broadcast',
+                        event: 'signal_offer',
+                        payload: {
+                            target: peerName,
+                            sender: STATE.myName,
+                            sdp: offer
+                        }
+                    });
+                }
+            } catch (e) {
+                console.warn('[Screen track renegotiation error]:', e);
+            }
+        }
+
+        // If any participant doesn't have a peer connection yet, initiate
+        STATE.participants.forEach((p, pName) => {
+            if (pName !== STATE.myName && !STATE.peerConnections.has(pName)) {
+                initiatePeerConnection(pName);
+            }
+        });
+
+        screenTrack.onended = () => {
+            stopScreenShare();
+        };
+
+        showToast('info', 'กำลังแชร์สัญญาณภาพ', 'ทั้งครูและนักเรียนสามารถรับชมสัญญาณภาพของคุณได้แล้ว', 3000);
     } else {
         stopScreenShare();
     }
