@@ -4,6 +4,9 @@
    ================================================================ */
 'use strict';
 
+// 🔕 Suppress all popup toast notifications completely per user request
+window.showToast = function() { return; };
+
 // ── CLOUDINARY CONFIG ──────────────────────────────────────────
 const CLOUDINARY = {
     cloudName:    'xn7rvu6g',
@@ -386,8 +389,6 @@ async function enterStudio() {
             console.warn('[DB Background Sync Notice]:', err.message);
         }
     })();
-
-    showToast('success', 'เข้าสู่ห้องเรียน', `ยินดีต้อนรับ ${name} สู่ ${STATE.roomTitle}`, 3000);
 }
 
 // ── ENDED ROOM STATE ───────────────────────────────────────────
@@ -1031,8 +1032,6 @@ function setupRealtimeChannel(pin) {
             const p = newPresences[0];
             if (p && p.id !== STATE.myId && p.name !== STATE.myName) {
                 STATE.participants.set(p.name, p);
-                const roleLabel = (p.role === 'host') ? 'ครูผู้สอน' : 'นักเรียน';
-                showToast('info', 'มีผู้เข้าร่วม', `${p.name} (${roleLabel}) เข้าร่วมห้องเรียน`, 2500);
                 // If this user has active media or screen share, initiate WebRTC connection
                 if (STATE.screenOn) {
                     sendScreenTrackToPeer(p.name);
@@ -1811,7 +1810,6 @@ function handleRemoteScreenShareStart(payload) {
         role: payload.role,
         isSelf: false
     });
-    showToast('info', 'มีการแชร์หน้าจอ', `${payload.name} กำลังแชร์หน้าจอ`, 3000);
 
     // Auto select this screen for viewing without colliding WebRTC offers
     selectScreenStream(payload.name);
