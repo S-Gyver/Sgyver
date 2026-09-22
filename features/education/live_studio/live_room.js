@@ -237,9 +237,25 @@ function syncSendBtn() {
 
 // ── ENTER STUDIO ───────────────────────────────────────────────
 async function enterStudio() {
-    const pin  = el('input-pin').value.trim().toUpperCase();
-    const name = el('input-name').value.trim();
-    if (!pin || !name) return;
+    const pinEl  = el('input-pin');
+    const nameEl = el('input-name');
+    const pin  = pinEl ? pinEl.value.trim().toUpperCase() : '';
+    const name = nameEl ? nameEl.value.trim() : '';
+
+    if (!pin) {
+        showToast('warning', 'ระบุ PIN', 'กรุณากรอกรหัส PIN ห้องเรียน', 2500);
+        if (pinEl) pinEl.focus();
+        return;
+    }
+    if (!name) {
+        showToast('error', 'จำเป็นต้องระบุชื่อ', 'กรุณากรอกชื่อของคุณก่อนเข้าร่วมห้องเรียน (ห้ามเว้นว่างเด็ดขาด)', 3500);
+        if (nameEl) {
+            nameEl.classList.add('input-error-shake');
+            nameEl.focus();
+            setTimeout(() => nameEl.classList.remove('input-error-shake'), 800);
+        }
+        return;
+    }
 
     localStorage.setItem('gyver_user_name', name);
 
@@ -988,6 +1004,12 @@ function setupRealtimeChannel(pin) {
         .on('broadcast', { event: 'screen_share_stop' }, ({ payload }) => {
             handleRemoteScreenShareStop(payload);
         })
+        .on('broadcast', { event: 'request_screen_stream' }, async ({ payload }) => {
+            if (payload && payload.target === STATE.myName && STATE.screenOn && STATE.screenStream) {
+                console.log(`[request_screen_stream] Received screen request from ${payload.requester}. Sending track...`);
+                await sendScreenTrackToPeer(payload.requester);
+            }
+        })
         // WebRTC Signaling
         .on('broadcast', { event: 'signal_offer' }, async ({ payload }) => {
             if (payload.target === STATE.myName) await handleSignalOffer(payload);
@@ -1304,9 +1326,10 @@ function updateOnlineList(presenceState) {
         // Sidebar Voice Channel Member (compact with vm-avatar)
         if (voiceList) {
             const vMember = document.createElement('div');
-            vMember.className = 'voice-member';
+            vMember.className = `voice-member ${isSharing ? 'is-streaming' : ''}`;
             vMember.onclick = () => {
-                if (isSharing) {
+                const sharing = !!(p.screenOn || STATE.activeScreenSharers.has(p.name));
+                if (sharing) {
                     selectScreenStream(p.name);
                 }
             };
@@ -1314,7 +1337,7 @@ function updateOnlineList(presenceState) {
             vMember.innerHTML = `
                 <img class="vm-avatar" src="https://api.dicebear.com/8.x/thumbs/svg?seed=${encodeURIComponent(p.name)}" alt="${escapeHtml(p.name)}">
                 <span class="voice-member-name">${escapeHtml(p.name)}${isMe ? ' (คุณ)' : ''}</span>
-                ${isSharing ? `<span class="live-stream-badge" title="กำลังแชร์หน้าจอ (คลิกเพื่อดู)"><i class="bi bi-display-fill"></i> สตรีม</span>` : ''}
+                ${isSharing ? `<span class="live-stream-badge" title="กำลังแชร์หน้าจอ (คลิกเพื่อดู)" onclick="event.stopPropagation(); selectScreenStream('${escapeHtml(p.name)}')"><i class="bi bi-display-fill"></i> สตรีม</span>` : ''}
                 <i class="bi ${p.micOn ? 'bi-mic-fill' : 'bi-mic-mute-fill'} ms-auto" style="font-size:.8rem;color:${p.micOn ? '#23a55a' : '#80848e'}"></i>
             `;
             voiceList.appendChild(vMember);
@@ -1600,7 +1623,6 @@ function selectScreenStream(targetName) {
     const screenVideo = el('screen-video');
     const placeholder = el('screen-placeholder');
     const label = el('screen-label');
-    const labelText = el('screen-label-text');
     const box = el('main-screen-box');
 
     let stream = null;
@@ -1608,9 +1630,29 @@ function selectScreenStream(targetName) {
         stream = STATE.screenStream;
     } else {
         stream = STATE.remoteScreenStreams.get(targetName);
+        // If stream not found or has no tracks, inspect peer connection receivers directly
+        if (!stream || stream.getVideoTracks().length === 0) {
+            const pc = STATE.peerConnections.get(targetName);
+            if (pc) {
+                const receivers = pc.getReceivers();
+                const vReceiver = receivers.find(r => r.track && r.track.kind === 'video' && r.track.readyState !== 'ended');
+                if (vReceiver && vReceiver.track) {
+                    if (!stream) {
+                        stream = new MediaStream();
+                        STATE.remoteScreenStreams.set(targetName, stream);
+                    }
+                    if (!stream.getTracks().some(t => t.id === vReceiver.track.id)) {
+                        stream.getVideoTracks().forEach(t => stream.removeTrack(t));
+                        stream.addTrack(vReceiver.track);
+                    }
+                }
+            }
+        }
     }
 
-    if (stream && stream.getVideoTracks().length > 0 && stream.getVideoTracks()[0].readyState !== 'ended') {
+    const hasValidTrack = stream && stream.getVideoTracks().length > 0 && stream.getVideoTracks()[0].readyState !== 'ended';
+
+    if (hasValidTrack) {
         if (screenVideo) {
             screenVideo.srcObject = stream;
             screenVideo.style.display = 'block';
@@ -1628,14 +1670,47 @@ function selectScreenStream(targetName) {
         const hint = el('screen-hint');
         if (hint) hint.innerHTML = `กำลังรอสัญญาณภาพจาก <strong>${escapeHtml(targetName)}</strong>...`;
 
-        // Poll until stream arrives (max 12 seconds)
+        // Request stream directly from the sharer via signaling broadcast
         if (!isSelf) {
+            console.log(`[selectScreenStream] Stream for "${targetName}" not ready. Sending request_screen_stream...`);
+            if (STATE.channel) {
+                STATE.channel.send({
+                    type: 'broadcast',
+                    event: 'request_screen_stream',
+                    payload: { requester: STATE.myName, target: targetName }
+                });
+            }
+
+            if (STATE._screenStreamPoll) {
+                clearInterval(STATE._screenStreamPoll);
+                STATE._screenStreamPoll = null;
+            }
+
             let tries = 0;
-            const poll = setInterval(() => {
+            STATE._screenStreamPoll = setInterval(() => {
                 tries++;
+                // Check if peer connection receivers have the video track now
+                const pc = STATE.peerConnections.get(targetName);
+                if (pc) {
+                    const receivers = pc.getReceivers();
+                    const vReceiver = receivers.find(r => r.track && r.track.kind === 'video' && r.track.readyState !== 'ended');
+                    if (vReceiver && vReceiver.track) {
+                        let s = STATE.remoteScreenStreams.get(targetName);
+                        if (!s) {
+                            s = new MediaStream();
+                            STATE.remoteScreenStreams.set(targetName, s);
+                        }
+                        if (!s.getTracks().some(t => t.id === vReceiver.track.id)) {
+                            s.getVideoTracks().forEach(t => s.removeTrack(t));
+                            s.addTrack(vReceiver.track);
+                        }
+                    }
+                }
+
                 const s = STATE.remoteScreenStreams.get(targetName);
                 if (s && s.getVideoTracks().length > 0 && s.getVideoTracks()[0].readyState !== 'ended') {
-                    clearInterval(poll);
+                    clearInterval(STATE._screenStreamPoll);
+                    STATE._screenStreamPoll = null;
                     if (STATE.currentViewingSharer === targetName) {
                         const sv = el('screen-video');
                         if (sv) {
@@ -1649,10 +1724,21 @@ function selectScreenStream(targetName) {
                         if (placeholder) placeholder.style.display = 'none';
                         if (box) box.classList.add('sharing');
                     }
-                } else if (tries >= 24) {
-                    clearInterval(poll);
+                } else {
+                    // Retry request every 1.6s if not yet received
+                    if (tries % 4 === 0 && tries < 28 && STATE.channel) {
+                        STATE.channel.send({
+                            type: 'broadcast',
+                            event: 'request_screen_stream',
+                            payload: { requester: STATE.myName, target: targetName }
+                        });
+                    }
+                    if (tries >= 30) {
+                        clearInterval(STATE._screenStreamPoll);
+                        STATE._screenStreamPoll = null;
+                    }
                 }
-            }, 500);
+            }, 400);
         }
     }
 
@@ -1925,24 +2011,30 @@ function createPeerConnection(peerName) {
             peerStream.addTrack(track);
         }
 
-        // Directly attach to screen-video if viewing this peer
-        if (track.kind === 'video') {
-            if (!STATE.currentViewingSharer || STATE.currentViewingSharer === peerName || STATE.currentViewingSharer === STATE.myName) {
-                STATE.currentViewingSharer = peerName;
-                const screenVideo = el('screen-video');
-                if (screenVideo) {
-                    screenVideo.srcObject = peerStream;
-                    screenVideo.style.display = 'block';
-                    screenVideo.play().catch(err => {
-                        console.warn('Autoplay unmuted blocked, retrying muted:', err);
-                        screenVideo.muted = true;
-                        screenVideo.play().catch(e => console.error('Play error:', e));
-                    });
-                    if (el('screen-placeholder')) el('screen-placeholder').style.display = 'none';
+        const attachAndPlayScreen = () => {
+            if (track.kind === 'video') {
+                if (!STATE.currentViewingSharer || STATE.currentViewingSharer === peerName || STATE.currentViewingSharer === STATE.myName) {
+                    STATE.currentViewingSharer = peerName;
+                    const screenVideo = el('screen-video');
+                    if (screenVideo) {
+                        screenVideo.srcObject = peerStream;
+                        screenVideo.style.display = 'block';
+                        screenVideo.play().catch(err => {
+                            console.warn('Autoplay unmuted blocked, retrying muted:', err);
+                            screenVideo.muted = true;
+                            screenVideo.play().catch(e => console.error('Play error:', e));
+                        });
+                        if (el('screen-placeholder')) el('screen-placeholder').style.display = 'none';
+                    }
+                    if (el('main-screen-box')) el('main-screen-box').classList.add('sharing');
                 }
-                if (el('main-screen-box')) el('main-screen-box').classList.add('sharing');
             }
-        }
+        };
+
+        attachAndPlayScreen();
+        track.onunmute = () => {
+            attachAndPlayScreen();
+        };
 
         addRemoteTrack(peerName, peerStream);
     };
@@ -1975,6 +2067,33 @@ async function handleSignalOffer(payload) {
                 } catch (e) {}
             }
             pc._pendingIceCandidates = [];
+        }
+
+        // Immediately check if incoming offer has a video receiver to render
+        const videoReceiver = pc.getReceivers().find(r => r.track && r.track.kind === 'video' && r.track.readyState !== 'ended');
+        if (videoReceiver && videoReceiver.track) {
+            let peerStream = STATE.remoteScreenStreams.get(payload.sender);
+            if (!peerStream) {
+                peerStream = new MediaStream();
+                STATE.remoteScreenStreams.set(payload.sender, peerStream);
+            }
+            if (!peerStream.getTracks().some(t => t.id === videoReceiver.track.id)) {
+                peerStream.getVideoTracks().forEach(t => peerStream.removeTrack(t));
+                peerStream.addTrack(videoReceiver.track);
+            }
+            if (STATE.currentViewingSharer === payload.sender) {
+                const screenVideo = el('screen-video');
+                if (screenVideo) {
+                    screenVideo.srcObject = peerStream;
+                    screenVideo.style.display = 'block';
+                    screenVideo.play().catch(e => {
+                        screenVideo.muted = true;
+                        screenVideo.play().catch(() => {});
+                    });
+                    if (el('screen-placeholder')) el('screen-placeholder').style.display = 'none';
+                }
+                if (el('main-screen-box')) el('main-screen-box').classList.add('sharing');
+            }
         }
 
         if (STATE.localStream) {
@@ -2029,6 +2148,33 @@ async function handleSignalAnswer(payload) {
                 }
                 pc._pendingIceCandidates = [];
             }
+
+            // Immediately check if answer finalized video receiver
+            const videoReceiver = pc.getReceivers().find(r => r.track && r.track.kind === 'video' && r.track.readyState !== 'ended');
+            if (videoReceiver && videoReceiver.track) {
+                let peerStream = STATE.remoteScreenStreams.get(payload.sender);
+                if (!peerStream) {
+                    peerStream = new MediaStream();
+                    STATE.remoteScreenStreams.set(payload.sender, peerStream);
+                }
+                if (!peerStream.getTracks().some(t => t.id === videoReceiver.track.id)) {
+                    peerStream.getVideoTracks().forEach(t => peerStream.removeTrack(t));
+                    peerStream.addTrack(videoReceiver.track);
+                }
+                if (STATE.currentViewingSharer === payload.sender) {
+                    const screenVideo = el('screen-video');
+                    if (screenVideo) {
+                        screenVideo.srcObject = peerStream;
+                        screenVideo.style.display = 'block';
+                        screenVideo.play().catch(e => {
+                            screenVideo.muted = true;
+                            screenVideo.play().catch(() => {});
+                        });
+                        if (el('screen-placeholder')) el('screen-placeholder').style.display = 'none';
+                    }
+                    if (el('main-screen-box')) el('main-screen-box').classList.add('sharing');
+                }
+            }
         }
     } catch (err) {
         console.error('[handleSignalAnswer error]:', err);
@@ -2077,7 +2223,7 @@ function closePeerConnection(name) {
     }
 }
 
-// Send the current screen share track to a specific peer (used when a new participant joins mid-share)
+// Send the current screen share track to a specific peer (used when a participant joins mid-share or requests screen)
 async function sendScreenTrackToPeer(peerName) {
     if (!STATE.screenStream || !STATE.screenOn) return;
 
@@ -2085,33 +2231,54 @@ async function sendScreenTrackToPeer(peerName) {
     if (!screenTrack) return;
 
     try {
-        if (STATE.peerConnections.has(peerName)) {
-            const pc = STATE.peerConnections.get(peerName);
-            const senders = pc.getSenders();
-            const videoSender = senders.find(s => s.track && s.track.kind === 'video');
-            if (videoSender) {
-                await videoSender.replaceTrack(screenTrack);
-            } else {
-                pc.addTrack(screenTrack, STATE.screenStream);
-            }
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            if (STATE.channel) {
-                STATE.channel.send({
-                    type: 'broadcast',
-                    event: 'signal_offer',
-                    payload: {
-                        target: peerName,
-                        sender: STATE.myName,
-                        sdp: offer
-                    }
-                });
-            }
-        } else {
-            await initiatePeerConnection(peerName);
+        let pc = STATE.peerConnections.get(peerName);
+        if (!pc || pc.connectionState === 'closed' || pc.signalingState === 'closed') {
+            pc = createPeerConnection(peerName);
         }
 
+        const senders = pc.getSenders();
+        const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+        if (videoSender) {
+            await videoSender.replaceTrack(screenTrack);
+        } else {
+            pc.addTrack(screenTrack, STATE.screenStream);
+        }
+
+        // Screen audio track if present
+        const audioTracks = STATE.screenStream.getAudioTracks();
+        if (audioTracks.length > 0) {
+            const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
+            if (audioSender) {
+                try { await audioSender.replaceTrack(audioTracks[0]); } catch (e) {}
+            } else {
+                try { pc.addTrack(audioTracks[0], STATE.screenStream); } catch (e) {}
+            }
+        }
+
+        let offer;
+        try {
+            offer = await pc.createOffer();
+        } catch (err) {
+            console.warn('[sendScreenTrackToPeer] createOffer failed on existing pc, recreating...', err);
+            try { pc.close(); } catch (e) {}
+            STATE.peerConnections.delete(peerName);
+            pc = createPeerConnection(peerName);
+            pc.addTrack(screenTrack, STATE.screenStream);
+            offer = await pc.createOffer();
+        }
+
+        await pc.setLocalDescription(offer);
+
         if (STATE.channel) {
+            STATE.channel.send({
+                type: 'broadcast',
+                event: 'signal_offer',
+                payload: {
+                    target: peerName,
+                    sender: STATE.myName,
+                    sdp: offer
+                }
+            });
             STATE.channel.send({
                 type: 'broadcast',
                 event: 'screen_share_start',

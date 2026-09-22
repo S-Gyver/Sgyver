@@ -486,23 +486,33 @@ function handleQuickJoinKey(e) {
 }
 
 async function handleQuickJoin() {
-    const pin  = el('quick-pin-input').value.trim().toUpperCase();
-    const name = el('quick-name-input').value.trim();
+    const pinEl  = el('quick-pin-input');
+    const nameEl = el('quick-name-input');
+    const pin  = pinEl ? pinEl.value.trim().toUpperCase() : '';
+    const name = nameEl ? nameEl.value.trim() : '';
 
     if (!pin) {
-        showToast('warning', 'ระบุ PIN', 'กรุณากรอกรหัส PIN ห้องเรียน', 2500);
-        el('quick-pin-input').focus();
+        showToast('warning', 'ระบุ PIN', 'กรุณากรอกรหัส PIN ห้องเรียน', 3000);
+        if (pinEl) {
+            pinEl.classList.add('input-error-shake');
+            pinEl.focus();
+            setTimeout(() => pinEl.classList.remove('input-error-shake'), 800);
+        }
         return;
     }
 
-    const effectiveName = name || currentUserName || localStorage.getItem('gyver_user_name') || '';
-    if (!effectiveName) {
-        showToast('warning', 'ระบุชื่อของคุณ', 'กรุณากรอกชื่อของคุณก่อนเข้าร่วมห้องเรียน', 2500);
-        el('quick-name-input').focus();
+    // MANDATORY: Name cannot be blank or whitespace!
+    if (!name) {
+        showToast('error', 'จำเป็นต้องระบุชื่อ', 'กรุณากรอก "ชื่อของคุณ" ก่อนเข้าร่วมห้องเรียน (ห้ามเว้นว่างเด็ดขาด)', 4000);
+        if (nameEl) {
+            nameEl.classList.add('input-error-shake');
+            nameEl.focus();
+            setTimeout(() => nameEl.classList.remove('input-error-shake'), 800);
+        }
         return;
     }
 
-    localStorage.setItem('gyver_user_name', effectiveName);
+    localStorage.setItem('gyver_user_name', name);
 
     // Validate PIN with Supabase DB
     if (window.supabaseClient) {
@@ -527,19 +537,19 @@ async function handleQuickJoin() {
         }
     }
 
-    const sessionData = { pin, name: effectiveName, role: 'student' };
+    const sessionData = { pin, name: name, role: 'student' };
     try {
         sessionStorage.setItem('gyver_active_live_room', JSON.stringify(sessionData));
         localStorage.setItem('gyver_active_live_room', JSON.stringify(sessionData));
         window.parent.postMessage({
             action: 'updateLiveRoomState',
             pin,
-            name: effectiveName,
+            name: name,
             role: 'student'
         }, '*');
     } catch (_) {}
 
-    window.location.href = `live_room.html?pin=${encodeURIComponent(pin)}&name=${encodeURIComponent(effectiveName)}&role=student`;
+    window.location.href = `live_room.html?pin=${encodeURIComponent(pin)}&name=${encodeURIComponent(name)}&role=student`;
 }
 
 // ── DELETE ROOM ACTION ─────────────────────────────────────────

@@ -33,6 +33,7 @@ html,body{height:100%;overflow:hidden;background-color:var(--discord-bg);color:v
 .channel-item .ch-icon{font-size:1.1rem;flex-shrink:0}
 .voice-member{display:flex;align-items:center;gap:8px;padding:5px 8px 5px 24px;border-radius:6px;font-size:.84rem;color:var(--discord-muted);cursor:pointer;transition:background .15s,color .15s;user-select:none;position:relative}
 .voice-member:hover{background:rgba(255,255,255,.05);color:var(--discord-text)}
+.voice-member.is-streaming:hover{background:rgba(239,68,68,.14);color:#fff}
 .voice-member.speaking{color:var(--green-speak)}
 .voice-member img,.voice-member .vm-avatar{width:24px !important;height:24px !important;min-width:24px !important;max-width:24px !important;border-radius:50%;object-fit:cover;border:1.5px solid transparent;flex-shrink:0}
 .voice-member.speaking img,.voice-member.speaking .vm-avatar{border-color:var(--green-speak);box-shadow:0 0 6px rgba(35,165,90,.6)}
@@ -743,5 +744,17 @@ html,body{height:100%;overflow:hidden;background-color:var(--discord-bg);color:v
     display: block;
     border-radius: 8px;
     cursor: pointer;
+}
+
+/* ── REQUIRED INPUT ERROR SHAKE ── */
+@keyframes inputShake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-7px); }
+    40%, 80% { transform: translateX(7px); }
+}
+.input-error-shake {
+    animation: inputShake 0.4s ease !important;
+    border-color: #ef4444 !important;
+    box-shadow: 0 0 14px rgba(239, 68, 68, 0.65) !important;
 }
 

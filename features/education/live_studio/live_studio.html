@@ -64,8 +64,8 @@
             <i class="bi bi-key-fill" style="color:var(--cyber-pink)"></i>
             <span>เข้าห้องด้วย PIN:</span>
         </div>
-        <input type="text" class="quick-join-input" id="quick-pin-input" placeholder="รหัส PIN เช่น 7829" maxlength="8" onkeydown="handleQuickJoinKey(event)">
-        <input type="text" class="quick-join-input" id="quick-name-input" placeholder="ชื่อของคุณ" maxlength="30" style="letter-spacing:normal;font-family:'Kanit',sans-serif" onkeydown="handleQuickJoinKey(event)">
+        <input type="text" class="quick-join-input" id="quick-pin-input" placeholder="รหัส PIN เช่น 7829" maxlength="8" onkeydown="handleQuickJoinKey(event)" required>
+        <input type="text" class="quick-join-input" id="quick-name-input" placeholder="ชื่อของคุณ (บังคับระบุชื่อ)" maxlength="30" style="letter-spacing:normal;font-family:'Kanit',sans-serif" onkeydown="handleQuickJoinKey(event)" required>
         <button class="btn-cyber-primary" onclick="handleQuickJoin()" style="padding:8px 18px">
             <i class="bi bi-box-arrow-in-right"></i> เข้าร่วมห้องเรียน
         </button>
