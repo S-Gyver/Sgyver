@@ -283,32 +283,37 @@
 
                 <!-- Main Screen Box (Screen Share / Cam Pin) -->
                 <div class="main-screen-box" id="main-screen-box">
+                    <!-- Stream Switcher Bar (Discord-style) -->
+                    <div class="stream-switcher-bar" id="stream-switcher-bar" style="display:none">
+                        <div class="stream-switcher-title">
+                            <i class="bi bi-display-fill text-danger me-1"></i>กำลังถ่ายทอดสด:
+                        </div>
+                        <div class="stream-switcher-pills" id="stream-switcher-pills"></div>
+                    </div>
+
                     <video id="screen-video" autoplay playsinline muted style="display:none"></video>
 
                     <!-- Placeholder -->
                     <div class="screen-placeholder" id="screen-placeholder">
                         <i class="bi bi-display"></i>
                         <h5>ยังไม่มีการแชร์หน้าจอ</h5>
-                        <p id="screen-hint">กด <strong>แชร์หน้าจอ</strong> ที่ Control Bar ด้านล่าง เพื่อเริ่ม</p>
+                        <p id="screen-hint">กด <strong>แชร์หน้าจอ</strong> ที่ Control Bar ด้านล่าง เพื่อเริ่ม (ทั้งครูและนักเรียนสามารถกดแชร์ได้ทุกคน)</p>
                     </div>
 
                     <!-- Pinned Label -->
                     <div class="screen-label" id="screen-label">
                         <i class="bi bi-display me-1"></i><span id="screen-label-text">กำลังแชร์หน้าจอ</span>
                     </div>
+
+                    <!-- PIP Camera (when camera is on) -->
+                    <div class="pip-camera" id="pip-camera" style="display:none">
+                        <video id="self-video" autoplay playsinline muted></video>
+                        <div class="pip-label"><i class="bi bi-camera-video-fill me-1"></i>กล้องของคุณ</div>
+                    </div>
                 </div>
 
-                <!-- Bottom Video Tile Grid -->
-                <div class="video-grid" id="video-grid">
-                    <!-- Self Tile -->
-                    <div class="video-tile self-tile" id="self-video-tile">
-                        <video id="self-video" autoplay playsinline muted style="display:none"></video>
-                        <img class="tile-avatar" id="self-avatar-img" src="https://api.dicebear.com/8.x/thumbs/svg?seed=default" alt="you">
-                        <div class="tile-name" id="self-tile-name">คุณ</div>
-                        <div class="tile-mic-badge muted" id="self-mic-badge"><i class="bi bi-mic-mute-fill"></i></div>
-                    </div>
-                    <!-- Remote tiles injected by JS -->
-                </div>
+                <!-- Bottom Video Tile Grid (only for remote peer cameras, empty by default) -->
+                <div class="video-grid" id="video-grid"></div>
             </div>
 
             <!-- Control Deck -->

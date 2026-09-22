@@ -35,10 +35,13 @@ const STATE = {
     channel:       null,
     dbSubscription: null,
 
-    // WebRTC
+    // WebRTC & Screen Sharing (Discord-style multi-sharing)
     localStream:   null,
     screenStream:  null,
     peerConnections: new Map(), // name -> RTCPeerConnection
+    activeScreenSharers:  new Map(), // name -> { name, role, isSelf, stream }
+    currentViewingSharer: null,      // name of user whose screen is being viewed
+    remoteScreenStreams:  new Map(), // name -> MediaStream
 
     // Persistent items
     chatMessages:  [],
@@ -216,11 +219,11 @@ async function enterStudio() {
     el('stage-room-title').textContent = STATE.roomTitle;
     el('up-name').textContent           = name;
     el('up-role').textContent           = STATE.isHost ? '👩‍🏫 ครูผู้สอน' : '🎓 นักเรียน';
-    el('self-tile-name').textContent    = `${name} (คุณ)`;
+    if (el('self-tile-name')) el('self-tile-name').textContent = `${name} (คุณ)`;
 
     const avatarSeed = encodeURIComponent(name);
     const avatarUrl  = `https://api.dicebear.com/8.x/thumbs/svg?seed=${avatarSeed}`;
-    el('self-avatar-img').src = avatarUrl;
+    if (el('self-avatar-img')) el('self-avatar-img').src = avatarUrl;
     el('up-avatar').src       = avatarUrl;
 
     if (STATE.isHost) {
@@ -229,15 +232,15 @@ async function enterStudio() {
         el('btn-delete-room').style.display = '';
         el('btn-delete-archived').style.display = '';
         el('ctrl-end-label').textContent  = 'จบ/ออก';
-        if (el('ctrl-screen')) el('ctrl-screen').style.display = '';
     } else {
         el('btn-lock-room').style.display = 'none';
         el('btn-end-session').style.display = 'none';
         el('btn-delete-room').style.display = 'none';
         el('btn-delete-archived').style.display = 'none';
         el('ctrl-end-label').textContent  = 'ออก';
-        if (el('ctrl-screen')) el('ctrl-screen').style.display = 'none';
     }
+    // Both Host and Student have access to Screen Sharing:
+    if (el('ctrl-screen')) el('ctrl-screen').style.display = '';
 
     startClock();
     addParticipant({ id: STATE.myId, name, role: STATE.myRole, micOn: false, camOn: false, speaking: false });
@@ -278,7 +281,7 @@ async function enterStudio() {
                     el('btn-delete-room').style.display = 'none';
                     el('btn-delete-archived').style.display = 'none';
                     el('ctrl-end-label').textContent  = 'ออก';
-                    if (el('ctrl-screen')) el('ctrl-screen').style.display = 'none';
+                    if (el('ctrl-screen')) el('ctrl-screen').style.display = '';
                 }
 
                 if (STATE.roomStatus === 'ENDED') {
@@ -557,6 +560,12 @@ function setupRealtimeChannel(pin) {
         .on('broadcast', { event: 'media_state' }, ({ payload }) => {
             updatePeerMediaState(payload);
         })
+        .on('broadcast', { event: 'screen_share_start' }, ({ payload }) => {
+            handleRemoteScreenShareStart(payload);
+        })
+        .on('broadcast', { event: 'screen_share_stop' }, ({ payload }) => {
+            handleRemoteScreenShareStop(payload);
+        })
         // WebRTC Signaling
         .on('broadcast', { event: 'signal_offer' }, async ({ payload }) => {
             if (payload.target === STATE.myName) await handleSignalOffer(payload);
@@ -579,8 +588,8 @@ function setupRealtimeChannel(pin) {
             if (p && p.id !== STATE.myId && p.name !== STATE.myName) {
                 const roleLabel = (p.role === 'host') ? 'ครูผู้สอน' : 'นักเรียน';
                 showToast('info', 'มีผู้เข้าร่วม', `${p.name} (${roleLabel}) เข้าร่วมห้องเรียน`, 2500);
-                // If host, offer WebRTC connection to student
-                if (STATE.isHost && (STATE.camOn || STATE.micOn || STATE.screenOn)) {
+                // If this user has active media or screen share, initiate WebRTC connection
+                if (STATE.camOn || STATE.micOn || STATE.screenOn) {
                     initiatePeerConnection(p.name);
                 }
             }
@@ -791,6 +800,19 @@ function updateOnlineList(presenceState) {
 
     allUsers.forEach(p => {
         const isMe = (p.id ? p.id === STATE.myId : p.name === STATE.myName);
+        const isSharing = !!(p.screenOn || STATE.activeScreenSharers.has(p.name));
+
+        // Sync presence screenOn
+        if (p.screenOn && !STATE.activeScreenSharers.has(p.name)) {
+            STATE.activeScreenSharers.set(p.name, {
+                name: p.name,
+                role: p.role,
+                isSelf: isMe
+            });
+        } else if (!p.screenOn && !isMe && STATE.activeScreenSharers.has(p.name)) {
+            STATE.activeScreenSharers.delete(p.name);
+        }
+
         // Participants Tab Item
         const item = document.createElement('div');
         item.className = 'participant-item';
@@ -801,24 +823,34 @@ function updateOnlineList(presenceState) {
                 <div class="participant-role">${p.role === 'host' ? '👩‍🏫 ครูผู้สอน' : '🎓 นักเรียน'}</div>
             </div>
             <div class="participant-icons">
+                ${isSharing ? `<span class="live-stream-badge" title="คลิกเพื่อดูหน้าจอของ ${escapeHtml(p.name)}" onclick="selectScreenStream('${escapeHtml(p.name)}')"><i class="bi bi-display-fill"></i> ดูจอ</span>` : ''}
                 <i class="bi ${p.micOn ? 'bi-mic-fill text-success' : 'bi-mic-mute-fill text-muted'}"></i>
                 <i class="bi ${p.camOn ? 'bi-camera-video-fill text-success' : 'bi-camera-video-off-fill text-muted'}"></i>
             </div>
         `;
         list.appendChild(item);
 
-        // Sidebar Voice Channel Member
+        // Sidebar Voice Channel Member (compact with vm-avatar)
         if (voiceList) {
             const vMember = document.createElement('div');
             vMember.className = 'voice-member';
+            vMember.onclick = () => {
+                if (isSharing) {
+                    selectScreenStream(p.name);
+                }
+            };
+            vMember.title = isSharing ? `คลิกเพื่อดูหน้าจอของ ${p.name}` : p.name;
             vMember.innerHTML = `
-                <img src="https://api.dicebear.com/8.x/thumbs/svg?seed=${encodeURIComponent(p.name)}" alt="${escapeHtml(p.name)}">
-                <span>${escapeHtml(p.name)}</span>
+                <img class="vm-avatar" src="https://api.dicebear.com/8.x/thumbs/svg?seed=${encodeURIComponent(p.name)}" alt="${escapeHtml(p.name)}">
+                <span class="voice-member-name">${escapeHtml(p.name)}${isMe ? ' (คุณ)' : ''}</span>
+                ${isSharing ? `<span class="live-stream-badge" title="กำลังแชร์หน้าจอ (คลิกเพื่อดู)"><i class="bi bi-display-fill"></i> สตรีม</span>` : ''}
                 <i class="bi ${p.micOn ? 'bi-mic-fill' : 'bi-mic-mute-fill'} ms-auto" style="font-size:.8rem;color:${p.micOn ? '#23a55a' : '#80848e'}"></i>
             `;
             voiceList.appendChild(vMember);
         }
     });
+
+    renderStreamSwitcher();
 }
 
 function addParticipant(p) {
@@ -854,8 +886,10 @@ async function toggleMic() {
 
     el('ctrl-mic').classList.toggle('off', !STATE.micOn);
     el('ctrl-mic-icon').className = STATE.micOn ? 'bi bi-mic-fill' : 'bi bi-mic-mute-fill';
-    el('self-mic-badge').classList.toggle('muted', !STATE.micOn);
-    el('self-mic-badge').innerHTML = STATE.micOn ? '<i class="bi bi-mic-fill"></i>' : '<i class="bi bi-mic-mute-fill"></i>';
+    if (el('self-mic-badge')) {
+        el('self-mic-badge').classList.toggle('muted', !STATE.micOn);
+        el('self-mic-badge').innerHTML = STATE.micOn ? '<i class="bi bi-mic-fill"></i>' : '<i class="bi bi-mic-mute-fill"></i>';
+    }
 
     broadcastMediaState();
 }
@@ -875,9 +909,13 @@ async function toggleCamera() {
             }
 
             const selfVideo = el('self-video');
-            selfVideo.srcObject = new MediaStream([videoTrack]);
-            selfVideo.style.display = 'block';
-            el('self-avatar-img').style.display = 'none';
+            const pipCam    = el('pip-camera');
+            if (selfVideo) {
+                selfVideo.srcObject = new MediaStream([videoTrack]);
+                selfVideo.style.display = 'block';
+            }
+            if (pipCam) pipCam.style.display = 'block';
+            if (el('self-avatar-img')) el('self-avatar-img').style.display = 'none';
             STATE.camOn = true;
         } catch (err) {
             showToast('error', 'กล้อง', 'ไม่สามารถเปิดกล้องได้: ' + err.message, 3000);
@@ -891,8 +929,14 @@ async function toggleCamera() {
                 STATE.localStream.removeTrack(videoTrack);
             }
         }
-        el('self-video').style.display = 'none';
-        el('self-avatar-img').style.display = 'block';
+        const selfVideo = el('self-video');
+        const pipCam    = el('pip-camera');
+        if (selfVideo) {
+            selfVideo.style.display = 'none';
+            selfVideo.srcObject = null;
+        }
+        if (pipCam) pipCam.style.display = 'none';
+        if (el('self-avatar-img')) el('self-avatar-img').style.display = 'block';
         STATE.camOn = false;
     }
 
@@ -902,23 +946,186 @@ async function toggleCamera() {
     broadcastMediaState();
 }
 
+// ── DISCORD-STYLE MULTI-SCREEN SHARING ─────────────────────────
+function renderStreamSwitcher() {
+    const bar = el('stream-switcher-bar');
+    const pills = el('stream-switcher-pills');
+    if (!bar || !pills) return;
+
+    if (STATE.activeScreenSharers.size === 0) {
+        bar.style.display = 'none';
+        if (STATE.currentViewingSharer && !STATE.screenOn) {
+            STATE.currentViewingSharer = null;
+            const screenVideo = el('screen-video');
+            if (screenVideo) {
+                screenVideo.style.display = 'none';
+                screenVideo.srcObject = null;
+            }
+            if (el('screen-placeholder')) el('screen-placeholder').style.display = 'flex';
+            if (el('screen-label')) el('screen-label').style.display = 'none';
+            if (el('main-screen-box')) el('main-screen-box').classList.remove('sharing');
+        }
+        return;
+    }
+
+    bar.style.display = 'flex';
+    pills.innerHTML = '';
+
+    // If currently viewing nothing or someone who stopped, pick first available
+    if (!STATE.currentViewingSharer || !STATE.activeScreenSharers.has(STATE.currentViewingSharer)) {
+        const firstKey = STATE.activeScreenSharers.keys().next().value;
+        if (firstKey) {
+            selectScreenStream(firstKey);
+            return;
+        }
+    }
+
+    STATE.activeScreenSharers.forEach((sharer, sName) => {
+        const isSelected = (sName === STATE.currentViewingSharer);
+        const btn = document.createElement('button');
+        btn.className = `stream-pill-btn ${isSelected ? 'active' : ''}`;
+        const isSelf = (sName === STATE.myName);
+        const roleIcon = (sharer.role === 'host') ? '👩‍🏫' : '🎓';
+        btn.innerHTML = `
+            <span class="live-dot"></span>
+            <span>${roleIcon} ${escapeHtml(sName)}${isSelf ? ' (คุณ)' : ''}</span>
+            <i class="bi bi-display ms-1"></i>
+        `;
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            selectScreenStream(sName);
+        };
+        pills.appendChild(btn);
+    });
+}
+
+function selectScreenStream(targetName) {
+    if (!STATE.activeScreenSharers.has(targetName)) return;
+
+    STATE.currentViewingSharer = targetName;
+    const isSelf = (targetName === STATE.myName);
+    const screenVideo = el('screen-video');
+    const placeholder = el('screen-placeholder');
+    const label = el('screen-label');
+    const labelText = el('screen-label-text');
+    const box = el('main-screen-box');
+
+    let stream = null;
+    if (isSelf) {
+        stream = STATE.screenStream;
+    } else {
+        stream = STATE.remoteScreenStreams.get(targetName);
+    }
+
+    if (stream) {
+        if (screenVideo) {
+            screenVideo.srcObject = stream;
+            screenVideo.style.display = 'block';
+        }
+        if (placeholder) placeholder.style.display = 'none';
+    } else {
+        if (screenVideo) screenVideo.style.display = 'none';
+        if (placeholder) placeholder.style.display = 'flex';
+        const hint = el('screen-hint');
+        if (hint) hint.innerHTML = `กำลังรอสัญญาณภาพจาก <strong>${escapeHtml(targetName)}</strong>...`;
+    }
+
+    if (label) label.style.display = 'flex';
+    if (labelText) {
+        labelText.innerHTML = `<span style="color:#ef4444;font-weight:800">● LIVE</span> รับชมจอของ: <strong>${escapeHtml(targetName)}</strong>${isSelf ? ' (คุณ)' : ''}`;
+    }
+    if (box) box.classList.add('sharing');
+
+    renderStreamSwitcher();
+}
+
+function handleRemoteScreenShareStart(payload) {
+    STATE.activeScreenSharers.set(payload.name, {
+        name: payload.name,
+        role: payload.role,
+        isSelf: false
+    });
+    showToast('info', 'มีการแชร์หน้าจอ', `${payload.name} กำลังแชร์หน้าจอ (คลิกเพื่อรับชม)`, 3500);
+
+    // Connect WebRTC if not yet connected
+    if (!STATE.peerConnections.has(payload.name)) {
+        initiatePeerConnection(payload.name);
+    }
+
+    // If viewer is not actively watching someone else, auto switch to this new streamer
+    if (!STATE.currentViewingSharer || STATE.currentViewingSharer === STATE.myName) {
+        selectScreenStream(payload.name);
+    } else {
+        renderStreamSwitcher();
+    }
+}
+
+function handleRemoteScreenShareStop(payload) {
+    STATE.activeScreenSharers.delete(payload.name);
+    STATE.remoteScreenStreams.delete(payload.name);
+    if (STATE.currentViewingSharer === payload.name) {
+        STATE.currentViewingSharer = null;
+    }
+    renderStreamSwitcher();
+}
+
 async function toggleScreenShare() {
     if (STATE.roomStatus === 'ENDED') return;
 
     if (!STATE.screenOn) {
         try {
             STATE.screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-            const screenVideo = el('screen-video');
-            screenVideo.srcObject = STATE.screenStream;
-            screenVideo.style.display = 'block';
-            el('screen-placeholder').style.display = 'none';
-            el('screen-label').style.display = 'flex';
-            el('screen-label-text').textContent = `${STATE.myName} กำลังแชร์หน้าจอ`;
             STATE.screenOn = true;
 
-            STATE.screenStream.getVideoTracks()[0].onended = () => {
+            // Register in active sharers
+            STATE.activeScreenSharers.set(STATE.myName, {
+                name: STATE.myName,
+                role: STATE.myRole,
+                isSelf: true,
+                stream: STATE.screenStream
+            });
+
+            // Select own screen
+            selectScreenStream(STATE.myName);
+
+            // Broadcast start event
+            if (STATE.channel) {
+                STATE.channel.send({
+                    type: 'broadcast',
+                    event: 'screen_share_start',
+                    payload: { name: STATE.myName, role: STATE.myRole }
+                });
+            }
+
+            // Send screen track to all connected peers
+            const screenTrack = STATE.screenStream.getVideoTracks()[0];
+            STATE.peerConnections.forEach((pc, peerName) => {
+                try {
+                    const senders = pc.getSenders();
+                    const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+                    if (videoSender) {
+                        videoSender.replaceTrack(screenTrack);
+                    } else {
+                        pc.addTrack(screenTrack, STATE.screenStream);
+                        initiatePeerConnection(peerName);
+                    }
+                } catch (e) {
+                    console.warn('[Screen track error]:', e);
+                }
+            });
+
+            // If any participant doesn't have a peer connection, initiate
+            STATE.participants.forEach((p, pName) => {
+                if (pName !== STATE.myName && !STATE.peerConnections.has(pName)) {
+                    initiatePeerConnection(pName);
+                }
+            });
+
+            screenTrack.onended = () => {
                 stopScreenShare();
             };
+
+            showToast('info', 'กำลังแชร์หน้าจอ', 'ทั้งครูและนักเรียนสามารถสลับดูหน้าจอของคุณได้แล้ว', 3000);
         } catch (err) {
             if (err.name !== 'NotAllowedError') {
                 showToast('error', 'แชร์หน้าจอ', err.message, 3000);
@@ -938,17 +1145,40 @@ function stopScreenShare() {
         STATE.screenStream.getTracks().forEach(t => t.stop());
         STATE.screenStream = null;
     }
-    el('screen-video').style.display = 'none';
-    el('screen-placeholder').style.display = 'flex';
-    el('screen-label').style.display = 'none';
     STATE.screenOn = false;
+    STATE.activeScreenSharers.delete(STATE.myName);
+
+    if (STATE.channel) {
+        STATE.channel.send({
+            type: 'broadcast',
+            event: 'screen_share_stop',
+            payload: { name: STATE.myName }
+        });
+    }
+
+    // Restore camera video track if camera is on
+    const camTrack = STATE.localStream?.getVideoTracks()[0] || null;
+    STATE.peerConnections.forEach((pc) => {
+        try {
+            const senders = pc.getSenders();
+            const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+            if (videoSender) videoSender.replaceTrack(camTrack);
+        } catch (e) {}
+    });
+
+    if (STATE.currentViewingSharer === STATE.myName) {
+        STATE.currentViewingSharer = null;
+    }
+
     el('ctrl-screen').classList.remove('active');
+    renderStreamSwitcher();
     broadcastMediaState();
 }
 
 function broadcastMediaState() {
     if (!STATE.channel) return;
     STATE.channel.track({
+        id:       STATE.myId,
         name:     STATE.myName,
         role:     STATE.myRole,
         micOn:    STATE.micOn,
@@ -972,7 +1202,18 @@ function updatePeerMediaState(payload) {
 async function initiatePeerConnection(peerName) {
     const pc = createPeerConnection(peerName);
     if (STATE.localStream) {
-        STATE.localStream.getTracks().forEach(t => pc.addTrack(t, STATE.localStream));
+        STATE.localStream.getTracks().forEach(t => {
+            if (!pc.getSenders().some(s => s.track === t)) {
+                pc.addTrack(t, STATE.localStream);
+            }
+        });
+    }
+    if (STATE.screenStream) {
+        STATE.screenStream.getTracks().forEach(t => {
+            if (!pc.getSenders().some(s => s.track === t)) {
+                pc.addTrack(t, STATE.screenStream);
+            }
+        });
     }
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
@@ -1010,7 +1251,19 @@ function createPeerConnection(peerName) {
     };
 
     pc.ontrack = (event) => {
-        addRemoteTrack(peerName, event.streams[0]);
+        const stream = event.streams[0];
+        if (stream) {
+            STATE.remoteScreenStreams.set(peerName, stream);
+            if (STATE.currentViewingSharer === peerName) {
+                const screenVideo = el('screen-video');
+                if (screenVideo) {
+                    screenVideo.srcObject = stream;
+                    screenVideo.style.display = 'block';
+                    if (el('screen-placeholder')) el('screen-placeholder').style.display = 'none';
+                }
+            }
+        }
+        addRemoteTrack(peerName, stream);
     };
 
     return pc;
@@ -1021,7 +1274,18 @@ async function handleSignalOffer(payload) {
     await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
 
     if (STATE.localStream) {
-        STATE.localStream.getTracks().forEach(t => pc.addTrack(t, STATE.localStream));
+        STATE.localStream.getTracks().forEach(t => {
+            if (!pc.getSenders().some(s => s.track === t)) {
+                pc.addTrack(t, STATE.localStream);
+            }
+        });
+    }
+    if (STATE.screenStream) {
+        STATE.screenStream.getTracks().forEach(t => {
+            if (!pc.getSenders().some(s => s.track === t)) {
+                pc.addTrack(t, STATE.screenStream);
+            }
+        });
     }
 
     const answer = await pc.createAnswer();
