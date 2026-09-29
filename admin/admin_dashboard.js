@@ -5,23 +5,99 @@ let allProblems = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
     // 🔒 ตรวจสอบสิทธิ์การเข้าใช้งาน Admin
-    const savedSession = sessionStorage.getItem('gyver_admin_session');
-    if (!savedSession) {
-        window.location.href = '../my_workspace.html';
-        return;
+    let savedSession = sessionStorage.getItem('gyver_admin_session') || localStorage.getItem('gyver_admin_session');
+    
+    if (savedSession) {
+        try {
+            adminSession = JSON.parse(savedSession);
+            if (adminSession && adminSession.isLoggedIn && adminSession.role === 'admin' && adminSession.email !== 's.gyver36@gmail.com') {
+                const nameEl = document.getElementById('admin-display-name');
+                if (nameEl) nameEl.innerText = adminSession.name || adminSession.username || 'Admin';
+            } else {
+                adminSession = null;
+                sessionStorage.removeItem('gyver_admin_session');
+                localStorage.removeItem('gyver_admin_session');
+            }
+        } catch (e) {
+            adminSession = null;
+        }
     }
 
-    try {
-        adminSession = JSON.parse(savedSession);
-        if (!adminSession.isLoggedIn) {
-            window.location.href = '../my_workspace.html';
-            return;
+    // ตรวจสอบความถูกต้องกับ Supabase Auth และ Profiles เสมอเพื่อความปลอดภัย
+    if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+        try {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session && session.user) {
+                const user = session.user;
+                let isUserAdmin = false;
+                let prof = null;
+
+                try {
+                    const { data: dbProf } = await supabaseClient
+                        .from('profiles')
+                        .select('*')
+                        .eq('id', user.id)
+                        .maybeSingle();
+                    if (dbProf) {
+                        prof = dbProf;
+                        if (dbProf.role === 'admin' || (dbProf.username && dbProf.username.toLowerCase() === 'admin')) {
+                            isUserAdmin = true;
+                        } else {
+                            // สิทธิ์ในฐานข้อมูลเป็น user ธรรมดา ห้ามเข้าหน้าแอดมินเด็ดขาด
+                            isUserAdmin = false;
+                        }
+                    }
+                } catch (e) { }
+
+                // กรณีไม่มี profile ในฐานข้อมูล
+                if (!prof) {
+                    if (
+                        (user.user_metadata?.username && user.user_metadata.username.toLowerCase() === 'admin') ||
+                        (user.email && user.email.toLowerCase().startsWith('admin@'))
+                    ) {
+                        isUserAdmin = true;
+                    }
+                }
+
+                if (isUserAdmin) {
+                    adminSession = {
+                        isLoggedIn: true,
+                        id: user.id,
+                        username: prof?.username || user.user_metadata?.username || 'admin',
+                        name: prof?.nickname || prof?.username || user.user_metadata?.nickname || 'Admin',
+                        email: user.email,
+                        role: 'admin',
+                        level: prof?.level || 2
+                    };
+                    sessionStorage.setItem('gyver_admin_session', JSON.stringify(adminSession));
+                    localStorage.setItem('gyver_admin_session', JSON.stringify(adminSession));
+
+                    const nameEl = document.getElementById('admin-display-name');
+                    if (nameEl) nameEl.innerText = adminSession.name || adminSession.username || 'Admin';
+                } else {
+                    // หากไม่ใช่แอดมิน ให้ล้างสิทธิ์ adminSession ทันที
+                    adminSession = null;
+                    sessionStorage.removeItem('gyver_admin_session');
+                    localStorage.removeItem('gyver_admin_session');
+
+                    // ปรับ role ใน metadata กลับเป็น user ถ้าเคยติด admin มา
+                    if (user.user_metadata?.role === 'admin') {
+                        try {
+                            await supabaseClient.auth.updateUser({ data: { role: 'user' } });
+                        } catch (e) { }
+                    }
+                }
+            }
+        } catch (err) {
+            console.warn("Supabase auth check error:", err);
         }
+    }
 
-        const nameEl = document.getElementById('admin-display-name');
-        if (nameEl) nameEl.innerText = adminSession.name || adminSession.username;
-
-    } catch (e) {
+    // ถ้าตรวจสอบแล้วไม่มีสิทธิ์ Admin ให้เด้งกลับไปหน้า My Workspace หรือ Login พร้อมแจ้งเตือน
+    if (!adminSession || !adminSession.isLoggedIn) {
+        sessionStorage.removeItem('gyver_admin_session');
+        localStorage.removeItem('gyver_admin_session');
+        alert("🔒 หน้านี้สงวนสิทธิ์สำหรับผู้ดูแลระบบ (Admin) เท่านั้น บัญชีของคุณไม่ใช่แอดมิน");
         window.location.href = '../my_workspace.html';
         return;
     }
@@ -87,6 +163,20 @@ async function loadAdminDashboardData() {
                 rawUsers = Array.from(tempMap.values());
             }
 
+            // ตรวจสอบให้แน่ใจว่า Admin ปัจจุบันอยู่ในรายชื่อสมาชิก
+            if (adminSession && !rawUsers.some(u => (u.username && u.username.toLowerCase() === (adminSession.username || '').toLowerCase()) || (u.email && u.email.toLowerCase() === (adminSession.email || '').toLowerCase()))) {
+                rawUsers.unshift({
+                    id: adminSession.id || 'admin_id',
+                    username: adminSession.username || 'admin',
+                    nickname: adminSession.name || 'Admin',
+                    email: adminSession.email || 'admin@gyver.local',
+                    role: 'admin',
+                    level: adminSession.level || 2,
+                    created_at: new Date().toISOString(),
+                    avatar_url: 'https://cdn-icons-png.flaticon.com/512/149/149071.png'
+                });
+            }
+
             // 🔝 การจัดเรียงลำดับ: Admin อยู่บนสุดตามด้วยวันที่สมัครจากใหม่ไปเก่า
             allUsersList = rawUsers.sort((a, b) => {
                 const isAAdmin = (a.role === 'admin' || (a.username && a.username.toLowerCase() === 'admin')) ? 1 : 0;
@@ -128,6 +218,8 @@ async function loadAdminDashboardData() {
     }
 }
 
+let currentRoleFilter = 'all';
+
 function setElementText(id, value) {
     const el = document.getElementById(id);
     if (el) el.innerText = value;
@@ -135,23 +227,42 @@ function setElementText(id, value) {
 
 function renderUserTable(users) {
     const tbody = document.getElementById('user-accounts-tbody');
+    const countBadge = document.getElementById('table-user-count');
     if (!tbody) return;
 
+    if (countBadge) {
+        countBadge.innerText = `${(users || []).length} คน`;
+    }
+
     if (!users || users.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-subtle">ไม่พบข้อมูลสมาชิกในระบบ</td></tr>`;
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center py-5">
+                    <div class="user-empty-state-box">
+                        <i class="bi bi-person-x"></i>
+                        <span>ไม่พบบัญชีผู้ใช้งานที่ตรงกับเงื่อนไขการค้นหา</span>
+                    </div>
+                </td>
+            </tr>`;
         return;
     }
 
     tbody.innerHTML = users.map(u => {
         const avatar = u.avatar_url || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-        
         const isAdmin = u.role === 'admin' || (u.username && u.username.toLowerCase() === 'admin');
         const roleBadge = isAdmin 
-            ? `<span class="badge bg-danger font-mono"><i class="bi bi-shield-fill me-1"></i>ADMIN</span>`
-            : `<span class="badge bg-info text-dark font-mono">USER</span>`;
+            ? `<span class="badge-role-admin font-mono"><i class="bi bi-shield-fill-check me-1"></i>ADMIN</span>`
+            : `<span class="badge-role-user font-mono"><i class="bi bi-person-fill me-1"></i>USER</span>`;
 
-        const levelBadge = `<span class="badge bg-secondary border border-light font-mono">Lv.${u.level ?? 1}</span>`;
-        const userNameText = u.username || u.email || 'User';
+        const level = u.level ?? 1;
+        const levelBadge = level >= 2
+            ? `<span class="badge-level badge-level-pro"><i class="bi bi-stars me-1"></i>Lv.${level} VIP</span>`
+            : (level === 0 
+                ? `<span class="badge-level text-subtle">Lv.0 Guest</span>`
+                : `<span class="badge-level"><i class="bi bi-check2 me-1"></i>Lv.1 Member</span>`);
+
+        const userNameText = u.username || u.nickname || (u.email ? u.email.split('@')[0] : 'User');
+        const userEmailText = u.email || '-';
 
         // 📅 แปลงวันที่สมัครใช้งาน
         const createdDateStr = u.created_at 
@@ -159,35 +270,46 @@ function renderUserTable(users) {
             : '-';
 
         return `
-            <tr>
-                <td>
-                    <img src="${avatar}" class="rounded-circle border" style="width:36px; height:36px; object-fit:cover;">
+            <tr class="${isAdmin ? 'is-admin-row' : ''}">
+                <td class="text-center">
+                    <div class="user-avatar-wrap">
+                        <img src="${avatar}" class="user-avatar-img" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'" alt="${userNameText}">
+                    </div>
                 </td>
                 <td>
-                    <a href="javascript:void(0)" class="text-warning fw-bold text-decoration-none" onclick="openUserDetailModal('${u.id}')">
-                        <i class="bi bi-search me-1"></i>${userNameText}
-                    </a>
+                    <div class="d-flex flex-column">
+                        <a href="javascript:void(0)" class="user-name-link font-heading" onclick="openUserDetailModal('${u.id}')" title="คลิกเพื่อดูห้องเรียนและโจทย์ของ ${userNameText}">
+                            <i class="bi bi-search text-cyan" style="font-size: 0.85rem;"></i>
+                            <span class="fs-6 fw-semibold">${userNameText}</span>
+                            ${isAdmin ? '<span class="badge bg-danger text-white ms-1" style="font-size:0.62rem; padding: 2px 5px;">👑 CROWN</span>' : ''}
+                        </a>
+                        <small class="text-subtle font-mono" style="font-size: 0.74rem;">ID: ${u.id ? (u.id.length > 12 ? u.id.slice(0, 10) + '...' : u.id) : 'system'}</small>
+                    </div>
                 </td>
-                <td class="text-subtle">${u.email || '-'}</td>
-                <td class="text-center text-subtle small">${createdDateStr}</td>
+                <td>
+                    <span class="user-email-text">${userEmailText}</span>
+                </td>
+                <td class="text-center text-subtle small font-mono">
+                    <i class="bi bi-calendar3 me-1 opacity-75"></i>${createdDateStr}
+                </td>
                 <td class="text-center">${levelBadge}</td>
                 <td class="text-center">${roleBadge}</td>
                 <td class="text-center">
                     <div class="dropdown">
-                        <button class="btn btn-sm btn-outline-warning font-mono dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static">
-                            จัดการ User
+                        <button class="btn btn-action-trigger dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static">
+                            <i class="bi bi-sliders me-1"></i>จัดการ
                         </button>
-                        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end shadow-lg">
-                            <li><h6 class="dropdown-header text-warning">-- ปรับ Level สิทธิ์ --</h6></li>
-                            <li><a class="dropdown-item small" href="javascript:void(0)" onclick="changeUserLevel('${u.id}', 0)">🔹 ตั้งเป็น Lv.0 (Visitor)</a></li>
-                            <li><a class="dropdown-item small" href="javascript:void(0)" onclick="changeUserLevel('${u.id}', 1)">🔹 ตั้งเป็น Lv.1 (Member)</a></li>
-                            <li><a class="dropdown-item small" href="javascript:void(0)" onclick="changeUserLevel('${u.id}', 2)">🔹 ตั้งเป็น Lv.2 (VIP/Pro)</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><h6 class="dropdown-header text-warning">-- ปรับบทบาท (Role) --</h6></li>
-                            <li><a class="dropdown-item small text-danger fw-bold" href="javascript:void(0)" onclick="changeUserRole('${u.id}', 'admin')">👑 ตั้งเป็น ADMIN</a></li>
-                            <li><a class="dropdown-item small text-info fw-bold" href="javascript:void(0)" onclick="changeUserRole('${u.id}', 'user')">👤 ตั้งเป็น USER</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item small text-danger" href="javascript:void(0)" onclick="deleteUserAccount('${u.id}')">🗑️ ลบบัญชีนี้</a></li>
+                        <ul class="dropdown-menu dropdown-menu-cyber dropdown-menu-end shadow-lg">
+                            <li><h6 class="dropdown-header-cyber text-warning"><i class="bi bi-award me-1"></i>ปรับระดับสิทธิ์ (Level)</h6></li>
+                            <li><a class="dropdown-item dropdown-item-cyber small" href="javascript:void(0)" onclick="changeUserLevel('${u.id}', 0)">🔹 ตั้งเป็น Lv.0 (Guest)</a></li>
+                            <li><a class="dropdown-item dropdown-item-cyber small" href="javascript:void(0)" onclick="changeUserLevel('${u.id}', 1)">🔹 ตั้งเป็น Lv.1 (Standard)</a></li>
+                            <li><a class="dropdown-item dropdown-item-cyber small text-warning" href="javascript:void(0)" onclick="changeUserLevel('${u.id}', 2)">⭐ ตั้งเป็น Lv.2 (VIP/Pro)</a></li>
+                            <li><hr class="dropdown-divider border-secondary opacity-50 my-1"></li>
+                            <li><h6 class="dropdown-header-cyber text-info"><i class="bi bi-person-gear me-1"></i>ปรับบทบาท (Role)</h6></li>
+                            <li><a class="dropdown-item dropdown-item-cyber small text-danger fw-bold" href="javascript:void(0)" onclick="changeUserRole('${u.id}', 'admin')">👑 ตั้งสิทธิ์เป็น ADMIN</a></li>
+                            <li><a class="dropdown-item dropdown-item-cyber small text-cyan fw-bold" href="javascript:void(0)" onclick="changeUserRole('${u.id}', 'user')">👤 ปรับเป็นผู้ใช้ USER</a></li>
+                            <li><hr class="dropdown-divider border-secondary opacity-50 my-1"></li>
+                            <li><a class="dropdown-item dropdown-item-cyber small text-danger" href="javascript:void(0)" onclick="deleteUserAccount('${u.id}')"><i class="bi bi-trash3-fill me-1"></i>ลบบัญชีผู้ใช้นี้</a></li>
                         </ul>
                     </div>
                 </td>
@@ -351,17 +473,50 @@ function openUserDetailModal(userId) {
     }
 }
 
+function applyRoleFilter(role, btn) {
+    currentRoleFilter = role;
+    document.querySelectorAll('.filter-pill-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    filterUserTable();
+}
+
+function clearSearch() {
+    const input = document.getElementById('user-search-input');
+    if (input) {
+        input.value = '';
+        const clearBtn = document.getElementById('user-search-clear');
+        if (clearBtn) clearBtn.style.display = 'none';
+    }
+    filterUserTable();
+}
+
 function filterUserTable() {
-    const query = document.getElementById('user-search-input')?.value.toLowerCase().trim();
-    if (!query) {
-        renderUserTable(allUsersList);
-        return;
+    const searchInput = document.getElementById('user-search-input');
+    const query = searchInput?.value.toLowerCase().trim() || '';
+    const clearBtn = document.getElementById('user-search-clear');
+    if (clearBtn) {
+        clearBtn.style.display = query.length > 0 ? 'block' : 'none';
     }
 
-    const filtered = allUsersList.filter(u => 
-        (u.username && u.username.toLowerCase().includes(query)) ||
-        (u.email && u.email.toLowerCase().includes(query))
-    );
+    let filtered = allUsersList;
+
+    // 1. กรองตาม Role Tab
+    if (currentRoleFilter === 'admin') {
+        filtered = filtered.filter(u => u.role === 'admin' || (u.username && u.username.toLowerCase() === 'admin'));
+    } else if (currentRoleFilter === 'user') {
+        filtered = filtered.filter(u => u.role !== 'admin' && (!u.username || u.username.toLowerCase() !== 'admin'));
+    }
+
+    // 2. กรองตามคำค้นหา Text Query
+    if (query) {
+        filtered = filtered.filter(u => 
+            (u.username && u.username.toLowerCase().includes(query)) ||
+            (u.nickname && u.nickname.toLowerCase().includes(query)) ||
+            (u.email && u.email.toLowerCase().includes(query)) ||
+            (u.id && u.id.toLowerCase().includes(query))
+        );
+    }
+
     renderUserTable(filtered);
 }
 
@@ -380,9 +535,18 @@ async function promptClearAllLobbies() {
 // 🟢 ฟังก์ชันออกจากระบบแบบแก้ไขแล้ว (เคลียร์ Session และสั่งเด้งออกไปหน้า index.html)
 async function handleAdminLogout() {
     try {
-        // 1. เคลียร์ Session Admin ทั้งหมดใน Storage
+        // 1. เคลียร์ Session Admin และภาพส่วนตัวทั้งหมดใน Storage
         sessionStorage.removeItem('gyver_admin_session');
         localStorage.removeItem('gyver_admin_session');
+        localStorage.removeItem('cs_bg');
+        localStorage.removeItem('cs_custom_bg_name');
+        localStorage.removeItem('cs_custom_bg_raw');
+        localStorage.removeItem('cs_bg_size');
+        localStorage.removeItem('cs_bg_pos');
+        localStorage.removeItem('cs_bg_fit_mode');
+        localStorage.removeItem('cs_screen_title');
+        localStorage.removeItem('cs_open_widgets');
+        localStorage.removeItem('gyver_dock_items');
 
         // 2. ออกจากระบบ Supabase
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {

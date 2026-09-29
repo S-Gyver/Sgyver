@@ -645,32 +645,114 @@
 
                 try {
                     let loginEmail = identifier;
+                    let foundProfile = null;
+
                     if (!identifier.includes('@')) {
                         hint.style.display = 'block';
-                        const { data: profile, error: lookupErr } = await getClient()
-                            .from('profiles')
-                            .select('email, username, nickname')
-                            .or(`username.eq.${identifier},nickname.eq.${identifier}`)
-                            .maybeSingle();
+                        try {
+                            const { data: profile } = await getClient()
+                                .from('profiles')
+                                .select('*')
+                                .or(`username.ilike.${identifier},nickname.ilike.${identifier}`)
+                                .maybeSingle();
+                            if (profile) {
+                                foundProfile = profile;
+                                if (profile.email) loginEmail = profile.email;
+                            }
+                        } catch (e) { }
                         hint.style.display = 'none';
-
-                        if (lookupErr || !profile || !profile.email) {
-                            alertBox.className = 'alert alert-danger py-2 small text-center rounded-3';
-                            alertBox.textContent = '❌ ไม่พบ Username นี้ในระบบ กรุณาใช้อีเมลแทนครับ';
-                            resetBtn(); return;
-                        }
-                        loginEmail = profile.email;
                     }
 
-                    const { data, error } = await getClient().auth.signInWithPassword({ email: loginEmail, password });
+                    let authResult = null;
+                    if (loginEmail.includes('@')) {
+                        authResult = await getClient().auth.signInWithPassword({ email: loginEmail, password });
+                    }
+
+                    if ((!authResult || authResult.error) && identifier.toLowerCase() === 'admin') {
+                        const adminCandidates = [
+                            'admin@gyver.local',
+                            'admin@admin.com',
+                            'admin@gmail.com',
+                            'admin@sgyver.com',
+                            'admin@gyver.com'
+                        ];
+                        for (const candidate of adminCandidates) {
+                            if (candidate === loginEmail) continue;
+                            const testAuth = await getClient().auth.signInWithPassword({ email: candidate, password });
+                            if (!testAuth.error && testAuth.data?.user) {
+                                authResult = testAuth;
+                                loginEmail = candidate;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!authResult) {
+                        alertBox.className = 'alert alert-danger py-2 small text-center rounded-3';
+                        alertBox.textContent = '❌ ไม่พบ Username นี้ในระบบ กรุณาใช้อีเมลแทนครับ';
+                        resetBtn(); return;
+                    }
+
+                    const { data, error } = authResult;
                     if (error) {
                         alertBox.className = 'alert alert-danger py-2 small text-center rounded-3';
                         alertBox.textContent = '❌ ' + (error.message === 'Invalid login credentials' ? 'อีเมล / Username หรือรหัสผ่านไม่ถูกต้อง' : error.message);
                         resetBtn();
                     } else {
-                        alertBox.className = 'alert alert-success py-2 small text-center rounded-3';
-                        alertBox.textContent = '🎉 ล็อกอินสำเร็จ! กำลังนำคุณเข้าสู่ระบบ...';
-                        setTimeout(() => { window.location.href = 'my_workspace.html'; }, 900);
+                        const user = data.user;
+                        let isUserAdmin = false;
+
+                        try {
+                            const { data: prof } = await getClient().from('profiles').select('*').eq('id', user.id).maybeSingle();
+                            if (prof) {
+                                foundProfile = prof;
+                                if (prof.role === 'admin' || (prof.username && prof.username.toLowerCase() === 'admin')) {
+                                    isUserAdmin = true;
+                                } else {
+                                    isUserAdmin = false;
+                                }
+                            }
+                        } catch (e) { }
+
+                        if (!foundProfile) {
+                            if (
+                                identifier.toLowerCase() === 'admin' ||
+                                (user.user_metadata?.username && user.user_metadata.username.toLowerCase() === 'admin') ||
+                                (user.email && user.email.toLowerCase().startsWith('admin@'))
+                            ) {
+                                isUserAdmin = true;
+                            }
+                        }
+
+                        if (isUserAdmin) {
+                            const adminSessionData = {
+                                isLoggedIn: true,
+                                id: user.id,
+                                username: foundProfile?.username || user.user_metadata?.username || identifier || 'admin',
+                                name: foundProfile?.nickname || foundProfile?.username || user.user_metadata?.nickname || 'Admin',
+                                email: user.email,
+                                role: 'admin',
+                                level: 2
+                            };
+                            sessionStorage.setItem('gyver_admin_session', JSON.stringify(adminSessionData));
+                            localStorage.setItem('gyver_admin_session', JSON.stringify(adminSessionData));
+
+                            alertBox.className = 'alert alert-success py-2 small text-center rounded-3';
+                            alertBox.textContent = '🎉 ล็อกอินผู้ดูแลระบบสำเร็จ! กำลังนำคุณเข้าสู่หน้าผู้ดูแลระบบ Admin...';
+                            setTimeout(() => { window.location.href = 'admin/admin_dashboard.html'; }, 800);
+                        } else {
+                            if (user.user_metadata?.role === 'admin') {
+                                try {
+                                    await getClient().auth.updateUser({ data: { role: 'user' } });
+                                } catch (e) { }
+                            }
+                            sessionStorage.removeItem('gyver_admin_session');
+                            localStorage.removeItem('gyver_admin_session');
+
+                            alertBox.className = 'alert alert-success py-2 small text-center rounded-3';
+                            alertBox.textContent = '🎉 ล็อกอินสำเร็จ! กำลังนำคุณเข้าสู่ระบบ...';
+                            setTimeout(() => { window.location.href = 'my_workspace.html'; }, 900);
+                        }
                     }
                 } catch(err) {
                     hint.style.display = 'none';

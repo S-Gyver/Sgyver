@@ -259,56 +259,149 @@ async function handlePopupLoginSubmit(e) {
     submitBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>กำลังตรวจสอบข้อมูล...`;
 
     let targetEmail = emailInput;
+    let foundProfile = null;
 
     // Handle username input instead of email
     if (!targetEmail.includes('@') && window.supabaseClient) {
         try {
             const { data: prof } = await window.supabaseClient
                 .from('profiles')
-                .select('email')
-                .eq('username', targetEmail)
+                .select('*')
+                .or(`username.ilike.${targetEmail},nickname.ilike.${targetEmail}`)
                 .maybeSingle();
 
-            if (prof && prof.email) {
-                targetEmail = prof.email;
+            if (prof) {
+                foundProfile = prof;
+                if (prof.email) targetEmail = prof.email;
             }
         } catch (err) { }
     }
 
     try {
-        const { data, error } = await window.supabaseClient.auth.signInWithPassword({
-            email: targetEmail,
-            password: password
-        });
+        let authResult = null;
+        if (targetEmail.includes('@')) {
+            authResult = await window.supabaseClient.auth.signInWithPassword({
+                email: targetEmail,
+                password: password
+            });
+        }
+
+        if ((!authResult || authResult.error) && emailInput.toLowerCase() === 'admin') {
+            const adminCandidates = [
+                'admin@gyver.local',
+                'admin@admin.com',
+                'admin@gmail.com',
+                'admin@sgyver.com',
+                'admin@gyver.com'
+            ];
+            for (const candidate of adminCandidates) {
+                if (candidate === targetEmail) continue;
+                const testAuth = await window.supabaseClient.auth.signInWithPassword({
+                    email: candidate,
+                    password: password
+                });
+                if (!testAuth.error && testAuth.data?.user) {
+                    authResult = testAuth;
+                    targetEmail = candidate;
+                    break;
+                }
+            }
+        }
+
+        if (!authResult) {
+            setAlert(alertBox, 'alert-danger', `❌ ไม่พบบัญชีผู้ใช้สำหรับ Username "${emailInput}" กรุณาใช้อีเมลแทนครับ`);
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `<i class="bi bi-box-arrow-in-right me-1"></i>ลงชื่อเข้าใช้งาน`;
+            return;
+        }
+
+        const { data, error } = authResult;
 
         if (error) {
-            setAlert(alertBox, 'alert-danger', `❌ เข้าสู่ระบบไม่สำเร็จ: ${error.message}`);
+            let msg = error.message;
+            if (error.message === 'Invalid login credentials') {
+                if (foundProfile && foundProfile.email) {
+                    msg = `รหัสผ่านไม่ถูกต้องสำหรับบัญชี "${emailInput}" (${foundProfile.email})`;
+                } else {
+                    msg = 'อีเมล / Username หรือรหัสผ่านไม่ถูกต้อง';
+                }
+            }
+            setAlert(alertBox, 'alert-danger', `❌ เข้าสู่ระบบไม่สำเร็จ: ${msg}`);
             submitBtn.disabled = false;
             submitBtn.innerHTML = `<i class="bi bi-box-arrow-in-right me-1"></i>ลงชื่อเข้าใช้งาน`;
         } else {
-            setAlert(alertBox, 'alert-success', '🎉 ล็อกอินสำเร็จ! กำลังโหลดหน้าจอของคุณ...');
+            const user = data.user;
+            let isUserAdmin = false;
 
-            if (targetEmail === 's.gyver36@gmail.com') {
+            try {
+                const { data: prof } = await window.supabaseClient.from('profiles').select('*').eq('id', user.id).maybeSingle();
+                if (prof) {
+                    foundProfile = prof;
+                    if (prof.role === 'admin' || (prof.username && prof.username.toLowerCase() === 'admin')) {
+                        isUserAdmin = true;
+                    } else {
+                        isUserAdmin = false;
+                    }
+                }
+            } catch (e) { }
+
+            if (!foundProfile) {
+                if (
+                    emailInput.toLowerCase() === 'admin' ||
+                    (user.user_metadata?.username && user.user_metadata.username.toLowerCase() === 'admin') ||
+                    (user.email && user.email.toLowerCase().startsWith('admin@'))
+                ) {
+                    isUserAdmin = true;
+                }
+            }
+
+            if (isUserAdmin) {
                 try {
                     await window.supabaseClient.auth.updateUser({ data: { role: 'admin' } });
                 } catch (e) { }
-            }
 
-            currentUser = data.user;
-            await loadUserProfile(data.user.id);
-            updateUIForLoggedIn();
+                const adminSessionData = {
+                    isLoggedIn: true,
+                    id: user.id,
+                    username: foundProfile?.username || user.user_metadata?.username || emailInput || 'admin',
+                    name: foundProfile?.nickname || foundProfile?.username || user.user_metadata?.nickname || 'Admin',
+                    email: user.email,
+                    role: 'admin',
+                    level: 2
+                };
+                sessionStorage.setItem('gyver_admin_session', JSON.stringify(adminSessionData));
+                localStorage.setItem('gyver_admin_session', JSON.stringify(adminSessionData));
 
-            setTimeout(() => {
-                const modalEl = document.getElementById('authModal');
-                if (modalEl && typeof bootstrap !== 'undefined') {
-                    const bsModal = bootstrap.Modal.getInstance(modalEl);
-                    if (bsModal) bsModal.hide();
+                setAlert(alertBox, 'alert-success', '🎉 ล็อกอินผู้ดูแลระบบสำเร็จ! กำลังนำคุณเข้าสู่หน้าผู้ดูแลระบบ Admin...');
+                setTimeout(() => {
+                    window.location.href = 'admin/admin_dashboard.html';
+                }, 800);
+            } else {
+                if (user.user_metadata?.role === 'admin') {
+                    try {
+                        await window.supabaseClient.auth.updateUser({ data: { role: 'user' } });
+                    } catch (e) { }
                 }
-                loginForm.reset();
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = `<i class="bi bi-box-arrow-in-right me-1"></i>ลงชื่อเข้าใช้งาน`;
-                setAlert(alertBox, 'd-none', '');
-            }, 800);
+                sessionStorage.removeItem('gyver_admin_session');
+                localStorage.removeItem('gyver_admin_session');
+
+                setAlert(alertBox, 'alert-success', '🎉 ล็อกอินสำเร็จ! กำลังโหลดหน้าจอของคุณ...');
+                currentUser = data.user;
+                await loadUserProfile(data.user.id);
+                updateUIForLoggedIn();
+
+                setTimeout(() => {
+                    const modalEl = document.getElementById('authModal');
+                    if (modalEl && typeof bootstrap !== 'undefined') {
+                        const bsModal = bootstrap.Modal.getInstance(modalEl);
+                        if (bsModal) bsModal.hide();
+                    }
+                    loginForm.reset();
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = `<i class="bi bi-box-arrow-in-right me-1"></i>ลงชื่อเข้าใช้งาน`;
+                    setAlert(alertBox, 'd-none', '');
+                }, 800);
+            }
         }
     } catch (err) {
         setAlert(alertBox, 'alert-danger', `❌ เกิดข้อผิดพลาด: ${err.message}`);
@@ -425,6 +518,18 @@ function setAlert(el, alertClass, message) {
  * 🚪 Logout Handler
  */
 async function logoutMainSystem() {
+    sessionStorage.clear();
+    localStorage.removeItem('gyver_admin_session');
+    localStorage.removeItem('cs_bg');
+    localStorage.removeItem('cs_custom_bg_name');
+    localStorage.removeItem('cs_custom_bg_raw');
+    localStorage.removeItem('cs_bg_size');
+    localStorage.removeItem('cs_bg_pos');
+    localStorage.removeItem('cs_bg_fit_mode');
+    localStorage.removeItem('cs_screen_title');
+    localStorage.removeItem('cs_open_widgets');
+    localStorage.removeItem('gyver_dock_items');
+
     if (window.supabaseClient && window.supabaseClient.auth) {
         await window.supabaseClient.auth.signOut();
     }
@@ -634,9 +739,9 @@ function startCameraScanner() {
 
     try {
         html5QrScanner = new Html5Qrcode('modal-qr-reader');
-        const config = { 
-            fps: 10, 
-            qrbox: { width: 220, height: 220 } 
+        const config = {
+            fps: 10,
+            qrbox: { width: 220, height: 220 }
         };
 
         html5QrScanner.start(

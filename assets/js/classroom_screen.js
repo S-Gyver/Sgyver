@@ -149,6 +149,25 @@ function playSound(type) {
 // 🖼️ 2. Background Switcher Logic
 // ====================================================
 function initBackground() {
+    // 🛡️ ป้องกันรูปภาพส่วนบุคคลของผู้ใช้เดิมค้างเมื่อออกจากระบบแล้ว
+    let hasAuthToken = false;
+    for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.includes('auth-token') && localStorage.getItem(k)) {
+            hasAuthToken = true;
+            break;
+        }
+    }
+    const hasCustomPhoto = localStorage.getItem('cs_custom_bg_raw') || (localStorage.getItem('cs_bg') && localStorage.getItem('cs_bg').startsWith('data:image/'));
+    if (!hasAuthToken && hasCustomPhoto) {
+        localStorage.removeItem('cs_bg');
+        localStorage.removeItem('cs_custom_bg_name');
+        localStorage.removeItem('cs_custom_bg_raw');
+        localStorage.removeItem('cs_bg_size');
+        localStorage.removeItem('cs_bg_pos');
+        localStorage.removeItem('cs_bg_fit_mode');
+    }
+
     const savedBg = localStorage.getItem('cs_bg');
     const savedName = localStorage.getItem('cs_custom_bg_name');
     const savedSize = localStorage.getItem('cs_bg_size') || 'cover';
