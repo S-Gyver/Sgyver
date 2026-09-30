@@ -22,6 +22,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="assets/js/supabaseClient.js"></script>
     <script src="assets/js/utils.js"></script>
+    <script src="assets/js/system_broadcast.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
     <style>
@@ -98,6 +99,12 @@
 
         <!-- Header Actions & Auth -->
         <div class="cs-header-actions">
+            <!-- 🏫 ห้องเรียนของฉัน (My Classroom) Dedicated Menu Button -->
+            <button type="button" class="cs-btn-text" onclick="openAppInWorkspace('auth/my_classroom/my_classroom.html', 'ห้องเรียนของฉัน (My Classroom)', 'app_my_classroom')" title="ห้องเรียนของฉัน: สแกนเข้าห้อง เช็คชื่อ แจกไฟล์ และส่งงาน" style="color: #60a5fa !important; font-weight: 600;">
+                <i class="bi bi-mortarboard-fill text-primary"></i>
+                <span class="d-none d-sm-inline">ห้องเรียนของฉัน</span>
+            </button>
+
             <!-- 🎮 Join Room PIN Button -->
             <button type="button" class="cs-btn-text" onclick="openJoinRoomModal()" title="เข้าห้องด้วยรหัส PIN">
                 <i class="bi bi-broadcast text-danger"></i>
@@ -111,13 +118,6 @@
                 <span class="d-none d-md-inline">พื้นหลัง</span>
             </button>
 
-            <!-- ☁️ Cloud Sync Status & Manual Sync Button -->
-            <button class="cs-btn-text" id="cs-cloud-sync-btn"
-                onclick="if(window.GyverWorkspaceCloudSync) window.GyverWorkspaceCloudSync.manualSync()"
-                title="สถานะ Cloud Sync (ซิงก์ Wallpaper และหน้าจอข้ามเครื่อง)">
-                <i class="bi bi-cloud-check-fill text-info" id="cs-cloud-sync-icon"></i>
-                <span class="d-none d-lg-inline" id="cs-cloud-sync-text">คลาวด์</span>
-            </button>
 
             <!-- 🧹 Clear Widgets -->
             <button class="cs-btn-icon" onclick="clearAllWidgets()" title="ล้างเครื่องมือทั้งหมดบนกระดาน">
@@ -160,6 +160,17 @@
                                     <div class="fw-medium text-white small" style="font-size: 0.92rem;">จัดการโปรไฟล์
                                     </div>
                                     <div style="color: #cbd5e1; font-size: 0.8rem;">เปลี่ยนชื่อ / รูปภาพ</div>
+                                </div>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center gap-3 py-2 px-3 rounded-3" href="#"
+                                onclick="openAppInWorkspace('auth/my_classroom/my_classroom.html', 'ห้องเรียนของฉัน (My Classroom)', 'app_my_classroom'); return false;">
+                                <i class="bi bi-mortarboard-fill text-primary fs-5"></i>
+                                <div>
+                                    <div class="fw-medium text-white small" style="font-size: 0.92rem;">ห้องเรียนของฉัน
+                                    </div>
+                                    <div style="color: #cbd5e1; font-size: 0.8rem;">สแกนเข้าห้อง เช็คชื่อ แจกไฟล์ ส่งงาน</div>
                                 </div>
                             </a>
                         </li>
@@ -731,6 +742,22 @@
                         <div class="launchpad-content">
                             <div class="launchpad-title">Question Bank</div>
                             <div class="launchpad-desc">คลังคำถามและข้อสอบ สำหรับเชื่อมต่อวงล้อและเกม</div>
+                        </div>
+                    </div>
+
+                    <div class="launchpad-app-item" data-member-only="true" draggable="true"
+                        ondragstart="onLaunchpadDragStart(event, 'app_my_classroom')" onclick="launchTool('app_my_classroom')"
+                        data-app-name="My Classroom ห้องเรียนของฉัน สอนสด เช็คชื่อ สั่งงาน แจกไฟล์"
+                        title="My Classroom: สแกนเข้าห้องเรียนวันแรก เช็คชื่อ แจกไฟล์ และส่งงาน (ลากไปวางที่ Dock หรือคลิกเปิด)">
+                        <button type="button" class="launchpad-pin-btn" onclick="togglePinTool(event, 'app_my_classroom')"
+                            title="ปักหมุดที่ Dock"><i class="bi bi-pin-angle-fill"></i></button>
+                        <span class="launchpad-lock-pill"><i class="bi bi-lock-fill"></i> สมาชิก</span>
+                        <div class="launchpad-icon"
+                            style="background: linear-gradient(145deg, #6366f1, #4f46e5, #3730a3);"><i
+                                class="bi bi-mortarboard-fill"></i></div>
+                        <div class="launchpad-content">
+                            <div class="launchpad-title">ห้องเรียนของฉัน</div>
+                            <div class="launchpad-desc">สแกนเข้าห้อง เช็คชื่อ แจกไฟล์ และสั่งงาน</div>
                         </div>
                     </div>
 
@@ -1752,6 +1779,7 @@
             'app_quiz': { id: 'app_quiz', title: 'Quiz', icon: 'bi bi-patch-question-fill', colorClass: 'text-warning', type: 'link', url: 'features/education/quiz/quiz.html' },
             'app_live_studio': { id: 'app_live_studio', title: 'Live Studio', icon: 'bi bi-broadcast-pin', colorClass: 'text-info', type: 'link', url: 'features/education/live_studio/live_studio.html' },
             'app_bank': { id: 'app_bank', title: 'คลังข้อสอบ', icon: 'bi bi-journal-bookmark-fill', colorClass: 'text-warning', type: 'link', url: 'features/education/question_bank/question_bank.html' },
+            'app_my_classroom': { id: 'app_my_classroom', title: 'ห้องเรียนของฉัน', icon: 'bi bi-mortarboard-fill', colorClass: 'text-primary', type: 'link', url: 'auth/my_classroom/my_classroom.html' },
             'app_manage': { id: 'app_manage', title: 'จัดการ นร.', icon: 'bi bi-people-fill', colorClass: 'text-success', type: 'link', url: 'auth/classroom_manage/classroom_manage.html' },
             'app_history': { id: 'app_history', title: 'ประวัติ', icon: 'bi bi-clock-history', colorClass: 'text-info', type: 'link', url: 'auth/history/history.html' },
             'app_profile': { id: 'app_profile', title: 'โปรไฟล์ครู', icon: 'bi bi-person-gear', colorClass: 'text-secondary', type: 'link', url: 'auth/profile/profile.html' },

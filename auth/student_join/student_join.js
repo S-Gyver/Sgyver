@@ -310,6 +310,11 @@ async function submitStudentName(e) {
             console.warn('Activity log record warn:', logErr);
         }
 
+        const enterClassBtn = document.getElementById('btn-enter-student-classroom');
+        if (enterClassBtn && currentClassData.room_code) {
+            enterClassBtn.href = `../my_classroom/student_view.html?code=${encodeURIComponent(currentClassData.room_code)}`;
+        }
+
         document.getElementById('join-form').classList.add('d-none');
         document.getElementById('result-success').classList.remove('d-none');
     } else {

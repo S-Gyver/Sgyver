@@ -77,13 +77,18 @@ async function loadClassroomList() {
                     </div>
 
                     <!-- ปุ่มลัดปฏิบัติการ -->
-                    <div class="d-flex gap-2 mt-auto pt-2 border-top">
-                        <button class="btn btn-primary btn-sm rounded-3 fw-bold flex-grow-1" onclick="openManageStudentsModal('${c.id}')">
-                            <i class="bi bi-person-gear me-1"></i>จัดการนักเรียน
-                        </button>
-                        <button class="btn btn-outline-primary btn-sm rounded-3 px-3" onclick="quickOpenQRModal('${c.id}')" title="แสดง QR Code ให้เด็กสแกน">
-                            <i class="bi bi-qr-code-scan"></i>
-                        </button>
+                    <div class="d-flex flex-column gap-2 mt-auto pt-2 border-top">
+                        <a href="../my_classroom/my_classroom.html?id=${c.id}" class="btn btn-primary btn-sm rounded-3 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-1">
+                            <i class="bi bi-mortarboard-fill"></i> เข้าห้องเรียนนี้ (My Classroom)
+                        </a>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-outline-secondary btn-sm rounded-3 fw-bold flex-grow-1" onclick="openManageStudentsModal('${c.id}')">
+                                <i class="bi bi-person-gear me-1"></i>รายชื่อนักเรียน
+                            </button>
+                            <button class="btn btn-outline-primary btn-sm rounded-3 px-3" onclick="quickOpenQRModal('${c.id}')" title="แสดง QR Code ให้เด็กสแกน">
+                                <i class="bi bi-qr-code-scan"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>`;

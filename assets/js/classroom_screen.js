@@ -987,13 +987,13 @@ function spawnWidget(type, customPos = null, savedState = null, silent = false) 
     }
 
     const widgetCount = Object.keys(activeWidgets).length;
-    let defaultLeft = 60 + (widgetCount % 6) * 40;
-    let defaultTop = 40 + (widgetCount % 6) * 30;
+    let defaultLeft = 40 + (widgetCount % 6) * 35;
+    let defaultTop = 15 + (widgetCount % 6) * 25;
 
     if (isMobile) {
         // Center horizontally on mobile with safe screen margins
-        defaultLeft = Math.max(12, Math.floor((winW - targetW) / 2));
-        defaultTop = Math.max(68, Math.min(75 + (widgetCount % 4) * 20, winH - targetH - 90));
+        defaultLeft = Math.max(10, Math.floor((winW - targetW) / 2));
+        defaultTop = Math.max(10, Math.min(20 + (widgetCount % 4) * 20, winH - targetH - 90));
     } else {
         if (savedState && savedState.left !== undefined) {
             defaultLeft = savedState.left;
@@ -1002,10 +1002,10 @@ function spawnWidget(type, customPos = null, savedState = null, silent = false) 
             defaultLeft = customPos.left;
             defaultTop = customPos.top;
         }
-        if (defaultLeft + targetW > winW - 20) defaultLeft = Math.max(20, winW - targetW - 20);
-        if (defaultTop + targetH > winH - 60) defaultTop = Math.max(70, winH - targetH - 60);
-        if (defaultLeft < 20) defaultLeft = 20;
-        if (defaultTop < 70) defaultTop = 70;
+        if (defaultLeft + targetW > winW - 10) defaultLeft = Math.max(10, winW - targetW - 10);
+        if (defaultTop + targetH > winH - 60) defaultTop = Math.max(0, winH - targetH - 60);
+        if (defaultLeft < 0) defaultLeft = 0;
+        if (defaultTop < 0) defaultTop = 0;
     }
 
     const widgetEl = document.createElement('div');
@@ -1241,13 +1241,14 @@ function makeDraggable(element, handle) {
         let newTop = element.offsetTop - pos2;
         let newLeft = element.offsetLeft - pos1;
 
-        // Boundaries check
+        // Boundaries check - allow dragging all the way to the top!
         const elWidth = element.offsetWidth || 120;
-        const maxTop = Math.max(60, window.innerHeight - 80);
-        const maxLeft = Math.max(8, window.innerWidth - elWidth - 8);
+        const minTop = 0;
+        const maxTop = Math.max(minTop, window.innerHeight - 50);
+        const maxLeft = Math.max(0, window.innerWidth - elWidth);
 
-        newTop = Math.max(60, Math.min(maxTop, newTop));
-        newLeft = Math.max(8, Math.min(maxLeft, newLeft));
+        newTop = Math.max(minTop, Math.min(maxTop, newTop));
+        newLeft = Math.max(0, Math.min(maxLeft, newLeft));
 
         element.style.top = newTop + "px";
         element.style.left = newLeft + "px";
@@ -1281,13 +1282,14 @@ function makeDraggable(element, handle) {
         let newTop = element.offsetTop - pos2;
         let newLeft = element.offsetLeft - pos1;
 
-        // Boundaries check for touch
+        // Boundaries check for touch - allow dragging all the way to the top!
         const elWidth = element.offsetWidth || 120;
-        const maxTop = Math.max(60, window.innerHeight - 80);
-        const maxLeft = Math.max(8, window.innerWidth - elWidth - 8);
+        const minTop = 0;
+        const maxTop = Math.max(minTop, window.innerHeight - 50);
+        const maxLeft = Math.max(0, window.innerWidth - elWidth);
 
-        newTop = Math.max(60, Math.min(maxTop, newTop));
-        newLeft = Math.max(8, Math.min(maxLeft, newLeft));
+        newTop = Math.max(minTop, Math.min(maxTop, newTop));
+        newLeft = Math.max(0, Math.min(maxLeft, newLeft));
 
         element.style.top = newTop + "px";
         element.style.left = newLeft + "px";

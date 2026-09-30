@@ -249,5 +249,21 @@ BEGIN
     ) THEN
         ALTER PUBLICATION supabase_realtime ADD TABLE public.live_studio_files;
     END IF;
+
+    -- เพิ่มตาราง classrooms เข้า Realtime publication เพื่อให้อัปเดตนักเรียนที่สแกนเข้าห้องสดทันที
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' AND tablename = 'classrooms'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.classrooms;
+    END IF;
 END $$;
+
+-- ------------------------------------------------------------------------------
+-- 11. ฟิลด์เพิ่มเติมสำหรับระบบ "ห้องเรียนของฉัน (My Classroom)"
+-- ------------------------------------------------------------------------------
+ALTER TABLE public.classrooms ADD COLUMN IF NOT EXISTS attendance_logs JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE public.classrooms ADD COLUMN IF NOT EXISTS materials JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.classrooms ADD COLUMN IF NOT EXISTS assignments JSONB DEFAULT '[]'::jsonb;
+
 

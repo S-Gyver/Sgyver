@@ -18,6 +18,9 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../assets/js/supabaseClient.js"></script>
 
+    <!-- Chart.js for High-Tech Cyberpunk Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <!-- Admin Dashboard Cyber Stylesheet -->
     <link rel="stylesheet" href="admin_dashboard.css">
 </head>
@@ -62,209 +65,423 @@
         </div>
 
         <!-- ====================================================
-             2. METRICS & STATS CARDS (6 INTERACTIVE TILES)
+             1.5. COMMAND CENTER TAB NAVIGATION (MODULAR VIEWS)
              ==================================================== -->
-        <div class="row g-3 mb-4">
-            <!-- 1. Total Members -->
-            <div class="col-6 col-md-4 col-xl-2">
-                <div class="cyber-card metric-card metric-total">
-                    <div class="metric-header">
-                        <span class="metric-title">สมาชิกทั้งหมด</span>
-                        <div class="metric-icon-wrap">
-                            <i class="bi bi-people-fill"></i>
-                        </div>
-                    </div>
-                    <div>
-                        <h2 class="metric-value font-mono" id="stat-total-users">0</h2>
-                        <span class="metric-sub">
-                            <i class="bi bi-person-check text-cyan"></i> สมาชิกในระบบ
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 2. Admin Users -->
-            <div class="col-6 col-md-4 col-xl-2">
-                <div class="cyber-card metric-card metric-admin">
-                    <div class="metric-header">
-                        <span class="metric-title">ผู้ดูแล (Admin)</span>
-                        <div class="metric-icon-wrap">
-                            <i class="bi bi-shield-shaded"></i>
-                        </div>
-                    </div>
-                    <div>
-                        <h2 class="metric-value font-mono" id="stat-admin-users">0</h2>
-                        <span class="metric-sub">
-                            <i class="bi bi-key-fill text-danger"></i> สิทธิ์ควบคุมสูงสุด
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 3. Standard Users -->
-            <div class="col-6 col-md-4 col-xl-2">
-                <div class="cyber-card metric-card metric-user">
-                    <div class="metric-header">
-                        <span class="metric-title">ผู้ใช้ทั่วไป</span>
-                        <div class="metric-icon-wrap">
-                            <i class="bi bi-person-badge-fill"></i>
-                        </div>
-                    </div>
-                    <div>
-                        <h2 class="metric-value font-mono" id="stat-student-users">0</h2>
-                        <span class="metric-sub">
-                            <i class="bi bi-person-workspace text-purple"></i> ครูและผู้ใช้งาน
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 4. Class Rooms -->
-            <div class="col-6 col-md-4 col-xl-2">
-                <div class="cyber-card metric-card metric-class">
-                    <div class="metric-header">
-                        <span class="metric-title">ห้องเรียนที่สร้าง</span>
-                        <div class="metric-icon-wrap">
-                            <i class="bi bi-door-open-fill"></i>
-                        </div>
-                    </div>
-                    <div>
-                        <h2 class="metric-value font-mono" id="stat-class-rooms">0</h2>
-                        <span class="metric-sub">
-                            <i class="bi bi-collection-fill text-success"></i> คลาสเรียนทั้งหมด
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 5. Total Students/Players -->
-            <div class="col-6 col-md-4 col-xl-2">
-                <div class="cyber-card metric-card metric-lobby">
-                    <div class="metric-header">
-                        <span class="metric-title">นักเรียนในระบบ</span>
-                        <div class="metric-icon-wrap">
-                            <i class="bi bi-mortarboard-fill"></i>
-                        </div>
-                    </div>
-                    <div>
-                        <h2 class="metric-value font-mono" id="stat-total-players">0</h2>
-                        <span class="metric-sub">
-                            <i class="bi bi-joystick text-cyan"></i> ผู้ร่วมเล่น / สอบ
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 6. Total Problems / Lobbies -->
-            <div class="col-6 col-md-4 col-xl-2">
-                <div class="cyber-card metric-card metric-quiz">
-                    <div class="metric-header">
-                        <span class="metric-title">คลังโจทย์คำถาม</span>
-                        <div class="metric-icon-wrap">
-                            <i class="bi bi-journal-code"></i>
-                        </div>
-                    </div>
-                    <div>
-                        <h2 class="metric-value font-mono" id="stat-total-problems">0</h2>
-                        <span class="metric-sub">
-                            <i class="bi bi-broadcast text-warning"></i> ห้องแข่ง: <span id="stat-active-lobbies" class="fw-bold ms-1">0</span>
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <ul class="nav nav-cyber-tabs" id="adminMainTabs" role="tablist">
+            <li class="nav-item">
+                <button class="nav-cyber-tab active" id="tab-users-nav" data-bs-toggle="tab" data-bs-target="#view-users" type="button" role="tab">
+                    <i class="bi bi-people-fill me-2 text-cyan"></i>จัดการสมาชิก (Users)
+                    <span class="badge bg-dark border border-secondary font-mono text-cyan ms-2" id="nav-badge-users">0</span>
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-cyber-tab" id="tab-analytics-nav" data-bs-toggle="tab" data-bs-target="#view-analytics" type="button" role="tab">
+                    <i class="bi bi-graph-up-arrow me-2 text-warning"></i>สถิติ & กราฟภาพรวม (Analytics)
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-cyber-tab" id="tab-broadcast-nav" data-bs-toggle="tab" data-bs-target="#view-broadcast" type="button" role="tab">
+                    <i class="bi bi-broadcast me-2 text-info"></i>ระบบยิงประกาศด่วน (Broadcast)
+                    <span class="pulse-indicator-dot ms-2" id="nav-broadcast-dot" style="display:none;"></span>
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-cyber-tab" id="tab-maintenance-nav" data-bs-toggle="tab" data-bs-target="#view-maintenance" type="button" role="tab">
+                    <i class="bi bi-shield-lock-fill me-2 text-danger"></i>ปิดปรับปรุง & บำรุงรักษา (Maintenance)
+                    <span class="badge bg-danger text-white ms-2" id="nav-maint-badge" style="display:none;">LOCKED</span>
+                </button>
+            </li>
+        </ul>
 
         <!-- ====================================================
-             3. USER MANAGEMENT DIRECTORY (MAIN TABLE)
+             MODULAR TAB VIEWS CONTAINER
              ==================================================== -->
-        <div class="cyber-card p-3 p-md-4 mb-4">
-            
-            <!-- Table Header Toolbar -->
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
-                <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <div class="d-flex align-items-center gap-2">
-                        <i class="bi bi-people-fill text-info fs-4"></i>
-                        <h5 class="fw-bold text-white m-0 font-heading">
-                            รายชื่อผู้ใช้งานในระบบ (USER DIRECTORY)
-                        </h5>
-                        <span class="badge bg-dark border border-secondary font-mono text-cyan ms-1" id="table-user-count">0 คน</span>
+        <div class="tab-content" id="adminTabContent">
+
+            <!-- ----------------------------------------------------
+                 TAB 1: 👥 USER DIRECTORY & MANAGEMENT
+                 ---------------------------------------------------- -->
+            <div class="tab-pane fade show active" id="view-users" role="tabpanel">
+                <div class="cyber-card p-3 p-md-4 mb-4">
+                    <!-- Table Header Toolbar -->
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="bi bi-people-fill text-info fs-4"></i>
+                                <h5 class="fw-bold text-white m-0 font-heading">
+                                    รายชื่อผู้ใช้งานในระบบ (USER DIRECTORY)
+                                </h5>
+                                <span class="badge bg-dark border border-secondary font-mono text-cyan ms-1" id="table-user-count">0 คน</span>
+                            </div>
+
+                            <!-- Role Quick Filter Pills -->
+                            <div class="d-flex align-items-center gap-1 ms-lg-3">
+                                <button class="filter-pill-btn active" data-filter="all" onclick="applyRoleFilter('all', this)">
+                                    <i class="bi bi-grid-fill me-1"></i>ทั้งหมด
+                                </button>
+                                <button class="filter-pill-btn" data-filter="admin" onclick="applyRoleFilter('admin', this)">
+                                    <i class="bi bi-shield-fill-check me-1 text-danger"></i>Admin
+                                </button>
+                                <button class="filter-pill-btn" data-filter="user" onclick="applyRoleFilter('user', this)">
+                                    <i class="bi bi-person-fill me-1 text-info"></i>User
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Search Input & Refresh Button -->
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <div class="search-control-wrap">
+                                <i class="bi bi-search search-icon-inside"></i>
+                                <input type="text" id="user-search-input" class="form-control search-input-cyber font-mono" placeholder="🔍 ค้นหา Username / Email..." onkeyup="filterUserTable()">
+                                <button id="user-search-clear" class="search-clear-btn" onclick="clearSearch()">&times;</button>
+                            </div>
+                            <button class="btn btn-outline-info font-mono btn-sm px-3 py-2 rounded-3 border-secondary" onclick="loadAdminDashboardData()">
+                                <i class="bi bi-arrow-clockwise me-1"></i>รีเฟรชข้อมูล
+                            </button>
+                        </div>
                     </div>
 
-                    <!-- Role Quick Filter Pills -->
-                    <div class="d-flex align-items-center gap-1 ms-lg-3">
-                        <button class="filter-pill-btn active" data-filter="all" onclick="applyRoleFilter('all', this)">
-                            <i class="bi bi-grid-fill me-1"></i>ทั้งหมด
-                        </button>
-                        <button class="filter-pill-btn" data-filter="admin" onclick="applyRoleFilter('admin', this)">
-                            <i class="bi bi-shield-fill-check me-1 text-danger"></i>Admin
-                        </button>
-                        <button class="filter-pill-btn" data-filter="user" onclick="applyRoleFilter('user', this)">
-                            <i class="bi bi-person-fill me-1 text-info"></i>User
-                        </button>
+                    <!-- Table Responsive Container -->
+                    <div class="table-responsive">
+                        <table class="table-cyber">
+                            <thead>
+                                <tr>
+                                    <th style="width: 55px;" class="text-center">รูป</th>
+                                    <th>Username / ชื่อผู้ใช้ (คลิกดูห้อง/โจทย์)</th>
+                                    <th>Email ผู้ใช้งาน</th>
+                                    <th class="text-center">วันที่ลงทะเบียน</th>
+                                    <th class="text-center">Level สิทธิ์</th>
+                                    <th class="text-center">บทบาท (Role)</th>
+                                    <th class="text-center" style="width: 170px;">การจัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="user-accounts-tbody">
+                                <tr>
+                                    <td colspan="7" class="text-center py-5 text-subtle">
+                                        <span class="spinner-border spinner-border-sm me-2 text-info"></span>กำลังดึงข้อมูลสมาชิกในระบบ...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
-                </div>
-
-                <!-- Search Input & Refresh Button -->
-                <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <div class="search-control-wrap">
-                        <i class="bi bi-search search-icon-inside"></i>
-                        <input type="text" id="user-search-input" class="form-control search-input-cyber font-mono" placeholder="🔍 ค้นหา Username / Email..." onkeyup="filterUserTable()">
-                        <button id="user-search-clear" class="search-clear-btn" onclick="clearSearch()">&times;</button>
-                    </div>
-                    <button class="btn btn-outline-info font-mono btn-sm px-3 py-2 rounded-3 border-secondary" onclick="loadAdminDashboardData()">
-                        <i class="bi bi-arrow-clockwise me-1"></i>รีเฟรชข้อมูล
-                    </button>
                 </div>
             </div>
 
-            <!-- Table Responsive Container -->
-            <div class="table-responsive">
-                <table class="table-cyber">
-                    <thead>
-                        <tr>
-                            <th style="width: 55px;" class="text-center">รูป</th>
-                            <th>Username / ชื่อผู้ใช้ (คลิกดูห้อง/โจทย์)</th>
-                            <th>Email ผู้ใช้งาน</th>
-                            <th class="text-center">วันที่ลงทะเบียน</th>
-                            <th class="text-center">Level สิทธิ์</th>
-                            <th class="text-center">บทบาท (Role)</th>
-                            <th class="text-center" style="width: 170px;">การจัดการ</th>
-                        </tr>
-                    </thead>
-                    <tbody id="user-accounts-tbody">
-                        <tr>
-                            <td colspan="7" class="text-center py-5 text-subtle">
-                                <span class="spinner-border spinner-border-sm me-2 text-info"></span>กำลังดึงข้อมูลสมาชิกในระบบ...
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+            <!-- ----------------------------------------------------
+                 TAB 2: 📈 ADVANCED ANALYTICS & STATS TILES
+                 ---------------------------------------------------- -->
+            <div class="tab-pane fade" id="view-analytics" role="tabpanel">
+                <!-- 6 Interactive Metric Cards -->
+                <div class="row g-3 mb-4">
+                    <!-- 1. Total Members -->
+                    <div class="col-6 col-md-4 col-xl-2">
+                        <div class="cyber-card metric-card metric-total">
+                            <div class="metric-header">
+                                <span class="metric-title">สมาชิกทั้งหมด</span>
+                                <div class="metric-icon-wrap">
+                                    <i class="bi bi-people-fill"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <h2 class="metric-value font-mono" id="stat-total-users">0</h2>
+                                <span class="metric-sub">
+                                    <i class="bi bi-person-check text-cyan"></i> สมาชิกในระบบ
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. Admin Users -->
+                    <div class="col-6 col-md-4 col-xl-2">
+                        <div class="cyber-card metric-card metric-admin">
+                            <div class="metric-header">
+                                <span class="metric-title">ผู้ดูแล (Admin)</span>
+                                <div class="metric-icon-wrap">
+                                    <i class="bi bi-shield-shaded"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <h2 class="metric-value font-mono" id="stat-admin-users">0</h2>
+                                <span class="metric-sub">
+                                    <i class="bi bi-key-fill text-danger"></i> สิทธิ์ควบคุมสูงสุด
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. Standard Users -->
+                    <div class="col-6 col-md-4 col-xl-2">
+                        <div class="cyber-card metric-card metric-user">
+                            <div class="metric-header">
+                                <span class="metric-title">ผู้ใช้ทั่วไป</span>
+                                <div class="metric-icon-wrap">
+                                    <i class="bi bi-person-badge-fill"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <h2 class="metric-value font-mono" id="stat-student-users">0</h2>
+                                <span class="metric-sub">
+                                    <i class="bi bi-person-workspace text-purple"></i> ครูและผู้ใช้งาน
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. Class Rooms -->
+                    <div class="col-6 col-md-4 col-xl-2">
+                        <div class="cyber-card metric-card metric-class">
+                            <div class="metric-header">
+                                <span class="metric-title">ห้องเรียนที่สร้าง</span>
+                                <div class="metric-icon-wrap">
+                                    <i class="bi bi-door-open-fill"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <h2 class="metric-value font-mono" id="stat-class-rooms">0</h2>
+                                <span class="metric-sub">
+                                    <i class="bi bi-collection-fill text-success"></i> คลาสเรียนทั้งหมด
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 5. Total Students/Players -->
+                    <div class="col-6 col-md-4 col-xl-2">
+                        <div class="cyber-card metric-card metric-lobby">
+                            <div class="metric-header">
+                                <span class="metric-title">นักเรียนในระบบ</span>
+                                <div class="metric-icon-wrap">
+                                    <i class="bi bi-mortarboard-fill"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <h2 class="metric-value font-mono" id="stat-total-players">0</h2>
+                                <span class="metric-sub">
+                                    <i class="bi bi-joystick text-cyan"></i> ผู้ร่วมเล่น / สอบ
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 6. Total Problems / Lobbies -->
+                    <div class="col-6 col-md-4 col-xl-2">
+                        <div class="cyber-card metric-card metric-quiz">
+                            <div class="metric-header">
+                                <span class="metric-title">คลังโจทย์คำถาม</span>
+                                <div class="metric-icon-wrap">
+                                    <i class="bi bi-journal-code"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <h2 class="metric-value font-mono" id="stat-total-problems">0</h2>
+                                <span class="metric-sub">
+                                    <i class="bi bi-broadcast text-warning"></i> ห้องแข่ง: <span id="stat-active-lobbies" class="fw-bold ms-1">0</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2 High-Tech Charts -->
+                <div class="row g-3 mb-4">
+                    <!-- Chart 1: Member Growth Velocity -->
+                    <div class="col-12 col-xl-8">
+                        <div class="cyber-card p-3 p-md-4 h-100">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="bi bi-graph-up-arrow text-cyan fs-5"></i>
+                                    <h6 class="fw-bold text-white m-0 font-heading">แนวโน้มการเติบโตของสมาชิก (MEMBER GROWTH VELOCITY)</h6>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-dark border border-secondary text-cyan font-mono" id="chart-growth-badge">📈 อัปเดตล่าสุดวันนี้</span>
+                                </div>
+                            </div>
+                            <div style="height: 280px; position: relative;">
+                                <canvas id="chart-user-growth"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chart 2: Role & Level Distribution -->
+                    <div class="col-12 col-xl-4">
+                        <div class="cyber-card p-3 p-md-4 h-100">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="bi bi-pie-chart-fill text-purple fs-5"></i>
+                                    <h6 class="fw-bold text-white m-0 font-heading">สัดส่วนระดับสมาชิก (TIER RATIO)</h6>
+                                </div>
+                                <span class="badge bg-dark border border-secondary text-purple font-mono" id="chart-tier-badge">สิทธิ์ในระบบ</span>
+                            </div>
+                            <div style="height: 280px; position: relative;" class="d-flex align-items-center justify-content-center">
+                                <canvas id="chart-role-distribution"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-        </div>
+            <!-- ----------------------------------------------------
+                 TAB 3: 📢 LIVE EMERGENCY BROADCAST CENTER
+                 ---------------------------------------------------- -->
+            <div class="tab-pane fade" id="view-broadcast" role="tabpanel">
+                <div class="row justify-content-center mb-4">
+                    <div class="col-12 col-xl-10">
+                        <div class="cyber-card broadcast-card p-4">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4 pb-3 border-bottom border-secondary border-opacity-25">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="broadcast-icon-pulse" style="width: 48px; height: 48px; font-size: 1.5rem;">
+                                        <i class="bi bi-broadcast"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="fw-bold text-white m-0 font-heading">ระบบยิงประกาศด่วน (LIVE BROADCAST CENTER)</h4>
+                                        <small class="text-subtle font-mono">ส่งแบนเนอร์แจ้งเตือนวิ่งขึ้นแถบด้านบนสุดของทุกหน้าจอในระบบแบบเรียลไทม์</small>
+                                    </div>
+                                </div>
+                                <!-- Active Switch -->
+                                <div class="form-check form-switch form-switch-cyber m-0">
+                                    <input class="form-check-input" type="checkbox" id="switch-announcement-active" onchange="toggleAnnouncementSwitch(this.checked)">
+                                    <label class="form-check-label font-mono text-white ms-2 fw-bold fs-6" id="label-announcement-active">ปิดใช้งาน</label>
+                                </div>
+                            </div>
 
-        <!-- ====================================================
-             4. SYSTEM TOOLS & MAINTENANCE
-             ==================================================== -->
-        <div class="cyber-card system-tools-card p-3 p-md-4 mb-4">
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-                <div>
-                    <h5 class="fw-bold text-danger m-0 font-heading d-flex align-items-center gap-2">
-                        <i class="bi bi-cpu-fill"></i> เครื่องมือจัดการระบบ (SYSTEM MAINTENANCE)
-                    </h5>
-                    <p class="text-subtle small m-0 mt-1">
-                        จัดการล้างเซสชันห้องเรียนสด ล็อบบี้แข่ง และข้อมูลทดสอบที่ค้างในระบบ Supabase Realtime
-                    </p>
-                </div>
-                <div class="d-flex gap-2 flex-wrap">
-                    <button class="btn btn-cyber-danger font-mono" onclick="promptClearAllLobbies()">
-                        <i class="bi bi-trash3-fill me-1"></i>ล้างห้องแข่งที่ค้างทั้งหมด (Clear Lobbies)
-                    </button>
-                    <button class="btn btn-outline-light font-mono border-secondary" onclick="loadAdminDashboardData()">
-                        <i class="bi bi-arrow-repeat me-1"></i>ซิงก์ข้อมูลฐานข้อมูลใหม่
-                    </button>
+                            <!-- Live Preview Box -->
+                            <div class="mb-4">
+                                <label class="form-label font-mono small text-subtle d-flex justify-content-between">
+                                    <span><i class="bi bi-eye-fill me-1 text-cyan"></i>ตัวอย่างแบนเนอร์บนหน้าจอจริง (LIVE PREVIEW):</span>
+                                    <span class="badge bg-dark border border-secondary font-mono text-cyan" id="preview-badge-status">พร้อมยิงสัญญาณ</span>
+                                </label>
+                                <div id="broadcast-live-preview-box" class="broadcast-preview-wrap" style="min-height: 54px;">
+                                    <!-- Dynamic preview rendered via JS -->
+                                </div>
+                            </div>
+
+                            <!-- Form Controls -->
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label font-mono small text-subtle">ประเภทและระดับความสำคัญ (ALERT TYPE)</label>
+                                    <select id="announcement-type-select" class="form-select form-select-cyber font-mono py-2" onchange="updateBroadcastPreview()">
+                                        <option value="info">🔵 ข้อมูลทั่วไป (Cyber Blue)</option>
+                                        <option value="warning">🟡 แจ้งเตือนสำคัญ (Neon Amber)</option>
+                                        <option value="danger">🔴 ด่วนมาก / ฉุกเฉิน (Neon Crimson)</option>
+                                        <option value="success">🟢 อัปเดตฟีเจอร์ใหม่ (Emerald Green)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label font-mono small text-subtle">รูปแบบการเคลื่อนไหว (ANIMATION)</label>
+                                    <div class="pt-2">
+                                        <div class="form-check font-mono text-white">
+                                            <input class="form-check-input" type="checkbox" id="announcement-marquee-check" checked onchange="updateBroadcastPreview()">
+                                            <label class="form-check-label" for="announcement-marquee-check">วิ่งตัวอักษรต่อเนื่อง (Marquee Scrolling)</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label font-mono small text-subtle">ข้อความประกาศ (ANNOUNCEMENT MESSAGE)</label>
+                                <textarea id="announcement-text-input" rows="3" class="form-control form-control-cyber font-sans" placeholder="พิมพ์ข้อความที่ต้องการแจ้งเตือน เช่น ปิดปรับปรุงห้องเรียนสดเวลา 20:00 น. หรือ ขอต้อนรับทุกท่านสู่ภาคเรียนใหม่..." oninput="updateBroadcastPreview()"></textarea>
+                            </div>
+
+                            <div class="d-flex gap-3 justify-content-end">
+                                <button type="button" class="btn btn-outline-danger font-mono px-4 py-2" onclick="clearAnnouncementBroadcast()">
+                                    <i class="bi bi-x-circle me-1"></i>ล้างประกาศ
+                                </button>
+                                <button type="button" class="btn btn-cyber-primary font-mono px-4 py-2" onclick="saveAnnouncementBroadcast()">
+                                    <i class="bi bi-send-fill me-1"></i>บันทึกและยิงประกาศทันที
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
+
+            <!-- ----------------------------------------------------
+                 TAB 4: 🔒 MAINTENANCE & SYSTEM INTEGRITY
+                 ---------------------------------------------------- -->
+            <div class="tab-pane fade" id="view-maintenance" role="tabpanel">
+                <div class="row justify-content-center mb-4">
+                    <div class="col-12 col-xl-10">
+                        <div class="cyber-card maintenance-card p-4 mb-4">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4 pb-3 border-bottom border-secondary border-opacity-25">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="maintenance-icon-shield" style="width: 48px; height: 48px; font-size: 1.5rem;">
+                                        <i class="bi bi-shield-lock-fill"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="fw-bold text-white m-0 font-heading">สวิตช์ปิดปรับปรุงระบบ (MAINTENANCE CONTROL)</h4>
+                                        <small class="text-subtle font-mono">บล็อกผู้ใช้ทั่วไปไม่ให้เข้าใช้งาน แต่ Admin สามารถเข้าได้ปกติ</small>
+                                    </div>
+                                </div>
+                                <!-- Master Maintenance Switch -->
+                                <div class="form-check form-switch form-switch-danger m-0">
+                                    <input class="form-check-input" type="checkbox" id="switch-maintenance-master" onchange="toggleMaintenanceSwitch(this.checked)">
+                                    <label class="form-check-label font-mono text-white ms-2 fw-bold fs-6" id="label-maintenance-master">เปิดให้บริการปกติ</label>
+                                </div>
+                            </div>
+
+                            <!-- Status Indicator Banner -->
+                            <div id="maintenance-status-alert" class="p-3 px-4 rounded-3 mb-4 d-flex align-items-center justify-content-between font-mono small bg-slate-900 border border-success border-opacity-25 text-success">
+                                <span id="maintenance-status-text" class="fs-6"><i class="bi bi-check-circle-fill me-2 text-success"></i>สถานะ: ระบบเปิดให้บริการตามปกติ</span>
+                                <span id="maintenance-status-badge" class="badge bg-success bg-opacity-25 text-success fs-6">LIVE 24/7</span>
+                            </div>
+
+                            <!-- Form Inputs -->
+                            <div class="mb-3">
+                                <label class="form-label font-mono small text-subtle">หัวข้อแจ้งเตือนปรับปรุง (MAINTENANCE TITLE)</label>
+                                <input type="text" id="maintenance-title-input" class="form-control form-control-cyber font-heading" placeholder="🛠️ กำลังปิดปรับปรุงระบบเพื่อเพิ่มประสิทธิภาพ">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label font-mono small text-subtle">รายละเอียด / เหตุผล (MESSAGE DETAILS)</label>
+                                <textarea id="maintenance-msg-input" rows="3" class="form-control form-control-cyber font-sans" placeholder="ขออภัยในความไม่สะดวก ขณะนี้ทีมงานกำลังอัปเกรดระบบเพื่อความเสถียรยิ่งขึ้น..."></textarea>
+                            </div>
+
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label font-mono small text-subtle">กำหนดการแล้วเสร็จโดยประมาณ (ESTIMATED FINISH)</label>
+                                    <input type="text" id="maintenance-time-input" class="form-control form-control-cyber font-mono" placeholder="เช่น วันนี้ เวลา 02:00 น.">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label font-mono small text-subtle">สิทธิ์การเข้าถึง (ADMIN BYPASS)</label>
+                                    <div class="pt-2 font-mono small text-cyan">
+                                        <i class="bi bi-shield-check me-1"></i>Admin เข้าใช้งานและทดสอบระบบได้เสมอ
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex gap-3 justify-content-end">
+                                <button type="button" class="btn btn-cyber-danger font-mono px-4 py-2" onclick="saveMaintenanceControl()">
+                                    <i class="bi bi-shield-fill-check me-1"></i>บันทึกการตั้งค่าระบบ
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- System Cache & Lobbies Tools -->
+                        <div class="cyber-card p-4">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                                <div>
+                                    <h5 class="fw-bold text-danger m-0 font-heading d-flex align-items-center gap-2">
+                                        <i class="bi bi-cpu-fill"></i> ล้างข้อมูลเซสชันตกค้าง (CACHE PURGE)
+                                    </h5>
+                                    <p class="text-subtle small m-0 mt-1">
+                                        จัดการล้างห้องแข่งขันสด และห้องสอบที่ค้างในระบบ Supabase Realtime
+                                    </p>
+                                </div>
+                                <div class="d-flex gap-2 flex-wrap">
+                                    <button class="btn btn-cyber-danger font-mono" onclick="promptClearAllLobbies()">
+                                        <i class="bi bi-trash3-fill me-1"></i>ล้างห้องแข่งที่ค้างทั้งหมด (Clear Lobbies)
+                                    </button>
+                                    <button class="btn btn-outline-light font-mono border-secondary" onclick="loadAdminDashboardData()">
+                                        <i class="bi bi-arrow-repeat me-1"></i>ซิงก์ข้อมูลฐานข้อมูลใหม่
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
         </div>
 
     </div>
@@ -326,6 +543,91 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary font-mono" data-bs-dismiss="modal">ปิดหน้าต่าง</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====================================================
+         5.5 USER ACTION MODAL (Clean Dialog Replacing Glitchy Dropdown)
+         ==================================================== -->
+    <div class="modal fade modal-cyber user-action-dialog" id="userActionModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-bottom border-secondary border-opacity-25 pb-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <img id="uact-avatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" class="rounded-circle border border-cyan" style="width: 44px; height: 44px; object-fit: cover;">
+                        <div>
+                            <h5 class="modal-title font-heading text-white fw-bold m-0" id="uact-username">จัดการผู้ใช้</h5>
+                            <small class="text-subtle font-mono" id="uact-email">user@domain.com</small>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body py-4">
+                    <!-- Current Status Badges -->
+                    <div class="d-flex align-items-center justify-content-between p-3 rounded-3 mb-4" style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255, 255, 255, 0.08);">
+                        <span class="text-subtle font-mono small">สถานะปัจจุบัน:</span>
+                        <div class="d-flex gap-2" id="uact-status-badges">
+                            <!-- Injected via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Level Section -->
+                    <div class="mb-4">
+                        <label class="form-label font-mono small text-warning fw-bold d-flex align-items-center gap-2 mb-2">
+                            <i class="bi bi-award-fill"></i> ปรับระดับสิทธิ์ใช้งาน (ACCESS LEVEL)
+                        </label>
+                        <div class="d-flex flex-column gap-2">
+                            <button type="button" class="action-opt-btn" onclick="executeModalChangeLevel(0)">
+                                <span><i class="bi bi-shield me-2 text-secondary"></i>Lv.0 - Guest (สิทธิ์พื้นฐาน)</span>
+                                <span class="badge bg-dark border border-secondary text-subtle font-mono">Guest</span>
+                            </button>
+                            <button type="button" class="action-opt-btn" onclick="executeModalChangeLevel(1)">
+                                <span><i class="bi bi-check-circle me-2 text-cyan"></i>Lv.1 - Standard (สมาชิกทั่วไป)</span>
+                                <span class="badge bg-dark border border-cyan text-cyan font-mono">Standard</span>
+                            </button>
+                            <button type="button" class="action-opt-btn" onclick="executeModalChangeLevel(2)">
+                                <span><i class="bi bi-stars me-2 text-warning"></i>Lv.2 - VIP / Pro (สิทธิ์เต็ม)</span>
+                                <span class="badge bg-warning text-dark font-mono">VIP</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Role Section -->
+                    <div class="mb-4">
+                        <label class="form-label font-mono small text-info fw-bold d-flex align-items-center gap-2 mb-2">
+                            <i class="bi bi-person-gear"></i> ปรับบทบาทบัญชี (ACCOUNT ROLE)
+                        </label>
+                        <div class="d-flex flex-column gap-2">
+                            <button type="button" class="action-opt-btn" onclick="executeModalChangeRole('user')">
+                                <span><i class="bi bi-person me-2 text-info"></i>ผู้ใช้งานทั่วไป (USER)</span>
+                                <span class="badge bg-dark border border-info text-info font-mono">USER</span>
+                            </button>
+                            <button type="button" class="action-opt-btn" onclick="executeModalChangeRole('admin')">
+                                <span><i class="bi bi-shield-lock-fill me-2 text-danger"></i>ผู้ดูแลระบบสูงสุด (ADMIN)</span>
+                                <span class="badge bg-danger text-white font-mono">ADMIN</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Additional Action Section -->
+                    <div>
+                        <label class="form-label font-mono small text-subtle fw-bold d-flex align-items-center gap-2 mb-2">
+                            <i class="bi bi-three-dots"></i> การจัดการเพิ่มเติม
+                        </label>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-cyan font-mono flex-grow-1 py-2" onclick="viewTargetUserActivities()">
+                                <i class="bi bi-search me-1"></i>ดูห้อง & โจทย์
+                            </button>
+                            <button type="button" class="btn btn-outline-danger font-mono flex-grow-1 py-2" onclick="executeModalDeleteUser()">
+                                <i class="bi bi-trash3-fill me-1"></i>ลบบัญชีนี้
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top border-secondary border-opacity-25">
+                    <button type="button" class="btn btn-outline-secondary font-mono px-4" data-bs-dismiss="modal">ปิดหน้าต่าง</button>
                 </div>
             </div>
         </div>

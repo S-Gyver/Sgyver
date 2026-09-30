@@ -74,6 +74,11 @@ body.classroom-mode {
     border-bottom: 1px solid var(--cs-glass-border);
     z-index: 1000;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+    pointer-events: none;
+}
+
+.cs-header > * {
+    pointer-events: auto;
 }
 
 .cs-brand {
@@ -201,18 +206,26 @@ body.classroom-mode {
    ==================================================== */
 #cs-widget-canvas {
     position: absolute;
-    top: 54px;
+    top: 0;
     bottom: 0;
     left: 0;
     right: 0;
     z-index: 10;
     overflow: hidden;
+    pointer-events: none;
 }
 
 body.classroom-mode #cs-widget-canvas {
     position: fixed;
-    top: 60px;
+    top: 0;
     bottom: 0;
+    left: 0;
+    right: 0;
+    pointer-events: none;
+}
+
+#cs-widget-canvas .cs-widget {
+    pointer-events: auto;
 }
 
 /* ====================================================
@@ -1587,8 +1600,9 @@ body.in-app-view #cs-widget-canvas {
     }
 
     body.classroom-mode #cs-widget-canvas {
-        top: 54px;
-        height: calc(100dvh - 54px);
+        top: 0;
+        bottom: 0;
+        height: 100dvh;
     }
 
     /* 📌 1. Header Bar Responsiveness */

@@ -633,14 +633,14 @@ body.cyber-body {
 }
 
 .dropdown-menu-cyber {
-    background: rgba(15, 23, 42, 0.96) !important;
-    backdrop-filter: blur(20px) !important;
-    -webkit-backdrop-filter: blur(20px) !important;
-    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    background-color: #0b1329 !important;
+    background: #0b1329 !important;
+    opacity: 1 !important;
+    border: 1.5px solid rgba(56, 189, 248, 0.4) !important;
     border-radius: 12px !important;
-    padding: 0.5rem !important;
-    min-width: 220px !important;
-    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+    padding: 0.6rem !important;
+    min-width: 230px !important;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.95), 0 0 15px rgba(0, 242, 254, 0.15) !important;
     z-index: 1055 !important;
 }
 
@@ -763,4 +763,212 @@ body.cyber-body {
     border: 1px solid rgba(56, 189, 248, 0.3) !important;
     border-radius: 12px !important;
     box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6), 0 0 15px rgba(56, 189, 248, 0.25) !important;
+}
+
+/* ==============================================================================
+   🛰️ Command Center: Broadcast & Maintenance Control Styling
+   ============================================================================== */
+.broadcast-card {
+    border-color: rgba(0, 242, 254, 0.22) !important;
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(9, 30, 58, 0.6) 100%) !important;
+}
+
+.maintenance-card {
+    border-color: rgba(244, 63, 94, 0.25) !important;
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(48, 12, 15, 0.6) 100%) !important;
+}
+
+.broadcast-icon-pulse {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: rgba(0, 242, 254, 0.15);
+    border: 1px solid rgba(0, 242, 254, 0.35);
+    color: var(--neon-cyan);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    box-shadow: 0 0 15px rgba(0, 242, 254, 0.2);
+}
+
+.maintenance-icon-shield {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: rgba(244, 63, 94, 0.15);
+    border: 1px solid rgba(244, 63, 94, 0.35);
+    color: var(--neon-rose);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    box-shadow: 0 0 15px rgba(244, 63, 94, 0.2);
+}
+
+.broadcast-preview-wrap {
+    min-height: 50px;
+    background: rgba(6, 9, 17, 0.7);
+    border: 1px dashed rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.form-control-cyber,
+.form-select-cyber {
+    background-color: rgba(6, 9, 17, 0.75) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    color: #f8fafc !important;
+    border-radius: 10px !important;
+    font-size: 0.88rem !important;
+    transition: all 0.25s ease !important;
+}
+
+.form-control-cyber:focus,
+.form-select-cyber:focus {
+    background-color: rgba(11, 17, 32, 0.95) !important;
+    border-color: var(--neon-cyan) !important;
+    box-shadow: 0 0 15px rgba(0, 242, 254, 0.25) !important;
+    color: #fff !important;
+}
+
+/* Cyber Form Switches */
+.form-switch-cyber .form-check-input {
+    width: 2.8em !important;
+    height: 1.4em !important;
+    background-color: rgba(255, 255, 255, 0.15) !important;
+    border-color: rgba(255, 255, 255, 0.25) !important;
+    cursor: pointer !important;
+    transition: all 0.25s ease !important;
+}
+
+.form-switch-cyber .form-check-input:checked {
+    background-color: var(--neon-cyan) !important;
+    border-color: var(--neon-cyan) !important;
+    box-shadow: 0 0 12px rgba(0, 242, 254, 0.5) !important;
+}
+
+.form-switch-danger .form-check-input {
+    width: 2.8em !important;
+    height: 1.4em !important;
+    background-color: rgba(255, 255, 255, 0.15) !important;
+    border-color: rgba(255, 255, 255, 0.25) !important;
+    cursor: pointer !important;
+    transition: all 0.25s ease !important;
+}
+
+.form-switch-danger .form-check-input:checked {
+    background-color: var(--neon-rose) !important;
+    border-color: var(--neon-rose) !important;
+    box-shadow: 0 0 12px rgba(244, 63, 94, 0.6) !important;
+}
+
+.btn-cyber-primary {
+    background: linear-gradient(135deg, #0ea5e9, #0284c7) !important;
+    color: #fff !important;
+    border: none !important;
+    font-weight: 600 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 15px rgba(14, 165, 233, 0.35) !important;
+    transition: all 0.2s ease !important;
+}
+
+.btn-cyber-primary:hover {
+    background: linear-gradient(135deg, #38bdf8, #0ea5e9) !important;
+    box-shadow: 0 4px 20px rgba(0, 242, 254, 0.5) !important;
+    transform: translateY(-1px);
+}
+
+/* ==============================================================================
+   🧭 Cyber Main Navigation Tabs (Modular View System)
+   ============================================================================== */
+.nav-cyber-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 0.85rem;
+    margin-bottom: 1.75rem !important;
+}
+
+.nav-cyber-tab {
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--text-muted);
+    font-family: var(--font-heading);
+    font-size: 0.96rem;
+    font-weight: 600;
+    padding: 0.7rem 1.35rem;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.22s ease-in-out;
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+    user-select: none;
+}
+
+.nav-cyber-tab:hover {
+    background: rgba(30, 41, 59, 0.95);
+    color: #ffffff;
+    border-color: rgba(56, 189, 248, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+.nav-cyber-tab.active {
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.25), rgba(0, 242, 254, 0.18)) !important;
+    border-color: var(--neon-cyan) !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 18px rgba(0, 242, 254, 0.28), inset 0 0 10px rgba(0, 242, 254, 0.12);
+}
+
+.pulse-indicator-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--neon-cyan);
+    box-shadow: 0 0 8px var(--neon-cyan);
+    display: inline-block;
+    animation: pulseDot 1.5s infinite;
+}
+
+@keyframes pulseDot {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.4); opacity: 0.6; }
+}
+
+/* User Action Modal Styles */
+.user-action-dialog .modal-content {
+    background: #091021 !important;
+    border: 1.5px solid rgba(56, 189, 248, 0.35) !important;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9), 0 0 25px rgba(0, 242, 254, 0.2) !important;
+    border-radius: 18px !important;
+}
+
+.action-opt-btn {
+    padding: 0.75rem 1rem;
+    border-radius: 10px;
+    font-family: var(--font-heading);
+    font-weight: 600;
+    font-size: 0.92rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.2s ease;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(15, 23, 42, 0.8);
+    color: #e2e8f0;
+    text-align: left;
+    width: 100%;
+}
+
+.action-opt-btn:hover {
+    background: rgba(30, 41, 59, 0.95);
+    border-color: rgba(56, 189, 248, 0.4);
+    color: #fff;
+    transform: translateX(4px);
 }

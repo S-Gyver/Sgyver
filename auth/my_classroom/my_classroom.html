@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ห้องเรียนของฉัน (My Classroom) - Gyver Workspace</title>
+    
+    <!-- Bootstrap 5, Icons & Kanit Font -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@600;700&family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="../../assets/css/index.css">
+    <link rel="stylesheet" href="../../assets/css/toast_shared.css">
+    <link rel="stylesheet" href="../../assets/css/photozoom_shared.css">
+    <link rel="stylesheet" href="my_classroom.css">
+
+    <!-- Supabase Client & Shared Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../assets/js/supabaseClient.js"></script>
+    <script src="../../assets/js/toast_shared.js"></script>
+    <script src="../../assets/js/photozoom_shared.js"></script>
+</head>
+<body class="bg-light min-vh-100 d-flex flex-column">
+
+    <!-- ============================================================== -->
+    <!-- 🏛️ VIEW 1: หน้ารวมห้องเรียนทั้งหมด (Classrooms Hub - Landing View) -->
+    <!-- ============================================================== -->
+    <div id="classrooms-hub-view" class="container-fluid px-3 px-md-4 my-3 my-md-4" style="max-width: 1400px;">
+        
+        <!-- Header Banner & Action Bar -->
+        <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="classroom-icon-box bg-primary text-white rounded-4 d-flex align-items-center justify-content-center shadow-sm">
+                        <i class="bi bi-collection-fill fs-3"></i>
+                    </div>
+                    <div>
+                        <h3 class="fw-bold text-dark m-0">ห้องเรียนทั้งหมดของฉัน</h3>
+                        <p class="text-muted small m-0 mt-1">เลือกห้องเรียนที่ต้องการเข้าสอน สแกน QR วันแรก เช็คชื่อ แจกชีท หรือสร้างห้องเรียนใหม่</p>
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <div class="input-group input-group-sm" style="width: 240px;">
+                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+                        <input type="text" id="search-class-input" class="form-control bg-light border-start-0" placeholder="ค้นหาชื่อห้องเรียน..." oninput="handleSearchClassrooms(this.value)">
+                    </div>
+                    <button class="btn btn-primary btn-sm rounded-pill px-4 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#addClassModal">
+                        <i class="bi bi-plus-circle-fill me-1"></i>สร้างห้องเรียนใหม่
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- การ์ดห้องเรียน (Dynamic Grid) -->
+        <div id="hub-classrooms-grid" class="row g-3 g-md-4">
+            <div class="col-12 text-center py-5 bg-white rounded-4 border border-dashed shadow-sm">
+                <div class="spinner-border text-primary mb-2" role="status"></div>
+                <h6 class="fw-bold text-dark">กำลังโหลดห้องเรียนของคุณ...</h6>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- 🏫 VIEW 2: ห้องเรียนประจำวิชา (Classroom Active Workspace - 5 Tabs) -->
+    <!-- ============================================================== -->
+    <div id="classroom-detail-view" class="container-fluid px-3 px-md-4 my-3 my-md-4 d-none" style="max-width: 1400px;">
+
+        <!-- 🎛️ Header Bar: ข้อมูลห้องเรียน & ข้อมูลสรุปสี่ช่อง -->
+        <div class="card border-0 shadow-sm rounded-4 p-3 p-md-4 bg-white mb-3">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div class="d-flex align-items-center gap-3">
+                    <button class="btn btn-light border rounded-circle p-2" onclick="showClassroomsHub()" title="กลับหน้ารวมห้องเรียน">
+                        <i class="bi bi-arrow-left fs-5"></i>
+                    </button>
+                    <div>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <h3 class="fw-bold text-dark m-0" id="current-class-title">กำลังโหลด...</h3>
+                            <span class="room-code-badge" id="current-class-code-badge" title="รหัสห้องเรียนสำหรับสแกนเข้า">
+                                <i class="bi bi-key-fill text-success"></i> <span id="current-class-code">------</span>
+                                <button class="room-code-copy-btn ms-1" onclick="copyCurrentRoomCode()" title="คัดลอกรหัสห้อง"><i class="bi bi-clipboard"></i></button>
+                            </span>
+                        </div>
+                        <p class="text-muted small m-0 mt-1" id="current-class-subtitle">ระบบห้องเรียนออนไลน์ประจำวิชา • สแกนเข้าห้อง เช็คชื่อ แจกไฟล์ และส่งงาน</p>
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-bold" onclick="showClassroomsHub()">
+                        <i class="bi bi-grid me-1"></i>สลับห้องอื่น
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold d-flex align-items-center gap-1" onclick="refreshCurrentClassData()" title="รีเฟรชข้อมูลล่าสุด">
+                        <i class="bi bi-arrow-clockwise"></i> รีเฟรช
+                    </button>
+                    <button class="btn btn-dark btn-sm rounded-pill px-3 fw-bold shadow-sm d-flex align-items-center gap-2" onclick="openProjectorMode()" title="เปิดโหมดฉายขึ้นจอภาพหน้าห้อง">
+                        <i class="bi bi-projector-fill text-warning"></i>
+                        <span>ฉายขึ้นจอ (Day 1)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- แถบสถิติสี่ช่อง -->
+            <div class="row g-2 g-md-3 mt-2 pt-3 border-top">
+                <div class="col-6 col-md-3">
+                    <div class="stat-pill bg-light p-2 px-3 rounded-3 d-flex align-items-center gap-3">
+                        <div class="p-2 bg-primary-subtle text-primary rounded-circle"><i class="bi bi-people-fill fs-5"></i></div>
+                        <div>
+                            <div class="stat-num fw-bold text-dark fs-5" id="stat-student-count">0</div>
+                            <div class="stat-label text-muted" style="font-size: 0.75rem;">นักเรียนในห้อง</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="stat-pill bg-light p-2 px-3 rounded-3 d-flex align-items-center gap-3">
+                        <div class="p-2 bg-success-subtle text-success rounded-circle"><i class="bi bi-clipboard-check-fill fs-5"></i></div>
+                        <div>
+                            <div class="stat-num fw-bold text-dark fs-5" id="stat-attendance-count">0 / 0</div>
+                            <div class="stat-label text-muted" style="font-size: 0.75rem;">เช็คชื่อวันนี้</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="stat-pill bg-light p-2 px-3 rounded-3 d-flex align-items-center gap-3">
+                        <div class="p-2 bg-warning-subtle text-warning fs-5"><i class="bi bi-folder-fill fs-5"></i></div>
+                        <div>
+                            <div class="stat-num fw-bold text-dark fs-5" id="stat-material-count">0</div>
+                            <div class="stat-label text-muted" style="font-size: 0.75rem;">ไฟล์เอกสารบทเรียน</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="stat-pill bg-light p-2 px-3 rounded-3 d-flex align-items-center gap-3">
+                        <div class="p-2 bg-info-subtle text-info fs-5"><i class="bi bi-journal-text fs-5"></i></div>
+                        <div>
+                            <div class="stat-num fw-bold text-dark fs-5" id="stat-assignment-count">0</div>
+                            <div class="stat-label text-muted" style="font-size: 0.75rem;">การบ้าน/งานที่สั่ง</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 📑 5 แท็บหลักของห้องเรียน -->
+        <div class="card border-0 shadow-sm rounded-4 p-0 bg-white overflow-hidden">
+            <div class="card-header bg-white border-bottom p-2 px-3">
+                <ul class="nav nav-pills classroom-tabs gap-2" id="classroomTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="tab-scan-btn" data-bs-toggle="pill" data-bs-target="#tab-scan" type="button" role="tab">
+                            <i class="bi bi-qr-code-scan me-1"></i> 1. สแกนเข้าห้อง (Day 1)
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-attendance-btn" data-bs-toggle="pill" data-bs-target="#tab-attendance" type="button" role="tab">
+                            <i class="bi bi-check2-circle me-1"></i> 2. เช็คชื่อเข้าเรียน
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-materials-btn" data-bs-toggle="pill" data-bs-target="#tab-materials" type="button" role="tab">
+                            <i class="bi bi-cloud-arrow-down-fill me-1"></i> 3. แจกไฟล์ & ชีทเรียน
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-assignments-btn" data-bs-toggle="pill" data-bs-target="#tab-assignments" type="button" role="tab">
+                            <i class="bi bi-pencil-square me-1"></i> 4. สั่งงาน & ตรวจงาน
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-tools-btn" data-bs-toggle="pill" data-bs-target="#tab-tools" type="button" role="tab">
+                            <i class="bi bi-stars me-1"></i> 5. เครื่องมือช่วยสอน
+                        </button>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="card-body p-3 p-md-4">
+                <div class="tab-content" id="classroomTabsContent">
+
+                    <!-- ============================================================== -->
+                    <!-- 📌 TAB 1: สแกนเข้าห้อง (Day 1 Scan & Onboarding Wall) -->
+                    <!-- ============================================================== -->
+                    <div class="tab-pane fade show active" id="tab-scan" role="tabpanel">
+                        <!-- แถบด้านบน: สถิตินักเรียน + ปุ่มเปิด QR Code เล็กๆ / คัดลอกรหัส / ฉายจอใหญ่ -->
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 pb-3 border-bottom">
+                            <div>
+                                <h5 class="fw-bold text-dark m-0 d-flex align-items-center gap-2">
+                                    <i class="bi bi-people-fill text-success"></i>
+                                    <span>นักเรียนที่เข้าร่วมห้องแล้ว (<span id="joined-students-count">0</span> คน)</span>
+                                </h5>
+                                <small class="text-muted">รายชื่อจะอัปเดตอัตโนมัติเมื่อนักเรียนสแกนและส่งข้อมูลเข้าระบบ</small>
+                            </div>
+
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <!-- ปุ่มเล็กสำหรับเปิดดู QR Code -->
+                                <button class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold d-flex align-items-center gap-1 shadow-sm" data-bs-toggle="modal" data-bs-target="#tabQrModal" title="คลิกเพื่อแสดง QR Code ให้นักเรียนสแกน">
+                                    <i class="bi bi-qr-code fs-6"></i>
+                                    <span>ดู QR Code</span>
+                                </button>
+
+                                <!-- รหัสห้องแบบ Badge กดคลิกคัดลอกได้ -->
+                                <button class="btn btn-light btn-sm rounded-pill px-3 fw-bold border d-flex align-items-center gap-2" onclick="copyCurrentRoomCode()" title="คลิกเพื่อคัดลอกรหัสห้อง">
+                                    <span class="text-muted small">รหัสห้อง:</span>
+                                    <span class="font-mono text-primary fw-bold" id="tab-room-badge-text">------</span>
+                                    <i class="bi bi-copy text-muted small"></i>
+                                </button>
+
+                                <!-- ปุ่มฉายจอใหญ่ -->
+                                <button class="btn btn-dark btn-sm rounded-pill px-3 fw-bold shadow-sm d-flex align-items-center gap-1" onclick="openProjectorMode()" title="เปิดโหมดฉายขึ้นจอภาพหน้าห้อง">
+                                    <i class="bi bi-fullscreen text-warning"></i>
+                                    <span>ฉายจอใหญ่</span>
+                                </button>
+
+                                <!-- ปุ่มรีเฟรช -->
+                                <button class="btn btn-outline-secondary btn-sm rounded-pill px-3" onclick="refreshCurrentClassData()" title="รีเฟรชรายชื่อ">
+                                    <i class="bi bi-arrow-clockwise me-1"></i>รีเฟรช
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- ตารางรายชื่อนักเรียนแบบ Grid Avatars (เต็มความกว้าง กว้างขวาง สบายตา) -->
+                        <div class="student-avatar-wall p-3 bg-light rounded-4 border" id="joined-students-wall" style="min-height: 380px; max-height: 520px; overflow-y: auto;">
+                            <div class="text-center py-5 text-muted">
+                                <div class="spinner-border spinner-border-sm text-primary mb-2"></div>
+                                <div>กำลังโหลดรายชื่อนักเรียน...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ============================================================== -->
+                    <!-- 📋 TAB 2: เช็คชื่อเข้าเรียน (Daily Attendance) -->
+                    <!-- ============================================================== -->
+                    <div class="tab-pane fade" id="tab-attendance" role="tabpanel">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 pb-3 border-bottom">
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span class="fw-bold text-dark"><i class="bi bi-calendar-event text-primary me-1"></i>วันที่เช็คชื่อ:</span>
+                                <input type="date" id="attendance-date-input" class="form-control form-control-sm rounded-3 shadow-sm font-mono" style="width: 170px;" onchange="loadAttendanceForDate()">
+                                <button class="btn btn-outline-secondary btn-sm rounded-pill px-3" onclick="setAttendanceToday()">วันนี้</button>
+                            </div>
+
+                            <!-- สถิติสถานะเช็คชื่อ -->
+                            <div class="d-flex align-items-center gap-1 flex-wrap">
+                                <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">มา: <b id="att-count-present">0</b></span>
+                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1">สาย: <b id="att-count-late">0</b></span>
+                                <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle px-2 py-1">ลา: <b id="att-count-leave">0</b></span>
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">ขาด: <b id="att-count-absent">0</b></span>
+                            </div>
+                        </div>
+
+                        <!-- แถบปุ่มลัดจัดการเช็คชื่อ -->
+                        <div class="d-flex justify-content-between align-items-center gap-2 mb-3 flex-wrap">
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-outline-success rounded-pill px-3 fw-bold" onclick="markAllAttendance('present')">
+                                    <i class="bi bi-check-all me-1"></i>เช็ค "มา" ทุกคน
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="resetAttendanceStatus()">
+                                    <i class="bi bi-arrow-counterclockwise me-1"></i>รีเซ็ต
+                                </button>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-primary rounded-pill px-4 fw-bold shadow-sm" onclick="saveAttendanceRecord()">
+                                    <i class="bi bi-floppy2-fill me-1"></i>บันทึกการเช็คชื่อ
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- ตารางเช็คชื่อนักเรียน -->
+                        <div class="table-responsive rounded-4 border bg-white">
+                            <table class="table table-hover align-middle m-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 50px;" class="text-center">#</th>
+                                        <th style="width: 60px;">รูป</th>
+                                        <th>ชื่อนักเรียน</th>
+                                        <th style="width: 320px;" class="text-center">สถานะเช็คชื่อ</th>
+                                        <th style="width: 240px;">หมายเหตุ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="attendance-table-body">
+                                    <tr>
+                                        <td colspan="5" class="text-center py-4 text-muted">กำลังโหลดรายชื่อนักเรียน...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- ============================================================== -->
+                    <!-- 📂 TAB 3: แจกไฟล์ & ชีทเรียน (Course Materials Hub) -->
+                    <!-- ============================================================== -->
+                    <div class="tab-pane fade" id="tab-materials" role="tabpanel">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4 pb-3 border-bottom">
+                            <div>
+                                <h5 class="fw-bold text-dark m-0"><i class="bi bi-cloud-arrow-down-fill text-warning me-2"></i>คลังไฟล์เอกสาร & สื่อการสอน</h5>
+                                <small class="text-muted">อัปโหลดสไลด์ ชีทสรุป หรือแปะลิงก์ใบงาน ให้นักเรียนเข้ามาดาวน์โหลดได้ตลอดเวลา</small>
+                            </div>
+                            <button class="btn btn-primary fw-bold rounded-pill px-4 shadow-sm" data-bs-toggle="modal" data-bs-target="#addMaterialModal">
+                                <i class="bi bi-plus-circle-fill me-1"></i>เพิ่มเอกสาร/แจกไฟล์
+                            </button>
+                        </div>
+
+                        <!-- การ์ดรายการไฟล์เอกสาร -->
+                        <div id="materials-container" class="row g-3">
+                            <div class="col-12 text-center py-5 text-muted">
+                                <div class="spinner-border spinner-border-sm text-primary mb-2"></div>
+                                <div>กำลังโหลดเอกสาร...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ============================================================== -->
+                    <!-- 📝 TAB 4: สั่งงาน & ตรวจงาน (Assignments & Submissions) -->
+                    <!-- ============================================================== -->
+                    <div class="tab-pane fade" id="tab-assignments" role="tabpanel">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4 pb-3 border-bottom">
+                            <div>
+                                <h5 class="fw-bold text-dark m-0"><i class="bi bi-pencil-square text-info me-2"></i>การบ้าน & งานที่มอบหมาย</h5>
+                                <small class="text-muted">สร้างโจทย์การบ้าน กำหนดวันส่ง และเปิดให้นักเรียนส่งไฟล์/ลิงก์งาน พร้อมตรวจให้คะแนน</small>
+                            </div>
+                            <button class="btn btn-primary fw-bold rounded-pill px-4 shadow-sm" data-bs-toggle="modal" data-bs-target="#addAssignmentModal">
+                                <i class="bi bi-plus-circle-fill me-1"></i>สั่งงานใหม่
+                            </button>
+                        </div>
+
+                        <!-- รายการงานที่สั่ง -->
+                        <div id="assignments-container" class="row g-3">
+                            <div class="col-12 text-center py-5 text-muted">
+                                <div class="spinner-border spinner-border-sm text-primary mb-2"></div>
+                                <div>กำลังโหลดรายการงาน...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ============================================================== -->
+                    <!-- 🎡 TAB 5: เครื่องมือช่วยสอน (Classroom Tools Hub) -->
+                    <!-- ============================================================== -->
+                    <div class="tab-pane fade" id="tab-tools" role="tabpanel">
+                        <h5 class="fw-bold text-dark mb-1"><i class="bi bi-stars text-warning me-2"></i>เครื่องมือช่วยสอนประจำห้อง</h5>
+                        <p class="text-muted small mb-4">เชื่อมต่อข้อมูลห้องเรียนนี้ เข้ากับเครื่องมืออัจฉริยะของ Gyver Workspace ได้ทันที</p>
+
+                        <div class="row g-3">
+                            <div class="col-md-6 col-lg-4">
+                                <div class="tool-launcher-card p-3 rounded-4 border h-100 d-flex flex-column">
+                                    <div class="d-flex align-items-center gap-3 mb-3">
+                                        <div class="tool-icon bg-danger-subtle text-danger rounded-3 p-2 fs-3">
+                                            <i class="bi bi-disc-fill"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="fw-bold text-dark m-0">Gyver Wheel (วงล้อสุ่ม)</h6>
+                                            <small class="text-muted">สุ่มชื่อเด็กห้องนี้ขึ้นตอบคำถาม</small>
+                                        </div>
+                                    </div>
+                                    <p class="text-muted small flex-grow-1">นำเข้ารายชื่อนักเรียนห้องนี้ไปยังวงล้อหมุนสุ่มชื่อหน้าห้องทันที</p>
+                                    <button class="btn btn-outline-danger btn-sm rounded-pill fw-bold w-100" onclick="launchWheelWithThisClass()">
+                                        <i class="bi bi-play-circle-fill me-1"></i>เปิดวงล้อด้วยห้องนี้
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 col-lg-4">
+                                <div class="tool-launcher-card p-3 rounded-4 border h-100 d-flex flex-column">
+                                    <div class="d-flex align-items-center gap-3 mb-3">
+                                        <div class="tool-icon bg-pink-subtle text-primary rounded-3 p-2 fs-3">
+                                            <i class="bi bi-controller"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="fw-bold text-dark m-0">Gyver Code Race</h6>
+                                            <small class="text-muted">เกมแข่งตอบคำถามประลองความเร็ว</small>
+                                        </div>
+                                    </div>
+                                    <p class="text-muted small flex-grow-1">เปิดห้องประลองแข่งขันตอบคำถามประจำคาบสำหรับนักเรียนห้องนี้</p>
+                                    <a href="../../features/education/gyver Code Race/race_home.html" target="_blank" class="btn btn-outline-primary btn-sm rounded-pill fw-bold w-100">
+                                        <i class="bi bi-box-arrow-up-right me-1"></i>เปิดเกม Code Race
+                                    </a>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 col-lg-4">
+                                <div class="tool-launcher-card p-3 rounded-4 border h-100 d-flex flex-column">
+                                    <div class="d-flex align-items-center gap-3 mb-3">
+                                        <div class="tool-icon bg-info-subtle text-info-emphasis rounded-3 p-2 fs-3">
+                                            <i class="bi bi-broadcast-pin"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="fw-bold text-dark m-0">Gyver Live Studio</h6>
+                                            <small class="text-muted">ห้องบรรยายสด แชท และถามตอบ</small>
+                                        </div>
+                                    </div>
+                                    <p class="text-muted small flex-grow-1">เปิดสตรีมกระดานสดพร้อมกระดานส่งคำถามของนักเรียน</p>
+                                    <a href="../../features/education/live_studio/live_studio.html" target="_blank" class="btn btn-outline-info btn-sm rounded-pill fw-bold w-100">
+                                        <i class="bi bi-box-arrow-up-right me-1"></i>เปิด Live Studio
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- ➕ MODAL 1: สร้างห้องเรียนใหม่ (Create Classroom Modal) -->
+    <!-- ============================================================== -->
+    <div class="modal fade" id="addClassModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold text-primary"><i class="bi bi-plus-circle me-2"></i>สร้างห้องเรียนใหม่</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-create-class" onsubmit="handleCreateClassroom(event)">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">ชื่อห้องเรียน / รายวิชา <span class="text-danger">*</span></label>
+                            <input type="text" id="class-title" class="form-control rounded-3" placeholder="เช่น ม.1/1 - วิชาวิทยาการคำนวณ" required>
+                            <div class="form-text small">รหัสห้อง 6 ตัวอักษรและ QR Code สำหรับนักเรียนจะถูกสร้างขึ้นอัตโนมัติ</div>
+                        </div>
+                        <div class="d-flex justify-content-end gap-2 mt-4">
+                            <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">ยกเลิก</button>
+                            <button type="submit" id="btn-save-class" class="btn btn-primary rounded-pill px-4 fw-bold">สร้างห้องเรียน</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- 📱 QR CODE PREVIEW MODAL (หน้าต่างแสดง QR Code สแกนเข้าห้อง) -->
+    <!-- ============================================================== -->
+    <div class="modal fade" id="tabQrModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2">
+                        <i class="bi bi-qr-code text-primary"></i> QR Code สแกนเข้าห้อง
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center pt-2 pb-4 px-4">
+                    <div class="qr-container bg-light p-3 rounded-4 border shadow-sm d-inline-block my-2">
+                        <img id="tab-qr-img" src="" alt="QR Code" class="img-fluid rounded-3" style="width: 230px; height: 230px; object-fit: contain;">
+                    </div>
+                    
+                    <div class="d-flex justify-content-center align-items-center gap-2 my-2">
+                        <span class="fs-4 fw-bold font-mono text-primary bg-primary-subtle px-3 py-1 rounded-pill" id="tab-qr-code-text">------</span>
+                        <button class="btn btn-outline-primary btn-sm rounded-circle p-2" onclick="copyCurrentRoomCode()" title="คัดลอกรหัส"><i class="bi bi-copy"></i></button>
+                    </div>
+
+                    <p class="text-muted small mb-3">ให้นักเรียนเปิดกล้องสแกน QR Code หรือนำรหัสห้องไปกรอกเพื่อลงชื่อเข้าเรียน</p>
+
+                    <div class="input-group input-group-sm mb-3">
+                        <input type="text" id="tab-join-link-input" class="form-control font-mono" readonly>
+                        <button class="btn btn-outline-secondary" onclick="copyJoinLinkFromTab()" title="คัดลอกลิงก์"><i class="bi bi-clipboard"></i></button>
+                    </div>
+
+                    <button class="btn btn-dark w-100 fw-bold rounded-pill shadow-sm" onclick="bootstrap.Modal.getInstance(document.getElementById('tabQrModal'))?.hide(); openProjectorMode();">
+                        <i class="bi bi-fullscreen me-1 text-warning"></i> เปิดโหมดฉายขึ้นจอใหญ่ (Projector)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- 📺 FULLSCREEN PROJECTOR MODAL (โหมดฉายขึ้นจอใหญ่ Day 1 Onboarding) -->
+    <!-- ============================================================== -->
+    <div class="modal fade" id="projectorModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-fullscreen">
+            <div class="modal-content projector-modal-content text-white">
+                <div class="modal-header border-0 pb-0">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-warning text-dark fw-bold px-3 py-2 rounded-pill">DAY 1 CLASSROOM ONBOARDING</span>
+                        <h4 class="fw-bold m-0" id="projector-title">ห้องเรียน: กำลังโหลด...</h4>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body d-flex flex-column justify-content-center align-items-center py-4">
+                    <div class="row w-100 max-w-1200 align-items-center g-5">
+                        <div class="col-lg-5 text-center">
+                            <h2 class="fw-bold text-white mb-2">ยินดีต้อนรับสู่ห้องเรียน! 👋</h2>
+                            <p class="text-white-50 fs-5 mb-4">หยิบสมาร์ทโฟนขึ้นมา แล้วสแกน QR Code ด้านล่างเพื่อลงชื่อเข้าวิชา</p>
+                            
+                            <div class="bg-white p-4 rounded-5 shadow-lg d-inline-block mb-3">
+                                <img id="projector-qr-img" src="" alt="QR Code" class="img-fluid" style="width: 280px; height: 280px;">
+                            </div>
+
+                            <div class="d-flex justify-content-center align-items-center gap-3">
+                                <span class="text-white-50">รหัสห้อง:</span>
+                                <span class="projector-code-text font-mono fw-bold" id="projector-code-text">------</span>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-7">
+                            <div class="projector-roster-box p-4 rounded-5 shadow">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h4 class="fw-bold text-white m-0 d-flex align-items-center gap-2">
+                                        <i class="bi bi-people-fill text-warning"></i> นักเรียนในห้อง (<span id="projector-student-count">0</span> คน)
+                                    </h4>
+                                    <span class="badge bg-success-subtle text-success rounded-pill px-3 py-2 small">
+                                        <i class="bi bi-broadcast me-1"></i> Realtime Live Sync
+                                    </span>
+                                </div>
+                                <div class="projector-student-grid" id="projector-student-grid">
+                                    <!-- Dynamic Realtime student avatars -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 justify-content-center">
+                    <button type="button" class="btn btn-outline-light rounded-pill px-4 fw-bold" data-bs-dismiss="modal">
+                        <i class="bi bi-x-lg me-1"></i> ปิดหน้าจอฉาย
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- ➕ MODAL 2: เพิ่มไฟล์เอกสาร / แจกชีทเรียน (Add Material Modal) -->
+    <!-- ============================================================== -->
+    <div class="modal fade" id="addMaterialModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold text-primary"><i class="bi bi-cloud-arrow-up-fill me-2"></i>เพิ่มเอกสาร / สื่อการสอน</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-add-material" onsubmit="handleSaveMaterial(event)">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">ชื่อไฟล์ / หัวข้อเอกสาร <span class="text-danger">*</span></label>
+                            <input type="text" id="material-title" class="form-control rounded-3" placeholder="เช่น สไลด์บทที่ 1: พื้นฐานการเขียนโปรแกรม" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">หมวดหมู่เอกสาร</label>
+                            <select id="material-category" class="form-select rounded-3">
+                                <option value="slide">สไลด์การสอน (Presentation / PDF)</option>
+                                <option value="worksheet">ใบงาน & แบบฝึกหัด (Worksheet)</option>
+                                <option value="link">ลิงก์สื่อการเรียน / วิดีโอ (Link / Video)</option>
+                                <option value="other">เอกสารอื่นๆ (Other)</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">ลิงก์ดาวน์โหลด หรือ ลิงก์ไฟล์ <span class="text-danger">*</span></label>
+                            <input type="url" id="material-url" class="form-control rounded-3 font-mono" placeholder="เช่น ลิงก์ Google Drive, Canva, OneDrive, หรือเว็บดาวน์โหลด" required>
+                            <div class="form-text small">สามารถแปะลิงก์ Google Drive (เปิดแชร์แล้ว) หรือลิงก์ Canva/PDF ได้เลยครับ</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">คำอธิบายเพิ่มเติม</label>
+                            <textarea id="material-desc" class="form-control rounded-3" rows="2" placeholder="เช่น ให้อ่านทบทวนสไลด์หน้า 1-15 ก่อนเริ่มทำใบงาน"></textarea>
+                        </div>
+                        <div class="d-flex justify-content-end gap-2 mt-4">
+                            <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">ยกเลิก</button>
+                            <button type="submit" id="btn-save-material" class="btn btn-primary rounded-pill px-4 fw-bold">บันทึกเอกสาร</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- ➕ MODAL 3: สั่งงานใหม่ (Add Assignment Modal) -->
+    <!-- ============================================================== -->
+    <div class="modal fade" id="addAssignmentModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold text-primary"><i class="bi bi-pencil-square me-2"></i>สั่งงาน / มอบหมายการบ้านใหม่</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-add-assignment" onsubmit="handleSaveAssignment(event)">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">ชื่องาน / หัวข้อการบ้าน <span class="text-danger">*</span></label>
+                            <input type="text" id="assignment-title" class="form-control rounded-3" placeholder="เช่น การบ้านที่ 1: ออกแบบผังงาน Flowchart" required>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label small fw-bold text-secondary">กำหนดส่ง (Deadline)</label>
+                                <input type="date" id="assignment-due-date" class="form-control rounded-3 font-mono">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-bold text-secondary">คะแนนเต็ม</label>
+                                <input type="number" id="assignment-points" class="form-control rounded-3 font-mono" value="10" min="1" max="100">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">รายละเอียดคำสั่ง / โจทย์งาน</label>
+                            <textarea id="assignment-desc" class="form-control rounded-3" rows="3" placeholder="เขียนรายละเอียดโจทย์งาน หรือสิ่งที่นักเรียนต้องแนบส่ง"></textarea>
+                        </div>
+                        <div class="d-flex justify-content-end gap-2 mt-4">
+                            <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">ยกเลิก</button>
+                            <button type="submit" id="btn-save-assignment" class="btn btn-primary rounded-pill px-4 fw-bold">สร้างงาน</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- 🔍 MODAL 4: ตรวจงานนักเรียน (Submissions Viewer Modal) -->
+    <!-- ============================================================== -->
+    <div class="modal fade" id="submissionsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header border-bottom">
+                    <div>
+                        <h5 class="modal-title fw-bold text-primary m-0" id="submissions-modal-title">ตรวจงานนักเรียน</h5>
+                        <small class="text-muted" id="submissions-modal-subtitle">รายชื่อนักเรียนและการส่งงาน</small>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle m-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 50px;" class="text-center">#</th>
+                                    <th>ชื่อนักเรียน</th>
+                                    <th style="width: 140px;">เวลาที่ส่ง</th>
+                                    <th>ไฟล์ / ลิงก์ผลงาน</th>
+                                    <th style="width: 100px;" class="text-center">คะแนน</th>
+                                    <th style="width: 90px;" class="text-end">บันทึก</th>
+                                </tr>
+                            </thead>
+                            <tbody id="submissions-table-body">
+                                <tr>
+                                    <td colspan="6" class="text-center py-4 text-muted">กำลังโหลดข้อมูลการส่งงาน...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">ปิด</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="my_classroom.js"></script>
+</body>
+</html>

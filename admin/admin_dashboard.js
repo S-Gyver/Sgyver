@@ -211,7 +211,12 @@ async function loadAdminDashboardData() {
             setElementText('stat-active-lobbies', lobbies ? lobbies.length : 0);
             setElementText('stat-total-problems', allProblems.length);
 
+            // อัปเดต badge บนแท็บนำทาง
+            setElementText('nav-badge-users', totalUsers);
+
             renderUserTable(allUsersList);
+            renderAnalyticsCharts(allUsersList);
+            await loadSystemConfigData();
         }
     } catch (err) {
         console.error("Dashboard data load error:", err);
@@ -295,23 +300,9 @@ function renderUserTable(users) {
                 <td class="text-center">${levelBadge}</td>
                 <td class="text-center">${roleBadge}</td>
                 <td class="text-center">
-                    <div class="dropdown">
-                        <button class="btn btn-action-trigger dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static">
-                            <i class="bi bi-sliders me-1"></i>จัดการ
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-cyber dropdown-menu-end shadow-lg">
-                            <li><h6 class="dropdown-header-cyber text-warning"><i class="bi bi-award me-1"></i>ปรับระดับสิทธิ์ (Level)</h6></li>
-                            <li><a class="dropdown-item dropdown-item-cyber small" href="javascript:void(0)" onclick="changeUserLevel('${u.id}', 0)">🔹 ตั้งเป็น Lv.0 (Guest)</a></li>
-                            <li><a class="dropdown-item dropdown-item-cyber small" href="javascript:void(0)" onclick="changeUserLevel('${u.id}', 1)">🔹 ตั้งเป็น Lv.1 (Standard)</a></li>
-                            <li><a class="dropdown-item dropdown-item-cyber small text-warning" href="javascript:void(0)" onclick="changeUserLevel('${u.id}', 2)">⭐ ตั้งเป็น Lv.2 (VIP/Pro)</a></li>
-                            <li><hr class="dropdown-divider border-secondary opacity-50 my-1"></li>
-                            <li><h6 class="dropdown-header-cyber text-info"><i class="bi bi-person-gear me-1"></i>ปรับบทบาท (Role)</h6></li>
-                            <li><a class="dropdown-item dropdown-item-cyber small text-danger fw-bold" href="javascript:void(0)" onclick="changeUserRole('${u.id}', 'admin')">👑 ตั้งสิทธิ์เป็น ADMIN</a></li>
-                            <li><a class="dropdown-item dropdown-item-cyber small text-cyan fw-bold" href="javascript:void(0)" onclick="changeUserRole('${u.id}', 'user')">👤 ปรับเป็นผู้ใช้ USER</a></li>
-                            <li><hr class="dropdown-divider border-secondary opacity-50 my-1"></li>
-                            <li><a class="dropdown-item dropdown-item-cyber small text-danger" href="javascript:void(0)" onclick="deleteUserAccount('${u.id}')"><i class="bi bi-trash3-fill me-1"></i>ลบบัญชีผู้ใช้นี้</a></li>
-                        </ul>
-                    </div>
+                    <button class="btn btn-action-trigger" onclick="openUserActionModal('${u.id}')" title="จัดการสิทธิ์และบัญชี">
+                        <i class="bi bi-sliders me-1"></i>จัดการสิทธิ์
+                    </button>
                 </td>
             </tr>
         `;
@@ -375,6 +366,71 @@ async function deleteUserAccount(userId) {
     } catch (e) {
         console.error("Delete user error:", e);
     }
+}
+
+// ==============================================================================
+// 🎛️ USER ACTION MODAL (Clean dialog replacing jittery table dropdown)
+// ==============================================================================
+let activeModalUser = null;
+let userActionModalInstance = null;
+
+function openUserActionModal(userId) {
+    const user = allUsersList.find(u => u.id === userId);
+    if (!user) return;
+    activeModalUser = user;
+
+    const username = user.username || user.nickname || (user.email ? user.email.split('@')[0] : 'User');
+    const email = user.email || '-';
+    const avatar = user.avatar_url || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+    const isAdmin = user.role === 'admin' || (user.username && user.username.toLowerCase() === 'admin');
+    const level = user.level ?? 1;
+
+    setElementText('uact-username', username);
+    setElementText('uact-email', email);
+    const avatarEl = document.getElementById('uact-avatar');
+    if (avatarEl) avatarEl.src = avatar;
+
+    const badgesWrap = document.getElementById('uact-status-badges');
+    if (badgesWrap) {
+        badgesWrap.innerHTML = `
+            ${isAdmin ? '<span class="badge bg-danger text-white font-mono"><i class="bi bi-shield-fill-check me-1"></i>ADMIN</span>' : '<span class="badge bg-info text-dark font-mono"><i class="bi bi-person-fill me-1"></i>USER</span>'}
+            <span class="badge bg-dark border border-secondary text-warning font-mono">Lv.${level}</span>
+        `;
+    }
+
+    const modalEl = document.getElementById('userActionModal');
+    if (modalEl && typeof bootstrap !== 'undefined') {
+        userActionModalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
+        userActionModalInstance.show();
+    }
+}
+
+async function executeModalChangeLevel(newLevel) {
+    if (!activeModalUser) return;
+    const uid = activeModalUser.id;
+    if (userActionModalInstance) userActionModalInstance.hide();
+    await changeUserLevel(uid, newLevel);
+}
+
+async function executeModalChangeRole(newRole) {
+    if (!activeModalUser) return;
+    const uid = activeModalUser.id;
+    if (userActionModalInstance) userActionModalInstance.hide();
+    await changeUserRole(uid, newRole);
+}
+
+async function executeModalDeleteUser() {
+    if (!activeModalUser) return;
+    const uid = activeModalUser.id;
+    if (userActionModalInstance) userActionModalInstance.hide();
+    await deleteUserAccount(uid);
+}
+
+function viewTargetUserActivities() {
+    if (!activeModalUser) return;
+    const uid = activeModalUser.id;
+    if (userActionModalInstance) userActionModalInstance.hide();
+    openUserDetailModal(uid);
 }
 
 // 🔍 เปิด Modal ดูสถิติห้อง/นักเรียน/โจทย์เฉพาะของ User รายนั้น
@@ -570,3 +626,454 @@ function showToast(msg) {
         }
     }
 }
+
+// ==============================================================================
+// 📈 ADVANCED CYBER ANALYTICS & INSIGHTS (CHART.JS INTEGRATION)
+// ==============================================================================
+let growthChartInstance = null;
+let roleChartInstance = null;
+
+function renderAnalyticsCharts(users) {
+    if (typeof Chart === 'undefined') return;
+
+    // 1. Line Chart: Growth Velocity
+    const growthCanvas = document.getElementById('chart-user-growth');
+    if (growthCanvas) {
+        const dateMap = new Map();
+        (users || []).forEach(u => {
+            const date = u.created_at ? new Date(u.created_at) : new Date();
+            const key = date.toLocaleDateString('th-TH', { month: 'short', year: '2-digit' });
+            dateMap.set(key, (dateMap.get(key) || 0) + 1);
+        });
+
+        const labels = Array.from(dateMap.keys()).reverse();
+        if (labels.length === 0) labels.push('ปัจจุบัน');
+
+        let cumulative = 0;
+        const dataPoints = Array.from(dateMap.values()).reverse().map(count => {
+            cumulative += count;
+            return cumulative;
+        });
+
+        if (growthChartInstance) {
+            growthChartInstance.destroy();
+        }
+
+        const ctx = growthCanvas.getContext('2d');
+        const gradient = ctx.createLinearGradient(0, 0, 0, 240);
+        gradient.addColorStop(0, 'rgba(0, 242, 254, 0.4)');
+        gradient.addColorStop(1, 'rgba(0, 242, 254, 0.0)');
+
+        growthChartInstance = new Chart(growthCanvas, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'สมาชิกสะสม (Total Users)',
+                    data: dataPoints,
+                    borderColor: '#00f2fe',
+                    borderWidth: 3,
+                    pointBackgroundColor: '#060911',
+                    pointBorderColor: '#00f2fe',
+                    pointBorderWidth: 2,
+                    pointRadius: 5,
+                    pointHoverRadius: 8,
+                    fill: true,
+                    backgroundColor: gradient,
+                    tension: 0.35
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                        titleColor: '#00f2fe',
+                        bodyColor: '#fff',
+                        borderColor: 'rgba(56, 189, 248, 0.3)',
+                        borderWidth: 1,
+                        padding: 10,
+                        titleFont: { family: 'Kanit' },
+                        bodyFont: { family: 'Fira Code' }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#94a3b8', font: { family: 'Kanit', size: 11 } }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: {
+                            color: '#94a3b8',
+                            font: { family: 'Fira Code', size: 11 },
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // 2. Doughnut Chart: Role & Level Breakdown
+    const roleCanvas = document.getElementById('chart-role-distribution');
+    if (roleCanvas) {
+        let adminCount = 0;
+        let vipCount = 0;
+        let memberCount = 0;
+        let guestCount = 0;
+
+        (users || []).forEach(u => {
+            if (u.role === 'admin' || (u.username && u.username.toLowerCase() === 'admin')) {
+                adminCount++;
+            } else {
+                const lvl = u.level ?? 1;
+                if (lvl >= 2) vipCount++;
+                else if (lvl === 1) memberCount++;
+                else guestCount++;
+            }
+        });
+
+        if (roleChartInstance) {
+            roleChartInstance.destroy();
+        }
+
+        roleChartInstance = new Chart(roleCanvas, {
+            type: 'doughnut',
+            data: {
+                labels: ['Admin', 'Lv.2 VIP', 'Lv.1 Member', 'Lv.0 Guest'],
+                datasets: [{
+                    data: [adminCount, vipCount, memberCount, guestCount],
+                    backgroundColor: [
+                        '#f43f5e',
+                        '#f59e0b',
+                        '#00f2fe',
+                        '#a855f7'
+                    ],
+                    borderColor: '#0b1120',
+                    borderWidth: 3,
+                    hoverOffset: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: '#94a3b8',
+                            font: { family: 'Kanit', size: 11 },
+                            boxWidth: 10,
+                            padding: 10
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                        borderColor: 'rgba(255, 255, 255, 0.1)',
+                        borderWidth: 1,
+                        padding: 10,
+                        titleFont: { family: 'Kanit' },
+                        bodyFont: { family: 'Fira Code' }
+                    }
+                }
+            }
+        });
+    }
+}
+
+// ==============================================================================
+// 📢 & 🔒 LIVE BROADCAST & MAINTENANCE CONTROL MANAGEMENT
+// ==============================================================================
+let currentGlobalConfig = {
+    announcement: {
+        active: false,
+        text: '',
+        type: 'info',
+        marquee: true,
+        updated_at: new Date().toISOString()
+    },
+    maintenance: {
+        active: false,
+        title: '',
+        message: '',
+        estimated_finish: '',
+        allow_admin: true,
+        updated_at: new Date().toISOString()
+    }
+};
+
+async function loadSystemConfigData() {
+    try {
+        if (!supabaseClient) return;
+        const { data, error } = await supabaseClient
+            .from('gyver_forms')
+            .select('*')
+            .eq('id', 'SYS_GLOBAL_CONFIG')
+            .maybeSingle();
+
+        if (data && data.schema) {
+            currentGlobalConfig = data.schema;
+        }
+
+        // 1. Populate Announcement UI
+        const ann = currentGlobalConfig.announcement || {};
+        const switchAnn = document.getElementById('switch-announcement-active');
+        const labelAnn = document.getElementById('label-announcement-active');
+        const typeSelect = document.getElementById('announcement-type-select');
+        const textInput = document.getElementById('announcement-text-input');
+        const marqueeCheck = document.getElementById('announcement-marquee-check');
+
+        if (switchAnn) switchAnn.checked = !!ann.active;
+        if (labelAnn) {
+            labelAnn.innerText = ann.active ? '🟢 กำลังยิงสัญญาณ (ACTIVE)' : '⚪ ปิดใช้งาน (OFF)';
+            labelAnn.className = `form-check-label font-mono small ms-1 fw-bold ${ann.active ? 'text-cyan' : 'text-subtle'}`;
+        }
+        if (typeSelect && ann.type) typeSelect.value = ann.type;
+        if (textInput && ann.text) textInput.value = ann.text;
+        if (marqueeCheck) marqueeCheck.checked = ann.marquee !== false;
+
+        updateBroadcastPreview();
+
+        // 2. Populate Maintenance UI
+        const maint = currentGlobalConfig.maintenance || {};
+        const switchMaint = document.getElementById('switch-maintenance-master');
+        const titleInput = document.getElementById('maintenance-title-input');
+        const msgInput = document.getElementById('maintenance-msg-input');
+        const timeInput = document.getElementById('maintenance-time-input');
+
+        if (switchMaint) switchMaint.checked = !!maint.active;
+        if (titleInput && maint.title) titleInput.value = maint.title;
+        if (msgInput && maint.message) msgInput.value = maint.message;
+        if (timeInput && maint.estimated_finish) timeInput.value = maint.estimated_finish;
+
+        updateMaintenanceStatusBanner(!!maint.active);
+
+        // 🧭 อัปเดตสถานะสัญลักษณ์บนแท็บเมนู
+        const navDot = document.getElementById('nav-broadcast-dot');
+        if (navDot) navDot.style.display = ann.active ? 'inline-block' : 'none';
+
+        const maintBadge = document.getElementById('nav-maint-badge');
+        if (maintBadge) maintBadge.style.display = maint.active ? 'inline-block' : 'none';
+
+    } catch (err) {
+        console.warn("Load system config error:", err);
+    }
+}
+
+function updateMaintenanceStatusBanner(isActive) {
+    const alertBox = document.getElementById('maintenance-status-alert');
+    const statusText = document.getElementById('maintenance-status-text');
+    const statusBadge = document.getElementById('maintenance-status-badge');
+    const labelMaint = document.getElementById('label-maintenance-master');
+
+    if (!alertBox) return;
+
+    if (isActive) {
+        alertBox.className = 'p-2 px-3 rounded-3 mb-3 d-flex align-items-center justify-content-between font-mono small bg-slate-900 border border-danger border-opacity-50 text-danger shadow-sm';
+        if (statusText) statusText.innerHTML = '<i class="bi bi-shield-fill-exclamation me-2 text-danger"></i>สถานะ: โหมดปิดปรับปรุงระบบกำลังทำงาน (บล็อกผู้ใช้ทั่วไป)';
+        if (statusBadge) {
+            statusBadge.className = 'badge bg-danger text-white';
+            statusBadge.innerText = 'MAINTENANCE ON';
+        }
+        if (labelMaint) {
+            labelMaint.innerText = '🔴 กำลังปิดปรับปรุง (LOCKED)';
+            labelMaint.className = 'form-check-label font-mono small ms-1 fw-bold text-danger';
+        }
+    } else {
+        alertBox.className = 'p-2 px-3 rounded-3 mb-3 d-flex align-items-center justify-content-between font-mono small bg-slate-900 border border-success border-opacity-25 text-success';
+        if (statusText) statusText.innerHTML = '<i class="bi bi-check-circle-fill me-2 text-success"></i>สถานะ: ระบบเปิดให้บริการตามปกติ';
+        if (statusBadge) {
+            statusBadge.className = 'badge bg-success bg-opacity-25 text-success';
+            statusBadge.innerText = 'LIVE 24/7';
+        }
+        if (labelMaint) {
+            labelMaint.innerText = 'เปิดให้บริการปกติ';
+            labelMaint.className = 'form-check-label font-mono small ms-1 fw-bold text-white';
+        }
+    }
+}
+
+function updateBroadcastPreview() {
+    const previewBox = document.getElementById('broadcast-live-preview-box');
+    const previewStatus = document.getElementById('preview-badge-status');
+    const typeSelect = document.getElementById('announcement-type-select');
+    const textInput = document.getElementById('announcement-text-input');
+    const marqueeCheck = document.getElementById('announcement-marquee-check');
+    const switchAnn = document.getElementById('switch-announcement-active');
+
+    if (!previewBox) return;
+
+    const isActive = switchAnn ? switchAnn.checked : false;
+    const type = typeSelect ? typeSelect.value : 'info';
+    const text = textInput && textInput.value.trim() ? textInput.value.trim() : 'ตัวอย่างข้อความประกาศด่วนจะแสดงที่นี่แบบเรียลไทม์...';
+    const isMarquee = marqueeCheck ? marqueeCheck.checked : true;
+
+    if (previewStatus) {
+        previewStatus.innerText = isActive ? '📡 สัญญาณกำลังออกอากาศ' : '⏸️ พักการยิงสัญญาณ';
+        previewStatus.className = `badge font-mono border ${isActive ? 'bg-info bg-opacity-25 text-cyan border-cyan' : 'bg-dark text-subtle border-secondary'}`;
+    }
+
+    const typeThemes = {
+        info: { border: '#00f2fe', color: '#e0f7ff', icon: 'bi-broadcast-pin', label: 'ประกาศด่วน', bg: '#091e3a' },
+        warning: { border: '#f59e0b', color: '#fef3c7', icon: 'bi-exclamation-triangle-fill', label: 'แจ้งเตือนสำคัญ', bg: '#2b1d06' },
+        danger: { border: '#ef4444', color: '#fee2e2', icon: 'bi-shield-fill-exclamation', label: 'ฉุกเฉิน', bg: '#300c0f' },
+        success: { border: '#10b981', color: '#d1fae5', icon: 'bi-patch-check-fill', label: 'อัปเดตใหม่', bg: '#06231a' }
+    };
+
+    const theme = typeThemes[type] || typeThemes.info;
+
+    previewBox.style.background = theme.bg;
+    previewBox.style.border = `1px solid ${theme.border}`;
+    previewBox.style.color = theme.color;
+    previewBox.style.padding = '8px 12px';
+
+    const textContent = isMarquee
+        ? `<marquee scrollamount="5" style="margin: 0 10px; font-weight: 500;">${text}</marquee>`
+        : `<div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0 10px; font-weight: 500;">${text}</div>`;
+
+    previewBox.innerHTML = `
+        <div class="d-flex align-items-center w-100" style="min-width: 0;">
+            <span class="badge border font-mono" style="background: rgba(255,255,255,0.1); color: ${theme.border}; border-color: ${theme.border} !important; font-size: 0.75rem; flex-shrink: 0;">
+                <i class="bi ${theme.icon} me-1"></i>${theme.label}
+            </span>
+            ${textContent}
+        </div>
+    `;
+}
+
+function toggleAnnouncementSwitch(checked) {
+    const labelAnn = document.getElementById('label-announcement-active');
+    if (labelAnn) {
+        labelAnn.innerText = checked ? '🟢 กำลังยิงสัญญาณ (ACTIVE)' : '⚪ ปิดใช้งาน (OFF)';
+        labelAnn.className = `form-check-label font-mono small ms-1 fw-bold ${checked ? 'text-cyan' : 'text-subtle'}`;
+    }
+    updateBroadcastPreview();
+}
+
+function toggleMaintenanceSwitch(checked) {
+    updateMaintenanceStatusBanner(checked);
+}
+
+async function saveAnnouncementBroadcast() {
+    const switchAnn = document.getElementById('switch-announcement-active');
+    const typeSelect = document.getElementById('announcement-type-select');
+    const textInput = document.getElementById('announcement-text-input');
+    const marqueeCheck = document.getElementById('announcement-marquee-check');
+
+    const active = switchAnn ? switchAnn.checked : false;
+    const type = typeSelect ? typeSelect.value : 'info';
+    const text = textInput ? textInput.value.trim() : '';
+    const marquee = marqueeCheck ? marqueeCheck.checked : true;
+
+    if (active && !text) {
+        alert("⚠️ กรุณาระบุข้อความประกาศก่อนเปิดใช้งานครับ");
+        return;
+    }
+
+    currentGlobalConfig.announcement = {
+        active: active,
+        type: type,
+        text: text,
+        marquee: marquee,
+        updated_at: new Date().toISOString()
+    };
+
+    await saveGlobalConfigToSupabase("📢 บันทึกและอัปเดตประกาศด่วนสำเร็จ!");
+}
+
+async function clearAnnouncementBroadcast() {
+    if (!confirm("⚠️ คุณต้องการล้างข้อความประกาศทั้งหมดใช่หรือไม่?")) return;
+
+    const switchAnn = document.getElementById('switch-announcement-active');
+    const textInput = document.getElementById('announcement-text-input');
+
+    if (switchAnn) switchAnn.checked = false;
+    if (textInput) textInput.value = '';
+
+    currentGlobalConfig.announcement = {
+        active: false,
+        type: 'info',
+        text: '',
+        marquee: true,
+        updated_at: new Date().toISOString()
+    };
+
+    toggleAnnouncementSwitch(false);
+    await saveGlobalConfigToSupabase("🧹 ล้างประกาศเรียบร้อยแล้ว");
+}
+
+async function saveMaintenanceControl() {
+    const switchMaint = document.getElementById('switch-maintenance-master');
+    const titleInput = document.getElementById('maintenance-title-input');
+    const msgInput = document.getElementById('maintenance-msg-input');
+    const timeInput = document.getElementById('maintenance-time-input');
+
+    const active = switchMaint ? switchMaint.checked : false;
+    const title = titleInput ? titleInput.value.trim() : '🛠️ กำลังปิดปรับปรุงระบบเพื่อเพิ่มประสิทธิภาพ';
+    const message = msgInput ? msgInput.value.trim() : 'ขออภัยในความไม่สะดวก ขณะนี้ทีมงานกำลังอัปเกรดระบบเพื่อความเสถียรยิ่งขึ้น...';
+    const finish = timeInput ? timeInput.value.trim() : '';
+
+    currentGlobalConfig.maintenance = {
+        active: active,
+        title: title,
+        message: message,
+        estimated_finish: finish,
+        allow_admin: true,
+        updated_at: new Date().toISOString()
+    };
+
+    const confirmMsg = active 
+        ? "⚠️ คำเตือน: คุณกำลังจะเปิดโหมดปิดปรับปรุงระบบ (Maintenance Mode) ผู้ใช้ทั่วไปจะไม่สามารถเข้าใช้งานหน้าหลักได้จนกว่าจะปิดโหมดนี้ ยืนยันหรือไม่?" 
+        : "ต้องการบันทึกการเปิดให้บริการระบบตามปกติใช่หรือไม่?";
+
+    if (!confirm(confirmMsg)) return;
+
+    await saveGlobalConfigToSupabase(active ? "🔒 เปิดโหมดปิดปรับปรุงระบบเรียบร้อยแล้ว!" : "🟢 บันทึกเปิดระบบตามปกติเรียบร้อยแล้ว!");
+}
+
+async function saveGlobalConfigToSupabase(successToastText) {
+    try {
+        if (!supabaseClient) return;
+
+        const payload = {
+            id: 'SYS_GLOBAL_CONFIG',
+            title: 'Gyver Studio System Configuration',
+            description: 'Central configuration for announcements, maintenance mode, and feature flags',
+            schema: currentGlobalConfig,
+            updated_at: new Date().toISOString()
+        };
+
+        const { error } = await supabaseClient
+            .from('gyver_forms')
+            .upsert([payload]);
+
+        if (!error) {
+            showToast(successToastText || "✅ บันทึกข้อมูลสำเร็จ!");
+        } else {
+            showToast(`❌ เกิดข้อผิดพลาดในการบันทึก: ${error.message}`);
+        }
+    } catch (e) {
+        console.error("Save config error:", e);
+        showToast(`❌ เกิดข้อผิดพลาด: ${e.message}`);
+    }
+}
+
+// 📈 Resize Chart.js when switching to Analytics Tab
+document.addEventListener('DOMContentLoaded', () => {
+    const analyticsTabBtn = document.getElementById('tab-analytics-nav');
+    if (analyticsTabBtn) {
+        analyticsTabBtn.addEventListener('shown.bs.tab', () => {
+            if (typeof growthChartInstance !== 'undefined' && growthChartInstance) {
+                growthChartInstance.resize();
+            }
+            if (typeof roleChartInstance !== 'undefined' && roleChartInstance) {
+                roleChartInstance.resize();
+            }
+        });
+    }
+});
