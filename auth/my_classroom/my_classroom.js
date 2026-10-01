@@ -2686,16 +2686,49 @@ function renderSubmissionsTable(assignment) {
                 ${hasSubmitted ? `<span class="badge bg-success-subtle text-success font-mono">${new Date(sub.submitted_at).toLocaleDateString('th-TH')}</span>` : '<span class="badge bg-secondary-subtle text-secondary">ยังไม่ส่ง</span>'}
             </td>
             <td>
-                ${hasSubmitted && sub.file_url ? `
-                    ${(sub.file_url.includes('cloudinary.com') || sub.submission_type === 'file') ? `
-                        <a href="${sub.file_url}" target="_blank" class="btn btn-sm btn-outline-success rounded-pill px-3 py-1 fw-bold text-truncate" style="max-width: 200px;" title="${sub.file_name || 'ดูไฟล์งาน'}">
-                            <i class="bi bi-file-earmark-arrow-down-fill me-1"></i>${sub.file_name ? sub.file_name : 'ดูไฟล์งาน'}
-                        </a>
-                    ` : `
-                        <a href="${sub.file_url}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1" title="เปิดลิงก์งาน">
-                            <i class="bi bi-link-45deg me-1"></i>เปิดลิงก์งาน
-                        </a>
-                    `}
+                ${hasSubmitted && (sub.file_url || (Array.isArray(sub.files) && sub.files.length > 0)) ? `
+                    ${(Array.isArray(sub.files) && sub.files.length > 1) ? `
+                        <div class="d-flex flex-wrap gap-1" style="max-width: 260px;">
+                            ${sub.files.map((f, fIdx) => {
+                                const ext = (f.name || '').split('.').pop().toLowerCase();
+                                let icon = 'bi-file-earmark-arrow-down-fill';
+                                let btnColor = 'btn-outline-success';
+                                if (['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext)) {
+                                    icon = 'bi-file-earmark-image-fill';
+                                } else if (['doc', 'docx'].includes(ext)) {
+                                    icon = 'bi-file-earmark-word-fill';
+                                    btnColor = 'btn-outline-primary';
+                                } else if (['pdf'].includes(ext)) {
+                                    icon = 'bi-file-earmark-pdf-fill';
+                                    btnColor = 'btn-outline-danger';
+                                } else if (['xls', 'xlsx', 'csv'].includes(ext)) {
+                                    icon = 'bi-file-earmark-excel-fill';
+                                    btnColor = 'btn-outline-success';
+                                } else if (['ppt', 'pptx'].includes(ext)) {
+                                    icon = 'bi-file-earmark-slides-fill';
+                                    btnColor = 'btn-outline-warning';
+                                } else if (['zip', 'rar', '7z'].includes(ext)) {
+                                    icon = 'bi-file-earmark-zip-fill';
+                                    btnColor = 'btn-outline-secondary';
+                                }
+                                return `
+                                <a href="${f.url}" target="_blank" class="btn btn-sm ${btnColor} rounded-pill px-2 py-0 small d-inline-flex align-items-center gap-1 text-truncate" style="max-width: 125px; font-size: 0.76rem;" title="${f.name || `ไฟล์ที่ ${fIdx+1}`}">
+                                    <i class="bi ${icon}"></i>
+                                    <span class="text-truncate">${f.name || `ไฟล์ ${fIdx+1}`}</span>
+                                </a>`;
+                            }).join('')}
+                        </div>
+                    ` : (sub.file_url ? (
+                        (sub.file_url.includes('cloudinary.com') || sub.submission_type === 'file') ? `
+                            <a href="${sub.file_url}" target="_blank" class="btn btn-sm btn-outline-success rounded-pill px-3 py-1 fw-bold text-truncate" style="max-width: 200px;" title="${sub.file_name || 'ดูไฟล์งาน'}">
+                                <i class="bi bi-file-earmark-arrow-down-fill me-1"></i>${sub.file_name ? sub.file_name : 'ดูไฟล์งาน'}
+                            </a>
+                        ` : `
+                            <a href="${sub.file_url}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1" title="เปิดลิงก์งาน">
+                                <i class="bi bi-link-45deg me-1"></i>เปิดลิงก์งาน
+                            </a>
+                        `
+                    ) : '<span class="text-muted small">-</span>')}
                     ${sub.comment ? `<div class="small text-muted mt-1">💬 "${sub.comment}"</div>` : ''}
                 ` : '<span class="text-muted small">-</span>'}
             </td>
@@ -2777,10 +2810,20 @@ function renderTabGradebook() {
     const scores = gb.scores || {};
     const students = Array.isArray(activeClassroom.students) ? activeClassroom.students : [];
 
+    // แบ่งคอลัมน์เก็บคะแนนเป็น 3 ส่วน: มาเรียน, กลางภาค และ ปลายภาค
+    const attCols = columns.filter(c => c.term === 'attendance');
+    const midCols = columns.filter(c => c.term === 'midterm' || (!c.term && c.term !== 'final' && c.term !== 'attendance'));
+    const finalCols = columns.filter(c => c.term === 'final');
+
+    const attendanceWeight = Number(cfg.attendance_max ?? 10);
+    const midFormativeWeight = Number(cfg.mid_formative_max ?? 20);
     const midtermMax = Number(cfg.midterm_max ?? 20);
+    const finalFormativeWeight = Number(cfg.final_formative_max ?? 20);
     const finalMax = Number(cfg.final_max ?? 30);
-    const targetFormativeWeight = Math.max(0, 100 - (midtermMax + finalMax));
-    const formativeRawMax = columns.reduce((sum, col) => sum + (Number(col.max) || 0), 0);
+
+    const attRawMax = attCols.reduce((sum, col) => sum + (col.is_bonus ? 0 : (Number(col.max) || 0)), 0);
+    const midRawMax = midCols.reduce((sum, col) => sum + (col.is_bonus ? 0 : (Number(col.max) || 0)), 0);
+    const finalRawMax = finalCols.reduce((sum, col) => sum + (col.is_bonus ? 0 : (Number(col.max) || 0)), 0);
 
     // 2.1 อัปเดตข้อมูลบน Header Bar
     const badgeEl = document.getElementById('gb-subject-badge');
@@ -2792,13 +2835,15 @@ function renderTabGradebook() {
         const subName = cfg.subject_name || activeClassroom.class_name || 'รายวิชา';
         const sem = cfg.semester || '1';
         const yr = cfg.academic_year || '2569';
-        descEl.innerText = `${subName} • ภาคเรียนที่ ${sem}/${yr} • สัดส่วนคะแนน (เก็บ:สอบ) = ${targetFormativeWeight}:${midtermMax + finalMax}`;
+        descEl.innerText = `${subName} • ภาคเรียนที่ ${sem}/${yr} • สัดส่วน 5 ส่วน (${attendanceWeight}:${midFormativeWeight}:${midtermMax}:${finalFormativeWeight}:${finalMax}) = รวม 100 คะแนน`;
     }
 
     // 2.2 เรนเดอร์หัวตาราง (Thead)
     const thead = document.getElementById('gradebook-thead');
     if (thead) {
-        const colHeaders = columns.map(col => `
+        const renderTh = col => {
+            const isBonus = col.is_bonus || !col.max;
+            return `
             <th class="text-center font-mono small" style="min-width: 85px;">
                 <div class="d-flex align-items-center justify-content-center gap-1">
                     <span title="${col.title}">${col.title}</span>
@@ -2806,37 +2851,60 @@ function renderTabGradebook() {
                         <i class="bi bi-x-circle-fill"></i>
                     </button>
                 </div>
-                <div class="text-muted fw-normal" style="font-size: 0.72rem;">เต็ม ${col.max}</div>
+                <div class="text-muted fw-normal" style="font-size: 0.72rem;">${isBonus ? 'ไม่มีคะแนนเต็ม' : `เต็ม ${col.max}`}</div>
             </th>
-        `).join('');
+        `};
+
+        const attColHeaders = attCols.map(renderTh).join('');
+        const midColHeaders = midCols.map(renderTh).join('');
+        const finalColHeaders = finalCols.map(renderTh).join('');
+
+        const attColspan = attCols.length > 0 ? (attCols.length > 1 ? attCols.length + 1 : attCols.length) : 1;
 
         thead.innerHTML = `
             <tr>
                 <th rowspan="2" class="sticky-no">เลขที่</th>
                 <th rowspan="2" class="sticky-name">ชื่อ - นามสกุล</th>
-                <th colspan="${columns.length + 1}" class="text-primary bg-primary-subtle text-center">
-                    <i class="bi bi-journal-check me-1"></i>คะแนนเก็บระหว่างภาค (${targetFormativeWeight} คะแนน)
+                <th colspan="${attColspan}" class="text-info-emphasis bg-info-subtle text-center border-start">
+                    <i class="bi bi-calendar-check-fill me-1 text-info"></i><span class="text-primary-emphasis fw-bold">มาเรียน</span> (${attendanceWeight} คะแนน)
                 </th>
-                <th colspan="2" class="text-danger bg-danger-subtle text-center">
-                    <i class="bi bi-file-earmark-medical me-1"></i>คะแนนสอบ (${midtermMax + finalMax} คะแนน)
+                <th colspan="${midCols.length + 1}" class="text-primary bg-primary-subtle text-center border-start">
+                    <i class="bi bi-journal-check me-1"></i>คะแนนเก็บกลางภาค (${midFormativeWeight} คะแนน)
                 </th>
-                <th rowspan="2" class="text-center bg-dark text-white font-mono" style="min-width: 75px;">รวม 100</th>
+                <th class="text-primary bg-primary-subtle text-center border-start border-end" style="min-width: 85px;">
+                    <i class="bi bi-file-earmark-text me-1"></i>คะแนนสอบกลางภาค
+                </th>
+                <th colspan="${finalCols.length + 1}" class="text-success bg-success-subtle text-center border-start">
+                    <i class="bi bi-journal-richtext me-1"></i>คะแนนเก็บปลายภาค (${finalFormativeWeight} คะแนน)
+                </th>
+                <th class="text-danger bg-danger-subtle text-center border-start border-end" style="min-width: 85px;">
+                    <i class="bi bi-file-earmark-medical me-1"></i>สอบปลายภาค
+                </th>
+                <th rowspan="2" class="text-center bg-dark text-white font-mono" style="min-width: 85px;">รวม 100 คะแนน</th>
                 <th rowspan="2" class="text-center bg-dark text-white font-mono" style="min-width: 65px;">เกรด</th>
                 <th rowspan="2" class="text-center" style="min-width: 90px;" title="คุณลักษณะอันพึงประสงค์ 8 ประการ">คุณลักษณะ</th>
                 <th rowspan="2" class="text-center" style="min-width: 90px;" title="การอ่าน คิดวิเคราะห์ และเขียน">อ่าน/คิด</th>
                 <th rowspan="2" class="text-center" style="min-width: 95px;">สถานะ</th>
             </tr>
             <tr>
-                ${colHeaders}
-                <th class="text-center text-primary font-mono small" style="min-width: 80px;">
+                ${attCols.length > 0 
+                    ? (attColHeaders + (attCols.length > 1 ? `<th class="text-center text-info-emphasis font-mono small bg-light" style="min-width: 80px;"><div>รวมมาเรียน</div><div style="font-size: 0.72rem;">เต็ม ${attendanceWeight}</div></th>` : ''))
+                    : `<th class="text-center text-info-emphasis font-mono small bg-light" style="min-width: 80px;"><div>มาเรียน</div><div style="font-size: 0.72rem;">เต็ม ${attendanceWeight}</div></th>`}
+                ${midColHeaders}
+                <th class="text-center text-primary font-mono small bg-light" style="min-width: 80px;">
                     <div>รวมเก็บ</div>
-                    <div style="font-size: 0.72rem;">เต็ม ${targetFormativeWeight}</div>
+                    <div style="font-size: 0.72rem;">เต็ม ${midFormativeWeight}</div>
                 </th>
-                <th class="text-center text-danger font-mono small" style="min-width: 80px;">
+                <th class="text-center text-primary font-mono small bg-light" style="min-width: 85px;">
                     <div>กลางภาค</div>
                     <div style="font-size: 0.72rem;">เต็ม ${midtermMax}</div>
                 </th>
-                <th class="text-center text-danger font-mono small" style="min-width: 80px;">
+                ${finalColHeaders}
+                <th class="text-center text-success font-mono small bg-light" style="min-width: 80px;">
+                    <div>รวมเก็บ</div>
+                    <div style="font-size: 0.72rem;">เต็ม ${finalFormativeWeight}</div>
+                </th>
+                <th class="text-center text-danger font-mono small bg-light" style="min-width: 85px;">
                     <div>ปลายภาค</div>
                     <div style="font-size: 0.72rem;">เต็ม ${finalMax}</div>
                 </th>
@@ -2848,10 +2916,12 @@ function renderTabGradebook() {
     const tbody = document.getElementById('gradebook-tbody');
     if (!tbody) return;
 
+    const totalColCount = columns.length + (attCols.length === 0 ? 1 : 0) + (attCols.length > 1 ? 1 : 0) + 11;
+
     if (students.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="${columns.length + 9}" class="text-center py-5 text-muted">
+                <td colspan="${totalColCount}" class="text-center py-5 text-muted">
                     <i class="bi bi-people fs-2 d-block mb-2 text-secondary"></i>
                     ยังไม่มีรายชื่อนักเรียนในห้องเรียนนี้
                 </td>
@@ -2871,41 +2941,131 @@ function renderTabGradebook() {
         const sc = scores[studentKey] || {};
         const avatar = s.image || `https://api.dicebear.com/7.x/big-smile/svg?seed=${encodeURIComponent(s.name || 'Student')}`;
 
-        // คำนวณคะแนนเก็บย่อย
-        let formativeRawSum = 0;
-        const colInputs = columns.map(col => {
+        // รวบรวมคะแนนช่วยทั้งหมดของนักเรียนคนนี้ (On-top bonus)
+        let totalBonus = 0;
+        columns.forEach(col => {
+            if (col.is_bonus || !col.max) {
+                const val = sc[col.id];
+                if (val !== undefined && val !== '' && !isNaN(val)) {
+                    totalBonus += Number(val);
+                }
+            }
+        });
+
+        // 1. คำนวณคะแนนมาเรียน (Attendance)
+        let scaledAtt = 0;
+        let attHtml = '';
+        if (attCols.length > 0) {
+            let attRawSum = 0;
+            const attColInputs = attCols.map(col => {
+                const isBonus = col.is_bonus || !col.max;
+                const rawVal = sc[col.id] !== undefined ? sc[col.id] : '';
+                if (!isBonus && rawVal !== '' && !isNaN(rawVal)) {
+                    attRawSum += Number(rawVal);
+                }
+                return `
+                    <td class="text-center">
+                        <input type="number" step="any" min="0" ${isBonus ? '' : `max="${col.max}"`} 
+                            class="grade-input text-info-emphasis font-mono" 
+                            value="${rawVal}" 
+                            data-col="${col.id}" 
+                            data-row="${rowIdx}" 
+                            data-student="${studentKey}" 
+                            data-max="${isBonus ? 'unlimited' : col.max}"
+                            oninput="handleScoreChange('${studentKey}', '${col.id}', this.value, ${isBonus ? 'null' : col.max}, ${rowIdx})"
+                            onkeydown="handleGradeKeyNav(event, this)">
+                    </td>
+                `;
+            }).join('');
+
+            if (attRawMax > 0) {
+                scaledAtt = Math.round(((attRawSum / attRawMax) * attendanceWeight) * 10) / 10;
+            }
+            attHtml = attColInputs + (attCols.length > 1 ? `<td class="text-center font-mono fw-bold text-info-emphasis bg-light" id="gb-cell-att-${rowIdx}">${scaledAtt}</td>` : '');
+        } else {
+            const directAttVal = sc.attendance !== undefined ? sc.attendance : '';
+            scaledAtt = directAttVal !== '' ? Number(directAttVal) : 0;
+            attHtml = `
+                <td class="text-center">
+                    <input type="number" step="any" min="0" max="${attendanceWeight}" 
+                        class="grade-input text-info-emphasis font-mono fw-bold" 
+                        value="${directAttVal}" 
+                        data-col="attendance" 
+                        data-row="${rowIdx}" 
+                        data-student="${studentKey}" 
+                        data-max="${attendanceWeight}"
+                        oninput="handleScoreChange('${studentKey}', 'attendance', this.value, ${attendanceWeight}, ${rowIdx})"
+                        onkeydown="handleGradeKeyNav(event, this)">
+                </td>
+            `;
+        }
+
+        // 2. คำนวณคะแนนเก็บกลางภาค
+        let midRawSum = 0;
+        const midColInputs = midCols.map(col => {
+            const isBonus = col.is_bonus || !col.max;
             const rawVal = sc[col.id] !== undefined ? sc[col.id] : '';
-            if (rawVal !== '' && !isNaN(rawVal)) {
-                formativeRawSum += Number(rawVal);
+            if (!isBonus && rawVal !== '' && !isNaN(rawVal)) {
+                midRawSum += Number(rawVal);
             }
             return `
                 <td class="text-center">
-                    <input type="number" step="any" min="0" max="${col.max}" 
-                        class="grade-input" 
+                    <input type="number" step="any" min="0" ${isBonus ? '' : `max="${col.max}"`} 
+                        class="grade-input font-mono" 
                         value="${rawVal}" 
                         data-col="${col.id}" 
                         data-row="${rowIdx}" 
                         data-student="${studentKey}" 
-                        data-max="${col.max}"
-                        oninput="handleScoreChange('${studentKey}', '${col.id}', this.value, ${col.max}, ${rowIdx})"
+                        data-max="${isBonus ? 'unlimited' : col.max}"
+                        oninput="handleScoreChange('${studentKey}', '${col.id}', this.value, ${isBonus ? 'null' : col.max}, ${rowIdx})"
                         onkeydown="handleGradeKeyNav(event, this)">
                 </td>
             `;
         }).join('');
 
-        // สเกลคะแนนเก็บเข้าสู่น้ำหนักเป้าหมาย (เช่น เต็ม 50)
-        let scaledFormative = 0;
-        if (formativeRawMax > 0) {
-            scaledFormative = Math.round(((formativeRawSum / formativeRawMax) * targetFormativeWeight) * 10) / 10;
+        let scaledMid = 0;
+        if (midRawMax > 0) {
+            scaledMid = Math.round(((midRawSum / midRawMax) * midFormativeWeight) * 10) / 10;
         }
 
+        // 3. คะแนนสอบกลางภาค
         const midtermVal = sc.midterm !== undefined ? sc.midterm : '';
-        const finalVal = sc.final !== undefined ? sc.final : '';
-
         const midtermNum = Number(midtermVal) || 0;
+
+        // 4. คำนวณคะแนนเก็บปลายภาค
+        let finalRawSum = 0;
+        const finalColInputs = finalCols.map(col => {
+            const isBonus = col.is_bonus || !col.max;
+            const rawVal = sc[col.id] !== undefined ? sc[col.id] : '';
+            if (!isBonus && rawVal !== '' && !isNaN(rawVal)) {
+                finalRawSum += Number(rawVal);
+            }
+            return `
+                <td class="text-center">
+                    <input type="number" step="any" min="0" ${isBonus ? '' : `max="${col.max}"`} 
+                        class="grade-input font-mono" 
+                        value="${rawVal}" 
+                        data-col="${col.id}" 
+                        data-row="${rowIdx}" 
+                        data-student="${studentKey}" 
+                        data-max="${isBonus ? 'unlimited' : col.max}"
+                        oninput="handleScoreChange('${studentKey}', '${col.id}', this.value, ${isBonus ? 'null' : col.max}, ${rowIdx})"
+                        onkeydown="handleGradeKeyNav(event, this)">
+                </td>
+            `;
+        }).join('');
+
+        let scaledFinal = 0;
+        if (finalRawMax > 0) {
+            scaledFinal = Math.round(((finalRawSum / finalRawMax) * finalFormativeWeight) * 10) / 10;
+        }
+
+        // 5. คะแนนสอบปลายภาค
+        const finalVal = sc.final !== undefined ? sc.final : '';
         const finalNum = Number(finalVal) || 0;
 
-        const grandTotal = Math.min(100, Math.round((scaledFormative + midtermNum + finalNum) * 10) / 10);
+        // 6. รวม 100 คะแนน (รวมคะแนนช่วย On-top แบบไม่เกิน 100)
+        const grandTotal = Math.min(100, Math.round((scaledAtt + scaledMid + midtermNum + scaledFinal + finalNum + totalBonus) * 10) / 10);
         const gradeInfo = calculateThaiGrade(grandTotal, sc.status || 'normal');
 
         if (sc.status === 'ms' || sc.status === 'r' || gradeInfo.grade === '0') {
@@ -2935,13 +3095,14 @@ function renderTabGradebook() {
                         </div>
                     </div>
                 </td>
-                ${colInputs}
-                <td class="text-center font-mono fw-bold text-primary" id="gb-cell-formative-${rowIdx}">
-                    ${scaledFormative}
+                ${attHtml}
+                ${midColInputs}
+                <td class="text-center font-mono fw-bold text-primary bg-light" id="gb-cell-mid-formative-${rowIdx}">
+                    ${scaledMid}
                 </td>
                 <td class="text-center">
                     <input type="number" step="any" min="0" max="${midtermMax}" 
-                        class="grade-input text-danger font-mono" 
+                        class="grade-input text-primary font-mono fw-bold" 
                         value="${midtermVal}" 
                         data-col="midterm" 
                         data-row="${rowIdx}" 
@@ -2950,9 +3111,13 @@ function renderTabGradebook() {
                         oninput="handleScoreChange('${studentKey}', 'midterm', this.value, ${midtermMax}, ${rowIdx})"
                         onkeydown="handleGradeKeyNav(event, this)">
                 </td>
+                ${finalColInputs}
+                <td class="text-center font-mono fw-bold text-success bg-light" id="gb-cell-final-formative-${rowIdx}">
+                    ${scaledFinal}
+                </td>
                 <td class="text-center">
                     <input type="number" step="any" min="0" max="${finalMax}" 
-                        class="grade-input text-danger font-mono" 
+                        class="grade-input text-danger font-mono fw-bold" 
                         value="${finalVal}" 
                         data-col="final" 
                         data-row="${rowIdx}" 
@@ -3051,11 +3216,12 @@ function handleScoreChange(studentKey, colId, value, maxScore, rowIdx) {
     const cfg = gb.config || {};
     const columns = gb.columns || [];
 
-    // ตรวจสอบคะแนนเกินเต็ม
+    // ตรวจสอบคะแนนเกินเต็ม (ถ้าไม่ใช่คะแนนช่วย)
+    const isBonusCol = maxScore === null || maxScore === undefined || maxScore === 'null' || maxScore === 'unlimited';
     const numVal = value === '' ? '' : Number(value);
     const inputEl = document.querySelector(`input.grade-input[data-col="${colId}"][data-student="${studentKey}"]`);
 
-    if (numVal !== '' && (numVal < 0 || numVal > maxScore)) {
+    if (!isBonusCol && numVal !== '' && (numVal < 0 || numVal > maxScore)) {
         if (inputEl) inputEl.classList.add('is-invalid-score');
         showToast('warning', 'คะแนนเกินเกณฑ์', `คะแนนช่องนี้เต็ม ${maxScore} คะแนน`);
     } else {
@@ -3066,36 +3232,97 @@ function handleScoreChange(studentKey, colId, value, maxScore, rowIdx) {
 
     // คำนวณแถวนี้ใหม่ทันที
     const sc = gb.scores[studentKey];
+    const attendanceWeight = Number(cfg.attendance_max ?? 10);
+    const midFormativeWeight = Number(cfg.mid_formative_max ?? 20);
     const midtermMax = Number(cfg.midterm_max ?? 20);
+    const finalFormativeWeight = Number(cfg.final_formative_max ?? 20);
     const finalMax = Number(cfg.final_max ?? 30);
-    const targetFormativeWeight = Math.max(0, 100 - (midtermMax + finalMax));
-    const formativeRawMax = columns.reduce((sum, col) => sum + (Number(col.max) || 0), 0);
 
-    let formativeRawSum = 0;
+    const attCols = columns.filter(c => c.term === 'attendance');
+    const midCols = columns.filter(c => c.term === 'midterm' || (!c.term && c.term !== 'final' && c.term !== 'attendance'));
+    const finalCols = columns.filter(c => c.term === 'final');
+
+    const attRawMax = attCols.reduce((sum, col) => sum + (col.is_bonus ? 0 : (Number(col.max) || 0)), 0);
+    const midRawMax = midCols.reduce((sum, col) => sum + (col.is_bonus ? 0 : (Number(col.max) || 0)), 0);
+    const finalRawMax = finalCols.reduce((sum, col) => sum + (col.is_bonus ? 0 : (Number(col.max) || 0)), 0);
+
+    // รวบรวมคะแนนช่วยทั้งหมดของนักเรียนคนนี้ (On-top bonus)
+    let totalBonus = 0;
     columns.forEach(col => {
-        const val = sc[col.id];
-        if (val !== undefined && val !== '' && !isNaN(val)) {
-            formativeRawSum += Number(val);
+        if (col.is_bonus || !col.max) {
+            const val = sc[col.id];
+            if (val !== undefined && val !== '' && !isNaN(val)) {
+                totalBonus += Number(val);
+            }
         }
     });
 
-    let scaledFormative = 0;
-    if (formativeRawMax > 0) {
-        scaledFormative = Math.round(((formativeRawSum / formativeRawMax) * targetFormativeWeight) * 10) / 10;
+    // 1. มาเรียน
+    let scaledAtt = 0;
+    if (attCols.length > 0) {
+        let attRawSum = 0;
+        attCols.forEach(col => {
+            if (!col.is_bonus && Number(col.max) > 0) {
+                const val = sc[col.id];
+                if (val !== undefined && val !== '' && !isNaN(val)) attRawSum += Number(val);
+            }
+        });
+        if (attRawMax > 0) {
+            scaledAtt = Math.round(((attRawSum / attRawMax) * attendanceWeight) * 10) / 10;
+        }
+    } else {
+        scaledAtt = sc.attendance !== undefined && sc.attendance !== '' ? Number(sc.attendance) : 0;
     }
 
+    // 2. กลางภาค
+    let midRawSum = 0;
+    midCols.forEach(col => {
+        if (!col.is_bonus && Number(col.max) > 0) {
+            const val = sc[col.id];
+            if (val !== undefined && val !== '' && !isNaN(val)) midRawSum += Number(val);
+        }
+    });
+    let scaledMid = 0;
+    if (midRawMax > 0) {
+        scaledMid = Math.round(((midRawSum / midRawMax) * midFormativeWeight) * 10) / 10;
+    }
+
+    // 3. สอบกลางภาค
     const midtermNum = Number(sc.midterm || 0);
+
+    // 4. ปลายภาค
+    let finalRawSum = 0;
+    finalCols.forEach(col => {
+        if (!col.is_bonus && Number(col.max) > 0) {
+            const val = sc[col.id];
+            if (val !== undefined && val !== '' && !isNaN(val)) finalRawSum += Number(val);
+        }
+    });
+    let scaledFinal = 0;
+    if (finalRawMax > 0) {
+        scaledFinal = Math.round(((finalRawSum / finalRawMax) * finalFormativeWeight) * 10) / 10;
+    }
+
+    // 5. สอบปลายภาค
     const finalNum = Number(sc.final || 0);
-    const grandTotal = Math.min(100, Math.round((scaledFormative + midtermNum + finalNum) * 10) / 10);
+
+    // 6. รวม 100 (รวมคะแนนช่วย On-top แบบไม่เกิน 100)
+    const grandTotal = Math.min(100, Math.round((scaledAtt + scaledMid + midtermNum + scaledFinal + finalNum + totalBonus) * 10) / 10);
     const gradeInfo = calculateThaiGrade(grandTotal, sc.status || 'normal');
 
     // อัปเดตเซลล์ใน DOM ทันที
-    const cellFormative = document.getElementById(`gb-cell-formative-${rowIdx}`);
+    const cellAtt = document.getElementById(`gb-cell-att-${rowIdx}`);
+    const cellMid = document.getElementById(`gb-cell-mid-formative-${rowIdx}`);
+    const cellFinal = document.getElementById(`gb-cell-final-formative-${rowIdx}`);
     const cellTotal = document.getElementById(`gb-cell-total-${rowIdx}`);
     const cellGrade = document.getElementById(`gb-cell-grade-${rowIdx}`);
 
-    if (cellFormative) cellFormative.innerText = scaledFormative;
-    if (cellTotal) cellTotal.innerText = grandTotal;
+    if (cellAtt) cellAtt.innerText = scaledAtt;
+    if (cellMid) cellMid.innerText = scaledMid;
+    if (cellFinal) cellFinal.innerText = scaledFinal;
+    if (cellTotal) {
+        cellTotal.innerText = grandTotal;
+    }
     if (cellGrade) cellGrade.innerHTML = `<span class="grade-badge ${gradeInfo.badgeClass}">${gradeInfo.grade}</span>`;
 
     // บันทึกลง Storage สำรอง
@@ -3135,7 +3362,28 @@ function handleEvaluationChange(studentKey, field, value, rowIdx = null) {
 }
 
 // ➕ 7. เพิ่มช่องเก็บคะแนนใหม่ (Add Column)
+function toggleGradebookMaxScoreInput() {
+    const isBonus = document.getElementById('gb-col-type-bonus')?.checked || false;
+    const maxContainer = document.getElementById('gb-col-max-container');
+    const bonusHint = document.getElementById('gb-col-bonus-hint');
+    const maxInput = document.getElementById('gb-new-col-max');
+
+    if (isBonus) {
+        if (maxContainer) maxContainer.classList.add('d-none');
+        if (bonusHint) bonusHint.classList.remove('d-none');
+        if (maxInput) maxInput.removeAttribute('required');
+    } else {
+        if (maxContainer) maxContainer.classList.remove('d-none');
+        if (bonusHint) bonusHint.classList.add('d-none');
+        if (maxInput) maxInput.setAttribute('required', 'required');
+    }
+}
+window.toggleGradebookMaxScoreInput = toggleGradebookMaxScoreInput;
+
 function openAddGradeColModal() {
+    const form = document.getElementById('form-add-grade-col');
+    if (form) form.reset();
+    toggleGradebookMaxScoreInput();
     const modalEl = document.getElementById('addGradeColModal');
     if (modalEl) new bootstrap.Modal(modalEl).show();
 }
@@ -3146,9 +3394,11 @@ function handleAddGradeColumn(e) {
 
     const titleInput = document.getElementById('gb-new-col-title');
     const maxInput = document.getElementById('gb-new-col-max');
+    const term = document.querySelector('input[name="gb-col-term"]:checked')?.value || 'midterm';
+    const isBonus = document.getElementById('gb-col-type-bonus')?.checked || false;
 
     const title = titleInput?.value.trim() || 'งานเก็บคะแนน';
-    const max = Number(maxInput?.value) || 10;
+    const max = isBonus ? null : (Number(maxInput?.value) || 10);
 
     if (!activeClassroom.gradebook) activeClassroom.gradebook = { config: {}, columns: [], scores: {} };
     if (!Array.isArray(activeClassroom.gradebook.columns)) activeClassroom.gradebook.columns = [];
@@ -3157,15 +3407,19 @@ function handleAddGradeColumn(e) {
     activeClassroom.gradebook.columns.push({
         id: newColId,
         title: title,
-        max: max
+        max: max,
+        is_bonus: isBonus,
+        term: term // 'attendance' | 'midterm' | 'final'
     });
 
     renderTabGradebook();
     saveGradebookRecord(true);
 
     document.getElementById('form-add-grade-col')?.reset();
+    toggleGradebookMaxScoreInput();
     bootstrap.Modal.getInstance(document.getElementById('addGradeColModal'))?.hide();
-    showToast('success', 'เพิ่มช่องคะแนนแล้ว', `เพิ่ม "${title}" (เต็ม ${max}) เรียบร้อย`);
+    const termLabel = term === 'attendance' ? 'อื่นๆ' : (term === 'final' ? 'คะแนนเก็บปลายภาค' : 'คะแนนเก็บกลางภาค');
+    showToast('success', 'เพิ่มช่องคะแนนแล้ว', `เพิ่ม "${title}" ${isBonus ? '(ไม่มีคะแนนเต็ม)' : `(เต็ม ${max})`} ใน [${termLabel}] เรียบร้อย`);
 }
 
 // 🗑️ 8. ลบช่องคะแนน
@@ -3198,6 +3452,26 @@ async function deleteGradeColumn(colId) {
 }
 
 // ⚙️ 9. ตั้งค่า ปพ.5 (Config Modal)
+function calcGradebookConfigTotal() {
+    const elAtt = document.getElementById('gb-cfg-attendance');
+    const elMidForm = document.getElementById('gb-cfg-mid-formative');
+    const elMid = document.getElementById('gb-cfg-midterm');
+    const elFinForm = document.getElementById('gb-cfg-final-formative');
+    const elFin = document.getElementById('gb-cfg-final');
+    const label = document.getElementById('gb-cfg-total-label');
+
+    const sum = (Number(elAtt?.value) || 0) + (Number(elMidForm?.value) || 0) + (Number(elMid?.value) || 0) + (Number(elFinForm?.value) || 0) + (Number(elFin?.value) || 0);
+    if (label) {
+        if (sum === 100) {
+            label.className = 'fw-bold font-mono text-success';
+            label.innerText = `รวม 100 / 100 คะแนน (ถูกต้อง ✓)`;
+        } else {
+            label.className = 'fw-bold font-mono text-danger';
+            label.innerText = `รวม ${sum} / 100 คะแนน (ควรเท่ากับ 100)`;
+        }
+    }
+}
+
 function openGradebookConfigModal() {
     if (!activeClassroom) return;
     const gb = activeClassroom.gradebook || {};
@@ -3207,15 +3481,24 @@ function openGradebookConfigModal() {
     const elName = document.getElementById('gb-cfg-name');
     const elSem = document.getElementById('gb-cfg-semester');
     const elYear = document.getElementById('gb-cfg-year');
+    const elAtt = document.getElementById('gb-cfg-attendance');
+    const elMidForm = document.getElementById('gb-cfg-mid-formative');
     const elMid = document.getElementById('gb-cfg-midterm');
+    const elFinForm = document.getElementById('gb-cfg-final-formative');
     const elFin = document.getElementById('gb-cfg-final');
 
     if (elCode) elCode.value = cfg.subject_code || '';
     if (elName) elName.value = cfg.subject_name || activeClassroom.class_name || '';
     if (elSem) elSem.value = cfg.semester || '1';
     if (elYear) elYear.value = cfg.academic_year || '2569';
+    
+    if (elAtt) elAtt.value = cfg.attendance_max ?? 10;
+    if (elMidForm) elMidForm.value = cfg.mid_formative_max ?? 20;
     if (elMid) elMid.value = cfg.midterm_max ?? 20;
+    if (elFinForm) elFinForm.value = cfg.final_formative_max ?? 20;
     if (elFin) elFin.value = cfg.final_max ?? 30;
+
+    calcGradebookConfigTotal();
 
     const modalEl = document.getElementById('gradebookConfigModal');
     if (modalEl) new bootstrap.Modal(modalEl).show();
@@ -3229,7 +3512,10 @@ function handleSaveGradebookConfig(e) {
     const elName = document.getElementById('gb-cfg-name');
     const elSem = document.getElementById('gb-cfg-semester');
     const elYear = document.getElementById('gb-cfg-year');
+    const elAtt = document.getElementById('gb-cfg-attendance');
+    const elMidForm = document.getElementById('gb-cfg-mid-formative');
     const elMid = document.getElementById('gb-cfg-midterm');
+    const elFinForm = document.getElementById('gb-cfg-final-formative');
     const elFin = document.getElementById('gb-cfg-final');
 
     if (!activeClassroom.gradebook) activeClassroom.gradebook = { config: {}, columns: [], scores: {} };
@@ -3241,7 +3527,10 @@ function handleSaveGradebookConfig(e) {
         subject_name: elName?.value.trim() || activeClassroom.class_name || '',
         semester: elSem?.value || '1',
         academic_year: elYear?.value.trim() || '2569',
+        attendance_max: Number(elAtt?.value) || 10,
+        mid_formative_max: Number(elMidForm?.value) || 20,
         midterm_max: Number(elMid?.value) || 20,
+        final_formative_max: Number(elFinForm?.value) || 20,
         final_max: Number(elFin?.value) || 30
     };
 
@@ -3279,6 +3568,8 @@ function executeImportAssignment() {
     const assignId = select?.value;
     if (!assignId) return;
 
+    const term = document.querySelector('input[name="import-assign-term"]:checked')?.value || 'midterm';
+
     const assignments = Array.isArray(activeClassroom.assignments) ? activeClassroom.assignments : [];
     const target = assignments.find(a => a.id === assignId);
     if (!target) return;
@@ -3295,8 +3586,11 @@ function executeImportAssignment() {
         activeClassroom.gradebook.columns.push({
             id: colId,
             title: target.title.slice(0, 15),
-            max: Number(target.max_score) || 10
+            max: Number(target.max_score) || 10,
+            term: term
         });
+    } else {
+        existingCol.term = term;
     }
 
     // ถ่ายโอนคะแนน
@@ -3318,7 +3612,8 @@ function executeImportAssignment() {
     saveGradebookRecord(true);
 
     bootstrap.Modal.getInstance(document.getElementById('importAssignmentModal'))?.hide();
-    showToast('success', 'ดึงคะแนนสำเร็จ!', `นำเข้าคะแนนจากการบ้าน "${target.title}" ของนักเรียน ${importedCount} คนแล้ว`);
+    const termLabel = term === 'attendance' ? 'มาเรียน' : (term === 'final' ? 'คะแนนเก็บปลายภาค' : 'คะแนนเก็บกลางภาค');
+    showToast('success', 'ดึงคะแนนสำเร็จ!', `นำเข้าคะแนน "${target.title}" ของนักเรียน ${importedCount} คน ใส่ใน [${termLabel}] แล้ว`);
 }
 
 // ⚠️ 11. ตรวจสอบเวลาเรียนและแจ้งเตือนนักเรียนที่เสี่ยงติด มส. (Absent > 20%)
@@ -3415,10 +3710,19 @@ function exportGradebookToCSV() {
     const scores = gb.scores || {};
     const students = Array.isArray(activeClassroom.students) ? activeClassroom.students : [];
 
+    const attendanceWeight = Number(cfg.attendance_max ?? 10);
+    const midFormativeWeight = Number(cfg.mid_formative_max ?? 20);
     const midtermMax = Number(cfg.midterm_max ?? 20);
+    const finalFormativeWeight = Number(cfg.final_formative_max ?? 20);
     const finalMax = Number(cfg.final_max ?? 30);
-    const targetFormativeWeight = Math.max(0, 100 - (midtermMax + finalMax));
-    const formativeRawMax = columns.reduce((sum, col) => sum + (Number(col.max) || 0), 0);
+
+    const attCols = columns.filter(c => c.term === 'attendance');
+    const midCols = columns.filter(c => c.term === 'midterm' || (!c.term && c.term !== 'final' && c.term !== 'attendance'));
+    const finalCols = columns.filter(c => c.term === 'final');
+
+    const attRawMax = attCols.reduce((sum, col) => sum + (col.is_bonus ? 0 : (Number(col.max) || 0)), 0);
+    const midRawMax = midCols.reduce((sum, col) => sum + (col.is_bonus ? 0 : (Number(col.max) || 0)), 0);
+    const finalRawMax = finalCols.reduce((sum, col) => sum + (col.is_bonus ? 0 : (Number(col.max) || 0)), 0);
 
     let csv = '\uFEFF'; // BOM สำหรับให้ Excel เปิดภาษาไทยได้โดยไม่เป็นภาษาต่างดาว
 
@@ -3428,10 +3732,18 @@ function exportGradebookToCSV() {
 
     // คอลัมน์หัวตาราง
     const headers = ['เลขที่', 'รหัสนักเรียน', 'ชื่อ - สกุล'];
-    columns.forEach(c => headers.push(`"${c.title} (${c.max})"`));
-    headers.push(`"รวมเก็บ (${targetFormativeWeight})"`);
-    headers.push(`"กลางภาค (${midtermMax})"`);
-    headers.push(`"ปลายภาค (${finalMax})"`);
+    if (attCols.length > 0) {
+        attCols.forEach(c => headers.push(`"${c.title} ${c.is_bonus || !c.max ? '(ไม่มีคะแนนเต็ม)' : `(${c.max})`}"`));
+        if (attCols.length > 1) headers.push(`"รวมมาเรียน (${attendanceWeight})"`);
+    } else {
+        headers.push(`"มาเรียน (${attendanceWeight})"`);
+    }
+    midCols.forEach(c => headers.push(`"${c.title} ${c.is_bonus || !c.max ? '(ไม่มีคะแนนเต็ม)' : `(${c.max})`}"`));
+    headers.push(`"รวมเก็บกลางภาค (${midFormativeWeight})"`);
+    headers.push(`"สอบกลางภาค (${midtermMax})"`);
+    finalCols.forEach(c => headers.push(`"${c.title} ${c.is_bonus || !c.max ? '(ไม่มีคะแนนเต็ม)' : `(${c.max})`}"`));
+    headers.push(`"รวมเก็บปลายภาค (${finalFormativeWeight})"`);
+    headers.push(`"สอบปลายภาค (${finalMax})"`);
     headers.push('"รวม 100"');
     headers.push('"เกรด"');
     headers.push('"คุณลักษณะ (0-3)"');
@@ -3445,33 +3757,81 @@ function exportGradebookToCSV() {
         const studentKey = s.user_id || s.name;
         const sc = scores[studentKey] || {};
 
-        let formativeRawSum = 0;
-        const colVals = columns.map(c => {
+        let totalBonus = 0;
+        columns.forEach(col => {
+            if (col.is_bonus || !col.max) {
+                const val = sc[col.id];
+                if (val !== undefined && val !== '' && !isNaN(val)) totalBonus += Number(val);
+            }
+        });
+
+        let scaledAtt = 0;
+        let attVals = [];
+        if (attCols.length > 0) {
+            let attRawSum = 0;
+            attVals = attCols.map(c => {
+                const v = sc[c.id];
+                if (v !== undefined && v !== '' && !isNaN(v)) {
+                    if (!c.is_bonus && Number(c.max) > 0) attRawSum += Number(v);
+                    return v;
+                }
+                return '';
+            });
+            if (attRawMax > 0) {
+                scaledAtt = Math.round(((attRawSum / attRawMax) * attendanceWeight) * 10) / 10;
+            }
+            if (attCols.length > 1) attVals.push(scaledAtt);
+        } else {
+            const directAttVal = sc.attendance !== undefined ? sc.attendance : '';
+            scaledAtt = directAttVal !== '' ? Number(directAttVal) : 0;
+            attVals = [scaledAtt];
+        }
+
+        let midRawSum = 0;
+        const midVals = midCols.map(c => {
             const v = sc[c.id];
             if (v !== undefined && v !== '' && !isNaN(v)) {
-                formativeRawSum += Number(v);
+                if (!c.is_bonus && Number(c.max) > 0) midRawSum += Number(v);
                 return v;
             }
             return '';
         });
 
-        let scaledFormative = 0;
-        if (formativeRawMax > 0) {
-            scaledFormative = Math.round(((formativeRawSum / formativeRawMax) * targetFormativeWeight) * 10) / 10;
+        let scaledMid = 0;
+        if (midRawMax > 0) {
+            scaledMid = Math.round(((midRawSum / midRawMax) * midFormativeWeight) * 10) / 10;
+        }
+
+        let finalRawSum = 0;
+        const finalVals = finalCols.map(c => {
+            const v = sc[c.id];
+            if (v !== undefined && v !== '' && !isNaN(v)) {
+                if (!c.is_bonus && Number(c.max) > 0) finalRawSum += Number(v);
+                return v;
+            }
+            return '';
+        });
+
+        let scaledFinal = 0;
+        if (finalRawMax > 0) {
+            scaledFinal = Math.round(((finalRawSum / finalRawMax) * finalFormativeWeight) * 10) / 10;
         }
 
         const mid = Number(sc.midterm || 0);
         const fin = Number(sc.final || 0);
-        const total = Math.min(100, Math.round((scaledFormative + mid + fin) * 10) / 10);
+        const total = Math.min(100, Math.round((scaledAtt + scaledMid + mid + scaledFinal + fin + totalBonus) * 10) / 10);
         const gradeObj = calculateThaiGrade(total, sc.status || 'normal');
 
         const row = [
             idx + 1,
             `"${s.student_id || '-'}"`,
             `"${s.name || ''}"`,
-            ...colVals,
-            scaledFormative,
+            ...attVals,
+            ...midVals,
+            scaledMid,
             mid,
+            ...finalVals,
+            scaledFinal,
             fin,
             total,
             `"${gradeObj.grade}"`,
@@ -3503,10 +3863,19 @@ function printGradebookReport() {
     const scores = gb.scores || {};
     const students = Array.isArray(activeClassroom.students) ? activeClassroom.students : [];
 
+    const attendanceWeight = Number(cfg.attendance_max ?? 10);
+    const midFormativeWeight = Number(cfg.mid_formative_max ?? 20);
     const midtermMax = Number(cfg.midterm_max ?? 20);
+    const finalFormativeWeight = Number(cfg.final_formative_max ?? 20);
     const finalMax = Number(cfg.final_max ?? 30);
-    const targetFormativeWeight = Math.max(0, 100 - (midtermMax + finalMax));
-    const formativeRawMax = columns.reduce((sum, col) => sum + (Number(col.max) || 0), 0);
+
+    const attCols = columns.filter(c => c.term === 'attendance');
+    const midCols = columns.filter(c => c.term === 'midterm' || (!c.term && c.term !== 'final' && c.term !== 'attendance'));
+    const finalCols = columns.filter(c => c.term === 'final');
+
+    const attRawMax = attCols.reduce((sum, col) => sum + (col.is_bonus ? 0 : (Number(col.max) || 0)), 0);
+    const midRawMax = midCols.reduce((sum, col) => sum + (col.is_bonus ? 0 : (Number(col.max) || 0)), 0);
+    const finalRawMax = finalCols.reduce((sum, col) => sum + (col.is_bonus ? 0 : (Number(col.max) || 0)), 0);
 
     const printContainer = document.getElementById('print-pp5-container');
     if (!printContainer) return;
@@ -3518,24 +3887,72 @@ function printGradebookReport() {
         const studentKey = s.user_id || s.name;
         const sc = scores[studentKey] || {};
 
-        let formativeRawSum = 0;
-        const colVals = columns.map(c => {
+        let totalBonus = 0;
+        columns.forEach(col => {
+            if (col.is_bonus || !col.max) {
+                const val = sc[col.id];
+                if (val !== undefined && val !== '' && !isNaN(val)) totalBonus += Number(val);
+            }
+        });
+
+        let scaledAtt = 0;
+        let attColVals = '';
+        if (attCols.length > 0) {
+            let attRawSum = 0;
+            attColVals = attCols.map(c => {
+                const v = sc[c.id];
+                if (v !== undefined && v !== '' && !isNaN(v)) {
+                    if (!c.is_bonus && Number(c.max) > 0) attRawSum += Number(v);
+                    return v;
+                }
+                return '-';
+            }).map(v => `<td style="border: 1px solid #000; text-align: center; padding: 4px;">${v}</td>`).join('');
+
+            if (attRawMax > 0) {
+                scaledAtt = Math.round(((attRawSum / attRawMax) * attendanceWeight) * 10) / 10;
+            }
+            if (attCols.length > 1) {
+                attColVals += `<td style="border: 1px solid #000; text-align: center; padding: 4px; font-weight: bold;">${scaledAtt}</td>`;
+            }
+        } else {
+            const directAttVal = sc.attendance !== undefined ? sc.attendance : '';
+            scaledAtt = directAttVal !== '' ? Number(directAttVal) : 0;
+            attColVals = `<td style="border: 1px solid #000; text-align: center; padding: 4px;">${scaledAtt}</td>`;
+        }
+
+        let midRawSum = 0;
+        const midColVals = midCols.map(c => {
             const v = sc[c.id];
             if (v !== undefined && v !== '' && !isNaN(v)) {
-                formativeRawSum += Number(v);
+                if (!c.is_bonus && Number(c.max) > 0) midRawSum += Number(v);
                 return v;
             }
             return '-';
         }).map(v => `<td style="border: 1px solid #000; text-align: center; padding: 4px;">${v}</td>`).join('');
 
-        let scaledFormative = 0;
-        if (formativeRawMax > 0) {
-            scaledFormative = Math.round(((formativeRawSum / formativeRawMax) * targetFormativeWeight) * 10) / 10;
+        let scaledMid = 0;
+        if (midRawMax > 0) {
+            scaledMid = Math.round(((midRawSum / midRawMax) * midFormativeWeight) * 10) / 10;
+        }
+
+        let finalRawSum = 0;
+        const finalColVals = finalCols.map(c => {
+            const v = sc[c.id];
+            if (v !== undefined && v !== '' && !isNaN(v)) {
+                if (!c.is_bonus && Number(c.max) > 0) finalRawSum += Number(v);
+                return v;
+            }
+            return '-';
+        }).map(v => `<td style="border: 1px solid #000; text-align: center; padding: 4px;">${v}</td>`).join('');
+
+        let scaledFinal = 0;
+        if (finalRawMax > 0) {
+            scaledFinal = Math.round(((finalRawSum / finalRawMax) * finalFormativeWeight) * 10) / 10;
         }
 
         const mid = Number(sc.midterm || 0);
         const fin = Number(sc.final || 0);
-        const total = Math.min(100, Math.round((scaledFormative + mid + fin) * 10) / 10);
+        const total = Math.min(100, Math.round((scaledAtt + scaledMid + mid + scaledFinal + fin + totalBonus) * 10) / 10);
         const gradeObj = calculateThaiGrade(total, sc.status || 'normal');
 
         if (gradeCounts[gradeObj.grade] !== undefined) {
@@ -3546,9 +3963,12 @@ function printGradebookReport() {
             <tr>
                 <td style="border: 1px solid #000; text-align: center; padding: 4px;">${idx + 1}</td>
                 <td style="border: 1px solid #000; text-align: left; padding: 4px 8px;">${s.name}</td>
-                ${colVals}
-                <td style="border: 1px solid #000; text-align: center; padding: 4px; font-weight: bold;">${scaledFormative}</td>
+                ${attColVals}
+                ${midColVals}
+                <td style="border: 1px solid #000; text-align: center; padding: 4px; font-weight: bold;">${scaledMid}</td>
                 <td style="border: 1px solid #000; text-align: center; padding: 4px;">${mid}</td>
+                ${finalColVals}
+                <td style="border: 1px solid #000; text-align: center; padding: 4px; font-weight: bold;">${scaledFinal}</td>
                 <td style="border: 1px solid #000; text-align: center; padding: 4px;">${fin}</td>
                 <td style="border: 1px solid #000; text-align: center; padding: 4px; font-weight: bold;">${total}</td>
                 <td style="border: 1px solid #000; text-align: center; padding: 4px; font-weight: bold;">${gradeObj.grade}</td>
@@ -3559,9 +3979,19 @@ function printGradebookReport() {
         `;
     });
 
-    const colHeaderHtml = columns.map(c => `
-        <th style="border: 1px solid #000; padding: 4px; font-size: 0.8rem;">${c.title}<br>(${c.max})</th>
+    const attHeaderHtml = attCols.length > 0 
+        ? (attCols.map(c => `<th style="border: 1px solid #000; padding: 4px; font-size: 0.8rem;">${c.title}<br>${c.is_bonus || !c.max ? '(ไม่มีคะแนนเต็ม)' : `(${c.max})`}</th>`).join('') + (attCols.length > 1 ? `<th style="border: 1px solid #000; padding: 4px; font-size: 0.8rem;">รวมมาเรียน<br>(${attendanceWeight})</th>` : ''))
+        : `<th style="border: 1px solid #000; padding: 4px; font-size: 0.8rem;">มาเรียน<br>(${attendanceWeight})</th>`;
+
+    const midHeaderHtml = midCols.map(c => `
+        <th style="border: 1px solid #000; padding: 4px; font-size: 0.8rem;">${c.title}<br>${c.is_bonus || !c.max ? '(ไม่มีคะแนนเต็ม)' : `(${c.max})`}</th>
     `).join('');
+
+    const finalHeaderHtml = finalCols.map(c => `
+        <th style="border: 1px solid #000; padding: 4px; font-size: 0.8rem;">${c.title}<br>${c.is_bonus || !c.max ? '(ไม่มีคะแนนเต็ม)' : `(${c.max})`}</th>
+    `).join('');
+
+    const attColspan = attCols.length > 0 ? (attCols.length > 1 ? attCols.length + 1 : attCols.length) : 1;
 
     printContainer.innerHTML = `
         <div style="font-family: 'Sarabun', 'TH Sarabun New', sans-serif; font-size: 13px; line-height: 1.4; padding: 20px; color: #000;">
@@ -3576,8 +4006,11 @@ function printGradebookReport() {
                     <tr style="background: #f0f0f0;">
                         <th rowspan="2" style="border: 1px solid #000; padding: 4px; width: 35px;">เลขที่</th>
                         <th rowspan="2" style="border: 1px solid #000; padding: 4px; min-width: 140px;">ชื่อ - สกุล</th>
-                        <th colspan="${columns.length + 1}" style="border: 1px solid #000; padding: 4px;">คะแนนเก็บระหว่างภาค (${targetFormativeWeight})</th>
-                        <th colspan="2" style="border: 1px solid #000; padding: 4px;">คะแนนสอบ</th>
+                        <th colspan="${attColspan}" style="border: 1px solid #000; padding: 4px;">มาเรียน (${attendanceWeight})</th>
+                        <th colspan="${midCols.length + 1}" style="border: 1px solid #000; padding: 4px;">คะแนนเก็บกลางภาค (${midFormativeWeight})</th>
+                        <th style="border: 1px solid #000; padding: 4px;">คะแนนสอบกลางภาค</th>
+                        <th colspan="${finalCols.length + 1}" style="border: 1px solid #000; padding: 4px;">คะแนนเก็บปลายภาค (${finalFormativeWeight})</th>
+                        <th style="border: 1px solid #000; padding: 4px;">สอบปลายภาค</th>
                         <th rowspan="2" style="border: 1px solid #000; padding: 4px; width: 45px;">รวม<br>(100)</th>
                         <th rowspan="2" style="border: 1px solid #000; padding: 4px; width: 38px;">เกรด</th>
                         <th rowspan="2" style="border: 1px solid #000; padding: 4px; width: 50px;">คุณลักษณะ<br>(0-3)</th>
@@ -3585,9 +4018,12 @@ function printGradebookReport() {
                         <th rowspan="2" style="border: 1px solid #000; padding: 4px; width: 45px;">สถานะ</th>
                     </tr>
                     <tr style="background: #f9f9f9;">
-                        ${colHeaderHtml}
-                        <th style="border: 1px solid #000; padding: 4px; font-size: 0.8rem;">รวมเก็บ<br>(${targetFormativeWeight})</th>
+                        ${attHeaderHtml}
+                        ${midHeaderHtml}
+                        <th style="border: 1px solid #000; padding: 4px; font-size: 0.8rem;">รวมเก็บ<br>(${midFormativeWeight})</th>
                         <th style="border: 1px solid #000; padding: 4px; font-size: 0.8rem;">กลางภาค<br>(${midtermMax})</th>
+                        ${finalHeaderHtml}
+                        <th style="border: 1px solid #000; padding: 4px; font-size: 0.8rem;">รวมเก็บ<br>(${finalFormativeWeight})</th>
                         <th style="border: 1px solid #000; padding: 4px; font-size: 0.8rem;">ปลายภาค<br>(${finalMax})</th>
                     </tr>
                 </thead>

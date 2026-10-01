@@ -967,14 +967,13 @@
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label small fw-bold text-secondary d-flex justify-content-between align-items-center">
-                                <span>ไฟล์เอกสาร / แหล่งที่มา <span class="text-danger">*</span></span>
-                                <span class="file-badge-cloudinary"><i class="bi bi-cloud-check-fill"></i> Cloudinary</span>
+                            <label class="form-label small fw-bold text-secondary">
+                                ไฟล์เอกสาร / แหล่งที่มา <span class="text-danger">*</span>
                             </label>
                             <div class="btn-group w-100 p-1 bg-light rounded-pill border mb-2" role="group">
                                 <input type="radio" class="btn-check" name="materialSourceType" id="mat-type-file" value="file" checked onchange="toggleMaterialSourceType('file')">
                                 <label class="btn btn-sm rounded-pill fw-bold" for="mat-type-file">
-                                    <i class="bi bi-paperclip me-1"></i>อัปโหลดไฟล์ (Cloudinary)
+                                    <i class="bi bi-paperclip me-1"></i>อัปโหลดไฟล์
                                 </label>
                                 <input type="radio" class="btn-check" name="materialSourceType" id="mat-type-link" value="link" onchange="toggleMaterialSourceType('link')">
                                 <label class="btn btn-sm rounded-pill fw-bold" for="mat-type-link">
@@ -988,7 +987,7 @@
                                     <input type="file" id="material-file-input" class="d-none" onchange="handleMaterialFileSelected(event)">
                                     <i class="bi bi-cloud-arrow-up-fill text-primary display-6 d-block mb-1"></i>
                                     <div class="fw-bold text-dark small mb-1">คลิกเลือกไฟล์ หรือลากไฟล์มาวางที่นี่</div>
-                                    <div class="text-muted" style="font-size: 0.78rem;">รองรับ PDF, Word, PowerPoint, Excel, รูปภาพ, วิดีโอ, ZIP (อัปโหลดขึ้น Cloudinary)</div>
+                                    <div class="text-muted" style="font-size: 0.78rem;">รองรับ PDF, Word, PowerPoint, Excel, รูปภาพ, วิดีโอ, ZIP (ขนาดสูงสุด 100 MB)</div>
                                 </div>
                                 <div id="mat-file-selected-card" class="file-preview-card mt-2 d-none">
                                     <div class="d-flex align-items-center gap-2 text-truncate me-2">
@@ -1018,7 +1017,7 @@
                         <div id="material-upload-progress" class="alert alert-info border-info-subtle rounded-3 p-2 small d-none mb-3">
                             <div class="d-flex align-items-center gap-2">
                                 <div class="spinner-border spinner-border-sm text-info" role="status"></div>
-                                <span class="fw-bold text-dark" id="material-upload-status-text">กำลังอัปโหลดไฟล์ขึ้น Cloudinary...</span>
+                                <span class="fw-bold text-dark" id="material-upload-status-text">กำลังอัปโหลดไฟล์...</span>
                             </div>
                         </div>
                         <div class="mb-3">
@@ -1156,19 +1155,92 @@
                 </div>
                 <div class="modal-body">
                     <form id="form-add-grade-col" onsubmit="handleAddGradeColumn(event)">
+                        <!-- เลือกว่าเป็น มาเรียน, คะแนนเก็บกลางภาค หรือปลายภาค -->
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">ส่วนคะแนนที่ต้องการเพิ่ม <span class="text-danger">*</span></label>
+                            <div class="row g-2">
+                                <div class="col-4">
+                                    <input type="radio" class="btn-check" name="gb-col-term" id="gb-col-term-att" value="attendance">
+                                    <label class="btn btn-outline-info w-100 rounded-3 py-2 small fw-bold text-start d-flex align-items-center gap-1" for="gb-col-term-att">
+                                        <i class="bi bi-calendar-check-fill fs-5 text-info"></i>
+                                        <div>
+                                            <div>อื่นๆ</div>
+                                            <div class="text-muted fw-normal" style="font-size: 0.68rem;">จิตพิสัย/เข้าเรียน</div>
+                                        </div>
+                                    </label>
+                                </div>
+                                <div class="col-4">
+                                    <input type="radio" class="btn-check" name="gb-col-term" id="gb-col-term-mid" value="midterm" checked>
+                                    <label class="btn btn-outline-primary w-100 rounded-3 py-2 small fw-bold text-start d-flex align-items-center gap-1" for="gb-col-term-mid">
+                                        <i class="bi bi-bookmark-check-fill fs-5 text-primary"></i>
+                                        <div>
+                                            <div>เก็บกลางภาค</div>
+                                            <div class="text-muted fw-normal" style="font-size: 0.68rem;">ก่อนกลางภาค</div>
+                                        </div>
+                                    </label>
+                                </div>
+                                <div class="col-4">
+                                    <input type="radio" class="btn-check" name="gb-col-term" id="gb-col-term-final" value="final">
+                                    <label class="btn btn-outline-success w-100 rounded-3 py-2 small fw-bold text-start d-flex align-items-center gap-1" for="gb-col-term-final">
+                                        <i class="bi bi-bookmark-star-fill fs-5 text-success"></i>
+                                        <div>
+                                            <div>เก็บปลายภาค</div>
+                                            <div class="text-muted fw-normal" style="font-size: 0.68rem;">หลังกลางภาค</div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
                         <div class="mb-3">
                             <label class="form-label small fw-bold text-secondary">ชื่อช่องคะแนน <span
                                     class="text-danger">*</span></label>
                             <input type="text" id="gb-new-col-title" class="form-control rounded-3"
-                                placeholder="เช่น ใบงานที่ 3 หรือ สอบเก็บคะแนนหน่วยที่ 2" required>
+                                placeholder="เช่น เช็คชื่อ/จิตพิสัย, ใบงานที่ 3 หรือ ช่วยงาน/ตอบคำถาม" required>
                         </div>
+
+                        <!-- 🌟 รูปแบบคะแนน: มีคะแนนเต็ม หรือ ไม่มีคะแนนเต็ม (คะแนนช่วย) -->
                         <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">รูปแบบคะแนน <span class="text-danger">*</span></label>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <input type="radio" class="btn-check" name="gb-col-type" id="gb-col-type-normal" value="normal" checked onchange="toggleGradebookMaxScoreInput()">
+                                    <label class="btn btn-outline-secondary w-100 rounded-3 p-2 small fw-bold text-start d-flex align-items-center gap-2" for="gb-col-type-normal">
+                                        <i class="bi bi-bullseye fs-5 text-primary"></i>
+                                        <div>
+                                            <div>มีคะแนนเต็ม</div>
+                                            <div class="text-muted fw-normal" style="font-size: 0.68rem;">เช่น เต็ม 10, 20</div>
+                                        </div>
+                                    </label>
+                                </div>
+                                <div class="col-6">
+                                    <input type="radio" class="btn-check" name="gb-col-type" id="gb-col-type-bonus" value="bonus" onchange="toggleGradebookMaxScoreInput()">
+                                    <label class="btn btn-outline-secondary w-100 rounded-3 p-2 small fw-bold text-start d-flex align-items-center gap-2" for="gb-col-type-bonus">
+                                        <i class="bi bi-dash-circle fs-5 text-secondary"></i>
+                                        <div>
+                                            <div class="text-dark">ไม่มีคะแนนเต็ม</div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ช่องกรอกคะแนนเต็ม (แสดงเฉพาะเมื่อเลือกมีคะแนนเต็ม) -->
+                        <div class="mb-3" id="gb-col-max-container">
                             <label class="form-label small fw-bold text-secondary">คะแนนเต็ม <span
                                     class="text-danger">*</span></label>
                             <input type="number" id="gb-new-col-max" class="form-control rounded-3 font-mono" min="1"
-                                max="100" value="10" required>
+                                max="1000" value="10" required>
                             <div class="form-text small">ระบุคะแนนเต็มของงานหรือการทดสอบนี้</div>
                         </div>
+
+                        <!-- ป้ายเตือนไม่มีคะแนนเต็ม -->
+                        <div class="mb-3 d-none" id="gb-col-bonus-hint">
+                            <div class="alert alert-secondary border bg-light text-secondary-emphasis p-2.5 rounded-3 small d-flex align-items-center gap-2 mb-0">
+                                <i class="bi bi-info-circle-fill fs-5 text-secondary flex-shrink-0"></i>
+                                <div><b>ไม่มีคะแนนเต็ม:</b> กรอกคะแนนได้ตามต้องการโดยไม่จำกัดเพดานคะแนน</div>
+                            </div>
+                        </div>
+
                         <div class="d-flex justify-content-end gap-2 mt-4">
                             <button type="button" class="btn btn-light rounded-pill px-4"
                                 data-bs-dismiss="modal">ยกเลิก</button>
@@ -1225,23 +1297,45 @@
                         </div>
                         <div class="border-top pt-3 mb-3">
                             <h6 class="fw-bold small text-primary mb-2"><i
-                                    class="bi bi-pie-chart-fill me-1"></i>สัดส่วนคะแนนสอบหลัก</h6>
-                            <div class="row g-2">
-                                <div class="col-6">
-                                    <label class="form-label small fw-bold text-secondary">สอบกลางภาค (คะแนน)</label>
-                                    <input type="number" id="gb-cfg-midterm"
-                                        class="form-control form-control-sm rounded-3 font-mono" min="0" max="50"
-                                        value="20" required>
+                                    class="bi bi-pie-chart-fill me-1"></i>โครงสร้างสัดส่วนคะแนน 5 ส่วน (รวม 100 คะแนน)</h6>
+                            <div class="row g-2 mb-2">
+                                <div class="col-4">
+                                    <label class="form-label small fw-bold text-info-emphasis">1. มาเรียน (จิตพิสัย)</label>
+                                    <input type="number" id="gb-cfg-attendance"
+                                        class="form-control form-control-sm rounded-3 font-mono" min="0" max="100"
+                                        value="10" required oninput="calcGradebookConfigTotal()">
                                 </div>
-                                <div class="col-6">
-                                    <label class="form-label small fw-bold text-secondary">สอบปลายภาค (คะแนน)</label>
-                                    <input type="number" id="gb-cfg-final"
-                                        class="form-control form-control-sm rounded-3 font-mono" min="0" max="50"
-                                        value="30" required>
+                                <div class="col-4">
+                                    <label class="form-label small fw-bold text-primary">2. เก็บกลางภาค</label>
+                                    <input type="number" id="gb-cfg-mid-formative"
+                                        class="form-control form-control-sm rounded-3 font-mono" min="0" max="100"
+                                        value="20" required oninput="calcGradebookConfigTotal()">
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label small fw-bold text-primary">3. สอบกลางภาค</label>
+                                    <input type="number" id="gb-cfg-midterm"
+                                        class="form-control form-control-sm rounded-3 font-mono" min="0" max="100"
+                                        value="20" required oninput="calcGradebookConfigTotal()">
                                 </div>
                             </div>
-                            <div class="form-text small mt-2">คะแนนรวมทั้งสิ้นจะคำนวณจาก (คะแนนเก็บทั้งหมด + สอบกลางภาค
-                                + สอบปลายภาค) เต็ม 100 คะแนน</div>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <label class="form-label small fw-bold text-success">4. เก็บปลายภาค</label>
+                                    <input type="number" id="gb-cfg-final-formative"
+                                        class="form-control form-control-sm rounded-3 font-mono" min="0" max="100"
+                                        value="20" required oninput="calcGradebookConfigTotal()">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small fw-bold text-danger">5. สอบปลายภาค</label>
+                                    <input type="number" id="gb-cfg-final"
+                                        class="form-control form-control-sm rounded-3 font-mono" min="0" max="100"
+                                        value="30" required oninput="calcGradebookConfigTotal()">
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mt-2 p-2 bg-light rounded-3 small">
+                                <span class="text-muted">ผลรวมคะแนน 5 ส่วน:</span>
+                                <span class="fw-bold font-mono text-dark" id="gb-cfg-total-label">รวม 100 / 100 คะแนน</span>
+                            </div>
                         </div>
                         <div class="d-flex justify-content-end gap-2 mt-4">
                             <button type="button" class="btn btn-light rounded-pill px-4"
@@ -1270,6 +1364,29 @@
                 <div class="modal-body">
                     <p class="small text-muted mb-3">เลือกรอบการบ้านที่ตรวจแล้ว
                         เพื่อนำคะแนนของนักเรียนทุกคนมาใส่ในช่องคะแนนเก็บโดยอัตโนมัติ</p>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-secondary">นำเข้าใส่ช่วงคะแนน</label>
+                        <div class="row g-2">
+                            <div class="col-4">
+                                <input type="radio" class="btn-check" name="import-assign-term" id="import-term-att" value="attendance">
+                                <label class="btn btn-outline-info w-100 rounded-3 py-1 small fw-bold text-truncate" for="import-term-att">
+                                    <i class="bi bi-calendar-check me-1"></i>มาเรียน
+                                </label>
+                            </div>
+                            <div class="col-4">
+                                <input type="radio" class="btn-check" name="import-assign-term" id="import-term-mid" value="midterm" checked>
+                                <label class="btn btn-outline-primary w-100 rounded-3 py-1 small fw-bold text-truncate" for="import-term-mid">
+                                    <i class="bi bi-bookmark-check me-1"></i>เก็บกลางภาค
+                                </label>
+                            </div>
+                            <div class="col-4">
+                                <input type="radio" class="btn-check" name="import-assign-term" id="import-term-final" value="final">
+                                <label class="btn btn-outline-success w-100 rounded-3 py-1 small fw-bold text-truncate" for="import-term-final">
+                                    <i class="bi bi-bookmark-star me-1"></i>เก็บปลายภาค
+                                </label>
+                            </div>
+                        </div>
+                    </div>
                     <div class="mb-3">
                         <label class="form-label small fw-bold text-secondary">เลือกการบ้าน</label>
                         <select id="import-assignment-select" class="form-select rounded-3">

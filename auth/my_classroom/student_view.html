@@ -164,14 +164,13 @@
 
                         <!-- 🔄 สลับรูปแบบ: แนบไฟล์ vs แปะลิงก์ -->
                         <div class="mb-3">
-                            <label class="form-label small fw-bold text-secondary d-flex justify-content-between align-items-center">
-                                <span>รูปแบบการส่งงาน <span class="text-danger">*</span></span>
-                                <span class="file-badge-cloudinary"><i class="bi bi-cloud-check-fill"></i> Cloudinary Storage</span>
+                            <label class="form-label small fw-bold text-secondary">
+                                รูปแบบการส่งงาน <span class="text-danger">*</span>
                             </label>
                             <div class="btn-group w-100 p-1 bg-light rounded-pill border" role="group">
                                 <input type="radio" class="btn-check" name="submissionType" id="type-file" value="file" checked onchange="toggleSubmissionType('file')">
                                 <label class="btn btn-sm rounded-pill fw-bold" for="type-file">
-                                    <i class="bi bi-paperclip me-1"></i>แนบไฟล์ (Cloudinary)
+                                    <i class="bi bi-paperclip me-1"></i>แนบไฟล์
                                 </label>
 
                                 <input type="radio" class="btn-check" name="submissionType" id="type-link" value="link" onchange="toggleSubmissionType('link')">
@@ -181,44 +180,37 @@
                             </div>
                         </div>
 
-                        <!-- 📁 ส่วนที่ 1: อัปโหลดไฟล์ขึ้น Cloudinary -->
+                        <!-- 📁 ส่วนที่ 1: อัปโหลดไฟล์ -->
                         <div id="section-submit-file" class="mb-3">
                             <!-- กล่องแสดงไฟล์เดิมที่เคยส่งไว้ (ถ้ามี) -->
-                            <div id="existing-file-alert" class="alert alert-success border-success-subtle rounded-3 p-2 px-3 small d-none mb-2">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <div class="d-flex align-items-center gap-2 text-truncate">
-                                        <i class="bi bi-check-circle-fill text-success fs-5"></i>
-                                        <div class="text-truncate">
-                                            <div class="fw-bold text-dark">มีไฟล์งานเดิมในระบบแล้ว</div>
-                                            <a href="javascript:void(0)" id="existing-file-link" target="_blank" class="text-success text-truncate d-block small">ดูไฟล์เดิมที่ส่งไว้</a>
-                                        </div>
-                                    </div>
-                                    <span class="badge bg-white text-success border">บันทึกแล้ว</span>
+                            <div id="existing-files-container" class="mb-2 d-none">
+                                <div class="small fw-bold text-success mb-1 d-flex align-items-center gap-1">
+                                    <i class="bi bi-check-circle-fill"></i> ไฟล์เดิมที่ส่งไว้แล้ว:
+                                </div>
+                                <div id="existing-files-list" class="d-flex flex-column gap-1">
+                                    <!-- Dynamic existing file rows -->
                                 </div>
                             </div>
 
-                            <!-- Dropzone อัปโหลดไฟล์ -->
+                            <!-- Dropzone อัปโหลดไฟล์ (รองรับหลายไฟล์) -->
                             <div class="gyver-dropzone" id="submit-dropzone" onclick="document.getElementById('submit-file-input').click()">
-                                <input type="file" id="submit-file-input" class="d-none" onchange="handleStudentFileSelected(event)">
+                                <input type="file" id="submit-file-input" class="d-none" multiple onchange="handleStudentFilesSelected(event)">
                                 <i class="bi bi-cloud-arrow-up-fill text-primary display-6 d-block mb-1"></i>
-                                <div class="fw-bold text-dark small mb-1">คลิกเลือกไฟล์ หรือลากไฟล์มาวางที่นี่</div>
-                                <div class="text-muted" style="font-size: 0.78rem;">รองรับ PDF, Word, PowerPoint, Excel, รูปภาพ, วิดีโอ, ZIP (อัปโหลดขึ้น Cloudinary อัตโนมัติ)</div>
+                                <div class="fw-bold text-dark small mb-1">คลิกเลือกไฟล์ หรือลากไฟล์มาวางที่นี่ (เลือกได้หลายไฟล์)</div>
+                                <div class="text-muted" style="font-size: 0.78rem;">รองรับ PDF, Word, PowerPoint, Excel, รูปภาพ (.png, .jpg), ZIP (ขนาดสูงสุด 100 MB/ไฟล์)</div>
                             </div>
 
-                            <!-- กล่องแสดงพรีวิวไฟล์ที่เลือกใหม่ -->
-                            <div id="file-selected-card" class="file-preview-card mt-2 d-none">
-                                <div class="d-flex align-items-center gap-2 text-truncate me-2">
-                                    <div class="p-2 bg-primary-subtle text-primary rounded-3">
-                                        <i class="bi bi-file-earmark-arrow-up-fill fs-5" id="file-selected-icon"></i>
-                                    </div>
-                                    <div class="text-truncate">
-                                        <div class="fw-bold text-dark small text-truncate" id="file-selected-name">filename.pdf</div>
-                                        <div class="text-muted" style="font-size: 0.75rem;" id="file-selected-size">0 KB</div>
-                                    </div>
+                            <!-- รายการไฟล์ที่เลือกใหม่ (Multiple files preview list) -->
+                            <div id="file-selected-container" class="mt-2 d-none">
+                                <div class="d-flex justify-content-between align-items-center mb-1 px-1">
+                                    <span class="small fw-bold text-secondary" id="file-selected-count-label">ไฟล์ที่เลือกแนบ (0)</span>
+                                    <button type="button" class="btn btn-sm btn-link text-danger p-0 text-decoration-none small" onclick="clearAllSelectedFiles()">
+                                        <i class="bi bi-trash3 me-1"></i>ล้างทั้งหมด
+                                    </button>
                                 </div>
-                                <button type="button" class="btn btn-sm btn-outline-danger rounded-circle p-1 px-2" onclick="removeSelectedFile()" title="ยกเลิกไฟล์นี้">
-                                    <i class="bi bi-x-lg"></i>
-                                </button>
+                                <div id="file-selected-list" class="d-flex flex-column gap-2" style="max-height: 220px; overflow-y: auto;">
+                                    <!-- Dynamic File Cards -->
+                                </div>
                             </div>
                         </div>
 
@@ -239,7 +231,7 @@
                         <div id="submit-upload-progress" class="alert alert-info border-info-subtle rounded-3 p-2 small d-none mb-3">
                             <div class="d-flex align-items-center gap-2">
                                 <div class="spinner-border spinner-border-sm text-info" role="status"></div>
-                                <span class="fw-bold text-dark" id="submit-upload-status-text">กำลังอัปโหลดไฟล์ขึ้น Cloudinary...</span>
+                                <span class="fw-bold text-dark" id="submit-upload-status-text">กำลังอัปโหลดไฟล์...</span>
                             </div>
                         </div>
 

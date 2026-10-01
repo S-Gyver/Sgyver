@@ -17,7 +17,8 @@ const CLOUDINARY = {
 };
 
 let currentSubmissionType = 'file'; // 'file' | 'link'
-let selectedSubmissionFile = null;
+let selectedSubmissionFiles = []; // Array of File objects
+let existingSubmissionFiles = []; // Array of { url, name, size }
 let existingSubmissionData = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -193,11 +194,17 @@ function renderStudentAssignments() {
                         : ''}
                 </div>
 
-                <div class="d-flex gap-2 pt-2 border-top mt-auto">
+                <div class="d-flex flex-wrap gap-2 pt-2 border-top mt-auto">
                     ${isSubmitted && mySub.file_url ? `
-                        <a href="${mySub.file_url}" target="_blank" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-bold" title="เปิดดูผลงานที่ส่งไว้">
-                            <i class="bi bi-box-arrow-up-right me-1"></i>ดูงานที่ส่ง
-                        </a>
+                        ${Array.isArray(mySub.files) && mySub.files.length > 1 ? `
+                            <button class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-bold" onclick="openStudentViewFilesModal('${a.id}')" title="ดูไฟล์ที่ส่งไว้ทั้งหมด">
+                                <i class="bi bi-files me-1"></i>ดูงาน (${mySub.files.length} ไฟล์)
+                            </button>
+                        ` : `
+                            <a href="${mySub.file_url}" target="_blank" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-bold" title="เปิดดูผลงานที่ส่งไว้">
+                                <i class="bi bi-box-arrow-up-right me-1"></i>ดูงานที่ส่ง
+                            </a>
+                        `}
                     ` : ''}
                     <button class="btn ${isSubmitted ? 'btn-outline-success' : 'btn-primary'} btn-sm rounded-pill fw-bold flex-grow-1" onclick="openSubmitWorkModal('${a.id}')">
                         <i class="bi ${isSubmitted ? 'bi-pencil' : 'bi-send-fill'} me-1"></i>${isSubmitted ? 'แก้ไขงานที่ส่ง' : 'ส่งการบ้านนี้'}
@@ -206,6 +213,41 @@ function renderStudentAssignments() {
             </div>
         </div>`;
     }).join('');
+}
+
+// 📂 กล่องแสดงรายการไฟล์ที่ส่งแล้วของนักเรียน (เมื่อมีหลายไฟล์)
+function openStudentViewFilesModal(assignmentId) {
+    const assignments = Array.isArray(currentClassroom.assignments) ? currentClassroom.assignments : [];
+    const assignment = assignments.find(a => a.id === assignmentId);
+    if (!assignment) return;
+    const studentKey = currentStudentId || currentStudentName;
+    const sub = assignment.submissions?.[studentKey];
+    if (!sub || !Array.isArray(sub.files) || sub.files.length === 0) return;
+
+    const filesHtml = sub.files.map((f, i) => `
+        <div class="d-flex align-items-center justify-content-between p-2 mb-2 bg-light rounded-3 border text-start">
+            <div class="d-flex align-items-center gap-2 text-truncate me-2">
+                <i class="bi ${getFileIconClass(f.name)} fs-5 flex-shrink-0"></i>
+                <div class="text-truncate">
+                    <div class="fw-bold text-dark small text-truncate">${f.name || `ไฟล์ที่ ${i + 1}`}</div>
+                    <div class="text-muted" style="font-size:0.75rem;">${f.size || ''}</div>
+                </div>
+            </div>
+            <a href="${f.url}" target="_blank" class="btn btn-sm btn-primary rounded-pill px-3 py-1 fw-bold flex-shrink-0">
+                <i class="bi bi-box-arrow-up-right me-1"></i>เปิดดู
+            </a>
+        </div>
+    `).join('');
+
+    Swal.fire({
+        title: `ไฟล์ผลงานที่ส่ง (${sub.files.length} ไฟล์)`,
+        html: `<div class="mt-3">${filesHtml}</div>`,
+        showConfirmButton: false,
+        showCloseButton: true,
+        customClass: {
+            popup: 'rounded-4 p-4 border-0 shadow'
+        }
+    });
 }
 
 // 📦 จัดการไฟล์และสลับประเภทการส่งงาน
@@ -249,34 +291,115 @@ function toggleSubmissionType(type) {
     }
 }
 
-function handleStudentFileSelected(event) {
-    const file = event.target.files?.[0];
-    if (!file) return;
+// 📂 เลือกไฟล์หลายไฟล์ (Multiple files selection)
+function handleStudentFilesSelected(event) {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
 
-    if (file.size > 100 * 1024 * 1024) {
-        showToast('error', 'ไฟล์มีขนาดใหญ่เกินไป', 'ขนาดไฟล์สูงสุดไม่เกิน 100 MB');
-        event.target.value = '';
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.size > 100 * 1024 * 1024) {
+            showToast('error', 'ไฟล์มีขนาดใหญ่เกินไป', `ไฟล์ "${file.name}" เกิน 100 MB`);
+            continue;
+        }
+        // ตรวจสอบไฟล์ซ้ำ
+        const exists = selectedSubmissionFiles.some(f => f.name === file.name && f.size === file.size);
+        if (!exists) {
+            selectedSubmissionFiles.push(file);
+        }
+    }
+
+    event.target.value = '';
+    renderSelectedFilesList();
+}
+
+function renderSelectedFilesList() {
+    const container = document.getElementById('file-selected-container');
+    const list = document.getElementById('file-selected-list');
+    const countLabel = document.getElementById('file-selected-count-label');
+
+    if (!container || !list) return;
+
+    if (selectedSubmissionFiles.length === 0) {
+        container.classList.add('d-none');
+        list.innerHTML = '';
         return;
     }
 
-    selectedSubmissionFile = file;
-    const previewCard = document.getElementById('file-selected-card');
-    const nameEl = document.getElementById('file-selected-name');
-    const sizeEl = document.getElementById('file-selected-size');
-    const iconEl = document.getElementById('file-selected-icon');
+    container.classList.remove('d-none');
+    if (countLabel) countLabel.textContent = `ไฟล์ใหม่ที่เลือกแนบ (${selectedSubmissionFiles.length} ไฟล์)`;
 
-    if (nameEl) nameEl.textContent = file.name;
-    if (sizeEl) sizeEl.textContent = formatFileSize(file.size);
-    if (iconEl) iconEl.className = `bi ${getFileIconClass(file.name)} fs-5`;
-    if (previewCard) previewCard.classList.remove('d-none');
+    list.innerHTML = selectedSubmissionFiles.map((file, idx) => {
+        return `
+        <div class="file-preview-card">
+            <div class="d-flex align-items-center gap-2 text-truncate me-2">
+                <div class="p-2 bg-primary-subtle text-primary rounded-3 flex-shrink-0">
+                    <i class="bi ${getFileIconClass(file.name)} fs-5"></i>
+                </div>
+                <div class="text-truncate">
+                    <div class="fw-bold text-dark small text-truncate" title="${file.name}">${file.name}</div>
+                    <div class="text-muted" style="font-size: 0.75rem;">${formatFileSize(file.size)}</div>
+                </div>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-danger rounded-circle p-1 px-2 flex-shrink-0" onclick="removeSelectedFileByIndex(${idx})" title="ลบไฟล์นี้">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>`;
+    }).join('');
 }
 
-function removeSelectedFile() {
-    selectedSubmissionFile = null;
+function removeSelectedFileByIndex(idx) {
+    selectedSubmissionFiles.splice(idx, 1);
+    renderSelectedFilesList();
+}
+
+function clearAllSelectedFiles() {
+    selectedSubmissionFiles = [];
     const fileInput = document.getElementById('submit-file-input');
     if (fileInput) fileInput.value = '';
-    const previewCard = document.getElementById('file-selected-card');
-    if (previewCard) previewCard.classList.add('d-none');
+    renderSelectedFilesList();
+}
+
+// 📂 เรนเดอร์ไฟล์เดิมที่เคยส่งไว้แล้ว
+function renderExistingFilesList() {
+    const container = document.getElementById('existing-files-container');
+    const list = document.getElementById('existing-files-list');
+    if (!container || !list) return;
+
+    if (existingSubmissionFiles.length === 0) {
+        container.classList.add('d-none');
+        list.innerHTML = '';
+        return;
+    }
+
+    container.classList.remove('d-none');
+    list.innerHTML = existingSubmissionFiles.map((f, idx) => {
+        return `
+        <div class="d-flex align-items-center justify-content-between p-2 bg-success-subtle border border-success-subtle rounded-3 small">
+            <div class="d-flex align-items-center gap-2 text-truncate me-2">
+                <i class="bi ${getFileIconClass(f.name)} text-success fs-5 flex-shrink-0"></i>
+                <div class="text-truncate">
+                    <a href="${f.url}" target="_blank" class="fw-bold text-success text-decoration-none text-truncate d-block" title="คลิกเพื่อดูไฟล์">
+                        ${f.name || 'ไฟล์งานที่ส่งไว้'}
+                    </a>
+                    ${f.size ? `<span class="text-muted" style="font-size: 0.72rem;">${f.size}</span>` : ''}
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                <a href="${f.url}" target="_blank" class="btn btn-sm btn-light border py-0 px-2 text-success small" style="font-size: 0.75rem;">
+                    <i class="bi bi-box-arrow-up-right me-1"></i>ดูไฟล์
+                </a>
+                <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-1" onclick="removeExistingFileByIndex(${idx})" title="ลบไฟล์เดิมนี้ออก">
+                    <i class="bi bi-trash3"></i>
+                </button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function removeExistingFileByIndex(idx) {
+    existingSubmissionFiles.splice(idx, 1);
+    renderExistingFilesList();
 }
 
 function initDropzoneEvents() {
@@ -302,13 +425,9 @@ function initDropzoneEvents() {
 
     dropzone.addEventListener('drop', (e) => {
         const dt = e.dataTransfer;
-        const file = dt?.files?.[0];
-        if (file) {
-            const input = document.getElementById('submit-file-input');
-            if (input) {
-                input.files = dt.files;
-                handleStudentFileSelected({ target: input });
-            }
+        const files = dt?.files;
+        if (files && files.length > 0) {
+            handleStudentFilesSelected({ target: { files: files, value: '' } });
         }
     });
 }
@@ -326,44 +445,43 @@ function openSubmitWorkModal(assignmentId) {
     const sub = assignment.submissions?.[studentKey];
     existingSubmissionData = sub || null;
 
-    removeSelectedFile();
+    clearAllSelectedFiles();
     const progressEl = document.getElementById('submit-upload-progress');
     if (progressEl) progressEl.classList.add('d-none');
 
     const urlInput = document.getElementById('submit-work-url');
     const commentInput = document.getElementById('submit-work-comment');
-    const existingFileAlert = document.getElementById('existing-file-alert');
-    const existingFileLink = document.getElementById('existing-file-link');
-
     if (commentInput) commentInput.value = sub?.comment || '';
 
-    // ตรวจสอบข้อมูลการส่งเดิม
-    if (sub && sub.file_url) {
-        const isCloudinaryFile = sub.file_url.includes('cloudinary.com') || sub.submission_type === 'file';
-        if (isCloudinaryFile) {
-            const radioFile = document.getElementById('type-file');
-            if (radioFile) radioFile.checked = true;
-            toggleSubmissionType('file');
-
-            if (urlInput) urlInput.value = '';
-            if (existingFileAlert && existingFileLink) {
-                existingFileAlert.classList.remove('d-none');
-                existingFileLink.href = sub.file_url;
-                existingFileLink.textContent = sub.file_name ? `📄 ดูไฟล์ที่ส่งไว้ (${sub.file_name})` : '📄 ดูไฟล์งานเดิมที่ส่งไว้บน Cloudinary';
+    // โหลดรายการไฟล์เดิม (ถ้ามี)
+    existingSubmissionFiles = [];
+    if (sub) {
+        if (Array.isArray(sub.files) && sub.files.length > 0) {
+            existingSubmissionFiles = sub.files.map(f => typeof f === 'string' ? { url: f, name: 'ไฟล์งาน', size: '' } : f);
+        } else if (sub.file_url) {
+            const isCloudFile = sub.file_url.includes('cloudinary.com') || sub.submission_type === 'file';
+            if (isCloudFile) {
+                existingSubmissionFiles = [{
+                    url: sub.file_url,
+                    name: sub.file_name || 'ไฟล์งานเดิม',
+                    size: sub.file_size || ''
+                }];
             }
-        } else {
-            const radioLink = document.getElementById('type-link');
-            if (radioLink) radioLink.checked = true;
-            toggleSubmissionType('link');
-            if (urlInput) urlInput.value = sub.file_url;
-            if (existingFileAlert) existingFileAlert.classList.add('d-none');
         }
+    }
+
+    renderExistingFilesList();
+
+    if (sub && sub.submission_type === 'link') {
+        const radioLink = document.getElementById('type-link');
+        if (radioLink) radioLink.checked = true;
+        toggleSubmissionType('link');
+        if (urlInput) urlInput.value = sub.file_url || '';
     } else {
         const radioFile = document.getElementById('type-file');
         if (radioFile) radioFile.checked = true;
         toggleSubmissionType('file');
         if (urlInput) urlInput.value = '';
-        if (existingFileAlert) existingFileAlert.classList.add('d-none');
     }
 
     initDropzoneEvents();
@@ -381,56 +499,66 @@ async function handleStudentSubmitWork(e) {
     if (!assignment) return;
 
     const comment = document.getElementById('submit-work-comment')?.value.trim() || '';
-    let finalFileUrl = '';
-    let fileName = '';
-    let fileSize = '';
-
     const btn = document.getElementById('btn-do-submit');
     const progressEl = document.getElementById('submit-upload-progress');
     const statusText = document.getElementById('submit-upload-status-text');
 
+    let allFiles = [];
+    let finalFileUrl = '';
+    let combinedFileName = '';
+
     if (currentSubmissionType === 'file') {
-        if (selectedSubmissionFile) {
-            // อัปโหลดไฟล์ขึ้น Cloudinary
+        if (selectedSubmissionFiles.length === 0 && existingSubmissionFiles.length === 0) {
+            showToast('warning', 'กรุณาเลือกไฟล์', 'กรุณาเลือกไฟล์ผลงานอย่างน้อย 1 ไฟล์');
+            return;
+        }
+
+        // อัปโหลดไฟล์ใหม่ทั้งหมดขึ้น Cloudinary
+        const newlyUploaded = [];
+        if (selectedSubmissionFiles.length > 0) {
+            if (btn) btn.disabled = true;
+            if (progressEl) progressEl.classList.remove('d-none');
+
             try {
-                if (btn) btn.disabled = true;
-                if (progressEl) progressEl.classList.remove('d-none');
-                if (statusText) statusText.textContent = `กำลังอัปโหลด "${selectedSubmissionFile.name}" ขึ้น Cloudinary...`;
+                for (let i = 0; i < selectedSubmissionFiles.length; i++) {
+                    const file = selectedSubmissionFiles[i];
+                    if (statusText) statusText.textContent = `กำลังอัปโหลดไฟล์ (${i + 1}/${selectedSubmissionFiles.length}): "${file.name}"...`;
 
-                const formData = new FormData();
-                formData.append('file', selectedSubmissionFile);
-                formData.append('upload_preset', CLOUDINARY.uploadPreset);
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('upload_preset', CLOUDINARY.uploadPreset);
 
-                const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY.cloudName}/auto/upload`, {
-                    method: 'POST',
-                    body: formData
-                });
+                    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY.cloudName}/auto/upload`, {
+                        method: 'POST',
+                        body: formData
+                    });
 
-                if (!res.ok) {
-                    const errJson = await res.json().catch(() => ({}));
-                    throw new Error(errJson.error?.message || 'อัปโหลดขึ้น Cloudinary ไม่สำเร็จ');
+                    if (!res.ok) {
+                        const errJson = await res.json().catch(() => ({}));
+                        throw new Error(errJson.error?.message || `อัปโหลดไฟล์ "${file.name}" ไม่สำเร็จ`);
+                    }
+
+                    const data = await res.json();
+                    newlyUploaded.push({
+                        url: data.secure_url,
+                        name: file.name,
+                        size: formatFileSize(file.size)
+                    });
                 }
-
-                const data = await res.json();
-                finalFileUrl = data.secure_url;
-                fileName = selectedSubmissionFile.name;
-                fileSize = formatFileSize(selectedSubmissionFile.size);
             } catch (err) {
-                console.error("Cloudinary upload error:", err);
+                console.error("Upload error:", err);
                 showToast('error', 'อัปโหลดไฟล์ล้มเหลว', err.message);
                 if (btn) btn.disabled = false;
                 if (progressEl) progressEl.classList.add('d-none');
                 return;
             }
-        } else if (existingSubmissionData && existingSubmissionData.file_url) {
-            finalFileUrl = existingSubmissionData.file_url;
-            fileName = existingSubmissionData.file_name || 'ไฟล์งานเดิม';
-            fileSize = existingSubmissionData.file_size || '';
-        } else {
-            showToast('warning', 'กรุณาเลือกไฟล์', 'กรุณาเลือกไฟล์ผลงานที่ต้องการส่งขึ้น Cloudinary');
-            return;
         }
+
+        allFiles = [...existingSubmissionFiles, ...newlyUploaded];
+        finalFileUrl = allFiles[0]?.url || '';
+        combinedFileName = allFiles.map(f => f.name).join(', ');
     } else {
+        // Link type
         const urlInput = document.getElementById('submit-work-url');
         const url = (urlInput?.value || '').trim();
         if (!url) {
@@ -438,7 +566,8 @@ async function handleStudentSubmitWork(e) {
             return;
         }
         finalFileUrl = url;
-        fileName = 'ลิงก์ผลงานภายนอก';
+        combinedFileName = 'ลิงก์ผลงานภายนอก';
+        allFiles = [{ url: url, name: 'ลิงก์ผลงาน', size: '' }];
     }
 
     if (!assignment.submissions) assignment.submissions = {};
@@ -448,9 +577,10 @@ async function handleStudentSubmitWork(e) {
         student_id: currentStudentId,
         student_name: currentStudentName,
         submission_type: currentSubmissionType, // 'file' | 'link'
+        files: allFiles,
         file_url: finalFileUrl,
-        file_name: fileName,
-        file_size: fileSize,
+        file_name: combinedFileName,
+        file_size: allFiles.length > 1 ? `${allFiles.length} ไฟล์` : (allFiles[0]?.size || ''),
         comment: comment,
         submitted_at: new Date().toISOString(),
         score: assignment.submissions[studentKey]?.score ?? null
@@ -466,7 +596,7 @@ async function handleStudentSubmitWork(e) {
 
         if (!error) {
             currentClassroom.assignments = assignments;
-            showToast('success', 'ส่งงานสำเร็จ!', currentSubmissionType === 'file' ? 'ไฟล์ถูกบันทึกขึ้น Cloudinary เรียบร้อยแล้ว' : 'ส่งลิงก์ผลงานไปยังคุณครูเรียบร้อย');
+            showToast('success', 'ส่งงานสำเร็จ!', currentSubmissionType === 'file' ? `บันทึกไฟล์ส่งงาน (${allFiles.length} ไฟล์) เรียบร้อยแล้ว` : 'ส่งลิงก์ผลงานไปยังคุณครูเรียบร้อย');
             bootstrap.Modal.getInstance(document.getElementById('submitWorkModal'))?.hide();
             renderStudentAssignments();
         } else {
