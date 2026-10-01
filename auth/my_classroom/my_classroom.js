@@ -14,6 +14,14 @@ let currentHubRoleTab = 'teaching'; // 'teaching' | 'enrolled'
 let activeClassroomId = null;
 let activeClassroom = null;
 
+// ── CLOUDINARY CONFIG ──────────────────────────────────────────
+const CLOUDINARY = {
+    cloudName:    'xn7rvu6g',
+    uploadPreset: 'gyver_live',
+};
+let selectedMaterialFile = null;
+let currentMaterialSourceType = 'file'; // 'file' | 'link'
+
 // Realtime channel
 let classroomRealtimeChannel = null;
 
@@ -2157,20 +2165,138 @@ function loadMaterials() {
     }).join('');
 }
 
+// 📁 จัดการไฟล์เอกสาร / ชีทเรียน (Cloudinary File Upload สำหรับครู)
+function toggleMaterialSourceType(type) {
+    currentMaterialSourceType = type;
+    const fileSec = document.getElementById('section-mat-file');
+    const linkSec = document.getElementById('section-mat-link');
+    const linkInput = document.getElementById('material-url');
+
+    if (type === 'file') {
+        if (fileSec) fileSec.classList.remove('d-none');
+        if (linkSec) linkSec.classList.add('d-none');
+        if (linkInput) linkInput.required = false;
+    } else {
+        if (fileSec) fileSec.classList.add('d-none');
+        if (linkSec) linkSec.classList.remove('d-none');
+        if (linkInput) {
+            linkInput.required = true;
+            linkInput.focus();
+        }
+    }
+}
+
+function handleMaterialFileSelected(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 100 * 1024 * 1024) {
+        showToast('error', 'ไฟล์มีขนาดใหญ่เกินไป', 'ขนาดไฟล์สูงสุดไม่เกิน 100 MB');
+        event.target.value = '';
+        return;
+    }
+
+    selectedMaterialFile = file;
+    const previewCard = document.getElementById('mat-file-selected-card');
+    const nameEl = document.getElementById('mat-file-selected-name');
+    const sizeEl = document.getElementById('mat-file-selected-size');
+    const iconEl = document.getElementById('mat-file-selected-icon');
+
+    // เติมชื่อเอกสารให้อัตโนมัติถ้าครูยังไม่ได้พิมพ์
+    const titleInput = document.getElementById('material-title');
+    if (titleInput && !titleInput.value.trim()) {
+        const cleanName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+        titleInput.value = cleanName;
+    }
+
+    const formatSize = (bytes) => {
+        if (!bytes) return '0 Bytes';
+        const k = 1024;
+        const s = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + s[i];
+    };
+
+    if (nameEl) nameEl.textContent = file.name;
+    if (sizeEl) sizeEl.textContent = formatSize(file.size);
+    if (iconEl) iconEl.className = 'bi bi-file-earmark-check-fill fs-5 text-success';
+    if (previewCard) previewCard.classList.remove('d-none');
+}
+
+function removeSelectedMaterialFile() {
+    selectedMaterialFile = null;
+    const fileInput = document.getElementById('material-file-input');
+    if (fileInput) fileInput.value = '';
+    const previewCard = document.getElementById('mat-file-selected-card');
+    if (previewCard) previewCard.classList.add('d-none');
+}
+
 async function handleSaveMaterial(e) {
     e.preventDefault();
     if (!activeClassroom) return;
 
-    const title = document.getElementById('material-title').value.trim();
-    const category = document.getElementById('material-category').value;
-    const url = document.getElementById('material-url').value.trim();
-    const desc = document.getElementById('material-desc').value.trim();
+    const title = document.getElementById('material-title')?.value.trim();
+    const category = document.getElementById('material-category')?.value || 'slide';
+    const desc = document.getElementById('material-desc')?.value.trim() || '';
+
+    let finalUrl = '';
+    let fileName = '';
+
+    const btn = document.getElementById('btn-save-material');
+    const progressEl = document.getElementById('material-upload-progress');
+    const statusText = document.getElementById('material-upload-status-text');
+
+    if (currentMaterialSourceType === 'file') {
+        if (!selectedMaterialFile) {
+            showToast('warning', 'กรุณาเลือกไฟล์', 'กรุณาเลือกไฟล์เอกสารที่ต้องการอัปโหลดขึ้น Cloudinary');
+            return;
+        }
+
+        try {
+            if (btn) btn.disabled = true;
+            if (progressEl) progressEl.classList.remove('d-none');
+            if (statusText) statusText.textContent = `กำลังอัปโหลด "${selectedMaterialFile.name}" ขึ้น Cloudinary...`;
+
+            const formData = new FormData();
+            formData.append('file', selectedMaterialFile);
+            formData.append('upload_preset', CLOUDINARY.uploadPreset);
+
+            const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY.cloudName}/auto/upload`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!res.ok) {
+                const errJson = await res.json().catch(() => ({}));
+                throw new Error(errJson.error?.message || 'อัปโหลดขึ้น Cloudinary ไม่สำเร็จ');
+            }
+
+            const data = await res.json();
+            finalUrl = data.secure_url;
+            fileName = selectedMaterialFile.name;
+        } catch (err) {
+            console.error("Cloudinary upload error:", err);
+            showToast('error', 'อัปโหลดไฟล์ล้มเหลว', err.message);
+            if (btn) btn.disabled = false;
+            if (progressEl) progressEl.classList.add('d-none');
+            return;
+        }
+    } else {
+        const urlInput = document.getElementById('material-url');
+        finalUrl = (urlInput?.value || '').trim();
+        if (!finalUrl) {
+            showToast('warning', 'กรุณาระบุลิงก์', 'กรุณาระบุลิงก์ดาวน์โหลดเอกสาร');
+            return;
+        }
+        fileName = 'ลิงก์ภายนอก';
+    }
 
     const newMaterial = {
         id: 'mat_' + Date.now(),
         title: title,
         category: category,
-        file_url: url,
+        file_url: finalUrl,
+        file_name: fileName,
         description: desc,
         created_at: new Date().toISOString()
     };
@@ -2178,13 +2304,13 @@ async function handleSaveMaterial(e) {
     let materials = getSharedCourseMaterials();
     materials.unshift(newMaterial);
 
-    const btn = document.getElementById('btn-save-material');
     if (btn) btn.disabled = true;
 
     try {
         await saveSharedCourseMaterials(materials);
-        showToast('success', 'เพิ่มเอกสารสำเร็จ!', `เอกสาร "${title}" ถูกเพิ่มและแชร์ไปยังทุกห้องในรายวิชานี้เรียบร้อยแล้ว`);
+        showToast('success', 'เพิ่มเอกสารสำเร็จ!', currentMaterialSourceType === 'file' ? `ไฟล์ "${fileName}" ถูกอัปโหลดขึ้น Cloudinary และแชร์ไปยังทุกห้องเรียบร้อย` : `เอกสาร "${title}" ถูกเพิ่มและแชร์เรียบร้อย`);
         document.getElementById('form-add-material')?.reset();
+        removeSelectedMaterialFile();
         bootstrap.Modal.getInstance(document.getElementById('addMaterialModal'))?.hide();
         loadMaterials();
     } catch (err) {
@@ -2192,6 +2318,7 @@ async function handleSaveMaterial(e) {
         showToast('error', 'บันทึกผิดพลาด', err?.message || 'เกิดข้อผิดพลาด');
     } finally {
         if (btn) btn.disabled = false;
+        if (progressEl) progressEl.classList.add('d-none');
     }
 }
 
@@ -2560,9 +2687,15 @@ function renderSubmissionsTable(assignment) {
             </td>
             <td>
                 ${hasSubmitted && sub.file_url ? `
-                    <a href="${sub.file_url}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1">
-                        <i class="bi bi-box-arrow-up-right me-1"></i>ดูผลงาน
-                    </a>
+                    ${(sub.file_url.includes('cloudinary.com') || sub.submission_type === 'file') ? `
+                        <a href="${sub.file_url}" target="_blank" class="btn btn-sm btn-outline-success rounded-pill px-3 py-1 fw-bold text-truncate" style="max-width: 200px;" title="${sub.file_name || 'ดูไฟล์งาน'}">
+                            <i class="bi bi-file-earmark-arrow-down-fill me-1"></i>${sub.file_name ? sub.file_name : 'ดูไฟล์งาน'}
+                        </a>
+                    ` : `
+                        <a href="${sub.file_url}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1" title="เปิดลิงก์งาน">
+                            <i class="bi bi-link-45deg me-1"></i>เปิดลิงก์งาน
+                        </a>
+                    `}
                     ${sub.comment ? `<div class="small text-muted mt-1">💬 "${sub.comment}"</div>` : ''}
                 ` : '<span class="text-muted small">-</span>'}
             </td>

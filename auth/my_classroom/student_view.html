@@ -161,18 +161,93 @@
                             <div class="fw-bold text-dark" id="modal-work-title">การบ้าน: ...</div>
                             <div class="text-muted" id="modal-work-points">คะแนนเต็ม: ...</div>
                         </div>
+
+                        <!-- 🔄 สลับรูปแบบ: แนบไฟล์ vs แปะลิงก์ -->
                         <div class="mb-3">
-                            <label class="form-label small fw-bold text-secondary">ลิงก์ส่งผลงาน / ลิงก์ไฟล์งาน <span class="text-danger">*</span></label>
-                            <input type="url" id="submit-work-url" class="form-control rounded-3 font-mono" placeholder="เช่น ลิงก์ Canva, Google Drive, OneDrive, Youtube" required>
-                            <div class="form-text small">สามารถแปะลิงก์ผลงานที่เปิดแชร์สาธารณะแล้วได้เลยครับ</div>
+                            <label class="form-label small fw-bold text-secondary d-flex justify-content-between align-items-center">
+                                <span>รูปแบบการส่งงาน <span class="text-danger">*</span></span>
+                                <span class="file-badge-cloudinary"><i class="bi bi-cloud-check-fill"></i> Cloudinary Storage</span>
+                            </label>
+                            <div class="btn-group w-100 p-1 bg-light rounded-pill border" role="group">
+                                <input type="radio" class="btn-check" name="submissionType" id="type-file" value="file" checked onchange="toggleSubmissionType('file')">
+                                <label class="btn btn-sm rounded-pill fw-bold" for="type-file">
+                                    <i class="bi bi-paperclip me-1"></i>แนบไฟล์ (Cloudinary)
+                                </label>
+
+                                <input type="radio" class="btn-check" name="submissionType" id="type-link" value="link" onchange="toggleSubmissionType('link')">
+                                <label class="btn btn-sm rounded-pill fw-bold" for="type-link">
+                                    <i class="bi bi-link-45deg me-1"></i>แปะลิงก์ผลงาน (URL)
+                                </label>
+                            </div>
                         </div>
+
+                        <!-- 📁 ส่วนที่ 1: อัปโหลดไฟล์ขึ้น Cloudinary -->
+                        <div id="section-submit-file" class="mb-3">
+                            <!-- กล่องแสดงไฟล์เดิมที่เคยส่งไว้ (ถ้ามี) -->
+                            <div id="existing-file-alert" class="alert alert-success border-success-subtle rounded-3 p-2 px-3 small d-none mb-2">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center gap-2 text-truncate">
+                                        <i class="bi bi-check-circle-fill text-success fs-5"></i>
+                                        <div class="text-truncate">
+                                            <div class="fw-bold text-dark">มีไฟล์งานเดิมในระบบแล้ว</div>
+                                            <a href="javascript:void(0)" id="existing-file-link" target="_blank" class="text-success text-truncate d-block small">ดูไฟล์เดิมที่ส่งไว้</a>
+                                        </div>
+                                    </div>
+                                    <span class="badge bg-white text-success border">บันทึกแล้ว</span>
+                                </div>
+                            </div>
+
+                            <!-- Dropzone อัปโหลดไฟล์ -->
+                            <div class="gyver-dropzone" id="submit-dropzone" onclick="document.getElementById('submit-file-input').click()">
+                                <input type="file" id="submit-file-input" class="d-none" onchange="handleStudentFileSelected(event)">
+                                <i class="bi bi-cloud-arrow-up-fill text-primary display-6 d-block mb-1"></i>
+                                <div class="fw-bold text-dark small mb-1">คลิกเลือกไฟล์ หรือลากไฟล์มาวางที่นี่</div>
+                                <div class="text-muted" style="font-size: 0.78rem;">รองรับ PDF, Word, PowerPoint, Excel, รูปภาพ, วิดีโอ, ZIP (อัปโหลดขึ้น Cloudinary อัตโนมัติ)</div>
+                            </div>
+
+                            <!-- กล่องแสดงพรีวิวไฟล์ที่เลือกใหม่ -->
+                            <div id="file-selected-card" class="file-preview-card mt-2 d-none">
+                                <div class="d-flex align-items-center gap-2 text-truncate me-2">
+                                    <div class="p-2 bg-primary-subtle text-primary rounded-3">
+                                        <i class="bi bi-file-earmark-arrow-up-fill fs-5" id="file-selected-icon"></i>
+                                    </div>
+                                    <div class="text-truncate">
+                                        <div class="fw-bold text-dark small text-truncate" id="file-selected-name">filename.pdf</div>
+                                        <div class="text-muted" style="font-size: 0.75rem;" id="file-selected-size">0 KB</div>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-danger rounded-circle p-1 px-2" onclick="removeSelectedFile()" title="ยกเลิกไฟล์นี้">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 🔗 ส่วนที่ 2: แปะลิงก์ผลงาน (URL) -->
+                        <div id="section-submit-link" class="mb-3 d-none">
+                            <label class="form-label small fw-bold text-secondary">ลิงก์ส่งผลงาน / ลิงก์ไฟล์งาน <span class="text-danger">*</span></label>
+                            <input type="url" id="submit-work-url" class="form-control rounded-3 font-mono" placeholder="เช่น https://canva.com/..., https://drive.google.com/...">
+                            <div class="form-text small">สามารถแปะลิงก์ผลงานจาก Canva, Google Drive, OneDrive, Youtube ฯลฯ ได้เลยครับ</div>
+                        </div>
+
+                        <!-- ข้อความถึงครู -->
                         <div class="mb-3">
                             <label class="form-label small fw-bold text-secondary">ข้อความถึงคุณครู (ถ้ามี)</label>
                             <textarea id="submit-work-comment" class="form-control rounded-3" rows="2" placeholder="เช่น ส่งงานรอบแรกครับ, มีข้อสงสัยในข้อ 2 ครับ"></textarea>
                         </div>
+
+                        <!-- Progress สถานะการอัปโหลด -->
+                        <div id="submit-upload-progress" class="alert alert-info border-info-subtle rounded-3 p-2 small d-none mb-3">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="spinner-border spinner-border-sm text-info" role="status"></div>
+                                <span class="fw-bold text-dark" id="submit-upload-status-text">กำลังอัปโหลดไฟล์ขึ้น Cloudinary...</span>
+                            </div>
+                        </div>
+
                         <div class="d-flex justify-content-end gap-2 mt-4">
                             <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">ยกเลิก</button>
-                            <button type="submit" id="btn-do-submit" class="btn btn-primary rounded-pill px-4 fw-bold">ยืนยันส่งงาน</button>
+                            <button type="submit" id="btn-do-submit" class="btn btn-primary rounded-pill px-4 fw-bold">
+                                <i class="bi bi-send-fill me-1"></i>ยืนยันส่งงาน
+                            </button>
                         </div>
                     </form>
                 </div>

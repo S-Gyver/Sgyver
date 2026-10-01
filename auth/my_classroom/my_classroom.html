@@ -967,12 +967,59 @@
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label small fw-bold text-secondary">ลิงก์ดาวน์โหลด หรือ ลิงก์ไฟล์ <span
-                                    class="text-danger">*</span></label>
-                            <input type="url" id="material-url" class="form-control rounded-3 font-mono"
-                                placeholder="เช่น ลิงก์ Google Drive, Canva, OneDrive, หรือเว็บดาวน์โหลด" required>
-                            <div class="form-text small">สามารถแปะลิงก์ Google Drive (เปิดแชร์แล้ว) หรือลิงก์ Canva/PDF
-                                ได้เลยครับ</div>
+                            <label class="form-label small fw-bold text-secondary d-flex justify-content-between align-items-center">
+                                <span>ไฟล์เอกสาร / แหล่งที่มา <span class="text-danger">*</span></span>
+                                <span class="file-badge-cloudinary"><i class="bi bi-cloud-check-fill"></i> Cloudinary</span>
+                            </label>
+                            <div class="btn-group w-100 p-1 bg-light rounded-pill border mb-2" role="group">
+                                <input type="radio" class="btn-check" name="materialSourceType" id="mat-type-file" value="file" checked onchange="toggleMaterialSourceType('file')">
+                                <label class="btn btn-sm rounded-pill fw-bold" for="mat-type-file">
+                                    <i class="bi bi-paperclip me-1"></i>อัปโหลดไฟล์ (Cloudinary)
+                                </label>
+                                <input type="radio" class="btn-check" name="materialSourceType" id="mat-type-link" value="link" onchange="toggleMaterialSourceType('link')">
+                                <label class="btn btn-sm rounded-pill fw-bold" for="mat-type-link">
+                                    <i class="bi bi-link-45deg me-1"></i>แปะลิงก์ (URL)
+                                </label>
+                            </div>
+
+                            <!-- Dropzone อัปโหลดไฟล์ -->
+                            <div id="section-mat-file">
+                                <div class="gyver-dropzone" id="material-dropzone" onclick="document.getElementById('material-file-input').click()">
+                                    <input type="file" id="material-file-input" class="d-none" onchange="handleMaterialFileSelected(event)">
+                                    <i class="bi bi-cloud-arrow-up-fill text-primary display-6 d-block mb-1"></i>
+                                    <div class="fw-bold text-dark small mb-1">คลิกเลือกไฟล์ หรือลากไฟล์มาวางที่นี่</div>
+                                    <div class="text-muted" style="font-size: 0.78rem;">รองรับ PDF, Word, PowerPoint, Excel, รูปภาพ, วิดีโอ, ZIP (อัปโหลดขึ้น Cloudinary)</div>
+                                </div>
+                                <div id="mat-file-selected-card" class="file-preview-card mt-2 d-none">
+                                    <div class="d-flex align-items-center gap-2 text-truncate me-2">
+                                        <div class="p-2 bg-primary-subtle text-primary rounded-3">
+                                            <i class="bi bi-file-earmark-arrow-up-fill fs-5" id="mat-file-selected-icon"></i>
+                                        </div>
+                                        <div class="text-truncate">
+                                            <div class="fw-bold text-dark small text-truncate" id="mat-file-selected-name">filename.pdf</div>
+                                            <div class="text-muted" style="font-size: 0.75rem;" id="mat-file-selected-size">0 KB</div>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-danger rounded-circle p-1 px-2" onclick="removeSelectedMaterialFile()" title="ยกเลิกไฟล์นี้">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- แปะลิงก์ URL -->
+                            <div id="section-mat-link" class="d-none">
+                                <input type="url" id="material-url" class="form-control rounded-3 font-mono"
+                                    placeholder="เช่น ลิงก์ Google Drive, Canva, OneDrive, หรือเว็บดาวน์โหลด">
+                                <div class="form-text small">สามารถแปะลิงก์ Google Drive (เปิดแชร์แล้ว) หรือลิงก์ Canva/PDF ได้เลยครับ</div>
+                            </div>
+                        </div>
+
+                        <!-- Progress สถานะการอัปโหลดไฟล์ของครู -->
+                        <div id="material-upload-progress" class="alert alert-info border-info-subtle rounded-3 p-2 small d-none mb-3">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="spinner-border spinner-border-sm text-info" role="status"></div>
+                                <span class="fw-bold text-dark" id="material-upload-status-text">กำลังอัปโหลดไฟล์ขึ้น Cloudinary...</span>
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label small fw-bold text-secondary">คำอธิบายเพิ่มเติม</label>

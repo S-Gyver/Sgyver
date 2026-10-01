@@ -10,6 +10,16 @@ let currentStudentName = 'นักเรียน';
 let currentClassroom = null;
 let activeSubmitAssignmentId = null;
 
+// ── CLOUDINARY CONFIG ──────────────────────────────────────────
+const CLOUDINARY = {
+    cloudName:    'xn7rvu6g',
+    uploadPreset: 'gyver_live',
+};
+
+let currentSubmissionType = 'file'; // 'file' | 'link'
+let selectedSubmissionFile = null;
+let existingSubmissionData = null;
+
 document.addEventListener('DOMContentLoaded', async () => {
     await initStudentView();
 });
@@ -184,13 +194,123 @@ function renderStudentAssignments() {
                 </div>
 
                 <div class="d-flex gap-2 pt-2 border-top mt-auto">
-                    <button class="btn ${isSubmitted ? 'btn-outline-success' : 'btn-primary'} btn-sm rounded-pill fw-bold w-100" onclick="openSubmitWorkModal('${a.id}')">
+                    ${isSubmitted && mySub.file_url ? `
+                        <a href="${mySub.file_url}" target="_blank" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-bold" title="เปิดดูผลงานที่ส่งไว้">
+                            <i class="bi bi-box-arrow-up-right me-1"></i>ดูงานที่ส่ง
+                        </a>
+                    ` : ''}
+                    <button class="btn ${isSubmitted ? 'btn-outline-success' : 'btn-primary'} btn-sm rounded-pill fw-bold flex-grow-1" onclick="openSubmitWorkModal('${a.id}')">
                         <i class="bi ${isSubmitted ? 'bi-pencil' : 'bi-send-fill'} me-1"></i>${isSubmitted ? 'แก้ไขงานที่ส่ง' : 'ส่งการบ้านนี้'}
                     </button>
                 </div>
             </div>
         </div>`;
     }).join('');
+}
+
+// 📦 จัดการไฟล์และสลับประเภทการส่งงาน
+function formatFileSize(bytes) {
+    if (!bytes || bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+function getFileIconClass(fileName) {
+    const ext = (fileName || '').split('.').pop().toLowerCase();
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) return 'bi-file-earmark-image-fill text-primary';
+    if (['pdf'].includes(ext)) return 'bi-file-earmark-pdf-fill text-danger';
+    if (['doc', 'docx'].includes(ext)) return 'bi-file-earmark-word-fill text-primary';
+    if (['ppt', 'pptx'].includes(ext)) return 'bi-file-earmark-ppt-fill text-warning';
+    if (['xls', 'xlsx'].includes(ext)) return 'bi-file-earmark-excel-fill text-success';
+    if (['zip', 'rar', '7z'].includes(ext)) return 'bi-file-earmark-zip-fill text-secondary';
+    if (['mp4', 'mov', 'webm'].includes(ext)) return 'bi-file-earmark-play-fill text-danger';
+    return 'bi-file-earmark-arrow-up-fill text-primary';
+}
+
+function toggleSubmissionType(type) {
+    currentSubmissionType = type;
+    const fileSec = document.getElementById('section-submit-file');
+    const linkSec = document.getElementById('section-submit-link');
+    const linkInput = document.getElementById('submit-work-url');
+
+    if (type === 'file') {
+        if (fileSec) fileSec.classList.remove('d-none');
+        if (linkSec) linkSec.classList.add('d-none');
+        if (linkInput) linkInput.required = false;
+    } else {
+        if (fileSec) fileSec.classList.add('d-none');
+        if (linkSec) linkSec.classList.remove('d-none');
+        if (linkInput) {
+            linkInput.required = true;
+            linkInput.focus();
+        }
+    }
+}
+
+function handleStudentFileSelected(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 100 * 1024 * 1024) {
+        showToast('error', 'ไฟล์มีขนาดใหญ่เกินไป', 'ขนาดไฟล์สูงสุดไม่เกิน 100 MB');
+        event.target.value = '';
+        return;
+    }
+
+    selectedSubmissionFile = file;
+    const previewCard = document.getElementById('file-selected-card');
+    const nameEl = document.getElementById('file-selected-name');
+    const sizeEl = document.getElementById('file-selected-size');
+    const iconEl = document.getElementById('file-selected-icon');
+
+    if (nameEl) nameEl.textContent = file.name;
+    if (sizeEl) sizeEl.textContent = formatFileSize(file.size);
+    if (iconEl) iconEl.className = `bi ${getFileIconClass(file.name)} fs-5`;
+    if (previewCard) previewCard.classList.remove('d-none');
+}
+
+function removeSelectedFile() {
+    selectedSubmissionFile = null;
+    const fileInput = document.getElementById('submit-file-input');
+    if (fileInput) fileInput.value = '';
+    const previewCard = document.getElementById('file-selected-card');
+    if (previewCard) previewCard.classList.add('d-none');
+}
+
+function initDropzoneEvents() {
+    const dropzone = document.getElementById('submit-dropzone');
+    if (!dropzone || dropzone._hasListeners) return;
+    dropzone._hasListeners = true;
+
+    ['dragenter', 'dragover'].forEach(name => {
+        dropzone.addEventListener(name, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.classList.add('dragover');
+        });
+    });
+
+    ['dragleave', 'drop'].forEach(name => {
+        dropzone.addEventListener(name, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.classList.remove('dragover');
+        });
+    });
+
+    dropzone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const file = dt?.files?.[0];
+        if (file) {
+            const input = document.getElementById('submit-file-input');
+            if (input) {
+                input.files = dt.files;
+                handleStudentFileSelected({ target: input });
+            }
+        }
+    });
 }
 
 function openSubmitWorkModal(assignmentId) {
@@ -204,12 +324,49 @@ function openSubmitWorkModal(assignmentId) {
 
     const studentKey = currentStudentId || currentStudentName;
     const sub = assignment.submissions?.[studentKey];
+    existingSubmissionData = sub || null;
+
+    removeSelectedFile();
+    const progressEl = document.getElementById('submit-upload-progress');
+    if (progressEl) progressEl.classList.add('d-none');
 
     const urlInput = document.getElementById('submit-work-url');
     const commentInput = document.getElementById('submit-work-comment');
+    const existingFileAlert = document.getElementById('existing-file-alert');
+    const existingFileLink = document.getElementById('existing-file-link');
 
-    if (urlInput) urlInput.value = sub?.file_url || '';
     if (commentInput) commentInput.value = sub?.comment || '';
+
+    // ตรวจสอบข้อมูลการส่งเดิม
+    if (sub && sub.file_url) {
+        const isCloudinaryFile = sub.file_url.includes('cloudinary.com') || sub.submission_type === 'file';
+        if (isCloudinaryFile) {
+            const radioFile = document.getElementById('type-file');
+            if (radioFile) radioFile.checked = true;
+            toggleSubmissionType('file');
+
+            if (urlInput) urlInput.value = '';
+            if (existingFileAlert && existingFileLink) {
+                existingFileAlert.classList.remove('d-none');
+                existingFileLink.href = sub.file_url;
+                existingFileLink.textContent = sub.file_name ? `📄 ดูไฟล์ที่ส่งไว้ (${sub.file_name})` : '📄 ดูไฟล์งานเดิมที่ส่งไว้บน Cloudinary';
+            }
+        } else {
+            const radioLink = document.getElementById('type-link');
+            if (radioLink) radioLink.checked = true;
+            toggleSubmissionType('link');
+            if (urlInput) urlInput.value = sub.file_url;
+            if (existingFileAlert) existingFileAlert.classList.add('d-none');
+        }
+    } else {
+        const radioFile = document.getElementById('type-file');
+        if (radioFile) radioFile.checked = true;
+        toggleSubmissionType('file');
+        if (urlInput) urlInput.value = '';
+        if (existingFileAlert) existingFileAlert.classList.add('d-none');
+    }
+
+    initDropzoneEvents();
 
     const modal = new bootstrap.Modal(document.getElementById('submitWorkModal'));
     modal.show();
@@ -219,12 +376,70 @@ async function handleStudentSubmitWork(e) {
     e.preventDefault();
     if (!currentClassroom || !activeSubmitAssignmentId) return;
 
-    const url = document.getElementById('submit-work-url').value.trim();
-    const comment = document.getElementById('submit-work-comment').value.trim();
-
     const assignments = Array.isArray(currentClassroom.assignments) ? currentClassroom.assignments : [];
     const assignment = assignments.find(a => a.id === activeSubmitAssignmentId);
     if (!assignment) return;
+
+    const comment = document.getElementById('submit-work-comment')?.value.trim() || '';
+    let finalFileUrl = '';
+    let fileName = '';
+    let fileSize = '';
+
+    const btn = document.getElementById('btn-do-submit');
+    const progressEl = document.getElementById('submit-upload-progress');
+    const statusText = document.getElementById('submit-upload-status-text');
+
+    if (currentSubmissionType === 'file') {
+        if (selectedSubmissionFile) {
+            // อัปโหลดไฟล์ขึ้น Cloudinary
+            try {
+                if (btn) btn.disabled = true;
+                if (progressEl) progressEl.classList.remove('d-none');
+                if (statusText) statusText.textContent = `กำลังอัปโหลด "${selectedSubmissionFile.name}" ขึ้น Cloudinary...`;
+
+                const formData = new FormData();
+                formData.append('file', selectedSubmissionFile);
+                formData.append('upload_preset', CLOUDINARY.uploadPreset);
+
+                const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY.cloudName}/auto/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!res.ok) {
+                    const errJson = await res.json().catch(() => ({}));
+                    throw new Error(errJson.error?.message || 'อัปโหลดขึ้น Cloudinary ไม่สำเร็จ');
+                }
+
+                const data = await res.json();
+                finalFileUrl = data.secure_url;
+                fileName = selectedSubmissionFile.name;
+                fileSize = formatFileSize(selectedSubmissionFile.size);
+            } catch (err) {
+                console.error("Cloudinary upload error:", err);
+                showToast('error', 'อัปโหลดไฟล์ล้มเหลว', err.message);
+                if (btn) btn.disabled = false;
+                if (progressEl) progressEl.classList.add('d-none');
+                return;
+            }
+        } else if (existingSubmissionData && existingSubmissionData.file_url) {
+            finalFileUrl = existingSubmissionData.file_url;
+            fileName = existingSubmissionData.file_name || 'ไฟล์งานเดิม';
+            fileSize = existingSubmissionData.file_size || '';
+        } else {
+            showToast('warning', 'กรุณาเลือกไฟล์', 'กรุณาเลือกไฟล์ผลงานที่ต้องการส่งขึ้น Cloudinary');
+            return;
+        }
+    } else {
+        const urlInput = document.getElementById('submit-work-url');
+        const url = (urlInput?.value || '').trim();
+        if (!url) {
+            showToast('warning', 'กรุณาระบุลิงก์', 'กรุณากรอกลิงก์ผลงาน เช่น Canva, Google Drive');
+            return;
+        }
+        finalFileUrl = url;
+        fileName = 'ลิงก์ผลงานภายนอก';
+    }
 
     if (!assignment.submissions) assignment.submissions = {};
     const studentKey = currentStudentId || currentStudentName;
@@ -232,14 +447,16 @@ async function handleStudentSubmitWork(e) {
     assignment.submissions[studentKey] = {
         student_id: currentStudentId,
         student_name: currentStudentName,
-        file_url: url,
+        submission_type: currentSubmissionType, // 'file' | 'link'
+        file_url: finalFileUrl,
+        file_name: fileName,
+        file_size: fileSize,
         comment: comment,
         submitted_at: new Date().toISOString(),
         score: assignment.submissions[studentKey]?.score ?? null
     };
 
-    const btn = document.getElementById('btn-do-submit');
-    btn.disabled = true;
+    if (btn) btn.disabled = true;
 
     try {
         const { error } = await supabaseClient
@@ -249,14 +466,17 @@ async function handleStudentSubmitWork(e) {
 
         if (!error) {
             currentClassroom.assignments = assignments;
-            showToast('success', 'ส่งงานสำเร็จ!', 'ผลงานของคุณถูกส่งไปยังคุณครูเรียบร้อย');
+            showToast('success', 'ส่งงานสำเร็จ!', currentSubmissionType === 'file' ? 'ไฟล์ถูกบันทึกขึ้น Cloudinary เรียบร้อยแล้ว' : 'ส่งลิงก์ผลงานไปยังคุณครูเรียบร้อย');
             bootstrap.Modal.getInstance(document.getElementById('submitWorkModal'))?.hide();
             renderStudentAssignments();
         } else {
             showToast('error', 'ส่งงานไม่สำเร็จ', error.message);
         }
+    } catch (err) {
+        showToast('error', 'เกิดข้อผิดพลาด', err.message);
     } finally {
-        btn.disabled = false;
+        if (btn) btn.disabled = false;
+        if (progressEl) progressEl.classList.add('d-none');
     }
 }
 

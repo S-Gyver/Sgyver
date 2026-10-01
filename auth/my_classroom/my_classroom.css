@@ -660,5 +660,41 @@
     box-shadow: 0 16px 32px rgba(16, 185, 129, 0.12);
 }
 
-
-
+/* ====================================================
+   📁 Dropzone & File Preview (Cloudinary File Upload)
+   ==================================================== */
+.gyver-dropzone {
+    border: 2px dashed #cbd5e1;
+    background: #f8fafc;
+    border-radius: 16px;
+    padding: 24px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.gyver-dropzone:hover, .gyver-dropzone.dragover {
+    border-color: #6366f1;
+    background: #f0f4ff;
+    transform: scale(1.01);
+}
+.file-preview-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+.file-badge-cloudinary {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    background: rgba(37, 99, 235, 0.1);
+    color: #2563eb;
+    font-weight: 600;
+}
