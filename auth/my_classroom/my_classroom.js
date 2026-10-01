@@ -32,9 +32,22 @@ function initTabPersistence() {
             try {
                 localStorage.setItem(`gyver_last_tab_${activeClassroomId}`, targetId);
             } catch (err) {}
+            handleTabSectionsBarVisibility(targetId);
         }
     });
 }
+
+function handleTabSectionsBarVisibility(tabBtnId) {
+    const secBar = document.getElementById('classroom-sections-bar');
+    if (!secBar) return;
+    // Hide sections bar on course-wide shared tabs (Tab 3: แจกไฟล์ & ชีทเรียน, Tab 4: สั่งงาน & ตรวจงาน)
+    if (tabBtnId === 'tab-materials-btn' || tabBtnId === 'tab-assignments-btn') {
+        secBar.classList.add('d-none');
+    } else {
+        secBar.classList.remove('d-none');
+    }
+}
+
 
 function initDefaultDates() {
     const dateInput = document.getElementById('attendance-date-input');
@@ -72,6 +85,19 @@ async function fetchUserAndClassrooms() {
     }
 }
 
+// 🧼 ฟังก์ชันช่วยดึงเฉพาะเลขห้องเรียนย่อย เช่น "4/2" -> "2", "ม.4/1" -> "1", "ห้อง 3" -> "3"
+function extractCleanRoomSection(rawSec, gradeLevel) {
+    if (!rawSec) return '1';
+    let s = String(rawSec).trim();
+    const cleanG = String(gradeLevel || '').replace(/[^0-9]/g, '');
+    if (cleanG) {
+        s = s.replace(new RegExp(`^(?:[มป]\\.?\\s*)?${cleanG}\\s*[/\\-]\\s*`, 'i'), '');
+    }
+    s = s.replace(/^[มป]\.?\s*\d+\s*[/\\-]\s*/i, '');
+    s = s.replace(/^ห้อง\s*/i, '');
+    return s.trim() || '1';
+}
+
 // 🛠️ ตัวช่วยเติมเต็มข้อมูล materials / assignments / attendance_logs จาก Cloud หรือ Local Fallback
 function enrichClassroom(c) {
     if (!c) return c;
@@ -90,6 +116,58 @@ function enrichClassroom(c) {
             c.attendance_logs = JSON.parse(localStorage.getItem(`gyver_attendance_${c.id}`)) || {};
         } catch (e) { c.attendance_logs = {}; }
     }
+    if (!c.gradebook || typeof c.gradebook !== 'object') {
+        try {
+            c.gradebook = JSON.parse(localStorage.getItem(`gyver_gradebook_${c.id}`)) || null;
+        } catch (e) { c.gradebook = null; }
+    }
+    if (!c.gradebook) {
+        c.gradebook = {
+            config: {},
+            columns: [
+                { id: 'col_task1', title: 'ใบงานที่ 1', max: 10 },
+                { id: 'col_task2', title: 'ใบงานที่ 2', max: 10 },
+                { id: 'col_quiz', title: 'ทดสอบย่อย', max: 10 },
+                { id: 'col_affective', title: 'จิตพิสัย/เวลาเรียน', max: 10 }
+            ],
+            scores: {}
+        };
+    }
+
+    if (!c.gradebook.config) c.gradebook.config = {};
+    const cfg = c.gradebook.config;
+    if (!cfg.midterm_max) cfg.midterm_max = 20;
+    if (!cfg.final_max) cfg.final_max = 30;
+    if (!cfg.semester) cfg.semester = '1';
+    if (!cfg.academic_year) cfg.academic_year = '2569';
+
+    // ถ้าไม่มี subject_name หรือ grade_level หรือ room_section ลองแกะจาก class_name
+    if (!cfg.subject_name || !cfg.grade_level || !cfg.room_section) {
+        const nameMatch = (c.class_name || '').match(/^(?:([A-Za-zก-๙0-9_]+)\s+)?(.+?)\s*\(([มป]\.?\d+|\d+)(?:[^\/]*\/)*([^)]+)\)$/);
+        if (nameMatch) {
+            if (!cfg.subject_code && nameMatch[1]) cfg.subject_code = nameMatch[1];
+            if (!cfg.subject_name) cfg.subject_name = nameMatch[2]?.trim() || c.class_name;
+            if (!cfg.grade_level) cfg.grade_level = (nameMatch[3] || '4').replace(/[^0-9]/g, '') || '4';
+            if (!cfg.room_section) cfg.room_section = extractCleanRoomSection(nameMatch[4] || '1', cfg.grade_level);
+        } else {
+            if (!cfg.subject_name) cfg.subject_name = c.class_name || 'วิชาใหม่';
+            if (!cfg.grade_level) cfg.grade_level = '4';
+            if (!cfg.room_section) cfg.room_section = '1';
+        }
+    }
+    if (cfg.room_section) {
+        cfg.room_section = extractCleanRoomSection(cfg.room_section, cfg.grade_level);
+    }
+    if (!cfg.subject_group_id && cfg.subject_name) {
+        const cleanSubj = cfg.subject_name.replace(/\s*\([มป]\.?\d+.*?\)$/i, '').trim();
+        cfg.subject_group_id = `subj_${c.teacher_id}_${encodeURIComponent(cleanSubj)}_${cfg.grade_level || '4'}`;
+    }
+
+    // แก้ไขข้อความ class_name ในหน่วยความจำหากมี (ม.4/4/X) ให้กลายเป็น (ม.4/X)
+    if (c.class_name) {
+        c.class_name = c.class_name.replace(/\(ม\.(\d+)\/\1\//g, '(ม.$1/');
+    }
+
     return c;
 }
 
@@ -182,9 +260,281 @@ function handleSearchClassrooms(query) {
 
     const filtered = cachedClassrooms.filter(c => 
         (c.class_name || '').toLowerCase().includes(q) ||
-        (c.room_code || '').toLowerCase().includes(q)
+        (c.room_code || '').toLowerCase().includes(q) ||
+        (c.gradebook?.config?.subject_code || '').toLowerCase().includes(q) ||
+        (c.gradebook?.config?.subject_name || '').toLowerCase().includes(q)
     );
     renderHubClassrooms(filtered);
+}
+
+function autoUpdateInitialSection(val) {
+    const sectionInput = document.getElementById('class-initial-section');
+    if (sectionInput) {
+        const clean = (val || '').replace(/[^0-9]/g, '');
+        if (clean) {
+            sectionInput.value = `${clean}/1`;
+        }
+    }
+}
+
+function getSiblingSections(currentClass) {
+    if (!currentClass) return [];
+    const cfg = currentClass.gradebook?.config || {};
+    const currentGroupId = cfg.subject_group_id;
+    const currentSubj = (cfg.subject_name || currentClass.class_name || '').replace(/\s*\([มป]\.?\d+.*?\)$/i, '').trim().toLowerCase();
+    const currentGrade = String(cfg.grade_level || '').replace(/[^0-9]/g, '');
+
+    const siblings = cachedClassrooms.filter(c => {
+        if (c.id === currentClass.id) return true;
+        const cCfg = c.gradebook?.config || {};
+        const cGroupId = cCfg.subject_group_id;
+        if (currentGroupId && cGroupId && currentGroupId === cGroupId) return true;
+        
+        const cSubj = (cCfg.subject_name || c.class_name || '').replace(/\s*\([มป]\.?\d+.*?\)$/i, '').trim().toLowerCase();
+        const cGrade = String(cCfg.grade_level || '').replace(/[^0-9]/g, '');
+        if (currentSubj && cSubj && currentSubj === cSubj && currentGrade && cGrade && currentGrade === cGrade) {
+            return true;
+        }
+        return false;
+    });
+
+    return siblings.length > 0 ? siblings : [currentClass];
+}
+
+function renderSectionsBar() {
+    const container = document.getElementById('sections-pill-container');
+    const badge = document.getElementById('section-grade-badge');
+    if (!container || !activeClassroom) return;
+
+    const cfg = activeClassroom.gradebook?.config || {};
+    const gradeLevel = cfg.grade_level || '4';
+    const displayGrade = gradeLevel.toLowerCase().startsWith('ม.') || gradeLevel.toLowerCase().startsWith('ป.') ? gradeLevel : `ม.${gradeLevel}`;
+
+    if (badge) {
+        badge.innerHTML = `<i class="bi bi-mortarboard-fill me-1"></i>ระดับชั้น ${displayGrade}`;
+    }
+
+    const siblings = getSiblingSections(activeClassroom);
+    if (siblings.length === 0) siblings.push(activeClassroom);
+
+    container.innerHTML = siblings.map(c => {
+        const isActive = c.id === activeClassroomId;
+        const studentCount = Array.isArray(c.students) ? c.students.length : 0;
+        const secNum = extractCleanRoomSection(c.gradebook?.config?.room_section || c.class_name, gradeLevel);
+
+        return `
+            <div class="section-card ${isActive ? 'active' : ''}" onclick="enterClassroom('${c.id}')" title="คลิกเพื่อสลับไปยังห้อง ${displayGrade}/${secNum}">
+                <div class="d-flex align-items-center justify-content-between gap-3">
+                    <span class="fw-bold" style="font-size: 0.95rem;">
+                        <i class="bi bi-door-closed${isActive ? '-fill text-primary' : ' text-secondary'} me-1"></i>ห้อง ${displayGrade}/${secNum}
+                    </span>
+                    <span class="badge ${isActive ? 'bg-primary text-white' : 'bg-light text-success border'} font-mono">${c.room_code || '------'}</span>
+                </div>
+                <div class="d-flex align-items-center justify-content-between mt-1" style="font-size: 0.78rem;">
+                    <span class="text-muted"><i class="bi bi-people me-1"></i>${studentCount} คน</span>
+                    ${isActive ? '<span class="text-primary fw-bold"><i class="bi bi-check-circle-fill me-1"></i>กำลังเลือก</span>' : '<span class="text-muted">คลิกเพื่อสลับ</span>'}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function openAddSectionModal() {
+    if (!activeClassroom) return;
+    const cfg = activeClassroom.gradebook?.config || {};
+    const gradeLevel = cfg.grade_level || '4';
+    const displayGrade = gradeLevel.toLowerCase().startsWith('ม.') || gradeLevel.toLowerCase().startsWith('ป.') ? gradeLevel : `ม.${gradeLevel}`;
+    const subName = cfg.subject_name || activeClassroom.class_name;
+
+    const descEl = document.getElementById('add-section-modal-desc');
+    if (descEl) {
+        descEl.innerHTML = `เพิ่มห้องเรียนใหม่ในระดับชั้น <b>${displayGrade}</b> (${subName}) เช่น ห้อง 4/2 หรือ 4/3 โดยจะดึงไฟล์เอกสารบทเรียน การบ้าน และเกณฑ์ ปพ.5 มาใช้ร่วมกันอัตโนมัติ`;
+    }
+
+    const input = document.getElementById('new-section-name');
+    if (input) {
+        const siblings = getSiblingSections(activeClassroom);
+        const nextNum = siblings.length + 1;
+        input.value = `${gradeLevel.replace(/[^0-9]/g, '') || '4'}/${nextNum}`;
+    }
+
+    const modalEl = document.getElementById('addSectionModal');
+    if (modalEl) new bootstrap.Modal(modalEl).show();
+}
+
+async function handleCreateSection(e) {
+    e.preventDefault();
+    if (!activeClassroom || !currentUserId) return;
+
+    const rawSectionName = document.getElementById('new-section-name')?.value.trim();
+    if (!rawSectionName) return;
+
+    const btn = document.getElementById('btn-save-section');
+    if (btn) btn.disabled = true;
+
+    try {
+        const cfg = activeClassroom.gradebook?.config || {};
+        const subjectCode = cfg.subject_code || '';
+        const subjectName = cfg.subject_name || activeClassroom.class_name;
+        const gradeLevel = cfg.grade_level || '4';
+        const academicYear = cfg.academic_year || '2569';
+        const semester = cfg.semester || '1';
+        const cleanGrade = String(gradeLevel).replace(/[^0-9]/g, '') || '4';
+        const cleanSubj = subjectName.replace(/\s*\([มป]\.?\d+.*?\)$/i, '').trim();
+        const subjectGroupId = cfg.subject_group_id || `subj_${currentUserId}_${encodeURIComponent(cleanSubj)}_${cleanGrade}`;
+
+        const displayGrade = gradeLevel.toLowerCase().startsWith('ม.') || gradeLevel.toLowerCase().startsWith('ป.') ? gradeLevel : `ม.${gradeLevel}`;
+        const cleanSection = extractCleanRoomSection(rawSectionName, gradeLevel);
+        const formattedClassName = `${subjectCode ? subjectCode + ' ' : ''}${cleanSubj} (${displayGrade}/${cleanSection})`;
+
+        // คัดลอก materials, assignments, และ columns จากระดับรายวิชา เพื่อแชร์ทรัพยากรการสอนและเกณฑ์ ปพ.5 ร่วมกันทันที
+        const clonedMaterials = getSharedCourseMaterials();
+        const clonedAssignments = getSharedCourseAssignments();
+        const sectionGradebook = {
+            config: {
+                ...cfg,
+                room_section: cleanSection,
+                subject_group_id: subjectGroupId
+            },
+            columns: activeClassroom.gradebook?.columns ? JSON.parse(JSON.stringify(activeClassroom.gradebook.columns)) : [],
+            scores: {}
+        };
+
+        // 🛡️ ส่งเฉพาะฟิลด์มาตรฐานของ classrooms table เพื่อป้องกัน schema cache error จาก Supabase
+        const basePayload = {
+            teacher_id: currentUserId,
+            class_name: formattedClassName,
+            room_code: generateRoomCode(),
+            students: []
+        };
+
+        const { data, error } = await supabaseClient.from('classrooms').insert([basePayload]).select();
+        if (!error && data && data[0]) {
+            const rawClass = data[0];
+
+            // บันทึก materials, assignments, gradebook ลง LocalStorage ทันที
+            try {
+                localStorage.setItem(`gyver_materials_${rawClass.id}`, JSON.stringify(clonedMaterials));
+                localStorage.setItem(`gyver_assignments_${rawClass.id}`, JSON.stringify(clonedAssignments));
+                localStorage.setItem(`gyver_attendance_${rawClass.id}`, JSON.stringify({}));
+                localStorage.setItem(`gyver_gradebook_${rawClass.id}`, JSON.stringify(sectionGradebook));
+            } catch (storageErr) {
+                console.warn('Storage set error:', storageErr);
+            }
+
+            // แอบ sync ข้อมูลเพิ่มเติมไปยัง Supabase ในกรณีที่ DB มีการ migrate คอลัมน์แล้ว (silent non-blocking)
+            try {
+                await supabaseClient.from('classrooms').update({
+                    materials: clonedMaterials,
+                    assignments: clonedAssignments,
+                    attendance_logs: {},
+                    gradebook: sectionGradebook
+                }).eq('id', rawClass.id);
+            } catch (_) {}
+
+            const newClass = enrichClassroom({
+                ...rawClass,
+                materials: clonedMaterials,
+                assignments: clonedAssignments,
+                attendance_logs: {},
+                gradebook: sectionGradebook
+            });
+
+            cachedClassrooms.unshift(newClass);
+            bootstrap.Modal.getInstance(document.getElementById('addSectionModal'))?.hide();
+            document.getElementById('form-add-section')?.reset();
+            showToast('success', 'เพิ่มห้องเรียนสำเร็จ!', `เพิ่มห้อง "${cleanSection}" เรียบร้อยแล้ว`);
+            enterClassroom(newClass.id);
+        } else {
+            showToast('error', 'สร้างห้องไม่สำเร็จ', error?.message || 'เกิดข้อผิดพลาด');
+        }
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
+async function syncSharedContentToSiblings(contentType, contentData) {
+    if (!activeClassroom) return;
+    const siblings = getSiblingSections(activeClassroom).filter(c => c.id !== activeClassroomId);
+    if (siblings.length === 0) return;
+
+    for (const sib of siblings) {
+        sib[contentType] = contentData;
+        try {
+            localStorage.setItem(`gyver_${contentType}_${sib.id}`, JSON.stringify(contentData));
+            await supabaseClient.from('classrooms').update({ [contentType]: contentData }).eq('id', sib.id);
+        } catch (_) {}
+    }
+}
+
+// 🗂️ รวมห้องเรียนตามรายวิชาและระดับชั้น เพื่อแสดงการ์ดเดียวบน Hub
+function groupClassroomsBySubject(classroomsList) {
+    const groups = [];
+    const groupMap = new Map();
+
+    (classroomsList || []).forEach(c => {
+        const cfg = c.gradebook?.config || {};
+        let subjectCode = (cfg.subject_code || '').trim();
+        let subjectName = (cfg.subject_name || c.class_name || '').trim();
+        let gradeLevel = String(cfg.grade_level || '4').replace(/[^0-9]/g, '') || '4';
+
+        // ทำความสะอาดชื่อวิชา
+        subjectName = subjectName.replace(/\s*\([มป]\.?\d+.*?\)$/i, '').trim();
+        if (!subjectName) subjectName = c.class_name || 'วิชาใหม่';
+
+        // คีย์ของกลุ่มวิชา: ชื่อวิชา + ระดับชั้น (เช่น "2222_4")
+        const cleanSubjKey = subjectName.toLowerCase().replace(/\s+/g, '');
+        const groupKey = `group_${cleanSubjKey}_${gradeLevel}`;
+
+        if (!groupMap.has(groupKey)) {
+            const newGroup = {
+                groupKey: groupKey,
+                subjectCode: subjectCode,
+                subjectName: subjectName,
+                gradeLevel: gradeLevel,
+                displayGrade: `ม.${gradeLevel}`,
+                sections: [],
+                totalStudents: 0,
+                materialsCount: 0,
+                assignmentsCount: 0,
+                createdAt: c.created_at
+            };
+            groupMap.set(groupKey, newGroup);
+            groups.push(newGroup);
+        }
+
+        const grp = groupMap.get(groupKey);
+        grp.sections.push(c);
+
+        if (!grp.subjectCode && subjectCode) grp.subjectCode = subjectCode;
+
+        const stCount = Array.isArray(c.students) ? c.students.length : 0;
+        grp.totalStudents += stCount;
+
+        const matCount = Array.isArray(c.materials) ? c.materials.length : 0;
+        if (matCount > grp.materialsCount) grp.materialsCount = matCount;
+
+        const assCount = Array.isArray(c.assignments) ? c.assignments.length : 0;
+        if (assCount > grp.assignmentsCount) grp.assignmentsCount = assCount;
+
+        if (c.created_at && (!grp.createdAt || new Date(c.created_at) > new Date(grp.createdAt))) {
+            grp.createdAt = c.created_at;
+        }
+    });
+
+    // เรียงลำดับห้องเรียนในแต่ละกลุ่ม (เช่น ห้อง 1, ห้อง 2, ห้อง 3)
+    groups.forEach(grp => {
+        grp.sections.sort((a, b) => {
+            const secA = extractCleanRoomSection(a.gradebook?.config?.room_section || a.class_name, grp.gradeLevel);
+            const secB = extractCleanRoomSection(b.gradebook?.config?.room_section || b.class_name, grp.gradeLevel);
+            const numA = parseInt(secA, 10);
+            const numB = parseInt(secB, 10);
+            if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+            return secA.localeCompare(secB);
+        });
+    });
+
+    return groups;
 }
 
 function renderHubClassrooms(classroomsList) {
@@ -206,62 +556,111 @@ function renderHubClassrooms(classroomsList) {
         return;
     }
 
-    grid.innerHTML = classroomsList.map(c => {
-        const studentCount = Array.isArray(c.students) ? c.students.length : 0;
-        const materialsCount = Array.isArray(c.materials) ? c.materials.length : 0;
-        const assignmentsCount = Array.isArray(c.assignments) ? c.assignments.length : 0;
-        const roomCode = c.room_code || '------';
-        const dateStr = c.created_at ? new Date(c.created_at).toLocaleDateString('th-TH') : '';
+    const groups = groupClassroomsBySubject(classroomsList);
+
+    grid.innerHTML = groups.map(grp => {
+        const sectionsCount = grp.sections.length;
+        const firstSec = grp.sections[0];
+        const dateStr = grp.createdAt ? new Date(grp.createdAt).toLocaleDateString('th-TH') : '';
+        const hasMultiple = sectionsCount > 1;
+
+        // รายการปุ่มชิปห้องเรียนย่อย
+        const chipsHtml = grp.sections.map(s => {
+            const secNum = extractCleanRoomSection(s.gradebook?.config?.room_section || s.class_name, grp.gradeLevel);
+            const rCode = s.room_code || '------';
+            return `
+                <div class="hub-section-chip" onclick="enterClassroom('${s.id}')" title="เข้าสู่ห้อง ${grp.displayGrade}/${secNum} (รหัส ${rCode})">
+                    <i class="bi bi-door-closed text-primary"></i>
+                    <span>ห้อง ${grp.gradeLevel}/${secNum}</span>
+                    <span class="chip-code">${rCode}</span>
+                </div>
+            `;
+        }).join('');
 
         return `
         <div class="col-md-6 col-lg-4">
             <div class="hub-classroom-card h-100 d-flex flex-column">
-                <div class="d-flex justify-content-between align-items-start mb-3">
-                    <span class="room-code-badge" title="รหัสห้องเรียน">
-                        <i class="bi bi-key-fill text-success"></i> ${roomCode}
-                        <button class="room-code-copy-btn ms-1" onclick="quickCopyCode('${roomCode}')" title="คัดลอกรหัสห้อง">
-                            <i class="bi bi-clipboard"></i>
-                        </button>
-                    </span>
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    ${!hasMultiple ? `
+                        <span class="room-code-badge" title="รหัสห้องเรียน">
+                            <i class="bi bi-key-fill text-success"></i> ${firstSec.room_code || '------'}
+                            <button class="room-code-copy-btn ms-1" onclick="quickCopyCode('${firstSec.room_code}')" title="คัดลอกรหัสห้อง">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </span>
+                    ` : `
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1 font-mono fw-bold">
+                            <i class="bi bi-collection-fill me-1"></i>${sectionsCount} ห้องเรียน (${grp.displayGrade})
+                        </span>
+                    `}
+                    
                     <div class="dropdown">
                         <button class="btn btn-sm btn-link text-muted p-0" type="button" data-bs-toggle="dropdown">
                             <i class="bi bi-three-dots-vertical fs-5"></i>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
+                            ${grp.sections.map(s => {
+                                const secNum = extractCleanRoomSection(s.gradebook?.config?.room_section || s.class_name, grp.gradeLevel);
+                                return `
+                                    <li>
+                                        <a class="dropdown-item py-2" href="javascript:void(0)" onclick="quickOpenQRModal('${s.id}')">
+                                            <i class="bi bi-qr-code me-2 text-primary"></i>QR Code ห้อง ${grp.gradeLevel}/${secNum} (${s.room_code})
+                                        </a>
+                                    </li>
+                                `;
+                            }).join('')}
+                            <li><hr class="dropdown-divider"></li>
                             <li>
-                                <a class="dropdown-item py-2" href="javascript:void(0)" onclick="quickOpenQRModal('${c.id}')">
-                                    <i class="bi bi-qr-code me-2 text-primary"></i>แสดง QR Code
+                                <a class="dropdown-item py-2 text-primary fw-bold" href="javascript:void(0)" onclick="quickAddSectionFromHub('${firstSec.id}')">
+                                    <i class="bi bi-plus-circle me-2"></i>เพิ่มห้องเรียนในระดับนี้
                                 </a>
                             </li>
                             <li><hr class="dropdown-divider"></li>
                             <li>
-                                <a class="dropdown-item text-danger py-2" href="javascript:void(0)" onclick="deleteClassroomFromHub('${c.id}', '${encodeURIComponent(c.class_name)}')">
-                                    <i class="bi bi-trash3 me-2"></i>ลบห้องเรียนนี้
+                                <a class="dropdown-item text-danger py-2" href="javascript:void(0)" onclick="deleteCourseGroupFromHub('${grp.groupKey}', '${encodeURIComponent(grp.subjectName)}')">
+                                    <i class="bi bi-trash3 me-2"></i>ลบทั้งรายวิชานี้ (${sectionsCount} ห้อง)
                                 </a>
                             </li>
                         </ul>
                     </div>
                 </div>
 
-                <h4 class="fw-bold text-dark mb-2 text-truncate" title="${c.class_name || 'ไม่มีชื่อห้อง'}">
-                    ${c.class_name || 'ไม่มีชื่อห้อง'}
+                <div class="mb-2">
+                    ${grp.subjectCode ? `<span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill font-mono px-2 py-0 small me-1">${grp.subjectCode}</span>` : ''}
+                    <span class="badge bg-indigo-subtle text-indigo border rounded-pill px-2 py-0 small me-1" style="background:#e0e7ff; color:#4338ca;">ระดับชั้น ${grp.displayGrade}</span>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-0 small">${sectionsCount} ห้องเรียน</span>
+                </div>
+
+                <h4 class="fw-bold text-dark mb-2 text-truncate" title="${grp.subjectName}">
+                    ${grp.subjectCode ? grp.subjectCode + ' ' : ''}${grp.subjectName}
                 </h4>
+
+                <!-- ชิปห้องเรียนย่อยในวิชานี้ -->
+                <div class="mb-3">
+                    <div class="small text-muted mb-1 fw-bold" style="font-size:0.75rem;">ห้องเรียนในวิชานี้:</div>
+                    <div class="d-flex flex-wrap gap-1 align-items-center">
+                        ${chipsHtml}
+                        <button class="btn btn-sm btn-outline-secondary rounded-pill py-0 px-2" style="font-size:0.75rem; height: 26px;" onclick="quickAddSectionFromHub('${firstSec.id}')" title="เพิ่มห้องเรียนใหม่ในระดับชั้นนี้">
+                            <i class="bi bi-plus"></i> เพิ่มห้อง
+                        </button>
+                    </div>
+                </div>
                 
                 <div class="d-flex flex-wrap gap-2 mb-4">
                     <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1">
-                        <i class="bi bi-people-fill me-1"></i>${studentCount} คน
+                        <i class="bi bi-people-fill me-1"></i>${grp.totalStudents} คน (รวม)
                     </span>
                     <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-3 py-1">
-                        <i class="bi bi-folder-fill me-1"></i>${materialsCount} ไฟล์
+                        <i class="bi bi-folder-fill me-1"></i>${grp.materialsCount} ไฟล์
                     </span>
                     <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle rounded-pill px-3 py-1">
-                        <i class="bi bi-journal-text me-1"></i>${assignmentsCount} งาน
+                        <i class="bi bi-journal-text me-1"></i>${grp.assignmentsCount} งาน
                     </span>
                 </div>
 
                 <div class="d-flex justify-content-between align-items-center pt-3 border-top mt-auto">
                     <small class="text-muted font-mono" style="font-size: 0.75rem;">สร้างเมื่อ: ${dateStr}</small>
-                    <button class="btn btn-primary btn-sm rounded-pill px-4 fw-bold shadow-sm" onclick="enterClassroom('${c.id}')">
+                    <button class="btn btn-primary btn-sm rounded-pill px-4 fw-bold shadow-sm" onclick="enterClassroom('${firstSec.id}')">
                         <i class="bi bi-box-arrow-in-right me-1"></i>เข้าห้องเรียน
                     </button>
                 </div>
@@ -282,23 +681,82 @@ async function handleCreateClassroom(e) {
     e.preventDefault();
     if (!currentUserId) return showToast('error', 'เกิดข้อผิดพลาด', 'ไม่พบเซสชันผู้ใช้งาน');
 
-    const className = document.getElementById('class-title').value.trim();
+    const subjectCode = document.getElementById('class-subject-code')?.value.trim() || '';
+    const subjectName = document.getElementById('class-subject-name')?.value.trim() || 'วิชาใหม่';
+    const gradeLevel = document.getElementById('class-grade-level')?.value.trim() || '4';
+    const initialSection = document.getElementById('class-initial-section')?.value.trim() || `${gradeLevel}/1`;
+    const academicYear = document.getElementById('class-academic-year')?.value.trim() || '2569';
+    const semester = document.getElementById('class-semester')?.value || '1';
+
     const btnSave = document.getElementById('btn-save-class');
-    btnSave.disabled = true;
+    if (btnSave) btnSave.disabled = true;
 
     try {
-        const payload = {
+        const cleanGrade = gradeLevel.replace(/[^0-9]/g, '') || '4';
+        const cleanSubj = subjectName.replace(/\s*\([มป]\.?\d+.*?\)$/i, '').trim();
+        const subjectGroupId = `subj_${currentUserId}_${encodeURIComponent(cleanSubj)}_${cleanGrade}_${Date.now()}`;
+        const displayGrade = gradeLevel.toLowerCase().startsWith('ม.') || gradeLevel.toLowerCase().startsWith('ป.') ? gradeLevel : `ม.${gradeLevel}`;
+        const cleanSection = extractCleanRoomSection(initialSection, gradeLevel);
+        const formattedClassName = `${subjectCode ? subjectCode + ' ' : ''}${cleanSubj} (${displayGrade}/${cleanSection})`;
+
+        const initialGradebook = {
+            config: {
+                subject_code: subjectCode,
+                subject_name: subjectName,
+                grade_level: gradeLevel,
+                room_section: cleanSection,
+                subject_group_id: subjectGroupId,
+                academic_year: academicYear,
+                semester: semester,
+                midterm_max: 20,
+                final_max: 30
+            },
+            columns: [
+                { id: 'col_task1', title: 'ใบงานที่ 1', max: 10 },
+                { id: 'col_task2', title: 'ใบงานที่ 2', max: 10 },
+                { id: 'col_quiz', title: 'ทดสอบย่อย', max: 10 },
+                { id: 'col_affective', title: 'จิตพิสัย/เวลาเรียน', max: 10 }
+            ],
+            scores: {}
+        };
+
+        // 🛡️ ส่งเฉพาะฟิลด์มาตรฐานของ classrooms table เพื่อป้องกัน schema cache error จาก Supabase
+        const basePayload = {
             teacher_id: currentUserId,
-            class_name: className,
+            class_name: formattedClassName,
             room_code: generateRoomCode(),
             students: []
         };
 
-        const { data, error } = await supabaseClient.from('classrooms').insert([payload]).select();
+        const { data, error } = await supabaseClient.from('classrooms').insert([basePayload]).select();
         if (!error && data && data[0]) {
-            const newClass = enrichClassroom(data[0]);
-            showToast('success', 'สร้างห้องเรียนสำเร็จ!', `ห้องเรียน "${className}" พร้อมใช้งานแล้ว`);
-            document.getElementById('form-create-class').reset();
+            const rawClass = data[0];
+
+            // บันทึก gradebook, materials, assignments ลง LocalStorage ทันที
+            try {
+                localStorage.setItem(`gyver_gradebook_${rawClass.id}`, JSON.stringify(initialGradebook));
+                localStorage.setItem(`gyver_materials_${rawClass.id}`, JSON.stringify([]));
+                localStorage.setItem(`gyver_assignments_${rawClass.id}`, JSON.stringify([]));
+                localStorage.setItem(`gyver_attendance_${rawClass.id}`, JSON.stringify({}));
+            } catch (storageErr) {
+                console.warn('Storage set error:', storageErr);
+            }
+
+            // แอบ sync ข้อมูลเพิ่มเติมไปยัง Supabase ในกรณีที่ DB มีการ migrate คอลัมน์แล้ว (silent non-blocking)
+            try {
+                await supabaseClient.from('classrooms').update({ gradebook: initialGradebook }).eq('id', rawClass.id);
+            } catch (_) {}
+
+            const newClass = enrichClassroom({
+                ...rawClass,
+                materials: [],
+                assignments: [],
+                attendance_logs: {},
+                gradebook: initialGradebook
+            });
+
+            showToast('success', 'สร้างรายวิชาสำเร็จ!', `วิชา "${subjectName}" (ห้อง ${cleanSection}) พร้อมใช้งานแล้ว`);
+            document.getElementById('form-create-class')?.reset();
             bootstrap.Modal.getInstance(document.getElementById('addClassModal'))?.hide();
 
             cachedClassrooms.unshift(newClass);
@@ -310,7 +768,7 @@ async function handleCreateClassroom(e) {
             showToast('error', 'สร้างห้องเรียนไม่สำเร็จ', error?.message || 'เกิดข้อผิดพลาด');
         }
     } finally {
-        btnSave.disabled = false;
+        if (btnSave) btnSave.disabled = false;
     }
 }
 
@@ -336,6 +794,59 @@ async function deleteClassroomFromHub(classId, encodedName) {
     } else {
         showToast('error', 'ลบไม่สำเร็จ', error.message);
     }
+}
+
+async function deleteCourseGroupFromHub(groupKey, encodedName) {
+    const subjName = decodeURIComponent(encodedName);
+    const groups = groupClassroomsBySubject(cachedClassrooms);
+    const targetGroup = groups.find(g => g.groupKey === groupKey);
+    if (!targetGroup) return;
+
+    const count = targetGroup.sections.length;
+    if (!confirm(`⚠️ ยืนยันการลบรายวิชา "${subjName}" ?\n\nการกระทำนี้จะลบห้องเรียนทั้งหมด ${count} ห้อง รวมถึงคะแนน ปพ.5 และงานที่สั่งทั้งหมดอย่างถาวร`)) {
+        return;
+    }
+
+    const idsToDelete = targetGroup.sections.map(s => s.id);
+    for (const classId of idsToDelete) {
+        try {
+            await supabaseClient.from('classrooms').delete().eq('id', classId).eq('teacher_id', currentUserId);
+            localStorage.removeItem(`gyver_gradebook_${classId}`);
+            localStorage.removeItem(`gyver_materials_${classId}`);
+            localStorage.removeItem(`gyver_assignments_${classId}`);
+            localStorage.removeItem(`gyver_attendance_${classId}`);
+        } catch (e) {
+            console.warn('Delete classroom error:', e);
+        }
+    }
+
+    try {
+        localStorage.removeItem(`gyver_shared_materials_${targetGroup.groupKey}`);
+        localStorage.removeItem(`gyver_shared_assignments_${targetGroup.groupKey}`);
+        if (targetGroup.sections && targetGroup.sections[0]) {
+            const courseKey = getCourseGroupKey(targetGroup.sections[0]);
+            localStorage.removeItem(`gyver_shared_materials_${courseKey}`);
+            localStorage.removeItem(`gyver_shared_assignments_${courseKey}`);
+        }
+    } catch (_) {}
+
+    cachedClassrooms = cachedClassrooms.filter(c => !idsToDelete.includes(c.id));
+    try {
+        if (idsToDelete.includes(localStorage.getItem('gyver_last_classroom_id'))) {
+            localStorage.removeItem('gyver_last_classroom_id');
+        }
+    } catch (_) {}
+
+    showToast('info', 'ลบรายวิชาสำเร็จ', `ลบวิชา "${subjName}" (${count} ห้อง) เรียบร้อยแล้ว`);
+    renderHubClassrooms(cachedClassrooms);
+}
+
+function quickAddSectionFromHub(classId) {
+    const target = cachedClassrooms.find(c => c.id === classId);
+    if (!target) return;
+    activeClassroom = target;
+    activeClassroomId = target.id;
+    openAddSectionModal();
 }
 
 function quickCopyCode(code) {
@@ -396,9 +907,11 @@ function enterClassroom(classId) {
     setupRealtimeSubscription();
 
     // กู้คืนแท็บล่าสุดที่เคยเปิดไว้ในห้องนี้ (ถ้ามี)
+    let currentTabId = 'tab-scan-btn';
     try {
         const lastTabId = localStorage.getItem(`gyver_last_tab_${activeClassroomId}`);
         if (lastTabId) {
+            currentTabId = lastTabId;
             const tabTriggerEl = document.getElementById(lastTabId);
             if (tabTriggerEl && typeof bootstrap !== 'undefined') {
                 const tabInstance = bootstrap.Tab.getOrCreateInstance(tabTriggerEl);
@@ -406,6 +919,7 @@ function enterClassroom(classId) {
             }
         }
     } catch (e) {}
+    handleTabSectionsBarVisibility(currentTabId);
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -413,7 +927,12 @@ function enterClassroom(classId) {
 function renderNavbarRoomDropdown() {
     const navRoomTitle = document.getElementById('navbar-current-room-name');
     if (navRoomTitle && activeClassroom) {
-        navRoomTitle.innerText = activeClassroom.class_name || 'เลือกห้องเรียน';
+        const cfg = activeClassroom.gradebook?.config || {};
+        const gradeLevel = String(cfg.grade_level || '4').replace(/[^0-9]/g, '') || '4';
+        const displayGrade = `ม.${gradeLevel}`;
+        let cleanSubj = (cfg.subject_name || activeClassroom.class_name || 'รายวิชา').replace(/\s*\([มป]\.?\d+.*?\)$/i, '').trim();
+        const sec = extractCleanRoomSection(cfg.room_section || activeClassroom.class_name, gradeLevel);
+        navRoomTitle.innerText = `${cleanSubj} ${displayGrade} (ห้อง ${displayGrade}/${sec})`;
     }
 
     const htmlItems = cachedClassrooms.map(c => {
@@ -448,17 +967,29 @@ function renderActiveClassroomHeader() {
     if (!activeClassroom) return;
 
     const titleEl = document.getElementById('current-class-title');
-    const codeEl = document.getElementById('current-class-code');
-    const codeBadge = document.getElementById('current-class-code-badge');
     const subtitleEl = document.getElementById('current-class-subtitle');
 
     const students = Array.isArray(activeClassroom.students) ? activeClassroom.students : [];
     const roomCode = activeClassroom.room_code || '------';
 
-    if (titleEl) titleEl.innerText = activeClassroom.class_name || 'ไม่มีชื่อห้อง';
-    if (codeEl) codeEl.innerText = roomCode;
-    if (codeBadge) codeBadge.style.display = 'inline-flex';
-    if (subtitleEl) subtitleEl.innerText = `รหัสห้อง: ${roomCode} • จำนวนนักเรียน: ${students.length} คน`;
+    const cfg = activeClassroom.gradebook?.config || {};
+    const gradeLevel = String(cfg.grade_level || '4').replace(/[^0-9]/g, '') || '4';
+    const displayGrade = `ม.${gradeLevel}`;
+
+    // ดึงชื่อวิชา (ตัดวงเล็บระบุห้องย่อย เช่น (ม.4/2) ออก)
+    let cleanSubj = (cfg.subject_name || activeClassroom.class_name || 'รายวิชา').replace(/\s*\([มป]\.?\d+.*?\)$/i, '').trim();
+    const subjectCode = (cfg.subject_code || '').trim();
+    if (subjectCode && !cleanSubj.startsWith(subjectCode)) {
+        cleanSubj = `${subjectCode} ${cleanSubj}`;
+    }
+    cleanSubj = cleanSubj.replace(new RegExp(`\\s*${displayGrade}$`, 'i'), '').trim();
+
+    // รูปแบบหัวข้อหลัก: "ชื่อวิชา ชั้นปีที่เรียน" เช่น "คอมพิวเตอร์ ม.4"
+    const courseTitle = `${cleanSubj} ${displayGrade}`;
+    const cleanSection = extractCleanRoomSection(cfg.room_section || activeClassroom.class_name, gradeLevel);
+
+    if (titleEl) titleEl.innerText = courseTitle;
+    if (subtitleEl) subtitleEl.innerText = `ห้อง ${displayGrade}/${cleanSection} • รหัสห้อง: ${roomCode} • จำนวนนักเรียน: ${students.length} คน`;
 
     const statStudents = document.getElementById('stat-student-count');
     if (statStudents) statStudents.innerText = `${students.length} คน`;
@@ -466,6 +997,7 @@ function renderActiveClassroomHeader() {
     updateAttendanceStatsBadge();
     updateMaterialsCountBadge();
     updateAssignmentsCountBadge();
+    renderSectionsBar();
 }
 
 function copyCurrentRoomCode() {
@@ -531,6 +1063,7 @@ function renderAllTabs() {
     renderTabAttendance();
     loadMaterials();
     loadAssignments();
+    renderTabGradebook();
 }
 
 /* ============================================================== */
@@ -831,12 +1364,86 @@ async function saveAttendanceRecord() {
 }
 
 /* ============================================================== */
-/* 📂 TAB 3: แจกไฟล์ & ชีทเรียน (Course Materials Hub) */
+/* 📂 TAB 3: แจกไฟล์ & ชีทเรียน (Course Materials Hub - แชร์ทุกห้องในวิชา) */
 /* ============================================================== */
+
+// 🔑 คำนวณคีย์กลุ่มวิชาสำหรับเก็บข้อมูลแชร์ร่วมกันทุกห้อง
+function getCourseGroupKey(classroom) {
+    if (!classroom) return 'default_course';
+    const cfg = classroom.gradebook?.config || {};
+    if (cfg.subject_group_id) return cfg.subject_group_id;
+    const cleanSubj = (cfg.subject_name || classroom.class_name || 'subj').replace(/\s*\([มป]\.?\d+.*?\)$/i, '').trim().toLowerCase().replace(/\s+/g, '_');
+    const cleanGrade = String(cfg.grade_level || '4').replace(/[^0-9]/g, '') || '4';
+    return `subj_${currentUserId || classroom.teacher_id || 't'}_${cleanSubj}_${cleanGrade}`;
+}
+
+// 🏷️ อัปเดตข้อความรายชื่อห้องที่ใช้เอกสาร/งานร่วมกัน บนแบนเนอร์
+function updateSharedRoomsListBanners() {
+    if (!activeClassroom) return;
+    const siblings = getSiblingSections(activeClassroom);
+    const cfg = activeClassroom.gradebook?.config || {};
+    const gradeLevel = cfg.grade_level || '4';
+    const displayGrade = gradeLevel.toLowerCase().startsWith('ม.') || gradeLevel.toLowerCase().startsWith('ป.') ? gradeLevel : `ม.${gradeLevel}`;
+
+    const roomNames = siblings.map(sib => {
+        const sec = extractCleanRoomSection(sib.gradebook?.config?.room_section || sib.class_name, gradeLevel);
+        return `ห้อง ${displayGrade}/${sec}`;
+    }).join(', ');
+
+    document.querySelectorAll('.shared-rooms-list').forEach(el => {
+        el.innerText = roomNames || `ห้อง ${displayGrade}`;
+    });
+}
+
+// 📂 ดึงคลังไฟล์เอกสารระดับรายวิชา (แชร์ร่วมกันทุกห้อง)
+function getSharedCourseMaterials() {
+    if (!activeClassroom) return [];
+    const groupKey = getCourseGroupKey(activeClassroom);
+    try {
+        const raw = localStorage.getItem(`gyver_shared_materials_${groupKey}`);
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+    } catch (_) {}
+
+    // Fallback: ดึงจากห้องปัจจุบันหรือห้องคู่ขนานที่เคยมีไฟล์อยู่เดิม
+    const siblings = getSiblingSections(activeClassroom);
+    for (const sib of siblings) {
+        if (Array.isArray(sib.materials) && sib.materials.length > 0) {
+            try {
+                localStorage.setItem(`gyver_shared_materials_${groupKey}`, JSON.stringify(sib.materials));
+            } catch (_) {}
+            return sib.materials;
+        }
+    }
+    return Array.isArray(activeClassroom.materials) ? activeClassroom.materials : [];
+}
+
+// 💾 บันทึกคลังไฟล์เอกสารระดับรายวิชา และซิงก์ไปยังทุกห้องในรายวิชานี้ทันที
+async function saveSharedCourseMaterials(materials) {
+    if (!activeClassroom) return;
+    const groupKey = getCourseGroupKey(activeClassroom);
+    try {
+        localStorage.setItem(`gyver_shared_materials_${groupKey}`, JSON.stringify(materials));
+    } catch (_) {}
+
+    const siblings = getSiblingSections(activeClassroom);
+    for (const sib of siblings) {
+        sib.materials = materials;
+        try {
+            localStorage.setItem(`gyver_materials_${sib.id}`, JSON.stringify(materials));
+            if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+                supabaseClient.from('classrooms').update({ materials: materials }).eq('id', sib.id).then();
+            }
+        } catch (_) {}
+    }
+}
+
 function updateMaterialsCountBadge() {
     const badge = document.getElementById('stat-material-count');
     if (!badge || !activeClassroom) return;
-    const materials = Array.isArray(activeClassroom.materials) ? activeClassroom.materials : [];
+    const materials = getSharedCourseMaterials();
     badge.innerText = `${materials.length} ไฟล์`;
 }
 
@@ -844,15 +1451,16 @@ function loadMaterials() {
     const container = document.getElementById('materials-container');
     if (!container || !activeClassroom) return;
 
-    const materials = Array.isArray(activeClassroom.materials) ? activeClassroom.materials : [];
+    updateSharedRoomsListBanners();
+    const materials = getSharedCourseMaterials();
     updateMaterialsCountBadge();
 
     if (materials.length === 0) {
         container.innerHTML = `
             <div class="col-12 text-center py-5 bg-light rounded-4 border border-dashed">
                 <i class="bi bi-cloud-arrow-up fs-1 text-primary opacity-50 d-block mb-2"></i>
-                <h6 class="fw-bold text-dark mb-1">ยังไม่มีเอกสารหรือไฟล์ที่แจก</h6>
-                <p class="small text-muted mb-3">กดปุ่ม "เพิ่มเอกสาร/แจกไฟล์" ด้านบน เพื่อวางสไลด์หรือชีทเรียนให้นักเรียนดาวน์โหลด</p>
+                <h6 class="fw-bold text-dark mb-1">ยังไม่มีเอกสารหรือไฟล์ที่แจกในรายวิชานี้</h6>
+                <p class="small text-muted mb-3">กดปุ่ม "เพิ่มเอกสาร/แจกไฟล์" ด้านบน เพื่อวางสไลด์หรือชีทเรียนให้นักเรียนทุกห้องดาวน์โหลดพร้อมกัน</p>
                 <button class="btn btn-primary btn-sm rounded-pill px-4 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#addMaterialModal">
                     <i class="bi bi-plus-circle-fill me-1"></i>เพิ่มเอกสารแรก
                 </button>
@@ -915,66 +1523,129 @@ async function handleSaveMaterial(e) {
         created_at: new Date().toISOString()
     };
 
-    let materials = Array.isArray(activeClassroom.materials) ? activeClassroom.materials : [];
+    let materials = getSharedCourseMaterials();
     materials.unshift(newMaterial);
-    activeClassroom.materials = materials;
-    localStorage.setItem(`gyver_materials_${activeClassroomId}`, JSON.stringify(materials));
 
     const btn = document.getElementById('btn-save-material');
-    btn.disabled = true;
+    if (btn) btn.disabled = true;
 
     try {
-        const { error } = await supabaseClient
-            .from('classrooms')
-            .update({ materials: materials })
-            .eq('id', activeClassroomId);
-
-        if (error) console.warn("Supabase materials notice:", error.message);
-        showToast('success', 'เพิ่มเอกสารสำเร็จ!', `เอกสาร "${title}" ถูกเพิ่มเข้าห้องเรียนแล้ว`);
-        document.getElementById('form-add-material').reset();
+        await saveSharedCourseMaterials(materials);
+        showToast('success', 'เพิ่มเอกสารสำเร็จ!', `เอกสาร "${title}" ถูกเพิ่มและแชร์ไปยังทุกห้องในรายวิชานี้เรียบร้อยแล้ว`);
+        document.getElementById('form-add-material')?.reset();
         bootstrap.Modal.getInstance(document.getElementById('addMaterialModal'))?.hide();
         loadMaterials();
     } catch (err) {
         console.warn("Save material error:", err);
-        showToast('success', 'เพิ่มเอกสารสำเร็จ!', `เอกสาร "${title}" ถูกเพิ่มเข้าห้องเรียนแล้ว`);
-        document.getElementById('form-add-material').reset();
-        bootstrap.Modal.getInstance(document.getElementById('addMaterialModal'))?.hide();
-        loadMaterials();
+        showToast('error', 'บันทึกผิดพลาด', err?.message || 'เกิดข้อผิดพลาด');
     } finally {
-        btn.disabled = false;
+        if (btn) btn.disabled = false;
     }
 }
 
 async function deleteMaterial(idx) {
     if (!activeClassroom) return;
-    if (!confirm('⚠️ ยืนยันการลบเอกสารนี้หรือไม่?')) return;
+    if (!confirm('⚠️ ยืนยันการลบเอกสารนี้หรือไม่? (เอกสารจะถูกลบออกจากทุกห้องในรายวิชานี้)')) return;
 
-    let materials = Array.isArray(activeClassroom.materials) ? activeClassroom.materials : [];
+    let materials = getSharedCourseMaterials();
     materials.splice(idx, 1);
-    activeClassroom.materials = materials;
-    localStorage.setItem(`gyver_materials_${activeClassroomId}`, JSON.stringify(materials));
 
-    try {
-        const { error } = await supabaseClient
-            .from('classrooms')
-            .update({ materials: materials })
-            .eq('id', activeClassroomId);
-
-        if (error) console.warn("Supabase delete material notice:", error.message);
-    } catch (err) {
-        console.warn("Delete material error:", err);
-    }
-    showToast('info', 'ลบเอกสารแล้ว', 'ลบเอกสารออกจากห้องเรียนเรียบร้อย');
+    await saveSharedCourseMaterials(materials);
+    showToast('info', 'ลบเอกสารแล้ว', 'ลบเอกสารออกจากทุกห้องในรายวิชานี้เรียบร้อย');
     loadMaterials();
 }
 
 /* ============================================================== */
-/* 📝 TAB 4: สั่งงาน & ตรวจงาน (Assignments & Submissions) */
+/* 📝 TAB 4: สั่งงาน & ตรวจงาน (Assignments & Submissions - เกณฑ์เดียวกันทุกห้อง) */
 /* ============================================================== */
+
+// 📝 ดึงรายการการบ้านระดับรายวิชา (แชร์ร่วมกันทุกห้อง พร้อมรวมงานที่นักเรียนส่ง)
+function getSharedCourseAssignments() {
+    if (!activeClassroom) return [];
+    const groupKey = getCourseGroupKey(activeClassroom);
+    let sharedList = [];
+    try {
+        const raw = localStorage.getItem(`gyver_shared_assignments_${groupKey}`);
+        if (raw) sharedList = JSON.parse(raw) || [];
+    } catch (_) {}
+
+    const assignmentMap = new Map();
+    sharedList.forEach(a => assignmentMap.set(a.id, a));
+
+    // รวมการบ้านและการส่งงานจากห้องเรียนทั้งหมดในวิชานี้ เพื่อไม่ให้งานหรือคะแนนของห้องใดสูญหาย
+    const siblings = getSiblingSections(activeClassroom);
+    siblings.forEach(sib => {
+        const list = Array.isArray(sib.assignments) ? sib.assignments : [];
+        list.forEach(a => {
+            if (!assignmentMap.has(a.id)) {
+                assignmentMap.set(a.id, JSON.parse(JSON.stringify(a)));
+            } else {
+                const target = assignmentMap.get(a.id);
+                if (!target.submissions) target.submissions = {};
+                if (a.submissions) {
+                    Object.assign(target.submissions, a.submissions);
+                }
+            }
+        });
+    });
+
+    const merged = Array.from(assignmentMap.values());
+    try {
+        localStorage.setItem(`gyver_shared_assignments_${groupKey}`, JSON.stringify(merged));
+    } catch (_) {}
+    return merged;
+}
+
+// 💾 บันทึกรายการการบ้านระดับรายวิชา และซิงก์ไปยังทุกห้องในรายวิชานี้ทันที
+async function saveSharedCourseAssignments(assignments) {
+    if (!activeClassroom) return;
+    const groupKey = getCourseGroupKey(activeClassroom);
+    try {
+        localStorage.setItem(`gyver_shared_assignments_${groupKey}`, JSON.stringify(assignments));
+    } catch (_) {}
+
+    const siblings = getSiblingSections(activeClassroom);
+    for (const sib of siblings) {
+        sib.assignments = assignments;
+        try {
+            localStorage.setItem(`gyver_assignments_${sib.id}`, JSON.stringify(assignments));
+            if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+                supabaseClient.from('classrooms').update({ assignments: assignments }).eq('id', sib.id).then();
+            }
+        } catch (_) {}
+    }
+}
+
+// 👥 ดึงรายชื่อนักเรียนทั้งหมดจากทุกห้องในรายวิชานี้ พร้อมระบุห้องของนักเรียน
+function getAllStudentsInCourse() {
+    if (!activeClassroom) return [];
+    const siblings = getSiblingSections(activeClassroom);
+    const cfg = activeClassroom.gradebook?.config || {};
+    const gradeLevel = cfg.grade_level || '4';
+    const displayGrade = gradeLevel.toLowerCase().startsWith('ม.') || gradeLevel.toLowerCase().startsWith('ป.') ? gradeLevel : `ม.${gradeLevel}`;
+
+    const allStudents = [];
+    siblings.forEach(sib => {
+        const secNum = extractCleanRoomSection(sib.gradebook?.config?.room_section || sib.class_name, gradeLevel);
+        const roomLabel = `${displayGrade}/${secNum}`;
+        const list = Array.isArray(sib.students) ? sib.students : [];
+        list.forEach(st => {
+            allStudents.push({
+                ...st,
+                _roomId: sib.id,
+                _roomCode: sib.room_code,
+                _roomName: roomLabel,
+                _fullRoomLabel: `ห้อง ${roomLabel}`
+            });
+        });
+    });
+    return allStudents;
+}
+
 function updateAssignmentsCountBadge() {
     const badge = document.getElementById('stat-assignment-count');
     if (!badge || !activeClassroom) return;
-    const assignments = Array.isArray(activeClassroom.assignments) ? activeClassroom.assignments : [];
+    const assignments = getSharedCourseAssignments();
     badge.innerText = `${assignments.length} ชิ้น`;
 }
 
@@ -982,15 +1653,16 @@ function loadAssignments() {
     const container = document.getElementById('assignments-container');
     if (!container || !activeClassroom) return;
 
-    const assignments = Array.isArray(activeClassroom.assignments) ? activeClassroom.assignments : [];
+    updateSharedRoomsListBanners();
+    const assignments = getSharedCourseAssignments();
     updateAssignmentsCountBadge();
 
     if (assignments.length === 0) {
         container.innerHTML = `
             <div class="col-12 text-center py-5 bg-light rounded-4 border border-dashed">
                 <i class="bi bi-pencil-square fs-1 text-info opacity-50 d-block mb-2"></i>
-                <h6 class="fw-bold text-dark mb-1">ยังไม่มีการบ้านหรือชิ้นงานที่มอบหมาย</h6>
-                <p class="small text-muted mb-3">กดปุ่ม "สั่งงานใหม่" เพื่อสร้างโจทย์ กำหนดส่ง และเปิดให้นักเรียนส่งงาน</p>
+                <h6 class="fw-bold text-dark mb-1">ยังไม่มีการบ้านหรือชิ้นงานในรายวิชานี้</h6>
+                <p class="small text-muted mb-3">กดปุ่ม "สั่งงานใหม่" เพื่อสร้างโจทย์ กำหนดส่ง ให้นักเรียนทุกห้องส่งงานตามเกณฑ์เดียวกัน</p>
                 <button class="btn btn-primary btn-sm rounded-pill px-4 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#addAssignmentModal">
                     <i class="bi bi-plus-circle-fill me-1"></i>สั่งงานแรก
                 </button>
@@ -998,11 +1670,29 @@ function loadAssignments() {
         return;
     }
 
+    const allStudents = getAllStudentsInCourse();
+    const siblings = getSiblingSections(activeClassroom);
+    const cfg = activeClassroom.gradebook?.config || {};
+    const gradeLevel = cfg.grade_level || '4';
+    const displayGrade = gradeLevel.toLowerCase().startsWith('ม.') || gradeLevel.toLowerCase().startsWith('ป.') ? gradeLevel : `ม.${gradeLevel}`;
+
     container.innerHTML = assignments.map((a, idx) => {
         const submissions = a.submissions || {};
         const submittedCount = Object.keys(submissions).length;
-        const totalStudents = Array.isArray(activeClassroom.students) ? activeClassroom.students.length : 0;
+        const totalStudents = allStudents.length;
         const dueDateStr = a.due_date ? new Date(a.due_date).toLocaleDateString('th-TH') : 'ไม่ระบุ';
+
+        // แยกสถิติการส่งงานตามห้องเรียน (เมื่อมีมากกว่า 1 ห้อง)
+        let breakdownHtml = '';
+        if (siblings.length > 1) {
+            const parts = siblings.map(sib => {
+                const sec = extractCleanRoomSection(sib.gradebook?.config?.room_section || sib.class_name, gradeLevel);
+                const sList = Array.isArray(sib.students) ? sib.students : [];
+                const subInRoom = sList.filter(s => !!submissions[s.user_id || s.name]).length;
+                return `<span class="badge bg-white text-secondary border font-mono">${displayGrade}/${sec}: ${subInRoom}/${sList.length} คน</span>`;
+            });
+            breakdownHtml = `<div class="d-flex flex-wrap gap-1 mt-2 pt-2 border-top">${parts.join('')}</div>`;
+        }
 
         return `
         <div class="col-md-6 col-lg-6">
@@ -1019,11 +1709,14 @@ function loadAssignments() {
                 <h5 class="fw-bold text-dark mb-1">${a.title}</h5>
                 <p class="text-muted small mb-3 flex-grow-1" style="font-size: 0.85rem;">${a.description || 'ไม่มีรายละเอียดเพิ่มเติม'}</p>
 
-                <div class="bg-light p-2 px-3 rounded-3 mb-3 d-flex justify-content-between align-items-center">
-                    <small class="text-muted"><i class="bi bi-clock me-1"></i>กำหนดส่ง: <b>${dueDateStr}</b></small>
-                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill">
-                        ส่งแล้ว ${submittedCount}/${totalStudents} คน
-                    </span>
+                <div class="bg-light p-2 px-3 rounded-3 mb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted"><i class="bi bi-clock me-1"></i>กำหนดส่ง: <b>${dueDateStr}</b></small>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill font-mono">
+                            ส่งแล้ว ${submittedCount}/${totalStudents} คน
+                        </span>
+                    </div>
+                    ${breakdownHtml}
                 </div>
 
                 <div class="d-flex gap-2 pt-2 border-top mt-auto">
@@ -1055,85 +1748,127 @@ async function handleSaveAssignment(e) {
         created_at: new Date().toISOString()
     };
 
-    let assignments = Array.isArray(activeClassroom.assignments) ? activeClassroom.assignments : [];
+    let assignments = getSharedCourseAssignments();
     assignments.unshift(newAssignment);
-    activeClassroom.assignments = assignments;
-    localStorage.setItem(`gyver_assignments_${activeClassroomId}`, JSON.stringify(assignments));
 
     const btn = document.getElementById('btn-save-assignment');
-    btn.disabled = true;
+    if (btn) btn.disabled = true;
 
     try {
-        const { error } = await supabaseClient
-            .from('classrooms')
-            .update({ assignments: assignments })
-            .eq('id', activeClassroomId);
-
-        if (error) console.warn("Supabase assignments notice:", error.message);
-        showToast('success', 'สั่งงานสำเร็จ!', `งาน "${title}" ถูกสร้างเรียบร้อยแล้ว`);
-        document.getElementById('form-add-assignment').reset();
+        await saveSharedCourseAssignments(assignments);
+        showToast('success', 'สั่งงานสำเร็จ!', `งาน "${title}" ถูกสั่งไปยังทุกห้องในรายวิชานี้เรียบร้อยแล้ว (เกณฑ์เดียวกัน)`);
+        document.getElementById('form-add-assignment')?.reset();
         bootstrap.Modal.getInstance(document.getElementById('addAssignmentModal'))?.hide();
         loadAssignments();
     } catch (err) {
         console.warn("Save assignment error:", err);
-        showToast('success', 'สั่งงานสำเร็จ!', `งาน "${title}" ถูกสร้างเรียบร้อยแล้ว`);
-        document.getElementById('form-add-assignment').reset();
-        bootstrap.Modal.getInstance(document.getElementById('addAssignmentModal'))?.hide();
-        loadAssignments();
+        showToast('error', 'บันทึกผิดพลาด', err?.message || 'เกิดข้อผิดพลาด');
     } finally {
-        btn.disabled = false;
+        if (btn) btn.disabled = false;
     }
 }
 
 async function deleteAssignment(idx) {
     if (!activeClassroom) return;
-    if (!confirm('⚠️ ยืนยันการลบการบ้านชิ้นนี้หรือไม่?')) return;
+    if (!confirm('⚠️ ยืนยันการลบการบ้านชิ้นนี้หรือไม่? (จะลบออกจากทุกห้องในรายวิชานี้)')) return;
 
-    let assignments = Array.isArray(activeClassroom.assignments) ? activeClassroom.assignments : [];
+    let assignments = getSharedCourseAssignments();
     assignments.splice(idx, 1);
-    activeClassroom.assignments = assignments;
-    localStorage.setItem(`gyver_assignments_${activeClassroomId}`, JSON.stringify(assignments));
 
-    try {
-        const { error } = await supabaseClient
-            .from('classrooms')
-            .update({ assignments: assignments })
-            .eq('id', activeClassroomId);
-
-        if (error) console.warn("Supabase delete assignment notice:", error.message);
-    } catch (err) {
-        console.warn("Delete assignment error:", err);
-    }
-    showToast('info', 'ลบงานแล้ว', 'ลบการบ้านออกจากห้องเรียนเรียบร้อย');
+    await saveSharedCourseAssignments(assignments);
+    showToast('info', 'ลบงานแล้ว', 'ลบการบ้านออกจากทุกห้องในรายวิชานี้เรียบร้อย');
     loadAssignments();
 }
 
+// 🔍 ตัวแปรสำหรับฟิลเตอร์กรองตรวจงานตามห้องเรียน ('all' หรือ classId)
+let currentSubmissionFilterRoom = 'all';
+
 function openSubmissionsModal(assignmentId) {
     activeAssignmentId = assignmentId;
-    const assignments = Array.isArray(activeClassroom.assignments) ? activeClassroom.assignments : [];
+    const assignments = getSharedCourseAssignments();
     const assignment = assignments.find(a => a.id === assignmentId);
     if (!assignment) return;
+
+    currentSubmissionFilterRoom = 'all';
 
     document.getElementById('submissions-modal-title').innerText = `ตรวจงาน: ${assignment.title}`;
     document.getElementById('submissions-modal-subtitle').innerText = `คะแนนเต็ม: ${assignment.points} คะแนน • กำหนดส่ง: ${assignment.due_date || 'ไม่ระบุ'}`;
 
+    renderSubmissionsFilterButtons(assignment);
     renderSubmissionsTable(assignment);
 
     const modal = new bootstrap.Modal(document.getElementById('submissionsModal'));
     modal.show();
 }
 
-function renderSubmissionsTable(assignment) {
-    const tbody = document.getElementById('submissions-table-body');
-    const students = Array.isArray(activeClassroom.students) ? activeClassroom.students : [];
-    const submissions = assignment.submissions || {};
+function renderSubmissionsFilterButtons(assignment) {
+    const container = document.getElementById('submissions-room-filter-container');
+    if (!container) return;
 
-    if (students.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted">ยังไม่มีนักเรียนในห้องนี้</td></tr>`;
+    const siblings = getSiblingSections(activeClassroom);
+    const allStudents = getAllStudentsInCourse();
+    const cfg = activeClassroom?.gradebook?.config || {};
+    const gradeLevel = cfg.grade_level || '4';
+    const displayGrade = gradeLevel.toLowerCase().startsWith('ม.') || gradeLevel.toLowerCase().startsWith('ป.') ? gradeLevel : `ม.${gradeLevel}`;
+
+    if (siblings.length <= 1) {
+        const sec = extractCleanRoomSection(activeClassroom.gradebook?.config?.room_section || activeClassroom.class_name, gradeLevel);
+        container.innerHTML = `<span class="badge bg-secondary-subtle text-secondary px-3 py-1 font-mono">ห้อง ${displayGrade}/${sec} (${allStudents.length} คน)</span>`;
         return;
     }
 
-    tbody.innerHTML = students.map((s, idx) => {
+    let buttons = `
+        <button type="button" class="btn btn-sm ${currentSubmissionFilterRoom === 'all' ? 'btn-primary shadow-xs' : 'btn-outline-secondary'} rounded-pill px-3 py-1 font-mono fw-bold" onclick="filterSubmissionsByRoom('all')">
+            <i class="bi bi-grid-fill me-1"></i>ทุกห้อง (${allStudents.length})
+        </button>
+    `;
+
+    siblings.forEach(sib => {
+        const sec = extractCleanRoomSection(sib.gradebook?.config?.room_section || sib.class_name, gradeLevel);
+        const sList = Array.isArray(sib.students) ? sib.students : [];
+        const isSelected = currentSubmissionFilterRoom === sib.id;
+        buttons += `
+            <button type="button" class="btn btn-sm ${isSelected ? 'btn-primary shadow-xs' : 'btn-outline-secondary'} rounded-pill px-3 py-1 font-mono fw-bold" onclick="filterSubmissionsByRoom('${sib.id}')">
+                ห้อง ${displayGrade}/${sec} (${sList.length})
+            </button>
+        `;
+    });
+
+    container.innerHTML = buttons;
+}
+
+function filterSubmissionsByRoom(roomId) {
+    currentSubmissionFilterRoom = roomId;
+    const assignments = getSharedCourseAssignments();
+    const assignment = assignments.find(a => a.id === activeAssignmentId);
+    if (!assignment) return;
+
+    renderSubmissionsFilterButtons(assignment);
+    renderSubmissionsTable(assignment);
+}
+
+function renderSubmissionsTable(assignment) {
+    const tbody = document.getElementById('submissions-table-body');
+    const statsPill = document.getElementById('submissions-stats-pill');
+    let allStudents = getAllStudentsInCourse();
+
+    if (currentSubmissionFilterRoom !== 'all') {
+        allStudents = allStudents.filter(s => s._roomId === currentSubmissionFilterRoom);
+    }
+
+    const submissions = assignment.submissions || {};
+    const submittedCount = allStudents.filter(s => !!submissions[s.user_id || s.name]).length;
+
+    if (statsPill) {
+        statsPill.innerText = `ส่งแล้ว ${submittedCount} / ${allStudents.length} คน`;
+    }
+
+    if (allStudents.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">ไม่พบข้อมูลนักเรียนในห้องที่เลือก</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = allStudents.map((s, idx) => {
         const studentKey = s.user_id || s.name;
         const sub = submissions[studentKey];
         const hasSubmitted = !!sub;
@@ -1144,6 +1879,9 @@ function renderSubmissionsTable(assignment) {
             <td>
                 <div class="fw-bold text-dark">${s.name}</div>
                 <div class="text-muted small">${s.nickname ? `ชื่อเล่น: ${s.nickname}` : ''}</div>
+            </td>
+            <td class="text-center">
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-1 font-mono">${s._roomName}</span>
             </td>
             <td>
                 ${hasSubmitted ? `<span class="badge bg-success-subtle text-success font-mono">${new Date(sub.submitted_at).toLocaleDateString('th-TH')}</span>` : '<span class="badge bg-secondary-subtle text-secondary">ยังไม่ส่ง</span>'}
@@ -1160,7 +1898,7 @@ function renderSubmissionsTable(assignment) {
                 <input type="number" class="form-control form-control-sm text-center font-mono" id="score_input_${idx}" value="${hasSubmitted ? (sub.score ?? '') : ''}" max="${assignment.points}" min="0" placeholder="0/${assignment.points}">
             </td>
             <td class="text-end">
-                <button class="btn btn-sm btn-primary rounded-2 px-2" onclick="saveStudentGrade('${studentKey}', 'score_input_${idx}')" title="บันทึกคะแนน">
+                <button class="btn btn-sm btn-primary rounded-2 px-2" onclick="saveStudentGrade('${encodeURIComponent(studentKey)}', 'score_input_${idx}')" title="บันทึกคะแนน">
                     <i class="bi bi-check2"></i>
                 </button>
             </td>
@@ -1168,13 +1906,14 @@ function renderSubmissionsTable(assignment) {
     }).join('');
 }
 
-async function saveStudentGrade(studentKey, inputId) {
+async function saveStudentGrade(encodedStudentKey, inputId) {
+    const studentKey = decodeURIComponent(encodedStudentKey);
     const input = document.getElementById(inputId);
     if (!input) return;
 
     const scoreVal = input.value === '' ? null : parseFloat(input.value);
 
-    let assignments = Array.isArray(activeClassroom.assignments) ? activeClassroom.assignments : [];
+    let assignments = getSharedCourseAssignments();
     const assignment = assignments.find(a => a.id === activeAssignmentId);
     if (!assignment) return;
 
@@ -1188,19 +1927,7 @@ async function saveStudentGrade(studentKey, inputId) {
         assignment.submissions[studentKey].score = scoreVal;
     }
 
-    activeClassroom.assignments = assignments;
-    localStorage.setItem(`gyver_assignments_${activeClassroomId}`, JSON.stringify(assignments));
-
-    try {
-        const { error } = await supabaseClient
-            .from('classrooms')
-            .update({ assignments: assignments })
-            .eq('id', activeClassroomId);
-
-        if (error) console.warn("Supabase save grade notice:", error.message);
-    } catch (err) {
-        console.warn("Save grade error:", err);
-    }
+    await saveSharedCourseAssignments(assignments);
     showToast('success', 'บันทึกคะแนนแล้ว', `บันทึกคะแนนเรียบร้อย`);
 }
 
@@ -1212,3 +1939,893 @@ function launchWheelWithThisClass() {
     localStorage.setItem('selected_classroom_key', activeClassroom.class_name);
     window.open(`../../features/education/wheel/wheel_display.html?class=${encodeURIComponent(activeClassroom.class_name)}`, '_blank');
 }
+
+/* ============================================================== */
+/* 📊 TAB 6: รวมคะแนน & ตัดเกรด (Digital ปพ.5 Gradebook Logic) */
+/* ============================================================== */
+
+// 🧮 1. คำนวณตัดเกรดตามเกณฑ์กระทรวงศึกษาธิการ (สพฐ.)
+function calculateThaiGrade(score, status) {
+    if (status === 'ms') return { grade: 'มส', text: 'หมดสิทธิ์สอบ', badgeClass: 'grade-0', gpa: 0 };
+    if (status === 'r') return { grade: 'ร', text: 'รอตัดสินผล', badgeClass: 'grade-special', gpa: 0 };
+    if (status === 'pass') return { grade: 'ผ', text: 'ผ่าน', badgeClass: 'grade-4', gpa: 4.0 };
+    if (status === 'fail') return { grade: 'มผ', text: 'ไม่ผ่าน', badgeClass: 'grade-0', gpa: 0 };
+
+    const s = Math.round((Number(score) || 0) * 10) / 10;
+    if (s >= 80) return { grade: '4', text: 'ดีเยี่ยม', badgeClass: 'grade-4', gpa: 4.0 };
+    if (s >= 75) return { grade: '3.5', text: 'ดีมาก', badgeClass: 'grade-3-5', gpa: 3.5 };
+    if (s >= 70) return { grade: '3', text: 'ดี', badgeClass: 'grade-3', gpa: 3.0 };
+    if (s >= 65) return { grade: '2.5', text: 'ค่อนข้างดี', badgeClass: 'grade-2-5', gpa: 2.5 };
+    if (s >= 60) return { grade: '2', text: 'ปานกลาง', badgeClass: 'grade-2', gpa: 2.0 };
+    if (s >= 55) return { grade: '1.5', text: 'พอใช้', badgeClass: 'grade-1-5', gpa: 1.5 };
+    if (s >= 50) return { grade: '1', text: 'ผ่านเกณฑ์ขั้นต่ำ', badgeClass: 'grade-1', gpa: 1.0 };
+    return { grade: '0', text: 'ไม่ผ่านเกณฑ์', badgeClass: 'grade-0', gpa: 0.0 };
+}
+
+// 📑 2. เรนเดอร์หน้าตารางรวมคะแนน ปพ.5
+function renderTabGradebook() {
+    if (!activeClassroom) return;
+
+    const gb = activeClassroom.gradebook || {};
+    const cfg = gb.config || {};
+    const columns = Array.isArray(gb.columns) ? gb.columns : [];
+    const scores = gb.scores || {};
+    const students = Array.isArray(activeClassroom.students) ? activeClassroom.students : [];
+
+    const midtermMax = Number(cfg.midterm_max ?? 20);
+    const finalMax = Number(cfg.final_max ?? 30);
+    const targetFormativeWeight = Math.max(0, 100 - (midtermMax + finalMax));
+    const formativeRawMax = columns.reduce((sum, col) => sum + (Number(col.max) || 0), 0);
+
+    // 2.1 อัปเดตข้อมูลบน Header Bar
+    const badgeEl = document.getElementById('gb-subject-badge');
+    const descEl = document.getElementById('gb-subject-desc');
+    if (badgeEl) {
+        badgeEl.innerText = cfg.subject_code ? `รหัสวิชา: ${cfg.subject_code}` : 'ยังไม่ระบุรหัสวิชา';
+    }
+    if (descEl) {
+        const subName = cfg.subject_name || activeClassroom.class_name || 'รายวิชา';
+        const sem = cfg.semester || '1';
+        const yr = cfg.academic_year || '2569';
+        descEl.innerText = `${subName} • ภาคเรียนที่ ${sem}/${yr} • สัดส่วนคะแนน (เก็บ:สอบ) = ${targetFormativeWeight}:${midtermMax + finalMax}`;
+    }
+
+    // 2.2 เรนเดอร์หัวตาราง (Thead)
+    const thead = document.getElementById('gradebook-thead');
+    if (thead) {
+        const colHeaders = columns.map(col => `
+            <th class="text-center font-mono small" style="min-width: 85px;">
+                <div class="d-flex align-items-center justify-content-center gap-1">
+                    <span title="${col.title}">${col.title}</span>
+                    <button type="button" class="btn btn-link btn-xs p-0 text-danger opacity-75" onclick="deleteGradeColumn('${col.id}')" title="ลบช่องนี้">
+                        <i class="bi bi-x-circle-fill"></i>
+                    </button>
+                </div>
+                <div class="text-muted fw-normal" style="font-size: 0.72rem;">เต็ม ${col.max}</div>
+            </th>
+        `).join('');
+
+        thead.innerHTML = `
+            <tr>
+                <th rowspan="2" class="sticky-no">เลขที่</th>
+                <th rowspan="2" class="sticky-name">ชื่อ - นามสกุล</th>
+                <th colspan="${columns.length + 1}" class="text-primary bg-primary-subtle text-center">
+                    <i class="bi bi-journal-check me-1"></i>คะแนนเก็บระหว่างภาค (${targetFormativeWeight} คะแนน)
+                </th>
+                <th colspan="2" class="text-danger bg-danger-subtle text-center">
+                    <i class="bi bi-file-earmark-medical me-1"></i>คะแนนสอบ (${midtermMax + finalMax} คะแนน)
+                </th>
+                <th rowspan="2" class="text-center bg-dark text-white font-mono" style="min-width: 75px;">รวม 100</th>
+                <th rowspan="2" class="text-center bg-dark text-white font-mono" style="min-width: 65px;">เกรด</th>
+                <th rowspan="2" class="text-center" style="min-width: 90px;" title="คุณลักษณะอันพึงประสงค์ 8 ประการ">คุณลักษณะ</th>
+                <th rowspan="2" class="text-center" style="min-width: 90px;" title="การอ่าน คิดวิเคราะห์ และเขียน">อ่าน/คิด</th>
+                <th rowspan="2" class="text-center" style="min-width: 95px;">สถานะ</th>
+            </tr>
+            <tr>
+                ${colHeaders}
+                <th class="text-center text-primary font-mono small" style="min-width: 80px;">
+                    <div>รวมเก็บ</div>
+                    <div style="font-size: 0.72rem;">เต็ม ${targetFormativeWeight}</div>
+                </th>
+                <th class="text-center text-danger font-mono small" style="min-width: 80px;">
+                    <div>กลางภาค</div>
+                    <div style="font-size: 0.72rem;">เต็ม ${midtermMax}</div>
+                </th>
+                <th class="text-center text-danger font-mono small" style="min-width: 80px;">
+                    <div>ปลายภาค</div>
+                    <div style="font-size: 0.72rem;">เต็ม ${finalMax}</div>
+                </th>
+            </tr>
+        `;
+    }
+
+    // 2.3 เรนเดอร์ตัวเนื้อหาตาราง (Tbody)
+    const tbody = document.getElementById('gradebook-tbody');
+    if (!tbody) return;
+
+    if (students.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="${columns.length + 9}" class="text-center py-5 text-muted">
+                    <i class="bi bi-people fs-2 d-block mb-2 text-secondary"></i>
+                    ยังไม่มีรายชื่อนักเรียนในห้องเรียนนี้
+                </td>
+            </tr>
+        `;
+        updateGradebookKPIs([], 0);
+        return;
+    }
+
+    let grade4Count = 0;
+    let atRiskCount = 0;
+    let totalGPA = 0;
+    let gradedStudentsCount = 0;
+
+    const rowsHtml = students.map((s, rowIdx) => {
+        const studentKey = s.user_id || s.name;
+        const sc = scores[studentKey] || {};
+        const avatar = s.image || `https://api.dicebear.com/7.x/big-smile/svg?seed=${encodeURIComponent(s.name || 'Student')}`;
+
+        // คำนวณคะแนนเก็บย่อย
+        let formativeRawSum = 0;
+        const colInputs = columns.map(col => {
+            const rawVal = sc[col.id] !== undefined ? sc[col.id] : '';
+            if (rawVal !== '' && !isNaN(rawVal)) {
+                formativeRawSum += Number(rawVal);
+            }
+            return `
+                <td class="text-center">
+                    <input type="number" step="any" min="0" max="${col.max}" 
+                        class="grade-input" 
+                        value="${rawVal}" 
+                        data-col="${col.id}" 
+                        data-row="${rowIdx}" 
+                        data-student="${studentKey}" 
+                        data-max="${col.max}"
+                        oninput="handleScoreChange('${studentKey}', '${col.id}', this.value, ${col.max}, ${rowIdx})"
+                        onkeydown="handleGradeKeyNav(event, this)">
+                </td>
+            `;
+        }).join('');
+
+        // สเกลคะแนนเก็บเข้าสู่น้ำหนักเป้าหมาย (เช่น เต็ม 50)
+        let scaledFormative = 0;
+        if (formativeRawMax > 0) {
+            scaledFormative = Math.round(((formativeRawSum / formativeRawMax) * targetFormativeWeight) * 10) / 10;
+        }
+
+        const midtermVal = sc.midterm !== undefined ? sc.midterm : '';
+        const finalVal = sc.final !== undefined ? sc.final : '';
+
+        const midtermNum = Number(midtermVal) || 0;
+        const finalNum = Number(finalVal) || 0;
+
+        const grandTotal = Math.min(100, Math.round((scaledFormative + midtermNum + finalNum) * 10) / 10);
+        const gradeInfo = calculateThaiGrade(grandTotal, sc.status || 'normal');
+
+        if (sc.status === 'ms' || sc.status === 'r' || gradeInfo.grade === '0') {
+            atRiskCount++;
+        }
+        if (gradeInfo.grade === '4') {
+            grade4Count++;
+        }
+        if (sc.status !== 'ms' && sc.status !== 'r') {
+            totalGPA += gradeInfo.gpa;
+            gradedStudentsCount++;
+        }
+
+        const traitsVal = sc.traits !== undefined ? sc.traits : 3;
+        const readingVal = sc.reading !== undefined ? sc.reading : 3;
+        const statusVal = sc.status || 'normal';
+
+        return `
+            <tr id="gb-row-${rowIdx}">
+                <td class="sticky-no font-mono text-muted">${rowIdx + 1}</td>
+                <td class="sticky-name">
+                    <div class="d-flex align-items-center gap-2">
+                        <img src="${avatar}" class="rounded-circle border" style="width: 30px; height: 30px; object-fit: cover;">
+                        <div class="text-truncate">
+                            <div class="fw-bold text-dark text-truncate" style="max-width: 150px;" title="${s.name}">${s.name}</div>
+                            ${s.nickname ? `<div class="text-muted" style="font-size: 0.72rem;">${s.nickname}</div>` : ''}
+                        </div>
+                    </div>
+                </td>
+                ${colInputs}
+                <td class="text-center font-mono fw-bold text-primary" id="gb-cell-formative-${rowIdx}">
+                    ${scaledFormative}
+                </td>
+                <td class="text-center">
+                    <input type="number" step="any" min="0" max="${midtermMax}" 
+                        class="grade-input text-danger font-mono" 
+                        value="${midtermVal}" 
+                        data-col="midterm" 
+                        data-row="${rowIdx}" 
+                        data-student="${studentKey}" 
+                        data-max="${midtermMax}"
+                        oninput="handleScoreChange('${studentKey}', 'midterm', this.value, ${midtermMax}, ${rowIdx})"
+                        onkeydown="handleGradeKeyNav(event, this)">
+                </td>
+                <td class="text-center">
+                    <input type="number" step="any" min="0" max="${finalMax}" 
+                        class="grade-input text-danger font-mono" 
+                        value="${finalVal}" 
+                        data-col="final" 
+                        data-row="${rowIdx}" 
+                        data-student="${studentKey}" 
+                        data-max="${finalMax}"
+                        oninput="handleScoreChange('${studentKey}', 'final', this.value, ${finalMax}, ${rowIdx})"
+                        onkeydown="handleGradeKeyNav(event, this)">
+                </td>
+                <td class="text-center font-mono fw-bold fs-6" id="gb-cell-total-${rowIdx}">
+                    ${grandTotal}
+                </td>
+                <td class="text-center" id="gb-cell-grade-${rowIdx}">
+                    <span class="grade-badge ${gradeInfo.badgeClass}">${gradeInfo.grade}</span>
+                </td>
+                <td class="text-center">
+                    <select class="grade-select" onchange="handleEvaluationChange('${studentKey}', 'traits', this.value)">
+                        <option value="3" ${traitsVal == 3 ? 'selected' : ''}>3 (ดีเยี่ยม)</option>
+                        <option value="2" ${traitsVal == 2 ? 'selected' : ''}>2 (ดี)</option>
+                        <option value="1" ${traitsVal == 1 ? 'selected' : ''}>1 (ผ่าน)</option>
+                        <option value="0" ${traitsVal == 0 ? 'selected' : ''}>0 (ไม่ผ่าน)</option>
+                    </select>
+                </td>
+                <td class="text-center">
+                    <select class="grade-select" onchange="handleEvaluationChange('${studentKey}', 'reading', this.value)">
+                        <option value="3" ${readingVal == 3 ? 'selected' : ''}>3 (ดีเยี่ยม)</option>
+                        <option value="2" ${readingVal == 2 ? 'selected' : ''}>2 (ดี)</option>
+                        <option value="1" ${readingVal == 1 ? 'selected' : ''}>1 (ผ่าน)</option>
+                        <option value="0" ${readingVal == 0 ? 'selected' : ''}>0 (ไม่ผ่าน)</option>
+                    </select>
+                </td>
+                <td class="text-center">
+                    <select class="grade-select ${statusVal === 'ms' ? 'text-danger fw-bold' : statusVal === 'r' ? 'text-warning fw-bold' : ''}" 
+                        onchange="handleEvaluationChange('${studentKey}', 'status', this.value, ${rowIdx})">
+                        <option value="normal" ${statusVal === 'normal' ? 'selected' : ''}>ปกติ</option>
+                        <option value="r" ${statusVal === 'r' ? 'selected' : ''}>ร (ค้างงาน)</option>
+                        <option value="ms" ${statusVal === 'ms' ? 'selected' : ''}>มส (ขาดเวลา)</option>
+                        <option value="pass" ${statusVal === 'pass' ? 'selected' : ''}>ผ (ผ่าน)</option>
+                        <option value="fail" ${statusVal === 'fail' ? 'selected' : ''}>มผ (ไม่ผ่าน)</option>
+                    </select>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    tbody.innerHTML = rowsHtml;
+
+    // 2.4 อัปเดต KPI ตัวเลขสรุป
+    const avgGPA = gradedStudentsCount > 0 ? (totalGPA / gradedStudentsCount).toFixed(2) : '0.00';
+    updateGradebookKPIs(students, avgGPA, grade4Count, atRiskCount);
+}
+
+// 📊 3. อัปเดตค่าสถิติ KPI Dashboard
+function updateGradebookKPIs(students, avgGPA, grade4Count = 0, atRiskCount = 0) {
+    const elGPA = document.getElementById('gb-stat-gpax');
+    const elStudents = document.getElementById('gb-stat-students');
+    const elGrade4 = document.getElementById('gb-stat-grade4');
+    const elAtRisk = document.getElementById('gb-stat-atrisk');
+
+    if (elGPA) elGPA.innerText = avgGPA || '0.00';
+    if (elStudents) elStudents.innerText = Array.isArray(students) ? students.length : 0;
+    if (elGrade4) elGrade4.innerText = grade4Count;
+    if (elAtRisk) elAtRisk.innerText = atRiskCount;
+}
+
+// ⌨️ 4. ระบบเลื่อนช่องกรอกคะแนนด่วนด้วยคีย์บอร์ด (Enter / Arrow Navigation)
+function handleGradeKeyNav(e, inputEl) {
+    const currentRow = parseInt(inputEl.getAttribute('data-row'), 10);
+    const currentCol = inputEl.getAttribute('data-col');
+
+    if (e.key === 'Enter' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const nextInput = document.querySelector(`input.grade-input[data-col="${currentCol}"][data-row="${currentRow + 1}"]`);
+        if (nextInput) {
+            nextInput.focus();
+            nextInput.select();
+        }
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const prevInput = document.querySelector(`input.grade-input[data-col="${currentCol}"][data-row="${currentRow - 1}"]`);
+        if (prevInput) {
+            prevInput.focus();
+            prevInput.select();
+        }
+    }
+}
+
+// ⚡ 5. ระบบอัปเดตคะแนนแบบ Realtime โดยไม่ต้องเรนเดอร์ตารางใหม่ทั้งตาราง
+function handleScoreChange(studentKey, colId, value, maxScore, rowIdx) {
+    if (!activeClassroom) return;
+
+    if (!activeClassroom.gradebook) activeClassroom.gradebook = { config: {}, columns: [], scores: {} };
+    if (!activeClassroom.gradebook.scores) activeClassroom.gradebook.scores = {};
+    if (!activeClassroom.gradebook.scores[studentKey]) activeClassroom.gradebook.scores[studentKey] = {};
+
+    const gb = activeClassroom.gradebook;
+    const cfg = gb.config || {};
+    const columns = gb.columns || [];
+
+    // ตรวจสอบคะแนนเกินเต็ม
+    const numVal = value === '' ? '' : Number(value);
+    const inputEl = document.querySelector(`input.grade-input[data-col="${colId}"][data-student="${studentKey}"]`);
+
+    if (numVal !== '' && (numVal < 0 || numVal > maxScore)) {
+        if (inputEl) inputEl.classList.add('is-invalid-score');
+        showToast('warning', 'คะแนนเกินเกณฑ์', `คะแนนช่องนี้เต็ม ${maxScore} คะแนน`);
+    } else {
+        if (inputEl) inputEl.classList.remove('is-invalid-score');
+    }
+
+    gb.scores[studentKey][colId] = numVal;
+
+    // คำนวณแถวนี้ใหม่ทันที
+    const sc = gb.scores[studentKey];
+    const midtermMax = Number(cfg.midterm_max ?? 20);
+    const finalMax = Number(cfg.final_max ?? 30);
+    const targetFormativeWeight = Math.max(0, 100 - (midtermMax + finalMax));
+    const formativeRawMax = columns.reduce((sum, col) => sum + (Number(col.max) || 0), 0);
+
+    let formativeRawSum = 0;
+    columns.forEach(col => {
+        const val = sc[col.id];
+        if (val !== undefined && val !== '' && !isNaN(val)) {
+            formativeRawSum += Number(val);
+        }
+    });
+
+    let scaledFormative = 0;
+    if (formativeRawMax > 0) {
+        scaledFormative = Math.round(((formativeRawSum / formativeRawMax) * targetFormativeWeight) * 10) / 10;
+    }
+
+    const midtermNum = Number(sc.midterm || 0);
+    const finalNum = Number(sc.final || 0);
+    const grandTotal = Math.min(100, Math.round((scaledFormative + midtermNum + finalNum) * 10) / 10);
+    const gradeInfo = calculateThaiGrade(grandTotal, sc.status || 'normal');
+
+    // อัปเดตเซลล์ใน DOM ทันที
+    const cellFormative = document.getElementById(`gb-cell-formative-${rowIdx}`);
+    const cellTotal = document.getElementById(`gb-cell-total-${rowIdx}`);
+    const cellGrade = document.getElementById(`gb-cell-grade-${rowIdx}`);
+
+    if (cellFormative) cellFormative.innerText = scaledFormative;
+    if (cellTotal) cellTotal.innerText = grandTotal;
+    if (cellGrade) cellGrade.innerHTML = `<span class="grade-badge ${gradeInfo.badgeClass}">${gradeInfo.grade}</span>`;
+
+    // บันทึกลง Storage สำรอง
+    if (activeClassroomId) {
+        try {
+            localStorage.setItem(`gyver_gradebook_${activeClassroomId}`, JSON.stringify(gb));
+        } catch (_) {}
+    }
+}
+
+// 🌟 6. บันทึกคุณลักษณะ/อ่านคิด/สถานะ
+function handleEvaluationChange(studentKey, field, value, rowIdx = null) {
+    if (!activeClassroom) return;
+    if (!activeClassroom.gradebook) activeClassroom.gradebook = { config: {}, columns: [], scores: {} };
+    if (!activeClassroom.gradebook.scores) activeClassroom.gradebook.scores = {};
+    if (!activeClassroom.gradebook.scores[studentKey]) activeClassroom.gradebook.scores[studentKey] = {};
+
+    activeClassroom.gradebook.scores[studentKey][field] = value;
+
+    if (field === 'status' && rowIdx !== null) {
+        const sc = activeClassroom.gradebook.scores[studentKey];
+        const cellTotal = document.getElementById(`gb-cell-total-${rowIdx}`);
+        const currentTotal = cellTotal ? Number(cellTotal.innerText) : 0;
+        const gradeInfo = calculateThaiGrade(currentTotal, value);
+
+        const cellGrade = document.getElementById(`gb-cell-grade-${rowIdx}`);
+        if (cellGrade) {
+            cellGrade.innerHTML = `<span class="grade-badge ${gradeInfo.badgeClass}">${gradeInfo.grade}</span>`;
+        }
+    }
+
+    if (activeClassroomId) {
+        try {
+            localStorage.setItem(`gyver_gradebook_${activeClassroomId}`, JSON.stringify(activeClassroom.gradebook));
+        } catch (_) {}
+    }
+}
+
+// ➕ 7. เพิ่มช่องเก็บคะแนนใหม่ (Add Column)
+function openAddGradeColModal() {
+    const modalEl = document.getElementById('addGradeColModal');
+    if (modalEl) new bootstrap.Modal(modalEl).show();
+}
+
+function handleAddGradeColumn(e) {
+    e.preventDefault();
+    if (!activeClassroom) return;
+
+    const titleInput = document.getElementById('gb-new-col-title');
+    const maxInput = document.getElementById('gb-new-col-max');
+
+    const title = titleInput?.value.trim() || 'งานเก็บคะแนน';
+    const max = Number(maxInput?.value) || 10;
+
+    if (!activeClassroom.gradebook) activeClassroom.gradebook = { config: {}, columns: [], scores: {} };
+    if (!Array.isArray(activeClassroom.gradebook.columns)) activeClassroom.gradebook.columns = [];
+
+    const newColId = 'col_' + Date.now();
+    activeClassroom.gradebook.columns.push({
+        id: newColId,
+        title: title,
+        max: max
+    });
+
+    renderTabGradebook();
+    saveGradebookRecord(true);
+
+    document.getElementById('form-add-grade-col')?.reset();
+    bootstrap.Modal.getInstance(document.getElementById('addGradeColModal'))?.hide();
+    showToast('success', 'เพิ่มช่องคะแนนแล้ว', `เพิ่ม "${title}" (เต็ม ${max}) เรียบร้อย`);
+}
+
+// 🗑️ 8. ลบช่องคะแนน
+function deleteGradeColumn(colId) {
+    if (!activeClassroom?.gradebook?.columns) return;
+    const target = activeClassroom.gradebook.columns.find(c => c.id === colId);
+    if (!target) return;
+
+    if (!confirm(`คุณต้องการลบช่องคะแนน "${target.title}" หรือไม่? คะแนนของนักเรียนในช่องนี้จะถูกนำออก`)) return;
+
+    activeClassroom.gradebook.columns = activeClassroom.gradebook.columns.filter(c => c.id !== colId);
+
+    // ลบคะแนนในคีย์นี้ของนักเรียนทุกคน
+    if (activeClassroom.gradebook.scores) {
+        Object.keys(activeClassroom.gradebook.scores).forEach(key => {
+            delete activeClassroom.gradebook.scores[key][colId];
+        });
+    }
+
+    renderTabGradebook();
+    saveGradebookRecord(true);
+    showToast('info', 'ลบช่องคะแนนแล้ว', `ลบช่องคะแนน "${target.title}" สำเร็จ`);
+}
+
+// ⚙️ 9. ตั้งค่า ปพ.5 (Config Modal)
+function openGradebookConfigModal() {
+    if (!activeClassroom) return;
+    const gb = activeClassroom.gradebook || {};
+    const cfg = gb.config || {};
+
+    const elCode = document.getElementById('gb-cfg-code');
+    const elName = document.getElementById('gb-cfg-name');
+    const elSem = document.getElementById('gb-cfg-semester');
+    const elYear = document.getElementById('gb-cfg-year');
+    const elMid = document.getElementById('gb-cfg-midterm');
+    const elFin = document.getElementById('gb-cfg-final');
+
+    if (elCode) elCode.value = cfg.subject_code || '';
+    if (elName) elName.value = cfg.subject_name || activeClassroom.class_name || '';
+    if (elSem) elSem.value = cfg.semester || '1';
+    if (elYear) elYear.value = cfg.academic_year || '2569';
+    if (elMid) elMid.value = cfg.midterm_max ?? 20;
+    if (elFin) elFin.value = cfg.final_max ?? 30;
+
+    const modalEl = document.getElementById('gradebookConfigModal');
+    if (modalEl) new bootstrap.Modal(modalEl).show();
+}
+
+function handleSaveGradebookConfig(e) {
+    e.preventDefault();
+    if (!activeClassroom) return;
+
+    const elCode = document.getElementById('gb-cfg-code');
+    const elName = document.getElementById('gb-cfg-name');
+    const elSem = document.getElementById('gb-cfg-semester');
+    const elYear = document.getElementById('gb-cfg-year');
+    const elMid = document.getElementById('gb-cfg-midterm');
+    const elFin = document.getElementById('gb-cfg-final');
+
+    if (!activeClassroom.gradebook) activeClassroom.gradebook = { config: {}, columns: [], scores: {} };
+
+    const prevCfg = activeClassroom.gradebook.config || {};
+    activeClassroom.gradebook.config = {
+        ...prevCfg,
+        subject_code: elCode?.value.trim() || '',
+        subject_name: elName?.value.trim() || activeClassroom.class_name || '',
+        semester: elSem?.value || '1',
+        academic_year: elYear?.value.trim() || '2569',
+        midterm_max: Number(elMid?.value) || 20,
+        final_max: Number(elFin?.value) || 30
+    };
+
+    renderTabGradebook();
+    saveGradebookRecord(true);
+
+    bootstrap.Modal.getInstance(document.getElementById('gradebookConfigModal'))?.hide();
+    showToast('success', 'บันทึกการตั้งค่าแล้ว', 'อัปเดตข้อมูลโครงสร้าง ปพ.5 เรียบร้อย');
+}
+
+// 📥 10. ดึงคะแนนจากการบ้านที่ตรวจแล้ว (Import Assignment)
+function openImportAssignmentModal() {
+    if (!activeClassroom) return;
+    const assignments = Array.isArray(activeClassroom.assignments) ? activeClassroom.assignments : [];
+    const select = document.getElementById('import-assignment-select');
+
+    if (!select) return;
+
+    if (assignments.length === 0) {
+        select.innerHTML = '<option value="">-- ยังไม่มีการบ้านในห้องเรียนนี้ --</option>';
+    } else {
+        select.innerHTML = assignments.map(a => {
+            const count = a.submissions ? Object.keys(a.submissions).length : 0;
+            return `<option value="${a.id}">${a.title} (เต็ม ${a.max_score || 10} คะแนน • ส่งแล้ว ${count} คน)</option>`;
+        }).join('');
+    }
+
+    const modalEl = document.getElementById('importAssignmentModal');
+    if (modalEl) new bootstrap.Modal(modalEl).show();
+}
+
+function executeImportAssignment() {
+    if (!activeClassroom) return;
+    const select = document.getElementById('import-assignment-select');
+    const assignId = select?.value;
+    if (!assignId) return;
+
+    const assignments = Array.isArray(activeClassroom.assignments) ? activeClassroom.assignments : [];
+    const target = assignments.find(a => a.id === assignId);
+    if (!target) return;
+
+    if (!activeClassroom.gradebook) activeClassroom.gradebook = { config: {}, columns: [], scores: {} };
+    if (!Array.isArray(activeClassroom.gradebook.columns)) activeClassroom.gradebook.columns = [];
+    if (!activeClassroom.gradebook.scores) activeClassroom.gradebook.scores = {};
+
+    // เพิ่มคอลัมน์ใหม่สำหรับการบ้านนี้
+    const colId = 'assign_' + target.id;
+    const existingCol = activeClassroom.gradebook.columns.find(c => c.id === colId);
+
+    if (!existingCol) {
+        activeClassroom.gradebook.columns.push({
+            id: colId,
+            title: target.title.slice(0, 15),
+            max: Number(target.max_score) || 10
+        });
+    }
+
+    // ถ่ายโอนคะแนน
+    const submissions = target.submissions || {};
+    let importedCount = 0;
+
+    Object.keys(submissions).forEach(studentKey => {
+        const sub = submissions[studentKey];
+        if (sub && sub.score !== undefined && sub.score !== null) {
+            if (!activeClassroom.gradebook.scores[studentKey]) {
+                activeClassroom.gradebook.scores[studentKey] = {};
+            }
+            activeClassroom.gradebook.scores[studentKey][colId] = Number(sub.score);
+            importedCount++;
+        }
+    });
+
+    renderTabGradebook();
+    saveGradebookRecord(true);
+
+    bootstrap.Modal.getInstance(document.getElementById('importAssignmentModal'))?.hide();
+    showToast('success', 'ดึงคะแนนสำเร็จ!', `นำเข้าคะแนนจากการบ้าน "${target.title}" ของนักเรียน ${importedCount} คนแล้ว`);
+}
+
+// ⚠️ 11. ตรวจสอบเวลาเรียนและแจ้งเตือนนักเรียนที่เสี่ยงติด มส. (Absent > 20%)
+function syncAttendanceWarning() {
+    if (!activeClassroom) return;
+    const attendanceLogs = activeClassroom.attendance_logs || {};
+    const dates = Object.keys(attendanceLogs);
+    const totalDays = dates.length;
+
+    if (totalDays === 0) {
+        showToast('info', 'ยังไม่มีข้อมูลเช็คชื่อ', 'คุณครูยังไม่ได้บันทึกการเช็คชื่อในแท็บ 2');
+        return;
+    }
+
+    const students = Array.isArray(activeClassroom.students) ? activeClassroom.students : [];
+    let atRiskList = [];
+
+    students.forEach(s => {
+        const studentKey = s.user_id || s.name;
+        let absentDays = 0;
+
+        dates.forEach(d => {
+            const dayMap = attendanceLogs[d] || {};
+            const record = dayMap[studentKey];
+            if (record && record.status === 'absent') {
+                absentDays++;
+            }
+        });
+
+        const absentRate = (absentDays / totalDays) * 100;
+        if (absentRate >= 20) {
+            atRiskList.push({ name: s.name, rate: absentRate.toFixed(0), days: absentDays });
+            // เสนอปรับสถานะเป็น มส
+            if (!activeClassroom.gradebook) activeClassroom.gradebook = { config: {}, columns: [], scores: {} };
+            if (!activeClassroom.gradebook.scores) activeClassroom.gradebook.scores = {};
+            if (!activeClassroom.gradebook.scores[studentKey]) activeClassroom.gradebook.scores[studentKey] = {};
+            activeClassroom.gradebook.scores[studentKey].status = 'ms';
+        }
+    });
+
+    renderTabGradebook();
+    saveGradebookRecord(true);
+
+    if (atRiskList.length > 0) {
+        const names = atRiskList.map(a => `• ${a.name} (ขาด ${a.days}/${totalDays} วัน, ${a.rate}%)`).join('\n');
+        alert(`⚠️ ตรวจพบนักเรียนขาดเรียนเกิน 20% ของเวลาเรียนทั้งหมด (${atRiskList.length} คน):\n\n${names}\n\nระบบได้เปลี่ยนสถานะเป็น [มส] ให้อัตโนมัติเรียบร้อยครับ`);
+    } else {
+        showToast('success', 'เวลาเรียนผ่านเกณฑ์ทุกคน', `นักเรียนทั้งห้องมีเวลาเรียนมากกว่า 80% (จากทั้งหมด ${totalDays} วัน)`);
+    }
+}
+
+// 💾 12. บันทึกข้อมูลสมุดคะแนน ปพ.5 ลงคลาวด์และ LocalStorage
+async function saveGradebookRecord(isSilent = false) {
+    if (!activeClassroomId || !activeClassroom) return;
+
+    const btn = document.getElementById('btn-save-gradebook');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span>กำลังบันทึก...`;
+    }
+
+    const gb = activeClassroom.gradebook || {};
+    localStorage.setItem(`gyver_gradebook_${activeClassroomId}`, JSON.stringify(gb));
+
+    try {
+        const { error } = await supabaseClient
+            .from('classrooms')
+            .update({ gradebook: gb })
+            .eq('id', activeClassroomId);
+
+        if (!error) {
+            if (!isSilent) showToast('success', 'บันทึกสำเร็จ!', 'บันทึกคะแนนและเกรด ปพ.5 ลงสู่ระบบเรียบร้อย');
+        } else {
+            console.warn("Supabase gradebook notice:", error.message);
+            if (!isSilent) showToast('success', 'บันทึกสำเร็จ!', 'บันทึกข้อมูลสมุดคะแนนเรียบร้อย');
+        }
+    } catch (err) {
+        console.warn("Save gradebook error:", err);
+        if (!isSilent) showToast('success', 'บันทึกสำเร็จ!', 'บันทึกข้อมูลสมุดคะแนนเรียบร้อย');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="bi bi-floppy-fill me-1"></i>บันทึกคะแนน`;
+        }
+    }
+}
+
+// 📊 13. ส่งออกรายงาน Excel (.CSV with UTF-8 BOM)
+function exportGradebookToCSV() {
+    if (!activeClassroom) return;
+    const gb = activeClassroom.gradebook || {};
+    const cfg = gb.config || {};
+    const columns = Array.isArray(gb.columns) ? gb.columns : [];
+    const scores = gb.scores || {};
+    const students = Array.isArray(activeClassroom.students) ? activeClassroom.students : [];
+
+    const midtermMax = Number(cfg.midterm_max ?? 20);
+    const finalMax = Number(cfg.final_max ?? 30);
+    const targetFormativeWeight = Math.max(0, 100 - (midtermMax + finalMax));
+    const formativeRawMax = columns.reduce((sum, col) => sum + (Number(col.max) || 0), 0);
+
+    let csv = '\uFEFF'; // BOM สำหรับให้ Excel เปิดภาษาไทยได้โดยไม่เป็นภาษาต่างดาว
+
+    // Header ข้อมูลวิชา
+    csv += `"แบบบันทึกผลการพัฒนาคุณภาพผู้เรียน (ปพ.5)"\r\n`;
+    csv += `"วิชา","${cfg.subject_name || activeClassroom.class_name}","รหัสวิชา","${cfg.subject_code || '-'}","ภาคเรียน","${cfg.semester || 1}/${cfg.academic_year || 2569}"\r\n\r\n`;
+
+    // คอลัมน์หัวตาราง
+    const headers = ['เลขที่', 'รหัสนักเรียน', 'ชื่อ - สกุล'];
+    columns.forEach(c => headers.push(`"${c.title} (${c.max})"`));
+    headers.push(`"รวมเก็บ (${targetFormativeWeight})"`);
+    headers.push(`"กลางภาค (${midtermMax})"`);
+    headers.push(`"ปลายภาค (${finalMax})"`);
+    headers.push('"รวม 100"');
+    headers.push('"เกรด"');
+    headers.push('"คุณลักษณะ (0-3)"');
+    headers.push('"อ่านคิดวิเคราะห์ (0-3)"');
+    headers.push('"สถานะ"');
+
+    csv += headers.join(',') + '\r\n';
+
+    // บรรทัดนักเรียน
+    students.forEach((s, idx) => {
+        const studentKey = s.user_id || s.name;
+        const sc = scores[studentKey] || {};
+
+        let formativeRawSum = 0;
+        const colVals = columns.map(c => {
+            const v = sc[c.id];
+            if (v !== undefined && v !== '' && !isNaN(v)) {
+                formativeRawSum += Number(v);
+                return v;
+            }
+            return '';
+        });
+
+        let scaledFormative = 0;
+        if (formativeRawMax > 0) {
+            scaledFormative = Math.round(((formativeRawSum / formativeRawMax) * targetFormativeWeight) * 10) / 10;
+        }
+
+        const mid = Number(sc.midterm || 0);
+        const fin = Number(sc.final || 0);
+        const total = Math.min(100, Math.round((scaledFormative + mid + fin) * 10) / 10);
+        const gradeObj = calculateThaiGrade(total, sc.status || 'normal');
+
+        const row = [
+            idx + 1,
+            `"${s.student_id || '-'}"`,
+            `"${s.name || ''}"`,
+            ...colVals,
+            scaledFormative,
+            mid,
+            fin,
+            total,
+            `"${gradeObj.grade}"`,
+            sc.traits !== undefined ? sc.traits : 3,
+            sc.reading !== undefined ? sc.reading : 3,
+            `"${sc.status || 'normal'}"`
+        ];
+
+        csv += row.join(',') + '\r\n';
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const fileName = `ปพ5_${(cfg.subject_name || activeClassroom.class_name).replace(/\s+/g, '_')}_${cfg.academic_year || '2569'}.csv`;
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('success', 'ดาวน์โหลดสำเร็จ', `ส่งออกไฟล์ ${fileName} เรียบร้อยแล้ว`);
+}
+
+// 🖨️ 14. พิมพ์แบบ ปพ.5 ออกทางเครื่องพิมพ์ / กระดาษ A4
+function printGradebookReport() {
+    if (!activeClassroom) return;
+    const gb = activeClassroom.gradebook || {};
+    const cfg = gb.config || {};
+    const columns = Array.isArray(gb.columns) ? gb.columns : [];
+    const scores = gb.scores || {};
+    const students = Array.isArray(activeClassroom.students) ? activeClassroom.students : [];
+
+    const midtermMax = Number(cfg.midterm_max ?? 20);
+    const finalMax = Number(cfg.final_max ?? 30);
+    const targetFormativeWeight = Math.max(0, 100 - (midtermMax + finalMax));
+    const formativeRawMax = columns.reduce((sum, col) => sum + (Number(col.max) || 0), 0);
+
+    const printContainer = document.getElementById('print-pp5-container');
+    if (!printContainer) return;
+
+    let rowsHtml = '';
+    let gradeCounts = { '4': 0, '3.5': 0, '3': 0, '2.5': 0, '2': 0, '1.5': 0, '1': 0, '0': 0, 'ร': 0, 'มส': 0 };
+
+    students.forEach((s, idx) => {
+        const studentKey = s.user_id || s.name;
+        const sc = scores[studentKey] || {};
+
+        let formativeRawSum = 0;
+        const colVals = columns.map(c => {
+            const v = sc[c.id];
+            if (v !== undefined && v !== '' && !isNaN(v)) {
+                formativeRawSum += Number(v);
+                return v;
+            }
+            return '-';
+        }).map(v => `<td style="border: 1px solid #000; text-align: center; padding: 4px;">${v}</td>`).join('');
+
+        let scaledFormative = 0;
+        if (formativeRawMax > 0) {
+            scaledFormative = Math.round(((formativeRawSum / formativeRawMax) * targetFormativeWeight) * 10) / 10;
+        }
+
+        const mid = Number(sc.midterm || 0);
+        const fin = Number(sc.final || 0);
+        const total = Math.min(100, Math.round((scaledFormative + mid + fin) * 10) / 10);
+        const gradeObj = calculateThaiGrade(total, sc.status || 'normal');
+
+        if (gradeCounts[gradeObj.grade] !== undefined) {
+            gradeCounts[gradeObj.grade]++;
+        }
+
+        rowsHtml += `
+            <tr>
+                <td style="border: 1px solid #000; text-align: center; padding: 4px;">${idx + 1}</td>
+                <td style="border: 1px solid #000; text-align: left; padding: 4px 8px;">${s.name}</td>
+                ${colVals}
+                <td style="border: 1px solid #000; text-align: center; padding: 4px; font-weight: bold;">${scaledFormative}</td>
+                <td style="border: 1px solid #000; text-align: center; padding: 4px;">${mid}</td>
+                <td style="border: 1px solid #000; text-align: center; padding: 4px;">${fin}</td>
+                <td style="border: 1px solid #000; text-align: center; padding: 4px; font-weight: bold;">${total}</td>
+                <td style="border: 1px solid #000; text-align: center; padding: 4px; font-weight: bold;">${gradeObj.grade}</td>
+                <td style="border: 1px solid #000; text-align: center; padding: 4px;">${sc.traits !== undefined ? sc.traits : 3}</td>
+                <td style="border: 1px solid #000; text-align: center; padding: 4px;">${sc.reading !== undefined ? sc.reading : 3}</td>
+                <td style="border: 1px solid #000; text-align: center; padding: 4px;">${sc.status === 'ms' ? 'มส' : sc.status === 'r' ? 'ร' : 'ผ่าน'}</td>
+            </tr>
+        `;
+    });
+
+    const colHeaderHtml = columns.map(c => `
+        <th style="border: 1px solid #000; padding: 4px; font-size: 0.8rem;">${c.title}<br>(${c.max})</th>
+    `).join('');
+
+    printContainer.innerHTML = `
+        <div style="font-family: 'Sarabun', 'TH Sarabun New', sans-serif; font-size: 13px; line-height: 1.4; padding: 20px; color: #000;">
+            <div style="text-align: center; margin-bottom: 16px;">
+                <h3 style="margin: 0; font-size: 18px; font-weight: bold;">แบบประเมินผลการพัฒนาคุณภาพผู้เรียน (ปพ.5)</h3>
+                <h4 style="margin: 4px 0; font-size: 15px;">กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี • ภาคเรียนที่ ${cfg.semester || 1} ปีการศึกษา ${cfg.academic_year || 2569}</h4>
+                <p style="margin: 0; font-size: 13px;">รายวิชา: <b>${cfg.subject_name || activeClassroom.class_name}</b> (รหัสวิชา: ${cfg.subject_code || '-'}) • ระดับชั้น: ${activeClassroom.class_name}</p>
+            </div>
+
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px;">
+                <thead>
+                    <tr style="background: #f0f0f0;">
+                        <th rowspan="2" style="border: 1px solid #000; padding: 4px; width: 35px;">เลขที่</th>
+                        <th rowspan="2" style="border: 1px solid #000; padding: 4px; min-width: 140px;">ชื่อ - สกุล</th>
+                        <th colspan="${columns.length + 1}" style="border: 1px solid #000; padding: 4px;">คะแนนเก็บระหว่างภาค (${targetFormativeWeight})</th>
+                        <th colspan="2" style="border: 1px solid #000; padding: 4px;">คะแนนสอบ</th>
+                        <th rowspan="2" style="border: 1px solid #000; padding: 4px; width: 45px;">รวม<br>(100)</th>
+                        <th rowspan="2" style="border: 1px solid #000; padding: 4px; width: 38px;">เกรด</th>
+                        <th rowspan="2" style="border: 1px solid #000; padding: 4px; width: 50px;">คุณลักษณะ<br>(0-3)</th>
+                        <th rowspan="2" style="border: 1px solid #000; padding: 4px; width: 50px;">อ่าน/คิด<br>(0-3)</th>
+                        <th rowspan="2" style="border: 1px solid #000; padding: 4px; width: 45px;">สถานะ</th>
+                    </tr>
+                    <tr style="background: #f9f9f9;">
+                        ${colHeaderHtml}
+                        <th style="border: 1px solid #000; padding: 4px; font-size: 0.8rem;">รวมเก็บ<br>(${targetFormativeWeight})</th>
+                        <th style="border: 1px solid #000; padding: 4px; font-size: 0.8rem;">กลางภาค<br>(${midtermMax})</th>
+                        <th style="border: 1px solid #000; padding: 4px; font-size: 0.8rem;">ปลายภาค<br>(${finalMax})</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml}
+                </tbody>
+            </table>
+
+            <!-- สรุปผลการตัดเกรด -->
+            <div style="display: flex; justify-content: space-between; gap: 20px; margin-top: 15px; font-size: 12px;">
+                <div style="border: 1px solid #000; padding: 8px; flex: 1;">
+                    <b>📊 สรุปผลการประเมินนักเรียน (ทั้งหมด ${students.length} คน)</b>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px;">
+                        <span>เกรด 4: <b>${gradeCounts['4']}</b> คน</span> |
+                        <span>เกรด 3.5: <b>${gradeCounts['3.5']}</b> คน</span> |
+                        <span>เกรด 3: <b>${gradeCounts['3']}</b> คน</span> |
+                        <span>เกรด 2.5: <b>${gradeCounts['2.5']}</b> คน</span> |
+                        <span>เกรด 2: <b>${gradeCounts['2']}</b> คน</span> |
+                        <span>เกรด 1.5: <b>${gradeCounts['1.5']}</b> คน</span> |
+                        <span>เกรด 1: <b>${gradeCounts['1']}</b> คน</span> |
+                        <span>เกรด 0: <b>${gradeCounts['0']}</b> คน</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ลายเซ็นครูและผู้บริหาร -->
+            <div style="display: flex; justify-content: space-around; margin-top: 35px; text-align: center; font-size: 13px;">
+                <div>
+                    <div>ลงชื่อ............................................................</div>
+                    <div style="margin-top: 4px;">(............................................................)</div>
+                    <div>ครูผู้สอน</div>
+                </div>
+                <div>
+                    <div>ลงชื่อ............................................................</div>
+                    <div style="margin-top: 4px;">(............................................................)</div>
+                    <div>หัวหน้ากลุ่มสาระการเรียนรู้</div>
+                </div>
+                <div>
+                    <div>ลงชื่อ............................................................</div>
+                    <div style="margin-top: 4px;">(............................................................)</div>
+                    <div>นายทะเบียน / ผู้อำนวยการ</div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    printContainer.classList.remove('d-none');
+    window.print();
+    setTimeout(() => {
+        printContainer.classList.add('d-none');
+    }, 1000);
+}
+

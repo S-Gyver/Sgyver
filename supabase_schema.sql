@@ -265,5 +265,7 @@ END $$;
 ALTER TABLE public.classrooms ADD COLUMN IF NOT EXISTS attendance_logs JSONB DEFAULT '{}'::jsonb;
 ALTER TABLE public.classrooms ADD COLUMN IF NOT EXISTS materials JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.classrooms ADD COLUMN IF NOT EXISTS assignments JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.classrooms ADD COLUMN IF NOT EXISTS gradebook JSONB DEFAULT '{}'::jsonb;
+
 
 
