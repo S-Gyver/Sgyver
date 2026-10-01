@@ -21,6 +21,7 @@
 
     <!-- Supabase Client & Shared Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="../../assets/js/supabaseClient.js"></script>
     <script src="../../assets/js/toast_shared.js"></script>
     <script src="../../assets/js/photozoom_shared.js"></script>
@@ -856,6 +857,61 @@
                         data-bs-dismiss="modal">
                         <i class="bi bi-x-lg me-1"></i> ปิดหน้าจอฉาย
                     </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- 📝 MODAL: บันทึกโน้ตประจำตัวนักเรียน (Teacher Student Note Modal) -->
+    <!-- ============================================================== -->
+    <div class="modal fade" id="studentNoteModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header border-0 pb-0">
+                    <div class="d-flex align-items-center gap-3">
+                        <img id="modal-student-note-avatar" src="" class="rounded-circle border" style="width: 48px; height: 48px; object-fit: cover;">
+                        <div>
+                            <h5 class="modal-title fw-bold text-dark m-0 d-flex align-items-center gap-2">
+                                <i class="bi bi-journal-text text-warning"></i>
+                                <span>โน้ตประจำตัวนักเรียน</span>
+                            </h5>
+                            <div class="small text-muted" id="modal-student-note-name">กำลังโหลด...</div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-3">
+                    <input type="hidden" id="modal-student-note-idx" value="">
+                    <label class="form-label small fw-bold text-secondary mb-1">บันทึกช่วยจำของคุณครู (เฉพาะครูที่มองเห็น)</label>
+                    <textarea id="modal-student-note-text" class="form-control rounded-3" rows="4"
+                        placeholder="พิมพ์บันทึกช่วยจำเกี่ยวกับนักเรียนคนนี้ เช่น นั่งหน้าห้อง, เรียนรู้ไว, เตือนส่งงาน, ช่วยดูแลเพื่อน..."></textarea>
+                    
+                    <!-- แท็กด่วนช่วยพิมพ์ -->
+                    <div class="mt-2">
+                        <span class="small text-muted me-1" style="font-size: 0.75rem;">แท็กด่วน:</span>
+                        <div class="d-inline-flex gap-1 flex-wrap mt-1">
+                            <span class="badge bg-light text-dark border quick-tag-chip" onclick="addNoteQuickTag('นั่งหน้าห้อง')">+ นั่งหน้าห้อง</span>
+                            <span class="badge bg-light text-dark border quick-tag-chip" onclick="addNoteQuickTag('ช่วยงานครู')">+ ช่วยงานครู</span>
+                            <span class="badge bg-light text-dark border quick-tag-chip" onclick="addNoteQuickTag('เตือนส่งงาน')">+ เตือนส่งงาน</span>
+                            <span class="badge bg-light text-dark border quick-tag-chip" onclick="addNoteQuickTag('ผลการเรียนดี')">+ ผลการเรียนดี</span>
+                            <span class="badge bg-light text-dark border quick-tag-chip" onclick="addNoteQuickTag('ดูแลเป็นพิเศษ')">+ ดูแลพิเศษ</span>
+                        </div>
+                    </div>
+                    <div class="form-text small text-muted mt-2">
+                        <i class="bi bi-shield-lock me-1"></i> ข้อมูลโน้ตนี้จะถูกเก็บไว้ในระบบห้องเรียนและมีเพียงคุณครูเท่านั้นที่มองเห็น
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0 d-flex justify-content-between">
+                    <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-3" id="modal-student-note-delete-btn" onclick="deleteStudentNote()">
+                        <i class="bi bi-trash me-1"></i> ลบโน้ต
+                    </button>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-light btn-sm rounded-pill px-3" data-bs-dismiss="modal">ยกเลิก</button>
+                        <button type="button" class="btn btn-primary btn-sm rounded-pill px-4 fw-bold" onclick="saveStudentNote()">
+                            <i class="bi bi-check2-circle me-1"></i> บันทึกโน้ต
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

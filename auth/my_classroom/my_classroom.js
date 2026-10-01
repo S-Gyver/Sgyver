@@ -774,7 +774,14 @@ async function handleCreateClassroom(e) {
 
 async function deleteClassroomFromHub(classId, encodedName) {
     const className = decodeURIComponent(encodedName);
-    if (!confirm(`⚠️ คุณแน่ใจหรือไม่ที่จะลบห้อง "${className}" ? ข้อมูลทั้งหมดจะถูกลบถาวร`)) return;
+    const ok = await showGyverConfirm({
+        title: `ลบห้อง "${className}"?`,
+        subtitle: '⚠️ ข้อมูลทั้งหมดในห้องนี้จะถูกลบถาวร ไม่สามารถกู้คืนได้',
+        icon: 'danger',
+        confirmText: '<i class="bi bi-trash3-fill me-1"></i> ลบห้องนี้',
+        confirmBtnClass: 'btn-danger'
+    });
+    if (!ok) return;
 
     const { error } = await supabaseClient
         .from('classrooms')
@@ -803,9 +810,14 @@ async function deleteCourseGroupFromHub(groupKey, encodedName) {
     if (!targetGroup) return;
 
     const count = targetGroup.sections.length;
-    if (!confirm(`⚠️ ยืนยันการลบรายวิชา "${subjName}" ?\n\nการกระทำนี้จะลบห้องเรียนทั้งหมด ${count} ห้อง รวมถึงคะแนน ปพ.5 และงานที่สั่งทั้งหมดอย่างถาวร`)) {
-        return;
-    }
+    const ok = await showGyverConfirm({
+        title: `ลบรายวิชา "${subjName}"?`,
+        subtitle: `⚠️ การกระทำนี้จะลบห้องเรียนทั้งหมด <b>${count} ห้อง</b> รวมถึงคะแนน ปพ.5 และงานที่สั่งทั้งหมดอย่างถาวร`,
+        icon: 'danger',
+        confirmText: '<i class="bi bi-trash3-fill me-1"></i> ลบทั้งรายวิชา',
+        confirmBtnClass: 'btn-danger'
+    });
+    if (!ok) return;
 
     const idsToDelete = targetGroup.sections.map(s => s.id);
     for (const classId of idsToDelete) {
@@ -1134,11 +1146,37 @@ function renderTabScan() {
         wall.innerHTML = students.map((s, idx) => {
             const avatar = s.image || `https://api.dicebear.com/7.x/big-smile/svg?seed=${encodeURIComponent(s.name || 'Student')}`;
             const nickname = s.nickname || s.name || `นักเรียนคนที่ ${idx + 1}`;
+            const hasNote = Boolean(s.note && String(s.note).trim());
+            const safeNote = hasNote ? escapeHtml(String(s.note).trim()) : '';
+            const safeName = escapeHtml(s.name || nickname);
+            const safeNick = escapeHtml(nickname);
+
             return `
             <div class="student-card-mini">
-                <img src="${avatar}" alt="${nickname}" onclick="openPhotoZoom('${avatar}', '${s.name}')" title="คลิกดูรูปขยาย">
-                <div class="fw-bold text-dark small text-truncate" title="${s.name}">${nickname}</div>
-                <div class="text-muted font-mono" style="font-size: 0.7rem;">#${idx + 1}</div>
+                <div>
+                    <div class="position-relative d-inline-block">
+                        <img src="${avatar}" alt="${safeNick}" class="student-avatar-img" onclick="openPhotoZoom('${avatar}', '${safeName}')" title="คลิกดูรูปขยาย">
+                        <span class="position-absolute bottom-0 end-0 badge rounded-pill bg-primary shadow-sm" style="font-size: 0.65rem; transform: translate(10%, -10%);">#${idx + 1}</span>
+                    </div>
+                    <div class="fw-bold text-dark small text-truncate mt-1" title="${safeName}">${safeNick}</div>
+                    ${s.name && s.name !== nickname ? `<div class="text-muted text-truncate" style="font-size: 0.68rem;" title="${safeName}">${safeName}</div>` : ''}
+                    
+                    ${hasNote ? `
+                    <div class="student-note-chip" onclick="openStudentNoteModal(${idx})" title="คลิกเพื่อดู/แก้ไขโน้ต: ${safeNote}">
+                        <i class="bi bi-sticky-fill text-warning me-1"></i><span>${safeNote}</span>
+                    </div>` : ''}
+                </div>
+
+                <div class="student-card-actions">
+                    <button type="button" class="btn ${hasNote ? 'btn-warning text-dark' : 'btn-outline-secondary'}" onclick="openStudentNoteModal(${idx})" title="${hasNote ? 'ดู/แก้ไขโน้ต' : 'เพิ่มโน้ตช่วยจำ'}">
+                        <i class="bi ${hasNote ? 'bi-journal-check' : 'bi-journal-plus'}"></i>
+                        <span>${hasNote ? 'มีโน้ต' : 'โน้ต'}</span>
+                    </button>
+                    <button type="button" class="btn btn-outline-danger" onclick="kickStudent(${idx})" title="เตะ ${safeNick} ออกจากห้อง">
+                        <i class="bi bi-person-x"></i>
+                        <span>เตะ</span>
+                    </button>
+                </div>
             </div>`;
         }).join('');
     }
@@ -1151,6 +1189,316 @@ function copyJoinLinkFromTab() {
         navigator.clipboard.writeText(input.value);
         showToast('success', 'คัดลอกลิงก์สำเร็จ', 'นำลิงก์ไปส่งในกลุ่มไลน์หรือแชทให้นักเรียนได้เลย');
     }
+}
+
+// 🥋 เตะนักเรียนออกจากห้องเรียน (Kick Student)
+async function kickStudent(studentIndex) {
+    if (!activeClassroom || !Array.isArray(activeClassroom.students)) return;
+    const s = activeClassroom.students[studentIndex];
+    if (!s) return;
+
+    const sName = formatStudentDisplayName(s, `นักเรียนคนที่ ${studentIndex + 1}`);
+    const avatar = s.image || `https://api.dicebear.com/7.x/big-smile/svg?seed=${encodeURIComponent(s.name || 'Student')}`;
+    const className = activeClassroom.class_name || 'ห้องเรียน';
+
+    let isConfirmed = false;
+    if (typeof Swal !== 'undefined') {
+        const swalRes = await Swal.fire({
+            title: `<div class="fw-bold text-dark fs-5 mt-2">ยืนยันเตะนักเรียนออกจากห้อง?</div>`,
+            html: `
+                <div class="text-center my-3">
+                    <div class="position-relative d-inline-block mb-3">
+                        <img src="${avatar}" class="rounded-circle border" style="width: 76px; height: 76px; object-fit: cover; border-width: 3px !important; border-color: #fecaca !important; box-shadow: 0 8px 24px rgba(239, 68, 68, 0.18);">
+                        <span class="position-absolute bottom-0 end-0 badge rounded-pill bg-danger shadow-sm" style="font-size: 0.72rem;">#${studentIndex + 1}</span>
+                    </div>
+                    <h5 class="fw-bold text-dark mb-1">${escapeHtml(sName)}</h5>
+                    <div class="text-muted small mb-3">ห้องเรียน: <span class="fw-semibold text-secondary">${escapeHtml(className)}</span></div>
+
+                    <div class="p-3 rounded-4 bg-danger-subtle text-danger-emphasis text-start border border-danger-subtle" style="font-size: 0.85rem; line-height: 1.55;">
+                        <div class="fw-bold mb-1 d-flex align-items-center gap-2">
+                            <i class="bi bi-exclamation-triangle-fill text-danger fs-6"></i>
+                            <span>โปรดทราบ</span>
+                        </div>
+                        <ul class="m-0 ps-3">
+                            <li>รายชื่อนักเรียนจะถูกนำออกจากห้องเรียนนี้ทันที</li>
+                            <li>หากต้องการเข้าเรียนใหม่ นักเรียนต้องสแกน QR Code หรือกรอกรหัสห้องอีกครั้ง</li>
+                        </ul>
+                    </div>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: '<i class="bi bi-box-arrow-right me-1"></i> ยืนยันเตะออกจากห้อง',
+            cancelButtonText: 'ยกเลิก',
+            customClass: {
+                popup: 'gyver-swal-popup rounded-4 border-0 shadow-lg',
+                confirmButton: 'btn btn-danger rounded-pill px-4 py-2 fw-bold shadow-sm',
+                cancelButton: 'btn btn-light border rounded-pill px-4 py-2 fw-semibold text-secondary ms-2',
+                actions: 'mt-2 mb-0'
+            },
+            buttonsStyling: false,
+            reverseButtons: true,
+            focusCancel: true
+        });
+        isConfirmed = swalRes.isConfirmed;
+    } else {
+        isConfirmed = confirm(`⚠️ ยืนยันการเตะนักเรียน "${sName}" ออกจากห้องนี้ใช่หรือไม่?\n\n- นักเรียนจะถูกนำออกจากรายชื่อห้องเรียนนี้ทันที\n- หากต้องการเข้าเรียนใหม่ นักเรียนต้องสแกน QR Code หรือกรอกรหัสห้องอีกครั้ง`);
+    }
+
+    if (!isConfirmed) return;
+
+    activeClassroom.students.splice(studentIndex, 1);
+
+    try {
+        const { error } = await supabaseClient
+            .from('classrooms')
+            .update({ students: activeClassroom.students })
+            .eq('id', activeClassroom.id);
+
+        if (error) {
+            showToast('error', 'เตะนักเรียนล้มเหลว', error.message);
+            return;
+        }
+
+        // อัปเดตแคชห้องเรียน
+        const idx = cachedClassrooms.findIndex(c => c.id === activeClassroom.id);
+        if (idx !== -1) cachedClassrooms[idx].students = activeClassroom.students;
+
+        // ซิงค์ UI ทุกจุด
+        renderActiveClassroomHeader();
+        renderTabScan();
+        renderTabAttendance();
+        renderTabGradebook();
+        updateProjectorRoster();
+
+        showToast('success', 'เตะนักเรียนออกแล้ว', `นำ "${sName}" ออกจากห้องเรียนเรียบร้อย`);
+    } catch (err) {
+        console.error('Kick student error:', err);
+        showToast('error', 'เกิดข้อผิดพลาด', err.message);
+    }
+}
+
+// 📝 จัดการโน้ตประจำตัวนักเรียน (Teacher Student Note Modal & Actions)
+function openStudentNoteModal(studentIndex) {
+    if (!activeClassroom || !Array.isArray(activeClassroom.students)) return;
+    const s = activeClassroom.students[studentIndex];
+    if (!s) return;
+
+    const avatar = s.image || `https://api.dicebear.com/7.x/big-smile/svg?seed=${encodeURIComponent(s.name || 'Student')}`;
+    const nickname = s.nickname || s.name || `นักเรียนคนที่ ${studentIndex + 1}`;
+    const fullName = s.name && s.name !== nickname ? ` (${s.name})` : '';
+
+    const idxEl = document.getElementById('modal-student-note-idx');
+    const avatarEl = document.getElementById('modal-student-note-avatar');
+    const nameEl = document.getElementById('modal-student-note-name');
+    const textEl = document.getElementById('modal-student-note-text');
+
+    if (idxEl) idxEl.value = studentIndex;
+    if (avatarEl) avatarEl.src = avatar;
+    if (nameEl) nameEl.innerText = `${nickname}${fullName} • เลขที่ #${studentIndex + 1}`;
+    if (textEl) textEl.value = s.note || '';
+
+    const delBtn = document.getElementById('modal-student-note-delete-btn');
+    if (delBtn) {
+        delBtn.style.display = (s.note && String(s.note).trim()) ? 'inline-flex' : 'none';
+    }
+
+    const modalEl = document.getElementById('studentNoteModal');
+    if (modalEl) {
+        const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+}
+
+function addNoteQuickTag(tagText) {
+    const textarea = document.getElementById('modal-student-note-text');
+    if (!textarea) return;
+    let val = textarea.value.trim();
+    if (val) {
+        if (!val.includes(tagText)) textarea.value = val + ' • ' + tagText;
+    } else {
+        textarea.value = tagText;
+    }
+    textarea.focus();
+}
+
+async function saveStudentNote() {
+    if (!activeClassroom || !Array.isArray(activeClassroom.students)) return;
+    const idx = parseInt(document.getElementById('modal-student-note-idx').value);
+    if (isNaN(idx) || !activeClassroom.students[idx]) return;
+
+    const noteText = (document.getElementById('modal-student-note-text').value || '').trim();
+    if (noteText) {
+        activeClassroom.students[idx].note = noteText;
+    } else {
+        delete activeClassroom.students[idx].note;
+    }
+
+    try {
+        const { error } = await supabaseClient
+            .from('classrooms')
+            .update({ students: activeClassroom.students })
+            .eq('id', activeClassroom.id);
+
+        if (error) {
+            showToast('error', 'บันทึกโน้ตล้มเหลว', error.message);
+            return;
+        }
+
+        const cIdx = cachedClassrooms.findIndex(c => c.id === activeClassroom.id);
+        if (cIdx !== -1) cachedClassrooms[cIdx].students = activeClassroom.students;
+
+        renderTabScan();
+        renderTabAttendance();
+
+        const modalEl = document.getElementById('studentNoteModal');
+        if (modalEl) {
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+        }
+
+        showToast('success', 'บันทึกโน้ตสำเร็จ', 'บันทึกข้อมูลโน้ตของนักเรียนเรียบร้อย');
+    } catch (err) {
+        console.error('Save student note error:', err);
+        showToast('error', 'เกิดข้อผิดพลาด', err.message);
+    }
+}
+
+async function deleteStudentNote() {
+    if (!activeClassroom || !Array.isArray(activeClassroom.students)) return;
+    const idx = parseInt(document.getElementById('modal-student-note-idx').value);
+    if (isNaN(idx) || !activeClassroom.students[idx]) return;
+
+    const ok = await showGyverConfirm({
+        title: 'ลบโน้ตนักเรียน?',
+        subtitle: 'ต้องการลบข้อความบันทึกช่วยจำของนักเรียนคนนี้ใช่หรือไม่?',
+        icon: 'danger',
+        confirmText: '<i class="bi bi-trash3-fill me-1"></i> ลบโน้ต',
+        confirmBtnClass: 'btn-danger'
+    });
+    if (!ok) return;
+
+    delete activeClassroom.students[idx].note;
+
+    try {
+        const { error } = await supabaseClient
+            .from('classrooms')
+            .update({ students: activeClassroom.students })
+            .eq('id', activeClassroom.id);
+
+        if (error) {
+            showToast('error', 'ลบโน้ตล้มเหลว', error.message);
+            return;
+        }
+
+        const cIdx = cachedClassrooms.findIndex(c => c.id === activeClassroom.id);
+        if (cIdx !== -1) cachedClassrooms[cIdx].students = activeClassroom.students;
+
+        renderTabScan();
+        renderTabAttendance();
+
+        const modalEl = document.getElementById('studentNoteModal');
+        if (modalEl) {
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+        }
+
+        showToast('info', 'ลบโน้ตแล้ว', 'ลบโน้ตของนักเรียนเรียบร้อย');
+    } catch (err) {
+        console.error('Delete student note error:', err);
+        showToast('error', 'เกิดข้อผิดพลาด', err.message);
+    }
+}
+
+function formatStudentDisplayName(s, defaultName = 'นักเรียน') {
+    if (!s) return defaultName;
+    const nick = (s.nickname || '').trim();
+    const full = (s.name || '').trim();
+    if (!nick && !full) return defaultName;
+    if (!nick) return full;
+    if (!full) return nick;
+    if (full === nick) return nick;
+    if (full.startsWith(nick + ' ') || full.startsWith(nick + '(')) {
+        return full;
+    }
+    return `${nick} (${full})`;
+}
+
+/**
+ * 🎨 Modern Gyver Confirmation Modal (SweetAlert2 wrapper with fallback)
+ */
+async function showGyverConfirm({
+    title = 'ยืนยันการทำรายการ',
+    subtitle = '',
+    html = '',
+    icon = 'warning',
+    confirmText = 'ยืนยัน',
+    cancelText = 'ยกเลิก',
+    confirmBtnClass = 'btn-danger',
+    showCancel = true
+}) {
+    if (typeof Swal === 'undefined') {
+        return confirm(`${title}\n${subtitle}`);
+    }
+
+    const iconColors = {
+        warning: '#f59e0b',
+        danger: '#ef4444',
+        info: '#3b82f6',
+        question: '#8b5cf6'
+    };
+
+    const iconClasses = {
+        warning: 'bi-exclamation-triangle-fill',
+        danger: 'bi-trash3-fill',
+        info: 'bi-info-circle-fill',
+        question: 'bi-question-circle-fill'
+    };
+
+    const color = iconColors[icon] || iconColors.warning;
+    const iconClass = iconClasses[icon] || iconClasses.warning;
+
+    let contentHtml = '';
+    if (html) {
+        contentHtml = html;
+    } else if (subtitle) {
+        contentHtml = `
+            <div style="font-size: 0.95rem; color: #475569; line-height: 1.6; margin-top: 10px;">
+                ${subtitle}
+            </div>
+        `;
+    }
+
+    const res = await Swal.fire({
+        title: `<div class="d-flex align-items-center justify-content-center gap-2 mt-2" style="font-size: 1.25rem; font-weight: 700; color: #0f172a;">
+            <i class="bi ${iconClass}" style="color: ${color}; font-size: 1.4rem;"></i>
+            <span>${title}</span>
+        </div>`,
+        html: contentHtml,
+        showCancelButton: showCancel,
+        confirmButtonText: confirmText,
+        cancelButtonText: cancelText,
+        customClass: {
+            popup: 'gyver-swal-popup rounded-4 border-0 shadow-lg p-4',
+            confirmButton: `btn ${confirmBtnClass} rounded-pill px-4 py-2 fw-bold shadow-sm`,
+            cancelButton: 'btn btn-light border rounded-pill px-4 py-2 fw-semibold text-secondary ms-2',
+            actions: 'mt-3 mb-0'
+        },
+        buttonsStyling: false,
+        reverseButtons: true,
+        focusCancel: true
+    });
+
+    return res.isConfirmed;
+}
+
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 // 📺 โหมดฉายจอใหญ่ (Projector Fullscreen Mode)
@@ -1252,8 +1600,11 @@ function renderTabAttendance() {
                 <img src="${avatar}" class="rounded-circle border" style="width: 38px; height: 38px; object-fit: cover; cursor: pointer;" onclick="openPhotoZoom('${avatar}', '${s.name}')">
             </td>
             <td>
-                <div class="fw-bold text-dark">${s.name}</div>
-                <div class="text-muted small">${s.nickname ? `ชื่อเล่น: ${s.nickname}` : ''}</div>
+                <div class="fw-bold text-dark d-flex align-items-center gap-2 flex-wrap">
+                    <span>${escapeHtml(s.name)}</span>
+                    ${s.note ? `<span class="badge bg-warning-subtle text-dark border border-warning-subtle role-button" onclick="openStudentNoteModal(${idx})" title="คลิกดู/แก้ไขโน้ต: ${escapeHtml(s.note)}" style="font-size: 0.7rem;"><i class="bi bi-journal-text text-warning me-1"></i>${escapeHtml(s.note)}</span>` : `<button type="button" class="btn btn-link btn-sm p-0 text-muted" onclick="openStudentNoteModal(${idx})" title="เพิ่มโน้ตช่วยจำ" style="font-size: 0.72rem; text-decoration: none;"><i class="bi bi-journal-plus"></i></button>`}
+                </div>
+                <div class="text-muted small">${s.nickname ? `ชื่อเล่น: ${escapeHtml(s.nickname)}` : ''}</div>
             </td>
             <td>
                 <div class="att-btn-group justify-content-center">
@@ -1545,9 +1896,19 @@ async function handleSaveMaterial(e) {
 
 async function deleteMaterial(idx) {
     if (!activeClassroom) return;
-    if (!confirm('⚠️ ยืนยันการลบเอกสารนี้หรือไม่? (เอกสารจะถูกลบออกจากทุกห้องในรายวิชานี้)')) return;
+    const materials = getSharedCourseMaterials();
+    const item = materials[idx];
+    const itemTitle = item?.title ? ` "${item.title}"` : '';
 
-    let materials = getSharedCourseMaterials();
+    const ok = await showGyverConfirm({
+        title: `ลบเอกสาร${itemTitle}?`,
+        subtitle: '⚠️ เอกสารนี้จะถูกลบออกจากทุกห้องในรายวิชานี้และไม่สามารถกู้คืนได้',
+        icon: 'danger',
+        confirmText: '<i class="bi bi-trash3-fill me-1"></i> ลบเอกสาร',
+        confirmBtnClass: 'btn-danger'
+    });
+    if (!ok) return;
+
     materials.splice(idx, 1);
 
     await saveSharedCourseMaterials(materials);
@@ -1770,9 +2131,19 @@ async function handleSaveAssignment(e) {
 
 async function deleteAssignment(idx) {
     if (!activeClassroom) return;
-    if (!confirm('⚠️ ยืนยันการลบการบ้านชิ้นนี้หรือไม่? (จะลบออกจากทุกห้องในรายวิชานี้)')) return;
+    const assignments = getSharedCourseAssignments();
+    const item = assignments[idx];
+    const itemTitle = item?.title ? ` "${item.title}"` : '';
 
-    let assignments = getSharedCourseAssignments();
+    const ok = await showGyverConfirm({
+        title: `ลบการบ้าน${itemTitle}?`,
+        subtitle: '⚠️ ชิ้นงานและคะแนนตรวจงานจะถูกลบออกจากทุกห้องในรายวิชานี้ถาวร',
+        icon: 'danger',
+        confirmText: '<i class="bi bi-trash3-fill me-1"></i> ลบชิ้นงาน',
+        confirmBtnClass: 'btn-danger'
+    });
+    if (!ok) return;
+
     assignments.splice(idx, 1);
 
     await saveSharedCourseAssignments(assignments);
@@ -2364,12 +2735,19 @@ function handleAddGradeColumn(e) {
 }
 
 // 🗑️ 8. ลบช่องคะแนน
-function deleteGradeColumn(colId) {
+async function deleteGradeColumn(colId) {
     if (!activeClassroom?.gradebook?.columns) return;
     const target = activeClassroom.gradebook.columns.find(c => c.id === colId);
     if (!target) return;
 
-    if (!confirm(`คุณต้องการลบช่องคะแนน "${target.title}" หรือไม่? คะแนนของนักเรียนในช่องนี้จะถูกนำออก`)) return;
+    const ok = await showGyverConfirm({
+        title: `ลบช่องคะแนน "${target.title}"?`,
+        subtitle: '⚠️ คะแนนของนักเรียนในช่องนี้จะถูกนำออกถาวร',
+        icon: 'danger',
+        confirmText: '<i class="bi bi-trash3-fill me-1"></i> ลบช่องคะแนน',
+        confirmBtnClass: 'btn-danger'
+    });
+    if (!ok) return;
 
     activeClassroom.gradebook.columns = activeClassroom.gradebook.columns.filter(c => c.id !== colId);
 

@@ -137,31 +137,81 @@
 /* Student Wall Grid */
 .student-avatar-wall {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+    gap: 14px;
+    align-content: start;
 }
 
 .student-card-mini {
     background: #ffffff;
     border: 1px solid #e2e8f0;
-    border-radius: 14px;
-    padding: 12px 8px;
+    border-radius: 16px;
+    padding: 12px 10px;
     text-align: center;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
     animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 .student-card-mini:hover {
     transform: translateY(-3px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    border-color: #cbd5e1;
 }
-.student-card-mini img {
-    width: 48px;
-    height: 48px;
+.student-card-mini img.student-avatar-img {
+    width: 52px;
+    height: 52px;
     border-radius: 50%;
     object-fit: cover;
     border: 2px solid #e2e8f0;
-    margin-bottom: 6px;
+    margin: 0 auto 6px;
     cursor: pointer;
+    transition: transform 0.2s ease;
+}
+.student-card-mini img.student-avatar-img:hover {
+    transform: scale(1.06);
+}
+.student-note-chip {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+    border-radius: 8px;
+    padding: 3px 8px;
+    font-size: 0.7rem;
+    margin-top: 6px;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+.student-note-chip:hover {
+    background: #fde68a;
+}
+.student-card-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px dashed #e2e8f0;
+}
+.student-card-actions .btn {
+    flex: 1;
+    font-size: 0.72rem;
+    padding: 3px 6px;
+    border-radius: 20px;
+    font-weight: 600;
+}
+.quick-tag-chip {
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.quick-tag-chip:hover {
+    background-color: #e2e8f0 !important;
+    border-color: #94a3b8 !important;
 }
 
 /* Attendance Buttons Group */
@@ -539,5 +589,30 @@
     background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
     box-shadow: 0 4px 14px rgba(79, 70, 229, 0.18);
 }
+
+/* ====================================================
+   🎨 Modern SweetAlert2 Custom Theme (Gyver Dialogs)
+   ==================================================== */
+.gyver-swal-popup {
+    font-family: 'Kanit', sans-serif !important;
+    border-radius: 24px !important;
+    padding: 24px !important;
+    background: #ffffff !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+    border: 1px solid rgba(226, 232, 240, 0.8) !important;
+}
+.gyver-swal-popup .swal2-title {
+    padding: 0 !important;
+    margin-bottom: 8px !important;
+}
+.gyver-swal-popup .swal2-html-container {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.gyver-swal-popup .swal2-actions {
+    margin-top: 18px !important;
+    gap: 10px !important;
+}
+
 
 
