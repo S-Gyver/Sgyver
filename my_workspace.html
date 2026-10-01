@@ -1065,17 +1065,17 @@
          🎮 7. JOIN ROOM PIN MODAL
          ==================================================== -->
     <div class="modal fade cs-modal" id="joinRoomModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" style="max-width: 400px;">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
             <div class="modal-content text-center p-3">
                 <div class="modal-header border-0 justify-content-center">
                     <h5 class="modal-title fw-bold text-white"><i
-                            class="bi bi-broadcast text-danger me-2"></i>เข้าสู่ห้องเรียน (PIN)</h5>
+                            class="bi bi-broadcast text-danger me-2"></i>เข้าสู่ห้องเรียน / กิจกรรม</h5>
                 </div>
                 <div class="modal-body">
-                    <p class="text-muted small">กรอกรหัส PIN (เช่น Live Studio หรือ Quiz) เพื่อเข้าสู่ห้องเรียน</p>
+                    <p class="text-white-50 small mb-3">กรอกรหัสห้องเรียน (เช่น OYK8ZH) หรือรหัส PIN (Live Studio / Quiz)</p>
                     <input type="text" id="join-pin-input"
                         class="form-control form-control-lg bg-dark text-white border-danger text-center fw-bold font-monospace fs-2 mb-3"
-                        placeholder="8817" maxlength="8" onkeydown="if(event.key==='Enter') submitJoinRoomPIN()">
+                        placeholder="เช่น OYK8ZH หรือ 8817" maxlength="10" onkeydown="if(event.key==='Enter') submitJoinRoomPIN()">
                     <button class="btn btn-danger w-100 btn-lg fw-bold rounded-pill shadow"
                         onclick="submitJoinRoomPIN()">
                         <i class="bi bi-box-arrow-in-right me-1"></i>เข้าสู่ห้องเรียน
@@ -1406,7 +1406,7 @@
         async function submitJoinRoomPIN() {
             const pin = document.getElementById('join-pin-input').value.trim().toUpperCase();
             if (!pin || pin.length < 4) {
-                alert('กรุณากรอกรหัส PIN ให้ถูกต้อง (อย่างน้อย 4 ตัวอักษร)');
+                alert('กรุณากรอกรหัสห้องเรียนหรือรหัส PIN ให้ถูกต้อง (อย่างน้อย 4 ตัวอักษร)');
                 return;
             }
 
@@ -1419,7 +1419,19 @@
             const client = getClient();
             if (client) {
                 try {
-                    // 1. ตรวจสอบว่าเป็นห้อง Live Studio หรือไม่
+                    // 1. ตรวจสอบว่าเป็นห้องเรียนประจำวิชา (Gyver Classroom) หรือไม่ (เช่น OYK8ZH)
+                    const { data: classRoom } = await client
+                        .from('classrooms')
+                        .select('id, room_code, class_name')
+                        .eq('room_code', pin)
+                        .maybeSingle();
+
+                    if (classRoom) {
+                        window.location.href = `auth/student_join/student_join.html?code=${encodeURIComponent(pin)}`;
+                        return;
+                    }
+
+                    // 2. ตรวจสอบว่าเป็นห้อง Live Studio หรือไม่ (เช่น 8817)
                     const { data: liveRoom } = await client
                         .from('live_studio_rooms')
                         .select('pin')
@@ -1431,7 +1443,7 @@
                         return;
                     }
 
-                    // 2. ตรวจสอบว่าเป็นห้องสอบ Gyver Quiz หรือไม่
+                    // 3. ตรวจสอบว่าเป็นห้องสอบ Gyver Quiz หรือไม่
                     const { data: quizRoom } = await client
                         .from('lobbies')
                         .select('room_code')
@@ -1447,8 +1459,17 @@
                 }
             }
 
-            // ถ้าไม่มีใน Quiz และเป็น 4 หลัก หรือตรวจไม่พบ ให้มุ่งไป Live Studio เป็นค่าหลัก
-            window.location.href = `features/education/live_studio/live_room.html?pin=${encodeURIComponent(pin)}`;
+            // ถ้าเป็นตัวเลข 4 หลัก อาจเป็นห้อง Live Studio ออฟไลน์ ให้พาไป Live Studio
+            if (/^\d{4}$/.test(pin)) {
+                window.location.href = `features/education/live_studio/live_room.html?pin=${encodeURIComponent(pin)}`;
+                return;
+            }
+
+            alert(`⚠️ ไม่พบห้องเรียนหรือกิจกรรมที่ตรงกับรหัส "${pin}"\nกรุณาตรวจสอบรหัสห้องอีกครั้งครับ`);
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-box-arrow-in-right me-1"></i>เข้าสู่ห้องเรียน';
+            }
         }
 
 
