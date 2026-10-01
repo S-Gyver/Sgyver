@@ -1155,20 +1155,10 @@
                 </div>
                 <div class="modal-body">
                     <form id="form-add-grade-col" onsubmit="handleAddGradeColumn(event)">
-                        <!-- เลือกว่าเป็น มาเรียน, คะแนนเก็บกลางภาค หรือปลายภาค -->
+                        <!-- เลือกว่าเป็น คะแนนเก็บกลางภาค, ปลายภาค หรือ อื่นๆ -->
                         <div class="mb-3">
                             <label class="form-label small fw-bold text-secondary">ส่วนคะแนนที่ต้องการเพิ่ม <span class="text-danger">*</span></label>
                             <div class="row g-2">
-                                <div class="col-4">
-                                    <input type="radio" class="btn-check" name="gb-col-term" id="gb-col-term-att" value="attendance">
-                                    <label class="btn btn-outline-info w-100 rounded-3 py-2 small fw-bold text-start d-flex align-items-center gap-1" for="gb-col-term-att">
-                                        <i class="bi bi-calendar-check-fill fs-5 text-info"></i>
-                                        <div>
-                                            <div>อื่นๆ</div>
-                                            <div class="text-muted fw-normal" style="font-size: 0.68rem;">จิตพิสัย/เข้าเรียน</div>
-                                        </div>
-                                    </label>
-                                </div>
                                 <div class="col-4">
                                     <input type="radio" class="btn-check" name="gb-col-term" id="gb-col-term-mid" value="midterm" checked>
                                     <label class="btn btn-outline-primary w-100 rounded-3 py-2 small fw-bold text-start d-flex align-items-center gap-1" for="gb-col-term-mid">
@@ -1189,13 +1179,23 @@
                                         </div>
                                     </label>
                                 </div>
+                                <div class="col-4">
+                                    <input type="radio" class="btn-check" name="gb-col-term" id="gb-col-term-other" value="other">
+                                    <label class="btn btn-outline-warning w-100 rounded-3 py-2 small fw-bold text-start d-flex align-items-center gap-1" for="gb-col-term-other">
+                                        <i class="bi bi-star-fill fs-5 text-warning"></i>
+                                        <div>
+                                            <div>อื่นๆ</div>
+                                            <div class="text-muted fw-normal" style="font-size: 0.68rem;">ช่วยงาน/คะแนนช่วย</div>
+                                        </div>
+                                    </label>
+                                </div>
                             </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label small fw-bold text-secondary">ชื่อช่องคะแนน <span
                                     class="text-danger">*</span></label>
                             <input type="text" id="gb-new-col-title" class="form-control rounded-3"
-                                placeholder="เช่น เช็คชื่อ/จิตพิสัย, ใบงานที่ 3 หรือ ช่วยงาน/ตอบคำถาม" required>
+                                placeholder="เช่น ใบงานที่ 3, แบบฝึกหัด หรือ ช่วยงานครู/ตอบคำถาม" required>
                         </div>
 
                         <!-- 🌟 รูปแบบคะแนน: มีคะแนนเต็ม หรือ ไม่มีคะแนนเต็ม (คะแนนช่วย) -->

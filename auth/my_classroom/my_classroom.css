@@ -420,6 +420,62 @@
     letter-spacing: 0.5px;
 }
 
+.gradebook-table thead th.gb-header-total {
+    background: #1e293b !important;
+    color: #ffffff !important;
+    vertical-align: middle;
+    padding: 6px 4px;
+}
+
+.gradebook-header-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.25;
+}
+
+.gradebook-header-cell .header-title {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    font-weight: 700;
+}
+
+.gradebook-header-cell .header-sub {
+    font-size: 0.74rem;
+    font-weight: 500;
+    opacity: 0.85;
+}
+
+.gradebook-total-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.15;
+}
+
+.gradebook-total-cell .total-lbl {
+    font-size: 0.78rem;
+    opacity: 0.9;
+    letter-spacing: 0.5px;
+}
+
+.gradebook-total-cell .total-num {
+    font-size: 1.28rem;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.5px;
+    margin: 2px 0;
+}
+
+.gradebook-total-cell .total-unit {
+    font-size: 0.72rem;
+    opacity: 0.8;
+}
+
 .gradebook-table tbody td {
     vertical-align: middle;
     border-bottom: 1px solid #f1f5f9;

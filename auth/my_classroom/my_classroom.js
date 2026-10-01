@@ -2810,10 +2810,18 @@ function renderTabGradebook() {
     const scores = gb.scores || {};
     const students = Array.isArray(activeClassroom.students) ? activeClassroom.students : [];
 
-    // แบ่งคอลัมน์เก็บคะแนนเป็น 3 ส่วน: มาเรียน, กลางภาค และ ปลายภาค
+    // แบ่งคอลัมน์เก็บคะแนนเป็น 4 ส่วน: มาเรียน, กลางภาค, ปลายภาค และ อื่นๆ (คะแนนช่วย/พิเศษ)
+    // ตรวจสอบ migration: หากมีช่องที่ชื่อมี "ช่วยงาน", "พิเศษ", "คะแนนช่วย" หรือ "อื่นๆ" แต่ถูกบันทึกเป็น 'attendance' ให้ปรับเป็น 'other'
+    columns.forEach(col => {
+        if (col.term === 'attendance' && (col.title.includes('ช่วยงาน') || col.title.includes('พิเศษ') || col.title.includes('อื่นๆ') || col.title.includes('คะแนนช่วย'))) {
+            col.term = 'other';
+        }
+    });
+
     const attCols = columns.filter(c => c.term === 'attendance');
-    const midCols = columns.filter(c => c.term === 'midterm' || (!c.term && c.term !== 'final' && c.term !== 'attendance'));
+    const midCols = columns.filter(c => c.term === 'midterm' || (!c.term && c.term !== 'final' && c.term !== 'attendance' && c.term !== 'other'));
     const finalCols = columns.filter(c => c.term === 'final');
+    const otherCols = columns.filter(c => c.term === 'other');
 
     const attendanceWeight = Number(cfg.attendance_max ?? 10);
     const midFormativeWeight = Number(cfg.mid_formative_max ?? 20);
@@ -2858,6 +2866,7 @@ function renderTabGradebook() {
         const attColHeaders = attCols.map(renderTh).join('');
         const midColHeaders = midCols.map(renderTh).join('');
         const finalColHeaders = finalCols.map(renderTh).join('');
+        const otherColHeaders = otherCols.map(renderTh).join('');
 
         const attColspan = attCols.length > 0 ? (attCols.length > 1 ? attCols.length + 1 : attCols.length) : 1;
 
@@ -2865,23 +2874,71 @@ function renderTabGradebook() {
             <tr>
                 <th rowspan="2" class="sticky-no">เลขที่</th>
                 <th rowspan="2" class="sticky-name">ชื่อ - นามสกุล</th>
-                <th colspan="${attColspan}" class="text-info-emphasis bg-info-subtle text-center border-start">
-                    <i class="bi bi-calendar-check-fill me-1 text-info"></i><span class="text-primary-emphasis fw-bold">มาเรียน</span> (${attendanceWeight} คะแนน)
+                <th colspan="${attColspan}" class="text-info-emphasis bg-info-subtle text-center border-start py-2">
+                    <div class="gradebook-header-cell">
+                        <div class="header-title">
+                            <i class="bi bi-calendar-check-fill text-info"></i>
+                            <span class="text-primary-emphasis">มาเรียน</span>
+                        </div>
+                        <div class="header-sub">(${attendanceWeight} คะแนน)</div>
+                    </div>
                 </th>
-                <th colspan="${midCols.length + 1}" class="text-primary bg-primary-subtle text-center border-start">
-                    <i class="bi bi-journal-check me-1"></i>คะแนนเก็บกลางภาค (${midFormativeWeight} คะแนน)
+                <th colspan="${midCols.length + 1}" class="text-primary bg-primary-subtle text-center border-start py-2">
+                    <div class="gradebook-header-cell">
+                        <div class="header-title">
+                            <i class="bi bi-journal-check"></i>
+                            <span>คะแนนเก็บ</span>
+                        </div>
+                        <div class="fw-bold">กลางภาค</div>
+                        <div class="header-sub">(${midFormativeWeight} คะแนน)</div>
+                    </div>
                 </th>
-                <th class="text-primary bg-primary-subtle text-center border-start border-end" style="min-width: 85px;">
-                    <i class="bi bi-file-earmark-text me-1"></i>คะแนนสอบกลางภาค
+                <th class="text-primary bg-primary-subtle text-center border-start border-end py-2" style="min-width: 80px;">
+                    <div class="gradebook-header-cell">
+                        <div class="header-title">
+                            <i class="bi bi-file-earmark-text"></i>
+                            <span>คะแนนสอบ</span>
+                        </div>
+                        <div class="fw-bold">กลางภาค</div>
+                    </div>
                 </th>
-                <th colspan="${finalCols.length + 1}" class="text-success bg-success-subtle text-center border-start">
-                    <i class="bi bi-journal-richtext me-1"></i>คะแนนเก็บปลายภาค (${finalFormativeWeight} คะแนน)
+                <th colspan="${finalCols.length + 1}" class="text-success bg-success-subtle text-center border-start py-2">
+                    <div class="gradebook-header-cell">
+                        <div class="header-title">
+                            <i class="bi bi-journal-richtext"></i>
+                            <span>คะแนนเก็บ</span>
+                        </div>
+                        <div class="fw-bold">ปลายภาค</div>
+                        <div class="header-sub">(${finalFormativeWeight} คะแนน)</div>
+                    </div>
                 </th>
-                <th class="text-danger bg-danger-subtle text-center border-start border-end" style="min-width: 85px;">
-                    <i class="bi bi-file-earmark-medical me-1"></i>สอบปลายภาค
+                <th class="text-danger bg-danger-subtle text-center border-start border-end py-2" style="min-width: 80px;">
+                    <div class="gradebook-header-cell">
+                        <div class="header-title">
+                            <i class="bi bi-file-earmark-medical"></i>
+                            <span>คะแนนสอบ</span>
+                        </div>
+                        <div class="fw-bold">ปลายภาค</div>
+                    </div>
                 </th>
-                <th rowspan="2" class="text-center bg-dark text-white font-mono" style="min-width: 85px;">รวม 100 คะแนน</th>
-                <th rowspan="2" class="text-center bg-dark text-white font-mono" style="min-width: 65px;">เกรด</th>
+                ${otherCols.length > 0 ? `
+                <th colspan="${otherCols.length}" class="text-warning-emphasis bg-warning-subtle text-center border-start border-end py-2" style="min-width: 80px;">
+                    <div class="gradebook-header-cell">
+                        <div class="header-title">
+                            <i class="bi bi-star-fill text-warning"></i>
+                            <span>อื่นๆ</span>
+                        </div>
+                        <div class="header-sub text-muted" style="font-size: 0.74rem;">(ช่วยงาน/พิเศษ)</div>
+                    </div>
+                </th>` : ''}
+                <th rowspan="2" class="text-center bg-dark text-white font-mono gb-header-total" style="min-width: 72px; width: 75px;">
+                    <div class="gradebook-total-cell">
+                        <div class="total-lbl">รวม</div>
+                        <div class="total-num">100</div>
+                        <div class="total-unit">คะแนน</div>
+                    </div>
+                </th>
+                <th rowspan="2" class="text-center bg-dark text-white font-mono gb-header-total" style="min-width: 65px; width: 65px;">เกรด</th>
                 <th rowspan="2" class="text-center" style="min-width: 90px;" title="คุณลักษณะอันพึงประสงค์ 8 ประการ">คุณลักษณะ</th>
                 <th rowspan="2" class="text-center" style="min-width: 90px;" title="การอ่าน คิดวิเคราะห์ และเขียน">อ่าน/คิด</th>
                 <th rowspan="2" class="text-center" style="min-width: 95px;">สถานะ</th>
@@ -2908,6 +2965,7 @@ function renderTabGradebook() {
                     <div>ปลายภาค</div>
                     <div style="font-size: 0.72rem;">เต็ม ${finalMax}</div>
                 </th>
+                ${otherColHeaders}
             </tr>
         `;
     }
@@ -2941,12 +2999,12 @@ function renderTabGradebook() {
         const sc = scores[studentKey] || {};
         const avatar = s.image || `https://api.dicebear.com/7.x/big-smile/svg?seed=${encodeURIComponent(s.name || 'Student')}`;
 
-        // รวบรวมคะแนนช่วยทั้งหมดของนักเรียนคนนี้ (On-top bonus)
+        // รวบรวมคะแนนช่วยทั้งหมดของนักเรียนคนนี้ (On-top bonus และหมวดอื่นๆ)
         let totalBonus = 0;
         columns.forEach(col => {
-            if (col.is_bonus || !col.max) {
-                const val = sc[col.id];
-                if (val !== undefined && val !== '' && !isNaN(val)) {
+            const val = sc[col.id];
+            if (val !== undefined && val !== '' && !isNaN(val)) {
+                if (col.term === 'other' || col.is_bonus || !col.max) {
                     totalBonus += Number(val);
                 }
             }
@@ -3064,6 +3122,25 @@ function renderTabGradebook() {
         const finalVal = sc.final !== undefined ? sc.final : '';
         const finalNum = Number(finalVal) || 0;
 
+        // 5.1 ช่องคะแนนหมวดอื่นๆ (คะแนนช่วย/พิเศษ)
+        const otherColInputs = otherCols.map(col => {
+            const isBonus = col.is_bonus || !col.max;
+            const rawVal = sc[col.id] !== undefined ? sc[col.id] : '';
+            return `
+                <td class="text-center">
+                    <input type="number" step="any" min="0" ${isBonus ? '' : `max="${col.max}"`} 
+                        class="grade-input text-warning-emphasis font-mono" 
+                        value="${rawVal}" 
+                        data-col="${col.id}" 
+                        data-row="${rowIdx}" 
+                        data-student="${studentKey}" 
+                        data-max="${isBonus ? 'unlimited' : col.max}"
+                        oninput="handleScoreChange('${studentKey}', '${col.id}', this.value, ${isBonus ? 'null' : col.max}, ${rowIdx})"
+                        onkeydown="handleGradeKeyNav(event, this)">
+                </td>
+            `;
+        }).join('');
+
         // 6. รวม 100 คะแนน (รวมคะแนนช่วย On-top แบบไม่เกิน 100)
         const grandTotal = Math.min(100, Math.round((scaledAtt + scaledMid + midtermNum + scaledFinal + finalNum + totalBonus) * 10) / 10);
         const gradeInfo = calculateThaiGrade(grandTotal, sc.status || 'normal');
@@ -3126,6 +3203,7 @@ function renderTabGradebook() {
                         oninput="handleScoreChange('${studentKey}', 'final', this.value, ${finalMax}, ${rowIdx})"
                         onkeydown="handleGradeKeyNav(event, this)">
                 </td>
+                ${otherColInputs}
                 <td class="text-center font-mono fw-bold fs-6" id="gb-cell-total-${rowIdx}">
                     ${grandTotal}
                 </td>
@@ -3238,20 +3316,28 @@ function handleScoreChange(studentKey, colId, value, maxScore, rowIdx) {
     const finalFormativeWeight = Number(cfg.final_formative_max ?? 20);
     const finalMax = Number(cfg.final_max ?? 30);
 
+    // ตรวจสอบ migration: หากมีช่องที่ชื่อมี "ช่วยงาน", "พิเศษ", "คะแนนช่วย" หรือ "อื่นๆ" แต่ถูกบันทึกเป็น 'attendance' ให้ปรับเป็น 'other'
+    columns.forEach(col => {
+        if (col.term === 'attendance' && (col.title.includes('ช่วยงาน') || col.title.includes('พิเศษ') || col.title.includes('อื่นๆ') || col.title.includes('คะแนนช่วย'))) {
+            col.term = 'other';
+        }
+    });
+
     const attCols = columns.filter(c => c.term === 'attendance');
-    const midCols = columns.filter(c => c.term === 'midterm' || (!c.term && c.term !== 'final' && c.term !== 'attendance'));
+    const midCols = columns.filter(c => c.term === 'midterm' || (!c.term && c.term !== 'final' && c.term !== 'attendance' && c.term !== 'other'));
     const finalCols = columns.filter(c => c.term === 'final');
+    const otherCols = columns.filter(c => c.term === 'other');
 
     const attRawMax = attCols.reduce((sum, col) => sum + (col.is_bonus ? 0 : (Number(col.max) || 0)), 0);
     const midRawMax = midCols.reduce((sum, col) => sum + (col.is_bonus ? 0 : (Number(col.max) || 0)), 0);
     const finalRawMax = finalCols.reduce((sum, col) => sum + (col.is_bonus ? 0 : (Number(col.max) || 0)), 0);
 
-    // รวบรวมคะแนนช่วยทั้งหมดของนักเรียนคนนี้ (On-top bonus)
+    // รวบรวมคะแนนช่วยทั้งหมดของนักเรียนคนนี้ (On-top bonus และหมวดอื่นๆ)
     let totalBonus = 0;
     columns.forEach(col => {
-        if (col.is_bonus || !col.max) {
-            const val = sc[col.id];
-            if (val !== undefined && val !== '' && !isNaN(val)) {
+        const val = sc[col.id];
+        if (val !== undefined && val !== '' && !isNaN(val)) {
+            if (col.term === 'other' || col.is_bonus || !col.max) {
                 totalBonus += Number(val);
             }
         }
@@ -3409,7 +3495,7 @@ function handleAddGradeColumn(e) {
         title: title,
         max: max,
         is_bonus: isBonus,
-        term: term // 'attendance' | 'midterm' | 'final'
+        term: term // 'attendance' | 'midterm' | 'final' | 'other'
     });
 
     renderTabGradebook();
@@ -3418,7 +3504,7 @@ function handleAddGradeColumn(e) {
     document.getElementById('form-add-grade-col')?.reset();
     toggleGradebookMaxScoreInput();
     bootstrap.Modal.getInstance(document.getElementById('addGradeColModal'))?.hide();
-    const termLabel = term === 'attendance' ? 'อื่นๆ' : (term === 'final' ? 'คะแนนเก็บปลายภาค' : 'คะแนนเก็บกลางภาค');
+    const termLabel = term === 'attendance' ? 'มาเรียน' : (term === 'other' ? 'อื่นๆ (คะแนนช่วย)' : (term === 'final' ? 'คะแนนเก็บปลายภาค' : 'คะแนนเก็บกลางภาค'));
     showToast('success', 'เพิ่มช่องคะแนนแล้ว', `เพิ่ม "${title}" ${isBonus ? '(ไม่มีคะแนนเต็ม)' : `(เต็ม ${max})`} ใน [${termLabel}] เรียบร้อย`);
 }
 
@@ -3716,9 +3802,16 @@ function exportGradebookToCSV() {
     const finalFormativeWeight = Number(cfg.final_formative_max ?? 20);
     const finalMax = Number(cfg.final_max ?? 30);
 
+    columns.forEach(col => {
+        if (col.term === 'attendance' && (col.title.includes('ช่วยงาน') || col.title.includes('พิเศษ') || col.title.includes('อื่นๆ') || col.title.includes('คะแนนช่วย'))) {
+            col.term = 'other';
+        }
+    });
+
     const attCols = columns.filter(c => c.term === 'attendance');
-    const midCols = columns.filter(c => c.term === 'midterm' || (!c.term && c.term !== 'final' && c.term !== 'attendance'));
+    const midCols = columns.filter(c => c.term === 'midterm' || (!c.term && c.term !== 'final' && c.term !== 'attendance' && c.term !== 'other'));
     const finalCols = columns.filter(c => c.term === 'final');
+    const otherCols = columns.filter(c => c.term === 'other');
 
     const attRawMax = attCols.reduce((sum, col) => sum + (col.is_bonus ? 0 : (Number(col.max) || 0)), 0);
     const midRawMax = midCols.reduce((sum, col) => sum + (col.is_bonus ? 0 : (Number(col.max) || 0)), 0);
@@ -3744,6 +3837,9 @@ function exportGradebookToCSV() {
     finalCols.forEach(c => headers.push(`"${c.title} ${c.is_bonus || !c.max ? '(ไม่มีคะแนนเต็ม)' : `(${c.max})`}"`));
     headers.push(`"รวมเก็บปลายภาค (${finalFormativeWeight})"`);
     headers.push(`"สอบปลายภาค (${finalMax})"`);
+    if (otherCols.length > 0) {
+        otherCols.forEach(c => headers.push(`"อื่นๆ: ${c.title} ${c.is_bonus || !c.max ? '(ไม่มีคะแนนเต็ม)' : `(${c.max})`}"`));
+    }
     headers.push('"รวม 100"');
     headers.push('"เกรด"');
     headers.push('"คุณลักษณะ (0-3)"');
@@ -3759,9 +3855,9 @@ function exportGradebookToCSV() {
 
         let totalBonus = 0;
         columns.forEach(col => {
-            if (col.is_bonus || !col.max) {
-                const val = sc[col.id];
-                if (val !== undefined && val !== '' && !isNaN(val)) totalBonus += Number(val);
+            const val = sc[col.id];
+            if (val !== undefined && val !== '' && !isNaN(val)) {
+                if (col.term === 'other' || col.is_bonus || !col.max) totalBonus += Number(val);
             }
         });
 
@@ -3817,6 +3913,11 @@ function exportGradebookToCSV() {
             scaledFinal = Math.round(((finalRawSum / finalRawMax) * finalFormativeWeight) * 10) / 10;
         }
 
+        const otherVals = otherCols.map(c => {
+            const v = sc[c.id];
+            return v !== undefined && v !== '' ? v : '';
+        });
+
         const mid = Number(sc.midterm || 0);
         const fin = Number(sc.final || 0);
         const total = Math.min(100, Math.round((scaledAtt + scaledMid + mid + scaledFinal + fin + totalBonus) * 10) / 10);
@@ -3833,6 +3934,7 @@ function exportGradebookToCSV() {
             ...finalVals,
             scaledFinal,
             fin,
+            ...otherVals,
             total,
             `"${gradeObj.grade}"`,
             sc.traits !== undefined ? sc.traits : 3,
