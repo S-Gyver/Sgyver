@@ -5,7 +5,12 @@
  */
 
 let currentUserId = null;
+let currentUserEmail = '';
+let currentUserName = '';
 let cachedClassrooms = [];
+let cachedTeachingClassrooms = [];
+let cachedEnrolledClassrooms = [];
+let currentHubRoleTab = 'teaching'; // 'teaching' | 'enrolled'
 let activeClassroomId = null;
 let activeClassroom = null;
 
@@ -78,6 +83,9 @@ async function fetchUserAndClassrooms() {
         }
 
         currentUserId = session.user.id;
+        currentUserEmail = session.user.email || '';
+        const meta = session.user.user_metadata || {};
+        currentUserName = meta.first_name ? `${meta.first_name} ${meta.last_name || ''}`.trim() : (meta.nickname || session.user.email || 'ผู้ใช้งาน');
         await loadClassrooms();
 
     } catch (err) {
@@ -171,10 +179,11 @@ function enrichClassroom(c) {
     return c;
 }
 
-// 📚 ดึงรายชื่อห้องเรียนทั้งหมดของครูคนนี้
+// 📚 ดึงรายชื่อห้องเรียนทั้งหมด (ทั้งห้องที่สอน และห้องที่เรียน)
 async function loadClassrooms() {
     if (!currentUserId) return;
 
+    // 1. ดึงห้องเรียนที่ฉันสอน (ครู)
     const { data: classrooms, error } = await supabaseClient
         .from('classrooms')
         .select('*')
@@ -182,12 +191,66 @@ async function loadClassrooms() {
         .order('created_at', { ascending: false });
 
     if (error) {
-        console.error("Fetch classrooms error:", error.message);
+        console.error("Fetch teaching classrooms error:", error.message);
         showToast('error', 'โหลดห้องเรียนไม่สำเร็จ', error.message);
-        return;
     }
 
-    cachedClassrooms = (classrooms || []).map(enrichClassroom);
+    cachedTeachingClassrooms = (classrooms || []).map(enrichClassroom);
+    cachedClassrooms = cachedTeachingClassrooms;
+
+    // 2. ดึงห้องเรียนที่ฉันเข้าร่วม (นักเรียน)
+    try {
+        const { data: allRooms, error: allErr } = await supabaseClient
+            .from('classrooms')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (!allErr && Array.isArray(allRooms)) {
+            const enrolled = allRooms.filter(c => {
+                if (!Array.isArray(c.students)) return false;
+                return c.students.some(s => {
+                    const matchId = s.user_id && String(s.user_id) === String(currentUserId);
+                    const matchEmail = currentUserEmail && s.email && String(s.email).toLowerCase() === currentUserEmail.toLowerCase();
+                    return matchId || matchEmail;
+                });
+            });
+
+            // ดึงชื่อครูผู้สอนจาก profiles
+            const teacherIds = [...new Set(enrolled.map(c => c.teacher_id).filter(Boolean))];
+            let teacherMap = {};
+            if (teacherIds.length > 0) {
+                try {
+                    const { data: profs } = await supabaseClient
+                        .from('profiles')
+                        .select('id, nickname, first_name, last_name, username')
+                        .in('id', teacherIds);
+                    if (profs) {
+                        profs.forEach(p => {
+                            const name = p.first_name ? `${p.first_name} ${p.last_name || ''}`.trim() : (p.nickname || p.username || 'คุณครู');
+                            teacherMap[p.id] = name;
+                        });
+                    }
+                } catch (pe) {
+                    console.warn("fetch teacher profiles warn:", pe);
+                }
+            }
+
+            cachedEnrolledClassrooms = enrolled.map(c => {
+                const enriched = enrichClassroom(c);
+                enriched.teacherName = teacherMap[c.teacher_id] || 'คุณครูผู้สอน';
+                return enriched;
+            });
+        }
+    } catch (e) {
+        console.warn("Fetch enrolled classrooms error:", e);
+    }
+
+    // หากผู้ใช้ไม่มีห้องสอนเลย แต่มีห้องที่ลงเรียนไว้ ให้เปิดแท็บ 'enrolled' ให้อัตโนมัติ
+    if (cachedTeachingClassrooms.length === 0 && cachedEnrolledClassrooms.length > 0) {
+        currentHubRoleTab = 'enrolled';
+    }
+
+    updateHubRoleTabsUI();
 
     // 1. ตรวจสอบว่ามีห้องที่เลือกผ่าน URL Query หรือไม่ (เช่น ?id=xxx หรือ ?code=xxx)
     const urlParams = new URLSearchParams(window.location.search);
@@ -229,6 +292,50 @@ async function loadClassrooms() {
 /* ============================================================== */
 /* 🏛️ VIEW 1: หน้ารวมห้องเรียน (Classrooms Hub) */
 /* ============================================================== */
+function updateHubRoleTabsUI() {
+    const teachBadge = document.getElementById('hub-badge-teaching');
+    const enrollBadge = document.getElementById('hub-badge-enrolled');
+    if (teachBadge) teachBadge.textContent = cachedTeachingClassrooms.length;
+    if (enrollBadge) enrollBadge.textContent = cachedEnrolledClassrooms.length;
+
+    const btnTeach = document.getElementById('hub-tab-btn-teaching');
+    const btnEnroll = document.getElementById('hub-tab-btn-enrolled');
+    const actionTeach = document.getElementById('btn-hub-action-teaching');
+    const actionEnroll = document.getElementById('btn-hub-action-enrolled');
+    const hubTitle = document.getElementById('hub-header-title');
+    const hubSubtitle = document.getElementById('hub-header-subtitle');
+    const hubIcon = document.getElementById('hub-header-icon');
+    const hubTip = document.getElementById('hub-tab-tip');
+
+    if (currentHubRoleTab === 'teaching') {
+        if (btnTeach) btnTeach.className = 'hub-role-tab-btn active';
+        if (btnEnroll) btnEnroll.className = 'hub-role-tab-btn';
+        if (actionTeach) actionTeach.classList.remove('d-none');
+        if (actionEnroll) actionEnroll.classList.add('d-none');
+        if (hubTitle) hubTitle.textContent = 'ห้องเรียนที่ฉันสอน';
+        if (hubSubtitle) hubSubtitle.textContent = 'เลือกห้องเรียนที่ต้องการเข้าสอน สแกน QR วันแรก เช็คชื่อ แจกชีท หรือสร้างห้องเรียนใหม่';
+        if (hubIcon) hubIcon.className = 'bi bi-person-video3 fs-3';
+        if (hubTip) hubTip.innerHTML = '<i class="bi bi-info-circle me-1"></i>แสดงห้องเรียนที่คุณเป็นผู้สอน/ผู้สร้าง';
+    } else {
+        if (btnTeach) btnTeach.className = 'hub-role-tab-btn';
+        if (btnEnroll) btnEnroll.className = 'hub-role-tab-btn active enrolled-active';
+        if (actionTeach) actionTeach.classList.add('d-none');
+        if (actionEnroll) actionEnroll.classList.remove('d-none');
+        if (hubTitle) hubTitle.textContent = 'ห้องเรียนที่ฉันเรียน';
+        if (hubSubtitle) hubSubtitle.textContent = 'ห้องเรียนที่คุณเข้าร่วมเป็นนักเรียน เข้าดูบทเรียน ดาวน์โหลดชีท ส่งการบ้าน และดูคะแนน';
+        if (hubIcon) hubIcon.className = 'bi bi-backpack2-fill fs-3';
+        if (hubTip) hubTip.innerHTML = '<i class="bi bi-info-circle me-1"></i>แสดงห้องเรียนที่คุณเข้าร่วมในฐานะนักเรียน';
+    }
+}
+
+function switchHubRoleTab(role) {
+    currentHubRoleTab = role;
+    updateHubRoleTabsUI();
+    const searchInput = document.getElementById('search-class-input');
+    const q = searchInput ? searchInput.value : '';
+    handleSearchClassrooms(q);
+}
+
 function showClassroomsHub() {
     // ล้างห้องที่จำไว้เมื่อผู้ใช้จงใจกดย้อนกลับไปหน้ารวมห้อง
     try {
@@ -248,23 +355,217 @@ function showClassroomsHub() {
     // ล้าง URL param ให้เป็นหน้าหลัก
     window.history.replaceState(null, '', window.location.pathname);
 
-    renderHubClassrooms(cachedClassrooms);
+    updateHubRoleTabsUI();
+    const searchInput = document.getElementById('search-class-input');
+    const q = searchInput ? searchInput.value : '';
+    handleSearchClassrooms(q);
 }
 
 function handleSearchClassrooms(query) {
     const q = (query || '').trim().toLowerCase();
-    if (!q) {
-        renderHubClassrooms(cachedClassrooms);
+
+    if (currentHubRoleTab === 'teaching') {
+        if (!q) {
+            renderHubClassrooms(cachedTeachingClassrooms);
+            return;
+        }
+        const filtered = cachedTeachingClassrooms.filter(c => 
+            (c.class_name || '').toLowerCase().includes(q) ||
+            (c.room_code || '').toLowerCase().includes(q) ||
+            (c.gradebook?.config?.subject_code || '').toLowerCase().includes(q) ||
+            (c.gradebook?.config?.subject_name || '').toLowerCase().includes(q)
+        );
+        renderHubClassrooms(filtered);
+    } else {
+        if (!q) {
+            renderHubEnrolledClassrooms(cachedEnrolledClassrooms);
+            return;
+        }
+        const filtered = cachedEnrolledClassrooms.filter(c => 
+            (c.class_name || '').toLowerCase().includes(q) ||
+            (c.room_code || '').toLowerCase().includes(q) ||
+            (c.gradebook?.config?.subject_code || '').toLowerCase().includes(q) ||
+            (c.gradebook?.config?.subject_name || '').toLowerCase().includes(q) ||
+            (c.teacherName || '').toLowerCase().includes(q)
+        );
+        renderHubEnrolledClassrooms(filtered);
+    }
+}
+
+// 🎒 เรนเดอร์การ์ดห้องเรียนที่ฉันเข้าร่วม (Enrolled Classrooms for Students)
+function renderHubEnrolledClassrooms(classroomsList) {
+    const grid = document.getElementById('hub-classrooms-grid');
+    if (!grid) return;
+
+    if (!classroomsList || classroomsList.length === 0) {
+        grid.innerHTML = `
+            <div class="col-12 text-center py-5 bg-white rounded-4 border border-dashed shadow-sm">
+                <div class="bg-success-subtle text-success d-inline-flex p-3 rounded-circle mb-3">
+                    <i class="bi bi-backpack2-fill fs-1"></i>
+                </div>
+                <h5 class="fw-bold text-dark mb-1">ยังไม่มีห้องเรียนที่คุณเข้าร่วม</h5>
+                <p class="text-muted small mb-3">ขอรหัสห้องเรียน (PIN 6 ตัวอักษร) หรือสแกน QR Code จากคุณครู เพื่อเข้าห้องเรียน</p>
+                <button class="btn btn-success btn-sm rounded-pill px-4 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#joinClassModal">
+                    <i class="bi bi-key-fill me-1"></i>เข้าร่วมห้องเรียนด้วย PIN
+                </button>
+            </div>`;
         return;
     }
 
-    const filtered = cachedClassrooms.filter(c => 
-        (c.class_name || '').toLowerCase().includes(q) ||
-        (c.room_code || '').toLowerCase().includes(q) ||
-        (c.gradebook?.config?.subject_code || '').toLowerCase().includes(q) ||
-        (c.gradebook?.config?.subject_name || '').toLowerCase().includes(q)
-    );
-    renderHubClassrooms(filtered);
+    grid.innerHTML = classroomsList.map(c => {
+        const cfg = c.gradebook?.config || {};
+        const subjectCode = cfg.subject_code || '';
+        const subjectName = cfg.subject_name || c.class_name;
+        const gradeLevel = cfg.grade_level || '4';
+        const displayGrade = gradeLevel.toLowerCase().startsWith('ม.') || gradeLevel.toLowerCase().startsWith('ป.') ? gradeLevel : `ม.${gradeLevel}`;
+        const secNum = extractCleanRoomSection(cfg.room_section || c.class_name, gradeLevel);
+        const rCode = c.room_code || '------';
+        const teacher = c.teacherName || 'คุณครูผู้สอน';
+        const classmatesCount = Array.isArray(c.students) ? c.students.length : 0;
+        const materialsCount = Array.isArray(c.materials) ? c.materials.length : 0;
+        const assignmentsCount = Array.isArray(c.assignments) ? c.assignments.length : 0;
+
+        return `
+        <div class="col-md-6 col-lg-4">
+            <div class="hub-classroom-card enrolled-card h-100 d-flex flex-column">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="room-code-badge bg-success-subtle text-success border border-success-subtle" title="รหัสห้องเรียน">
+                        <i class="bi bi-key-fill text-success"></i> ${rCode}
+                        <button class="room-code-copy-btn ms-1 text-success" onclick="quickCopyCode('${rCode}')" title="คัดลอกรหัสห้อง">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </span>
+
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-link text-muted p-0" type="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-three-dots-vertical fs-5"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
+                            <li>
+                                <a class="dropdown-item py-2" href="student_view.html?code=${rCode}">
+                                    <i class="bi bi-box-arrow-in-right me-2 text-success"></i>เข้าสู่หน้าห้องเรียน
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item text-danger py-2" href="javascript:void(0)" onclick="leaveEnrolledClassroom('${c.id}', '${encodeURIComponent(subjectName)}')">
+                                    <i class="bi bi-box-arrow-left me-2"></i>ออกจากห้องเรียนนี้
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="mb-2">
+                    ${subjectCode ? `<span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill font-mono px-2 py-0 small me-1">${subjectCode}</span>` : ''}
+                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-0 small me-1">ห้อง ${displayGrade}/${secNum}</span>
+                    <span class="badge bg-light text-secondary border rounded-pill px-2 py-0 small">นักเรียน</span>
+                </div>
+
+                <h4 class="fw-bold text-dark mb-1 text-truncate" title="${subjectName}">
+                    ${subjectCode ? subjectCode + ' ' : ''}${subjectName}
+                </h4>
+
+                <div class="small text-muted mb-3 d-flex align-items-center gap-1">
+                    <i class="bi bi-person-badge text-primary"></i> ครูผู้สอน: <b class="text-dark">${teacher}</b>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2 mb-4">
+                    <span class="badge bg-light text-dark border rounded-pill px-3 py-1">
+                        <i class="bi bi-people-fill text-primary me-1"></i>${classmatesCount} คนในห้อง
+                    </span>
+                    <span class="badge bg-light text-dark border rounded-pill px-3 py-1">
+                        <i class="bi bi-folder-fill text-warning me-1"></i>${materialsCount} ชีทเรียน
+                    </span>
+                    <span class="badge bg-light text-dark border rounded-pill px-3 py-1">
+                        <i class="bi bi-journal-text text-info me-1"></i>${assignmentsCount} งาน
+                    </span>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center pt-3 border-top mt-auto">
+                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1">
+                        <i class="bi bi-check-circle-fill me-1"></i>เข้าร่วมแล้ว
+                    </span>
+                    <a href="student_view.html?code=${rCode}" class="btn btn-success btn-sm rounded-pill px-4 fw-bold shadow-sm">
+                        <i class="bi bi-box-arrow-in-right me-1"></i>เข้าห้องเรียน
+                    </a>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// 🚪 ฟังก์ชันให้นักเรียนออกจากห้องเรียนที่เคยเข้าร่วม
+async function leaveEnrolledClassroom(classroomId, encodedSubjName) {
+    const subjName = decodeURIComponent(encodedSubjName);
+    const result = await Swal.fire({
+        title: 'ยืนยันออกจากห้องเรียน?',
+        html: `คุณต้องการออกจากห้องเรียน <b>${subjName}</b> ใช่หรือไม่?<br><span class="text-danger small">หากออกแล้ว คุณจะไม่สามารถเข้าดูบทเรียนหรือส่งงานในห้องนี้ได้จนกว่าจะได้รับรหัสเข้าใหม่</span>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="bi bi-box-arrow-left me-1"></i>ออกจากห้องเรียน',
+        cancelButtonText: 'ยกเลิก',
+        reverseButtons: true,
+        customClass: {
+            popup: 'gyver-swal-popup',
+            confirmButton: 'btn btn-danger rounded-pill px-4 fw-bold',
+            cancelButton: 'btn btn-light rounded-pill px-4'
+        }
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+        const { data: room, error: fetchErr } = await supabaseClient
+            .from('classrooms')
+            .select('id, students')
+            .eq('id', classroomId)
+            .single();
+
+        if (fetchErr || !room) {
+            showToast('error', 'เกิดข้อผิดพลาด', 'ไม่พบข้อมูลห้องเรียน');
+            return;
+        }
+
+        const currentStudents = Array.isArray(room.students) ? room.students : [];
+        const updatedStudents = currentStudents.filter(s => {
+            const matchId = s.user_id && String(s.user_id) === String(currentUserId);
+            const matchEmail = currentUserEmail && s.email && String(s.email).toLowerCase() === currentUserEmail.toLowerCase();
+            return !(matchId || matchEmail);
+        });
+
+        const { error: updateErr } = await supabaseClient
+            .from('classrooms')
+            .update({ students: updatedStudents })
+            .eq('id', classroomId);
+
+        if (updateErr) throw updateErr;
+
+        showToast('success', 'ออกจากห้องเรียนแล้ว', `คุณออกจากห้อง ${subjName} เรียบร้อยแล้ว`);
+        await loadClassrooms();
+    } catch (err) {
+        console.error("leaveEnrolledClassroom error:", err);
+        showToast('error', 'เกิดข้อผิดพลาด', err.message);
+    }
+}
+
+// 🔑 ฟังก์ชันกรอกรหัส PIN ด่วนเพื่อไปหน้า student_join
+function handleQuickJoinClassroom(e) {
+    if (e) e.preventDefault();
+    const input = document.getElementById('input-join-room-code');
+    const code = (input?.value || '').trim().toUpperCase();
+    if (!code || code.length < 4) {
+        showToast('warning', 'กรุณาระบุรหัส PIN', 'ระบุรหัสห้องเรียน 6 ตัวอักษร เช่น OYK8ZH');
+        return;
+    }
+    const modalEl = document.getElementById('joinClassModal');
+    if (modalEl) {
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+    }
+    window.location.href = `../student_join/student_join.html?code=${encodeURIComponent(code)}`;
 }
 
 function autoUpdateInitialSection(val) {

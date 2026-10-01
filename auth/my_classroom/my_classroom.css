@@ -614,5 +614,51 @@
     gap: 10px !important;
 }
 
+/* ====================================================
+   🔄 Hub Role Switcher Tabs (สอน vs เรียน)
+   ==================================================== */
+.hub-role-tab-group {
+    background: #f1f5f9;
+    padding: 5px;
+    border-radius: 9999px;
+    display: inline-flex;
+    gap: 6px;
+    border: 1px solid #e2e8f0;
+}
+.hub-role-tab-btn {
+    border: none;
+    background: transparent;
+    padding: 8px 22px;
+    border-radius: 9999px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #64748b;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    text-decoration: none;
+}
+.hub-role-tab-btn:hover {
+    color: #0f172a;
+}
+.hub-role-tab-btn.active {
+    background: #ffffff;
+    color: #4f46e5;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+.hub-role-tab-btn.active.enrolled-active {
+    color: #059669;
+}
+
+/* Enrolled Classroom Card Top Bar Gradient */
+.hub-classroom-card.enrolled-card::before {
+    background: linear-gradient(90deg, #10b981, #06b6d4);
+}
+.hub-classroom-card.enrolled-card:hover {
+    border-color: #10b981;
+    box-shadow: 0 16px 32px rgba(16, 185, 129, 0.12);
+}
+
 
 

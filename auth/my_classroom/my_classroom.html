@@ -38,13 +38,13 @@
         <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
                 <div class="d-flex align-items-center gap-3">
-                    <div
+                    <div id="hub-header-icon-box"
                         class="classroom-icon-box bg-primary text-white rounded-4 d-flex align-items-center justify-content-center shadow-sm">
-                        <i class="bi bi-collection-fill fs-3"></i>
+                        <i class="bi bi-collection-fill fs-3" id="hub-header-icon"></i>
                     </div>
                     <div>
-                        <h3 class="fw-bold text-dark m-0">ห้องเรียนทั้งหมดของฉัน</h3>
-                        <p class="text-muted small m-0 mt-1">เลือกห้องเรียนที่ต้องการเข้าสอน สแกน QR วันแรก เช็คชื่อ
+                        <h3 class="fw-bold text-dark m-0" id="hub-header-title">ห้องเรียนทั้งหมดของฉัน</h3>
+                        <p class="text-muted small m-0 mt-1" id="hub-header-subtitle">เลือกห้องเรียนที่ต้องการเข้าสอน สแกน QR วันแรก เช็คชื่อ
                             แจกชีท หรือสร้างห้องเรียนใหม่</p>
                     </div>
                 </div>
@@ -56,10 +56,31 @@
                         <input type="text" id="search-class-input" class="form-control bg-light border-start-0"
                             placeholder="ค้นหาชื่อห้องเรียน..." oninput="handleSearchClassrooms(this.value)">
                     </div>
-                    <button class="btn btn-primary btn-sm rounded-pill px-4 fw-bold shadow-sm" data-bs-toggle="modal"
+                    <button class="btn btn-primary btn-sm rounded-pill px-4 fw-bold shadow-sm" id="btn-hub-action-teaching" data-bs-toggle="modal"
                         data-bs-target="#addClassModal">
                         <i class="bi bi-plus-circle-fill me-1"></i>สร้างห้องเรียนใหม่
                     </button>
+                    <button class="btn btn-success btn-sm rounded-pill px-4 fw-bold shadow-sm d-none" id="btn-hub-action-enrolled" data-bs-toggle="modal"
+                        data-bs-target="#joinClassModal">
+                        <i class="bi bi-key-fill me-1"></i>เข้าร่วมห้องด้วย PIN
+                    </button>
+                </div>
+            </div>
+
+            <!-- 🔄 สลับมุมมอง: ห้องเรียนที่ฉันสอน (ครู) vs ห้องเรียนที่ฉันเรียน (นักเรียน) -->
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 pt-3 border-top">
+                <div class="hub-role-tab-group" role="group">
+                    <button type="button" class="hub-role-tab-btn active" id="hub-tab-btn-teaching" onclick="switchHubRoleTab('teaching')">
+                        <i class="bi bi-person-video3 me-2"></i>ห้องเรียนที่ฉันสอน
+                        <span class="badge bg-primary text-white rounded-pill ms-2 font-mono" id="hub-badge-teaching">0</span>
+                    </button>
+                    <button type="button" class="hub-role-tab-btn" id="hub-tab-btn-enrolled" onclick="switchHubRoleTab('enrolled')">
+                        <i class="bi bi-backpack2-fill me-2"></i>ห้องเรียนที่ฉันเรียน
+                        <span class="badge bg-secondary-subtle text-secondary rounded-pill ms-2 font-mono" id="hub-badge-enrolled">0</span>
+                    </button>
+                </div>
+                <div class="text-muted small" id="hub-tab-tip">
+                    <i class="bi bi-info-circle me-1"></i>แสดงห้องเรียนที่คุณเป็นผู้สอน
                 </div>
             </div>
         </div>
@@ -1216,6 +1237,38 @@
                             <i class="bi bi-check2-circle me-1"></i>นำเข้าคะแนนทันที
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- 🔑 MODAL: เข้าร่วมห้องเรียนด้วย PIN (Quick Join Room Modal) -->
+    <!-- ============================================================== -->
+    <div class="modal fade" id="joinClassModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2">
+                        <i class="bi bi-key-fill text-success"></i> เข้าร่วมห้องเรียน
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4 text-center">
+                    <div class="bg-success-subtle text-success p-3 rounded-circle d-inline-flex mb-3">
+                        <i class="bi bi-door-open-fill fs-2"></i>
+                    </div>
+                    <h6 class="fw-bold text-dark">กรอกรหัสห้องเรียน 6 หลัก</h6>
+                    <p class="text-muted small mb-3">ใส่รหัส PIN หรือสแกน QR Code ที่ได้รับจากคุณครูผู้สอน</p>
+                    <form onsubmit="handleQuickJoinClassroom(event)">
+                        <div class="mb-3">
+                            <input type="text" id="input-join-room-code" class="form-control form-control-lg text-center font-mono fw-bold fs-3 text-uppercase rounded-3" 
+                                placeholder="เช่น OYK8ZH" maxlength="8" style="letter-spacing: 4px;" required autocomplete="off">
+                        </div>
+                        <button type="submit" class="btn btn-success w-100 py-2 rounded-pill fw-bold shadow-sm">
+                            <i class="bi bi-box-arrow-in-right me-1"></i>ไปที่ห้องเรียน
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
