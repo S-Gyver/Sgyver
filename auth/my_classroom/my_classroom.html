@@ -229,7 +229,7 @@
                         <button class="nav-link" id="tab-gradebook-btn" data-bs-toggle="pill"
                             data-bs-target="#tab-gradebook" type="button" role="tab"
                             style="color: #4f46e5; font-weight: 700;">
-                            <i class="bi bi-award-fill me-1 text-warning"></i> 6. รวมคะแนน & ตัดเกรด (ปพ.5)
+                            <i class="bi bi-award-fill me-1 text-warning"></i> 6. รวมคะแนน & ตัดเกรด
                         </button>
                     </li>
                 </ul>
@@ -317,7 +317,11 @@
                             </div>
 
                             <!-- สถิติสถานะเช็คชื่อ -->
+                            <!-- สถิติสถานะเช็คชื่อ -->
                             <div class="d-flex align-items-center gap-1 flex-wrap">
+                                <span class="badge bg-secondary-subtle text-secondary border px-2 py-1" title="จำนวนวันที่เคยบันทึกเช็คชื่อทั้งหมด">
+                                    <i class="bi bi-calendar-check me-1"></i>บันทึกแล้ว: <b id="att-total-days-badge">0</b> วัน
+                                </span>
                                 <span
                                     class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">มา:
                                     <b id="att-count-present">0</b></span>
@@ -335,7 +339,7 @@
 
                         <!-- แถบปุ่มลัดจัดการเช็คชื่อ -->
                         <div class="d-flex justify-content-between align-items-center gap-2 mb-3 flex-wrap">
-                            <div class="d-flex gap-2">
+                            <div class="d-flex gap-2 flex-wrap">
                                 <button class="btn btn-sm btn-outline-success rounded-pill px-3 fw-bold"
                                     onclick="markAllAttendance('present')">
                                     <i class="bi bi-check-all me-1"></i>เช็ค "มา" ทุกคน
@@ -343,6 +347,10 @@
                                 <button class="btn btn-sm btn-outline-secondary rounded-pill px-3"
                                     onclick="resetAttendanceStatus()">
                                     <i class="bi bi-arrow-counterclockwise me-1"></i>รีเซ็ต
+                                </button>
+                                <button class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold shadow-sm"
+                                    onclick="openAttendanceCriteriaModal()" title="กำหนดคะแนนต่อการมา, สาย, ลา, ขาด">
+                                    <i class="bi bi-sliders me-1"></i>ตั้งเกณฑ์คะแนนเช็คชื่อ
                                 </button>
                             </div>
                             <div class="d-flex gap-2">
@@ -361,13 +369,14 @@
                                         <th style="width: 50px;" class="text-center">#</th>
                                         <th style="width: 60px;">รูป</th>
                                         <th>ชื่อนักเรียน</th>
-                                        <th style="width: 320px;" class="text-center">สถานะเช็คชื่อ</th>
-                                        <th style="width: 240px;">หมายเหตุ</th>
+                                        <th style="width: 230px;" class="text-center">สถิติรวม (มา/สาย/ลา/ขาด)</th>
+                                        <th style="width: 290px;" class="text-center">สถานะเช็คชื่อ (วันที่เลือก)</th>
+                                        <th style="width: 200px;">หมายเหตุ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="attendance-table-body">
                                     <tr>
-                                        <td colspan="5" class="text-center py-4 text-muted">กำลังโหลดรายชื่อนักเรียน...
+                                        <td colspan="6" class="text-center py-4 text-muted">กำลังโหลดรายชื่อนักเรียน...
                                         </td>
                                     </tr>
                                 </tbody>
@@ -415,10 +424,17 @@
                                 <small class="text-muted">สร้างโจทย์การบ้าน กำหนดวันส่ง
                                     และเปิดให้นักเรียนส่งไฟล์/ลิงก์งาน พร้อมตรวจให้คะแนน</small>
                             </div>
-                            <button class="btn btn-primary fw-bold rounded-pill px-4 shadow-sm" data-bs-toggle="modal"
-                                data-bs-target="#addAssignmentModal">
-                                <i class="bi bi-plus-circle-fill me-1"></i>สั่งงานใหม่
-                            </button>
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <button type="button" class="btn btn-warning text-dark fw-bold rounded-pill px-4 shadow-sm" onclick="openAssignQuizModal()">
+                                    <i class="bi bi-patch-question-fill me-1"></i>สั่งสอบ Gyver Quiz
+                                </button>
+                                <button type="button" class="btn text-white fw-bold rounded-pill px-4 shadow-sm" style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);" onclick="openAddProjectModal()">
+                                    <i class="bi bi-kanban-fill me-1"></i>สั่งงานโปรเจกต์ (รูบริก)
+                                </button>
+                                <button class="btn btn-primary fw-bold rounded-pill px-4 shadow-sm" onclick="openAddAssignmentModal()">
+                                    <i class="bi bi-plus-circle-fill me-1"></i>สั่งงานใหม่
+                                </button>
+                            </div>
                         </div>
 
                         <!-- รายการงานที่สั่ง -->
@@ -526,6 +542,11 @@
                                     class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold shadow-sm"
                                     onclick="openAddGradeColModal()">
                                     <i class="bi bi-plus-circle me-1"></i>เพิ่มช่องคะแนนเก็บ
+                                </button>
+                                <button type="button"
+                                    class="btn btn-outline-info btn-sm rounded-pill px-3 fw-bold shadow-sm"
+                                    onclick="openImportAttendanceModal()" title="ดึงคะแนนการเข้าเรียน/เช็คชื่อ">
+                                    <i class="bi bi-calendar2-check-fill me-1"></i>ดึงคะแนนเช็คชื่อ
                                 </button>
                                 <button type="button"
                                     class="btn btn-outline-success btn-sm rounded-pill px-3 fw-bold shadow-sm"
@@ -1044,11 +1065,33 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content rounded-4 border-0 shadow">
                 <div class="modal-header border-bottom-0 pb-0">
-                    <h5 class="modal-title fw-bold text-primary"><i class="bi bi-pencil-square me-2"></i>สั่งงาน /
+                    <h5 class="modal-title fw-bold text-primary" id="modal-add-assignment-title"><i class="bi bi-pencil-square me-2"></i>สั่งงาน /
                         มอบหมายการบ้านใหม่</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
+                    <div id="assignment-shortcuts-container">
+                        <!-- ทางลัดสั่งสอบด้วย Gyver Quiz -->
+                        <div class="alert alert-warning-subtle border border-warning-subtle p-2.5 rounded-3 mb-2 d-flex justify-content-between align-items-center">
+                            <div class="small text-dark">
+                                <i class="bi bi-patch-question-fill text-warning me-1"></i><b>มีแบบทดสอบออนไลน์?</b> สั่งสอบด้วย Gyver Quiz
+                            </div>
+                            <button type="button" class="btn btn-warning btn-sm rounded-pill fw-bold text-dark px-3 shadow-xs" onclick="switchToQuizModal()">
+                                เลือก Gyver Quiz
+                            </button>
+                        </div>
+
+                        <!-- ทางลัดสั่งงานโปรเจกต์ (เกณฑ์รูบริก) -->
+                        <div class="alert alert-primary border border-primary-subtle p-2.5 rounded-3 mb-3 d-flex justify-content-between align-items-center" style="background: rgba(99, 102, 241, 0.08);">
+                            <div class="small text-dark">
+                                <i class="bi bi-kanban-fill text-primary me-1"></i><b>มีเกณฑ์การให้คะแนนย่อย?</b> สั่งงานเป็นโปรเจกต์ (รูบริก)
+                            </div>
+                            <button type="button" class="btn btn-sm rounded-pill fw-bold text-white px-3 shadow-xs" style="background: #6366f1;" onclick="switchToProjectModal()">
+                                เลือกโปรเจกต์
+                            </button>
+                        </div>
+                    </div>
+
                     <form id="form-add-assignment" onsubmit="handleSaveAssignment(event)">
                         <div class="mb-3">
                             <label class="form-label small fw-bold text-secondary">ชื่องาน / หัวข้อการบ้าน <span
@@ -1085,6 +1128,225 @@
     </div>
 
     <!-- ============================================================== -->
+    <!-- ⚡ MODAL: สั่งสอบ Gyver Quiz (Assign Gyver Quiz Modal) -->
+    <!-- ============================================================== -->
+    <div class="modal fade" id="assignQuizModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2">
+                        <span class="badge bg-warning text-dark p-2 rounded-3"><i class="bi bi-patch-question-fill fs-6"></i></span>
+                        <span id="modal-assign-quiz-title">สั่งสอบด้วย Gyver Quiz</span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-muted small mb-3">มอบหมายแบบทดสอบออนไลน์จากระบบ Gyver Quiz ให้นักเรียนทำสอบ และระบบจะบันทึกคะแนนเก็บไว้ให้โดยอัตโนมัติ</p>
+                    
+                    <form id="form-assign-quiz" onsubmit="handleSaveQuizAssignment(event)">
+                        <!-- เลือกชุดแบบทดสอบ -->
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label small fw-bold text-secondary mb-0">เลือกชุดข้อสอบ (จากคลัง Gyver Quiz) <span class="text-danger">*</span></label>
+                                <a href="../../features/education/quiz/quiz.html" target="_blank" class="small text-primary text-decoration-none fw-bold">
+                                    <i class="bi bi-box-arrow-up-right me-1"></i>สร้าง/จัดการข้อสอบ
+                                </a>
+                            </div>
+                            <select id="assign-quiz-select" class="form-select rounded-3 font-mono small" required onchange="onSelectQuizInModal(this.value)">
+                                <option value="">-- กำลังโหลดแบบทดสอบ... --</option>
+                            </select>
+                        </div>
+
+                        <!-- กล่องสรุปข้อมูลแบบทดสอบที่เลือก -->
+                        <div id="assign-quiz-info-card" class="p-3 bg-light rounded-3 border mb-3 d-none">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-bold text-dark small" id="assign-quiz-card-title">แบบทดสอบ</span>
+                                <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle" id="assign-quiz-card-qcount">0 ข้อ</span>
+                            </div>
+                            <div class="text-muted small mb-2" id="assign-quiz-card-desc">...</div>
+                            <div class="d-flex gap-2 flex-wrap">
+                                <span class="badge bg-white text-secondary border font-mono" id="assign-quiz-card-time"><i class="bi bi-stopwatch me-1"></i>15 นาที</span>
+                                <span class="badge bg-white text-secondary border font-mono" id="assign-quiz-card-pass"><i class="bi bi-award me-1"></i>ผ่าน 70%</span>
+                            </div>
+                        </div>
+
+                        <!-- ชื่องาน / หัวข้อการสอบ -->
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">หัวข้อการสอบ / ชื่องาน <span class="text-danger">*</span></label>
+                            <input type="text" id="assign-quiz-title" class="form-control rounded-3" placeholder="เช่น สอบท้ายบทที่ 1: ภาษา Python" required>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label small fw-bold text-secondary">กำหนดส่ง / วันที่สอบ</label>
+                                <input type="date" id="assign-quiz-due-date" class="form-control rounded-3 font-mono">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-bold text-secondary">คะแนนเต็มในห้องเรียน</label>
+                                <input type="number" id="assign-quiz-points" class="form-control rounded-3 font-mono" value="10" min="1" max="100" required>
+                                <div class="form-text" style="font-size: 0.68rem;">ระบบจะแปลงสัดส่วนคะแนนสอบให้พอดีกับคะแนนเต็มนี้</div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">คำชี้แจงเพิ่มเติม (ถ้ามี)</label>
+                            <textarea id="assign-quiz-desc" class="form-control rounded-3" rows="2" placeholder="เช่น ให้นักเรียนคลิกทำข้อสอบให้เสร็จก่อนหมดเวลา"></textarea>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2 mt-4">
+                            <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">ยกเลิก</button>
+                            <button type="submit" id="btn-save-quiz-assign" class="btn btn-warning text-dark rounded-pill px-4 fw-bold shadow-sm">
+                                <i class="bi bi-patch-question-fill me-1"></i>มอบหมายแบบทดสอบ
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- 🚀 MODAL: มอบหมายงานโปรเจกต์ (Add Project Assignment Modal) -->
+    <!-- ============================================================== -->
+    <div class="modal fade" id="addProjectModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header border-bottom pb-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge p-2 rounded-3 text-white shadow-xs" style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);">
+                            <i class="bi bi-kanban-fill fs-5"></i>
+                        </span>
+                        <div>
+                            <h5 class="modal-title fw-bold text-dark m-0" id="modal-add-project-title">มอบหมายงานโปรเจกต์ / ชิ้นงาน (Rubric Criteria)</h5>
+                            <small class="text-muted">กำหนดหัวข้อโปรเจกต์ วันส่ง และตั้งเกณฑ์การให้คะแนนย่อย (ความสวยงาม, ความถูกต้อง, การใช้งาน ฯลฯ)</small>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="form-add-project" onsubmit="handleSaveProjectAssignment(event)">
+                        <!-- ชื่อโปรเจกต์ -->
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">ชื่อโปรเจกต์ / หัวข้อโครงงาน <span class="text-danger">*</span></label>
+                            <input type="text" id="project-title" class="form-control rounded-3" placeholder="เช่น โปรเจกต์ที่ 1: ระบบ IoT ตรวจวัดสภาพอากาศ" required>
+                        </div>
+
+                        <!-- กำหนดส่ง & คะแนนเต็มรวม -->
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-secondary">กำหนดส่ง (Deadline)</label>
+                                <input type="date" id="project-due-date" class="form-control rounded-3 font-mono">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-secondary">คะแนนเต็มรวม (คำนวณจากเกณฑ์ย่อยอัตโนมัติ)</label>
+                                <div class="p-2 px-3 bg-light rounded-3 border d-flex align-items-center justify-content-between">
+                                    <span class="small text-muted">รวมทุกเกณฑ์:</span>
+                                    <span class="badge fs-6 font-mono text-white fw-bold px-3 py-1 shadow-xs" style="background: #6366f1;" id="project-total-points-badge">30 คะแนน</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- กล่องเกณฑ์การให้คะแนน (Rubrics) -->
+                        <div class="p-3 bg-light rounded-4 border mb-3">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2 pb-2 border-bottom">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="bi bi-ui-checks-grid text-primary"></i>
+                                    <span class="small fw-bold text-dark">เกณฑ์การให้คะแนน (Rubric Criteria)</span>
+                                </div>
+                                <!-- ดรอปดาวน์แม่แบบเกณฑ์สำเร็จรูป -->
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-primary btn-sm rounded-pill dropdown-toggle fw-bold" type="button" data-bs-toggle="dropdown">
+                                        <i class="bi bi-magic me-1"></i>เลือกแม่แบบเกณฑ์สำเร็จรูป
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
+                                        <li><a class="dropdown-item small py-2" href="javascript:void(0)" onclick="applyProjectRubricPreset('coding')">💻 โค้ดดิ้ง / พัฒนาโปรแกรม (ความถูกต้อง 10, ความสวยงาม 10, การใช้งาน 10)</a></li>
+                                        <li><a class="dropdown-item small py-2" href="javascript:void(0)" onclick="applyProjectRubricPreset('invention')">🛠️ สิ่งประดิษฐ์ / ชิ้นงาน (ความสวยงาม 10, ความถูกต้อง 10, ความคงทน 10)</a></li>
+                                        <li><a class="dropdown-item small py-2" href="javascript:void(0)" onclick="applyProjectRubricPreset('report')">📑 รายงาน / โครงงาน (เนื้อหา 10, รูปเล่ม 10, การประยุกต์ใช้ 10)</a></li>
+                                        <li><a class="dropdown-item small py-2" href="javascript:void(0)" onclick="applyProjectRubricPreset('presentation')">🎤 การนำเสนอ / สื่อสาร (ความมั่นใจ 10, สื่อนำเสนอ 10, ตอบคำถาม 10)</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div id="project-rubrics-container" class="d-flex flex-column gap-2 mb-3">
+                                <!-- Dynamic Rubric Rows rendered by JS -->
+                            </div>
+
+                            <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill fw-bold w-100 py-1.5" onclick="addProjectRubricRow()">
+                                <i class="bi bi-plus-circle-fill me-1 text-primary"></i>เพิ่มเกณฑ์การให้คะแนนใหม่
+                            </button>
+                        </div>
+
+                        <!-- รายละเอียดคำสั่ง -->
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">รายละเอียดโจทย์ / ข้อกำหนดสิ่งที่ต้องส่ง</label>
+                            <textarea id="project-desc" class="form-control rounded-3" rows="3" placeholder="ระบุสิ่งที่นักเรียนต้องส่ง เช่น แนบไฟล์รายงาน PDF, รูปภาพผลงาน, หรือส่งลิงก์ GitHub / วิดีโอสาธิต..."></textarea>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2 mt-4">
+                            <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">ยกเลิก</button>
+                            <button type="submit" id="btn-save-project-assign" class="btn text-white rounded-pill px-4 fw-bold shadow-sm" style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);">
+                                <i class="bi bi-check2-circle me-1"></i>มอบหมายงานโปรเจกต์
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- 📊 MODAL: ให้คะแนนตามเกณฑ์รูบริก (Grade Project Rubric Modal) -->
+    <!-- ============================================================== -->
+    <div class="modal fade" id="gradeProjectRubricModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header border-bottom pb-2">
+                    <div>
+                        <h5 class="modal-title fw-bold text-dark m-0" id="grade-rubric-student-name">ประเมินผลงานนักเรียน</h5>
+                        <small class="text-muted" id="grade-rubric-assignment-title">เกณฑ์การให้คะแนนโปรเจกต์</small>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <!-- ข้อมูลการส่งงานของนักเรียน (ไฟล์/ลิงก์) -->
+                    <div id="grade-rubric-submission-info" class="p-3 bg-light rounded-3 border mb-3">
+                        <!-- Dynamic student files & links preview -->
+                    </div>
+
+                    <!-- รายการกรอกคะแนนตามแต่ละเกณฑ์ -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-secondary mb-2">
+                            <i class="bi bi-ui-checks me-1 text-primary"></i>คะแนนตามแต่ละเกณฑ์:
+                        </label>
+                        <div id="grade-rubric-inputs-container" class="d-flex flex-column gap-2.5">
+                            <!-- Dynamic criteria score inputs -->
+                        </div>
+                    </div>
+
+                    <!-- แสดงคะแนนรวมทั้งหมด -->
+                    <div class="p-3 rounded-3 border d-flex justify-content-between align-items-center mb-3" style="background: rgba(99, 102, 241, 0.08); border-color: rgba(99, 102, 241, 0.25) !important;">
+                        <span class="fw-bold text-dark">คะแนนรวมทั้งหมด:</span>
+                        <span class="fs-4 font-mono fw-bold text-primary" id="grade-rubric-total-display">0 / 30 คะแนน</span>
+                    </div>
+
+                    <!-- ข้อเสนอแนะ / คำแนะนำของครู -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-secondary">ข้อเสนอแนะ / คำแนะนำของครู (Feedback)</label>
+                        <textarea id="grade-rubric-feedback" class="form-control rounded-3" rows="2" placeholder="เช่น ผลงานสวยงาม โค้ดทำงานถูกต้อง มีความคิดสร้างสรรค์"></textarea>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">ปิด</button>
+                        <button type="button" class="btn text-white rounded-pill px-4 fw-bold shadow-sm" style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);" onclick="saveProjectRubricEvaluation()">
+                            <i class="bi bi-check2-all me-1"></i>บันทึกคะแนน
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================== -->
     <!-- 🔍 MODAL 4: ตรวจงานนักเรียน (Submissions Viewer Modal) -->
     <!-- ============================================================== -->
     <div class="modal fade" id="submissionsModal" tabindex="-1" aria-hidden="true">
@@ -1098,6 +1360,9 @@
                     </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
+
+                <!-- กล่องแจ้งเตือนและเครื่องมือสำหรับ Gyver Quiz -->
+                <div id="submissions-quiz-banner" class="p-3 pb-0 d-none"></div>
 
                 <!-- แถบฟิลเตอร์กรองตรวจงานแยกห้อง / รวมทุกห้อง -->
                 <div
@@ -1399,6 +1664,239 @@
                         <button type="button" class="btn btn-success rounded-pill px-4 fw-bold"
                             onclick="executeImportAssignment()">
                             <i class="bi bi-check2-circle me-1"></i>นำเข้าคะแนนทันที
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- ⚙️ MODAL: ตั้งเกณฑ์คะแนนเช็คชื่อ (Attendance Criteria Modal) -->
+    <!-- ============================================================== -->
+    <div class="modal fade" id="attendanceCriteriaModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2">
+                        <i class="bi bi-sliders text-primary"></i> ตั้งเกณฑ์คะแนนเช็คชื่อเข้าเรียน
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-muted small mb-3">กำหนดคะแนนสะสมต่อครั้งสำหรับสถานะการเข้าเรียน เพื่อนำไปคำนวณและตัดเกรดในระบบ ปพ.5</p>
+                    <form id="form-attendance-criteria" onsubmit="handleSaveAttendanceCriteria(event)">
+                        <!-- เกณฑ์คะแนนแต่ละสถานะ -->
+                        <div class="bg-light p-3 rounded-4 mb-3">
+                            <label class="form-label small fw-bold text-dark mb-2">
+                                <i class="bi bi-award-fill text-warning me-1"></i>คะแนนต่อการเช็คชื่อ 1 ครั้ง
+                            </label>
+                            <div class="row g-2">
+                                <div class="col-6 mb-2">
+                                    <label class="form-label small text-success fw-bold d-flex align-items-center justify-content-between mb-1">
+                                        <span><i class="bi bi-check-circle-fill me-1"></i>มาเรียน</span>
+                                    </label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" id="att-crit-present" step="0.1" class="form-control rounded-start-3 font-mono fw-bold text-success" value="1" required oninput="previewCriteriaFormula()">
+                                        <span class="input-group-text rounded-end-3 bg-white text-muted small">คะแนน</span>
+                                    </div>
+                                    <div class="text-muted" style="font-size: 0.68rem;">เช่น 1 หรือ 0.5 คะแนน/วัน</div>
+                                </div>
+                                <div class="col-6 mb-2">
+                                    <label class="form-label small text-warning-emphasis fw-bold d-flex align-items-center justify-content-between mb-1">
+                                        <span><i class="bi bi-clock-fill me-1"></i>มาสาย</span>
+                                    </label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" id="att-crit-late" step="0.1" class="form-control rounded-start-3 font-mono fw-bold text-warning-emphasis" value="0.5" required oninput="previewCriteriaFormula()">
+                                        <span class="input-group-text rounded-end-3 bg-white text-muted small">คะแนน</span>
+                                    </div>
+                                    <div class="text-muted" style="font-size: 0.68rem;">เช่น 0.5 หรือ 0 คะแนน/วัน</div>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small text-info-emphasis fw-bold d-flex align-items-center justify-content-between mb-1">
+                                        <span><i class="bi bi-envelope-fill me-1"></i>ลา</span>
+                                    </label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" id="att-crit-leave" step="0.1" class="form-control rounded-start-3 font-mono fw-bold text-info-emphasis" value="0.5" required oninput="previewCriteriaFormula()">
+                                        <span class="input-group-text rounded-end-3 bg-white text-muted small">คะแนน</span>
+                                    </div>
+                                    <div class="text-muted" style="font-size: 0.68rem;">เช่น 0.5 หรือ 0 คะแนน/วัน</div>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small text-danger fw-bold d-flex align-items-center justify-content-between mb-1">
+                                        <span><i class="bi bi-x-circle-fill me-1"></i>ขาดเรียน</span>
+                                    </label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" id="att-crit-absent" step="0.1" class="form-control rounded-start-3 font-mono fw-bold text-danger" value="0" required oninput="previewCriteriaFormula()">
+                                        <span class="input-group-text rounded-end-3 bg-white text-muted small">คะแนน</span>
+                                    </div>
+                                    <div class="text-muted" style="font-size: 0.68rem;">เช่น 0 หรือหักคะแนน</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- รูปแบบการนำไปใช้คำนวณ -->
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">รูปแบบการคิดคะแนนรวม</label>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <input type="radio" class="btn-check" name="att-calc-mode" id="att-calc-mode-raw" value="raw" checked onchange="toggleAttendanceScaleInput()">
+                                    <label class="btn btn-outline-secondary w-100 rounded-3 p-2 small fw-bold text-start d-flex align-items-center gap-2" for="att-calc-mode-raw">
+                                        <i class="bi bi-plus-slash-minus fs-5 text-primary"></i>
+                                        <div>
+                                            <div>บวกสะสมตามจริง</div>
+                                            <div class="text-muted fw-normal" style="font-size: 0.68rem;">(มา×คะแนน + สาย×คะแนน ...)</div>
+                                        </div>
+                                    </label>
+                                </div>
+                                <div class="col-6">
+                                    <input type="radio" class="btn-check" name="att-calc-mode" id="att-calc-mode-scaled" value="scaled" onchange="toggleAttendanceScaleInput()">
+                                    <label class="btn btn-outline-secondary w-100 rounded-3 p-2 small fw-bold text-start d-flex align-items-center gap-2" for="att-calc-mode-scaled">
+                                        <i class="bi bi-percent fs-5 text-success"></i>
+                                        <div>
+                                            <div>เทียบบัญญัติไตรยางศ์</div>
+                                            <div class="text-muted fw-normal" style="font-size: 0.68rem;">(คิดสัดส่วนเต็มเพดาน)</div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- เพดานคะแนน (กรณีเลือกเทียบบัญญัติไตรยางศ์) -->
+                        <div class="mb-3 d-none" id="att-scale-max-container">
+                            <label class="form-label small fw-bold text-secondary">คะแนนเต็มสัดส่วน (เพดานคะแนน)</label>
+                            <input type="number" id="att-scale-max" class="form-control form-control-sm rounded-3 font-mono" min="1" max="100" value="10">
+                            <div class="form-text small">เช่น หากคะแนนจิตพิสัยเต็ม 10 คะแนน ระบบจะแปลงเป็นคะแนนเต็ม 10 อัตโนมัติ</div>
+                        </div>
+
+                        <!-- ตัวอย่างผลลัพธ์จำลอง -->
+                        <div class="alert alert-primary border bg-primary-subtle p-2.5 rounded-3 small mb-0">
+                            <div class="fw-bold text-primary mb-1"><i class="bi bi-calculator me-1"></i>ตัวอย่างการคิดคะแนน:</div>
+                            <div id="att-criteria-preview-text" class="text-dark">
+                                มา 10 วัน = 10 คะแนน, สาย 2 วัน (×0.5) = 1 คะแนน → รวม 11 คะแนน
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2 mt-4">
+                            <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">ยกเลิก</button>
+                            <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">
+                                <i class="bi bi-check2-circle me-1"></i>บันทึกเกณฑ์คะแนน
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- 📅 MODAL: ดึงคะแนนเช็คชื่อเข้า ปพ.5 (Import Attendance Modal) -->
+    <!-- ============================================================== -->
+    <div class="modal fade" id="importAttendanceModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2">
+                        <i class="bi bi-calendar2-check-fill text-info"></i> ดึงคะแนนการเข้าเรียน/เช็คชื่อ เข้าสู่ระบบตัดเกรด ปพ.5
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-muted small mb-3">คำนวณคะแนนการเข้าเรียนของนักเรียนทุกคนจากประวัติการเช็คชื่อ แล้วโอนเข้าสู่ตาราง ปพ.5 อัตโนมัติตามเกณฑ์ที่กำหนด</p>
+
+                    <!-- กล่องข้อมูลเกณฑ์และจำนวนวัน -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded-3 border h-100">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="small fw-bold text-secondary">สถิติการเช็คชื่อทั้งหมด:</span>
+                                    <span class="badge bg-primary rounded-pill"><b id="modal-att-total-days">0</b> วัน</span>
+                                </div>
+                                <div class="small text-muted" id="modal-att-criteria-desc">
+                                    เกณฑ์: มา = 1, สาย = 0.5, ลา = 0.5, ขาด = 0 คะแนน
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded-3 border h-100 d-flex flex-column justify-content-between">
+                                <span class="small fw-bold text-secondary mb-1">ต้องการปรับเกณฑ์คะแนน?</span>
+                                <button type="button" class="btn btn-outline-primary btn-sm rounded-pill py-1 px-3 w-100 fw-bold" onclick="openAttendanceCriteriaModal()">
+                                    <i class="bi bi-sliders me-1"></i>แก้ไขเกณฑ์คะแนนเช็คชื่อ
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- เลือกปลายทางการนำเข้า -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-secondary">เลือกตำแหน่งที่จะนำคะแนนไปใส่ใน ปพ.5</label>
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <input type="radio" class="btn-check" name="import-att-dest" id="import-att-dest-main" value="main" checked onchange="toggleImportAttendanceDest()">
+                                <label class="btn btn-outline-info w-100 rounded-3 p-2.5 text-start d-flex align-items-center gap-2" for="import-att-dest-main">
+                                    <i class="bi bi-journal-check fs-4 text-info"></i>
+                                    <div>
+                                        <div class="fw-bold text-dark">ช่องหลัก "มาเรียน (จิตพิสัย)"</div>
+                                        <div class="text-muted" style="font-size: 0.72rem;">ใส่ในช่องมาเรียนหลักของ ปพ.5 ทันที (สัดส่วนคะแนนจิตพิสัย)</div>
+                                    </div>
+                                </label>
+                            </div>
+                            <div class="col-md-6">
+                                <input type="radio" class="btn-check" name="import-att-dest" id="import-att-dest-col" value="newcol" onchange="toggleImportAttendanceDest()">
+                                <label class="btn btn-outline-primary w-100 rounded-3 p-2.5 text-start d-flex align-items-center gap-2" for="import-att-dest-col">
+                                    <i class="bi bi-layout-three-columns fs-4 text-primary"></i>
+                                    <div>
+                                        <div class="fw-bold text-dark">สร้างเป็น "ช่องคะแนนเก็บใหม่"</div>
+                                        <div class="text-muted" style="font-size: 0.72rem;">เพิ่มคอลัมน์ใหม่ในตาราง (สามารถระบุชื่อและช่วงคะแนนได้)</div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ตัวเลือกเพิ่มเติมเมื่อเลือกสร้างคอลัมน์ใหม่ -->
+                    <div id="import-att-col-options" class="p-3 bg-light rounded-3 border mb-3 d-none">
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-secondary">ชื่อช่องคะแนน</label>
+                                <input type="text" id="import-att-newcol-title" class="form-control form-control-sm rounded-3" value="คะแนนเช็คชื่อ">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-secondary">ช่วงคะแนนที่สังกัด</label>
+                                <select id="import-att-newcol-term" class="form-select form-select-sm rounded-3">
+                                    <option value="attendance" selected>มาเรียน (จิตพิสัย)</option>
+                                    <option value="midterm">เก็บกลางภาค</option>
+                                    <option value="final">เก็บปลายภาค</option>
+                                    <option value="other">อื่นๆ (คะแนนช่วย)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ตารางพรีวิวคะแนนนักเรียน -->
+                    <label class="form-label small fw-bold text-secondary mb-1">
+                        <i class="bi bi-eye-fill me-1"></i>พรีวิวคะแนนที่จะนำเข้า (<span id="modal-att-preview-count">0</span> คน)
+                    </label>
+                    <div class="table-responsive rounded-3 border bg-white mb-3" style="max-height: 220px; overflow-y: auto;">
+                        <table class="table table-sm table-hover align-middle m-0" style="font-size: 0.85rem;">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th style="width: 45px;" class="text-center">#</th>
+                                    <th>ชื่อนักเรียน</th>
+                                    <th class="text-center" style="width: 180px;">สถิติ (มา/สาย/ลา/ขาด)</th>
+                                    <th class="text-center" style="width: 120px;">คะแนนคำนวณได้</th>
+                                </tr>
+                            </thead>
+                            <tbody id="modal-att-preview-tbody">
+                                <tr><td colspan="4" class="text-center py-3 text-muted">กำลังเตรียมข้อมูล...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-3">
+                        <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">ยกเลิก</button>
+                        <button type="button" class="btn btn-info text-white rounded-pill px-4 fw-bold shadow-sm" onclick="executeImportAttendance()">
+                            <i class="bi bi-arrow-down-circle-fill me-1"></i>นำเข้าคะแนนสู่ ปพ.5 ทันที
                         </button>
                     </div>
                 </div>

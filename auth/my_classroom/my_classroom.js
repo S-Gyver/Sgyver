@@ -132,6 +132,11 @@ function enrichClassroom(c) {
             c.attendance_logs = JSON.parse(localStorage.getItem(`gyver_attendance_${c.id}`)) || {};
         } catch (e) { c.attendance_logs = {}; }
     }
+    if (!c.attendance_criteria || typeof c.attendance_criteria !== 'object') {
+        try {
+            c.attendance_criteria = JSON.parse(localStorage.getItem(`gyver_attendance_criteria_${c.id}`)) || null;
+        } catch (e) { c.attendance_criteria = null; }
+    }
     if (!c.gradebook || typeof c.gradebook !== 'object') {
         try {
             c.gradebook = JSON.parse(localStorage.getItem(`gyver_gradebook_${c.id}`)) || null;
@@ -1875,14 +1880,85 @@ function loadAttendanceForDate() {
     renderTabAttendance();
 }
 
+// ⚙️ ดึงเกณฑ์คะแนนเช็คชื่อ (Attendance Criteria)
+function getAttendanceCriteria(classroom) {
+    const defaultCriteria = {
+        present: 1,    // มา 1 ครั้ง ได้กี่คะแนน (เช่น 1 หรือ 0.5)
+        late: 0.5,     // สาย 1 ครั้ง
+        leave: 0.5,    // ลา 1 ครั้ง
+        absent: 0,     // ขาด 1 ครั้ง
+        mode: 'raw',   // 'raw' (บวกสะสมตามจริง) | 'scaled' (เทียบบัญญัติไตรยางศ์เต็มเพดาน)
+        max_score: 10  // เพดานคะแนนสำหรับโหมด scaled
+    };
+    if (!classroom) return defaultCriteria;
+    return Object.assign({}, defaultCriteria, classroom.attendance_criteria || classroom.gradebook?.config?.attendance_criteria || {});
+}
+
+// 🧮 คำนวณสถิติและคะแนนเช็คชื่อของนักเรียนรายบุคคล (ทุกวันที่เคยบันทึกไว้)
+function calcStudentAttendanceSummary(student, attendanceLogs, criteria) {
+    const logs = attendanceLogs || {};
+    const dates = Object.keys(logs);
+    const crit = criteria || getAttendanceCriteria(activeClassroom);
+
+    let studentKey = typeof student === 'string' ? student : (student.user_id || student.name);
+    let sName = typeof student === 'object' ? student.name : null;
+    let sUserId = typeof student === 'object' ? student.user_id : null;
+
+    let present = 0, late = 0, leave = 0, absent = 0;
+
+    dates.forEach(d => {
+        const dayRecord = logs[d];
+        if (!dayRecord) return;
+        const entry = dayRecord[studentKey] || (sName && dayRecord[sName]) || (sUserId && dayRecord[sUserId]);
+        if (!entry) return;
+        const st = entry.status || 'present';
+        if (st === 'present') present++;
+        else if (st === 'late') late++;
+        else if (st === 'leave') leave++;
+        else if (st === 'absent') absent++;
+    });
+
+    // คำนวณคะแนนตามเกณฑ์
+    const rawScore = (present * Number(crit.present || 0)) +
+                     (late * Number(crit.late || 0)) +
+                     (leave * Number(crit.leave || 0)) +
+                     (absent * Number(crit.absent || 0));
+
+    let finalScore = 0;
+    if (crit.mode === 'scaled') {
+        const maxPossible = dates.length * Math.max(0.1, Number(crit.present || 1));
+        const maxLimit = Number(crit.max_score || 10);
+        finalScore = maxPossible > 0 ? Math.min(maxLimit, Math.round((rawScore / maxPossible) * maxLimit * 10) / 10) : 0;
+    } else {
+        finalScore = Math.round(rawScore * 10) / 10;
+    }
+
+    return {
+        present,
+        late,
+        leave,
+        absent,
+        totalRecordedDays: dates.length,
+        rawScore: Math.round(rawScore * 10) / 10,
+        finalScore: Math.max(0, finalScore)
+    };
+}
+
 function renderTabAttendance() {
     const tbody = document.getElementById('attendance-table-body');
     if (!tbody || !activeClassroom) return;
 
     const students = Array.isArray(activeClassroom.students) ? activeClassroom.students : [];
+    const logs = activeClassroom.attendance_logs || {};
+    const totalRecordedDays = Object.keys(logs).length;
+    const criteria = getAttendanceCriteria(activeClassroom);
+
+    // อัปเดตป้ายจำนวนวันที่เคยบันทึกแล้วทั้งหมด
+    const totalDaysBadge = document.getElementById('att-total-days-badge');
+    if (totalDaysBadge) totalDaysBadge.innerText = totalRecordedDays;
 
     if (students.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-muted">ยังไม่มีรายชื่อนักเรียนในห้องนี้</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted">ยังไม่มีรายชื่อนักเรียนในห้องนี้</td></tr>`;
         updateAttendanceStats(0, 0, 0, 0);
         return;
     }
@@ -1900,13 +1976,16 @@ function renderTabAttendance() {
         else if (status === 'leave') leave++;
         else if (status === 'absent') absent++;
 
+        // สรุปยอดรวม มา/สาย/ลา/ขาด ของนักเรียนคนนี้จากทุกวันที่บันทึก
+        const sum = calcStudentAttendanceSummary(s, logs, criteria);
+
         const avatar = s.image || `https://api.dicebear.com/7.x/big-smile/svg?seed=${encodeURIComponent(s.name || 'Student')}`;
 
         return `
         <tr>
             <td class="text-center font-mono text-muted">${idx + 1}</td>
             <td>
-                <img src="${avatar}" class="rounded-circle border" style="width: 38px; height: 38px; object-fit: cover; cursor: pointer;" onclick="openPhotoZoom('${avatar}', '${s.name}')">
+                <img src="${avatar}" class="rounded-circle border" style="width: 38px; height: 38px; object-fit: cover; cursor: pointer;" onclick="openPhotoZoom('${avatar}', '${escapeHtml(s.name)}')">
             </td>
             <td>
                 <div class="fw-bold text-dark d-flex align-items-center gap-2 flex-wrap">
@@ -1914,6 +1993,17 @@ function renderTabAttendance() {
                     ${s.note ? `<span class="badge bg-warning-subtle text-dark border border-warning-subtle role-button" onclick="openStudentNoteModal(${idx})" title="คลิกดู/แก้ไขโน้ต: ${escapeHtml(s.note)}" style="font-size: 0.7rem;"><i class="bi bi-journal-text text-warning me-1"></i>${escapeHtml(s.note)}</span>` : `<button type="button" class="btn btn-link btn-sm p-0 text-muted" onclick="openStudentNoteModal(${idx})" title="เพิ่มโน้ตช่วยจำ" style="font-size: 0.72rem; text-decoration: none;"><i class="bi bi-journal-plus"></i></button>`}
                 </div>
                 <div class="text-muted small">${s.nickname ? `ชื่อเล่น: ${escapeHtml(s.nickname)}` : ''}</div>
+            </td>
+            <td class="text-center">
+                <div class="d-inline-flex align-items-center gap-1 flex-wrap justify-content-center">
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-1.5 py-0.5" style="font-size: 0.75rem;" title="มาเรียน">มา <b>${sum.present}</b></span>
+                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-1.5 py-0.5" style="font-size: 0.75rem;" title="มาสาย">สาย <b>${sum.late}</b></span>
+                    <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle px-1.5 py-0.5" style="font-size: 0.75rem;" title="ลา">ลา <b>${sum.leave}</b></span>
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-1.5 py-0.5" style="font-size: 0.75rem;" title="ขาดเรียน">ขาด <b>${sum.absent}</b></span>
+                </div>
+                <div class="text-muted mt-1 font-mono" style="font-size: 0.72rem;">
+                    คะแนนสะสม: <b class="text-primary fs-7">${sum.finalScore}</b> แต้ม
+                </div>
             </td>
             <td>
                 <div class="att-btn-group justify-content-center">
@@ -1932,7 +2022,7 @@ function renderTabAttendance() {
                 </div>
             </td>
             <td>
-                <input type="text" class="form-control form-control-sm rounded-3" placeholder="ระบุเหตุผล (ถ้ามี)" value="${note}" onchange="updateStudentAttendanceNote('${studentKey}', this.value)">
+                <input type="text" class="form-control form-control-sm rounded-3" placeholder="ระบุเหตุผล (ถ้ามี)" value="${escapeHtml(note)}" onchange="updateStudentAttendanceNote('${studentKey}', this.value)">
             </td>
         </tr>`;
     }).join('');
@@ -2005,6 +2095,9 @@ async function saveAttendanceRecord() {
     activeClassroom.attendance_logs = existingLogs;
     localStorage.setItem(`gyver_attendance_${activeClassroomId}`, JSON.stringify(existingLogs));
 
+    // อัปเดตตารางให้แสดงสถิติและคะแนนสะสมใหม่ทันที
+    renderTabAttendance();
+
     try {
         const { error } = await supabaseClient
             .from('classrooms')
@@ -2022,6 +2115,258 @@ async function saveAttendanceRecord() {
         showToast('success', 'บันทึกสำเร็จ!', `บันทึกข้อมูลการเช็คชื่อเรียบร้อยแล้ว`);
     }
 }
+
+// ⚙️ Modal: ตั้งเกณฑ์คะแนนเช็คชื่อ (Attendance Criteria)
+function openAttendanceCriteriaModal() {
+    if (!activeClassroom) return;
+    const crit = getAttendanceCriteria(activeClassroom);
+
+    const elPresent = document.getElementById('att-crit-present');
+    const elLate = document.getElementById('att-crit-late');
+    const elLeave = document.getElementById('att-crit-leave');
+    const elAbsent = document.getElementById('att-crit-absent');
+    const elScaleMax = document.getElementById('att-scale-max');
+
+    if (elPresent) elPresent.value = crit.present ?? 1;
+    if (elLate) elLate.value = crit.late ?? 0.5;
+    if (elLeave) elLeave.value = crit.leave ?? 0.5;
+    if (elAbsent) elAbsent.value = crit.absent ?? 0;
+    if (elScaleMax) elScaleMax.value = crit.max_score ?? 10;
+
+    const mode = crit.mode || 'raw';
+    const radioRaw = document.getElementById('att-calc-mode-raw');
+    const radioScaled = document.getElementById('att-calc-mode-scaled');
+    if (mode === 'scaled' && radioScaled) radioScaled.checked = true;
+    else if (radioRaw) radioRaw.checked = true;
+
+    toggleAttendanceScaleInput();
+    previewCriteriaFormula();
+
+    const modalEl = document.getElementById('attendanceCriteriaModal');
+    if (modalEl) new bootstrap.Modal(modalEl).show();
+}
+
+function toggleAttendanceScaleInput() {
+    const isScaled = document.getElementById('att-calc-mode-scaled')?.checked || false;
+    const container = document.getElementById('att-scale-max-container');
+    if (container) {
+        if (isScaled) container.classList.remove('d-none');
+        else container.classList.add('d-none');
+    }
+    previewCriteriaFormula();
+}
+
+function previewCriteriaFormula() {
+    const p = Number(document.getElementById('att-crit-present')?.value) || 0;
+    const l = Number(document.getElementById('att-crit-late')?.value) || 0;
+    const lv = Number(document.getElementById('att-crit-leave')?.value) || 0;
+    const a = Number(document.getElementById('att-crit-absent')?.value) || 0;
+    const isScaled = document.getElementById('att-calc-mode-scaled')?.checked || false;
+    const scaleMax = Number(document.getElementById('att-scale-max')?.value) || 10;
+
+    const previewEl = document.getElementById('att-criteria-preview-text');
+    if (!previewEl) return;
+
+    if (isScaled) {
+        previewEl.innerHTML = `เกณฑ์: มาได้ ${p} แต้ม, สาย ${l} แต้ม, ลา ${lv} แต้ม, ขาด ${a} แต้ม<br><b class="text-success">โหมดเทียบบัญญัติไตรยางศ์:</b> คำนวณเป็นสัดส่วนคะแนนเต็ม <b>${scaleMax}</b> คะแนนตามโครงสร้าง ปพ.5`;
+    } else {
+        const sampleRaw = (10 * p) + (2 * l);
+        previewEl.innerHTML = `สมมุตินักเรียน <b>มา 10 วัน</b> (${10 * p} คะแนน), <b>สาย 2 วัน</b> (${2 * l} คะแนน) → รวมได้รับ <b class="text-primary">${Math.round(sampleRaw * 10) / 10}</b> คะแนนสะสม`;
+    }
+}
+
+async function handleSaveAttendanceCriteria(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!activeClassroom) return;
+
+    const present = Number(document.getElementById('att-crit-present')?.value ?? 1);
+    const late = Number(document.getElementById('att-crit-late')?.value ?? 0.5);
+    const leave = Number(document.getElementById('att-crit-leave')?.value ?? 0.5);
+    const absent = Number(document.getElementById('att-crit-absent')?.value ?? 0);
+    const mode = document.querySelector('input[name="att-calc-mode"]:checked')?.value || 'raw';
+    const max_score = Number(document.getElementById('att-scale-max')?.value ?? 10);
+
+    const newCriteria = {
+        present,
+        late,
+        leave,
+        absent,
+        mode,
+        max_score
+    };
+
+    activeClassroom.attendance_criteria = newCriteria;
+    if (!activeClassroom.gradebook) activeClassroom.gradebook = { config: {}, columns: [], scores: {} };
+    if (!activeClassroom.gradebook.config) activeClassroom.gradebook.config = {};
+    activeClassroom.gradebook.config.attendance_criteria = newCriteria;
+
+    // บันทึกลง Supabase และ LocalStorage
+    try {
+        if (activeClassroomId) {
+            localStorage.setItem(`gyver_attendance_criteria_${activeClassroomId}`, JSON.stringify(newCriteria));
+            await supabaseClient
+                .from('classrooms')
+                .update({
+                    attendance_criteria: newCriteria,
+                    gradebook: activeClassroom.gradebook
+                })
+                .eq('id', activeClassroomId);
+        }
+    } catch (err) {
+        console.warn("Save attendance criteria error:", err);
+    }
+
+    renderTabAttendance();
+    renderTabGradebook();
+
+    bootstrap.Modal.getInstance(document.getElementById('attendanceCriteriaModal'))?.hide();
+    showToast('success', 'บันทึกเกณฑ์คะแนนแล้ว', `มา=${present} สาย=${late} ลา=${leave} ขาด=${absent} (${mode === 'scaled' ? `สัดส่วนเต็ม ${max_score}` : 'บวกสะสมตามจริง'})`);
+}
+
+// 📅 Modal: ดึงคะแนนเช็คชื่อเข้า ปพ.5 (Import Attendance)
+function openImportAttendanceModal() {
+    if (!activeClassroom) return;
+
+    const students = Array.isArray(activeClassroom.students) ? activeClassroom.students : [];
+    const logs = activeClassroom.attendance_logs || {};
+    const totalDays = Object.keys(logs).length;
+    const crit = getAttendanceCriteria(activeClassroom);
+
+    // แสดงสถิติด้านบน
+    const daysEl = document.getElementById('modal-att-total-days');
+    if (daysEl) daysEl.innerText = totalDays;
+
+    const descEl = document.getElementById('modal-att-criteria-desc');
+    if (descEl) {
+        descEl.innerText = `เกณฑ์: มา = ${crit.present}, สาย = ${crit.late}, ลา = ${crit.leave}, ขาด = ${crit.absent} คะแนน (${crit.mode === 'scaled' ? `สัดส่วนเต็ม ${crit.max_score}` : 'บวกสะสมตามจริง'})`;
+    }
+
+    const countEl = document.getElementById('modal-att-preview-count');
+    if (countEl) countEl.innerText = students.length;
+
+    // เรนเดอร์พรีวิวคะแนน
+    const tbody = document.getElementById('modal-att-preview-tbody');
+    if (tbody) {
+        if (students.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" class="text-center py-3 text-muted">ยังไม่มีนักเรียนในห้องเรียนนี้</td></tr>`;
+        } else {
+            tbody.innerHTML = students.map((s, idx) => {
+                const sum = calcStudentAttendanceSummary(s, logs, crit);
+                return `
+                <tr>
+                    <td class="text-center font-mono text-muted">${idx + 1}</td>
+                    <td class="fw-bold text-dark">${escapeHtml(s.name)}</td>
+                    <td class="text-center">
+                        <span class="badge bg-success-subtle text-success me-1">มา ${sum.present}</span>
+                        <span class="badge bg-warning-subtle text-warning-emphasis me-1">สาย ${sum.late}</span>
+                        <span class="badge bg-info-subtle text-info-emphasis me-1">ลา ${sum.leave}</span>
+                        <span class="badge bg-danger-subtle text-danger">ขาด ${sum.absent}</span>
+                    </td>
+                    <td class="text-center font-mono fw-bold text-primary">
+                        ${sum.finalScore}
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+    }
+
+    // รีเซ็ตปลายทาง
+    const radioMain = document.getElementById('import-att-dest-main');
+    if (radioMain) radioMain.checked = true;
+    toggleImportAttendanceDest();
+
+    const modalEl = document.getElementById('importAttendanceModal');
+    if (modalEl) new bootstrap.Modal(modalEl).show();
+}
+
+function toggleImportAttendanceDest() {
+    const isNewCol = document.getElementById('import-att-dest-col')?.checked || false;
+    const colOptions = document.getElementById('import-att-col-options');
+    if (colOptions) {
+        if (isNewCol) colOptions.classList.remove('d-none');
+        else colOptions.classList.add('d-none');
+    }
+}
+
+function executeImportAttendance() {
+    if (!activeClassroom) return;
+    const students = Array.isArray(activeClassroom.students) ? activeClassroom.students : [];
+    if (students.length === 0) {
+        showToast('warning', 'ไม่มีข้อมูล', 'ยังไม่มีนักเรียนในห้องนี้');
+        return;
+    }
+
+    const logs = activeClassroom.attendance_logs || {};
+    const crit = getAttendanceCriteria(activeClassroom);
+    const dest = document.querySelector('input[name="import-att-dest"]:checked')?.value || 'main';
+
+    if (!activeClassroom.gradebook) activeClassroom.gradebook = { config: {}, columns: [], scores: {} };
+    if (!Array.isArray(activeClassroom.gradebook.columns)) activeClassroom.gradebook.columns = [];
+    if (!activeClassroom.gradebook.scores) activeClassroom.gradebook.scores = {};
+
+    let importedCount = 0;
+
+    if (dest === 'main') {
+        // นำเข้าใส่ช่องหลัก "มาเรียน (จิตพิสัย)" โดยตรง
+        students.forEach(s => {
+            const studentKey = s.user_id || s.name;
+            const sum = calcStudentAttendanceSummary(s, logs, crit);
+            if (!activeClassroom.gradebook.scores[studentKey]) {
+                activeClassroom.gradebook.scores[studentKey] = {};
+            }
+            activeClassroom.gradebook.scores[studentKey].attendance = sum.finalScore;
+            importedCount++;
+        });
+    } else {
+        // สร้างเป็นคอลัมน์เก็บคะแนนใหม่
+        const colTitle = document.getElementById('import-att-newcol-title')?.value.trim() || 'คะแนนเช็คชื่อ';
+        const colTerm = document.getElementById('import-att-newcol-term')?.value || 'attendance';
+        const colId = 'att_' + Date.now();
+
+        // คำนวณคะแนนเต็มของคอลัมน์นี้
+        const totalDays = Object.keys(logs).length;
+        let colMax = 10;
+        if (crit.mode === 'scaled') {
+            colMax = Number(crit.max_score || 10);
+        } else {
+            colMax = Math.max(1, Math.round(totalDays * Number(crit.present || 1)));
+        }
+
+        activeClassroom.gradebook.columns.push({
+            id: colId,
+            title: colTitle,
+            max: colMax,
+            term: colTerm,
+            is_bonus: false
+        });
+
+        students.forEach(s => {
+            const studentKey = s.user_id || s.name;
+            const sum = calcStudentAttendanceSummary(s, logs, crit);
+            if (!activeClassroom.gradebook.scores[studentKey]) {
+                activeClassroom.gradebook.scores[studentKey] = {};
+            }
+            activeClassroom.gradebook.scores[studentKey][colId] = sum.finalScore;
+            importedCount++;
+        });
+    }
+
+    renderTabGradebook();
+    saveGradebookRecord(true);
+
+    bootstrap.Modal.getInstance(document.getElementById('importAttendanceModal'))?.hide();
+    showToast('success', 'ดึงคะแนนสำเร็จ!', `นำเข้าคะแนนเช็คชื่อของนักเรียน ${importedCount} คน เข้าสู่ ปพ.5 เรียบร้อย`);
+}
+
+window.getAttendanceCriteria = getAttendanceCriteria;
+window.calcStudentAttendanceSummary = calcStudentAttendanceSummary;
+window.openAttendanceCriteriaModal = openAttendanceCriteriaModal;
+window.toggleAttendanceScaleInput = toggleAttendanceScaleInput;
+window.previewCriteriaFormula = previewCriteriaFormula;
+window.handleSaveAttendanceCriteria = handleSaveAttendanceCriteria;
+window.openImportAttendanceModal = openImportAttendanceModal;
+window.toggleImportAttendanceDest = toggleImportAttendanceDest;
+window.executeImportAttendance = executeImportAttendance;
 
 /* ============================================================== */
 /* 📂 TAB 3: แจกไฟล์ & ชีทเรียน (Course Materials Hub - แชร์ทุกห้องในวิชา) */
@@ -2452,7 +2797,7 @@ function loadAssignments() {
                 <i class="bi bi-pencil-square fs-1 text-info opacity-50 d-block mb-2"></i>
                 <h6 class="fw-bold text-dark mb-1">ยังไม่มีการบ้านหรือชิ้นงานในรายวิชานี้</h6>
                 <p class="small text-muted mb-3">กดปุ่ม "สั่งงานใหม่" เพื่อสร้างโจทย์ กำหนดส่ง ให้นักเรียนทุกห้องส่งงานตามเกณฑ์เดียวกัน</p>
-                <button class="btn btn-primary btn-sm rounded-pill px-4 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#addAssignmentModal">
+                <button class="btn btn-primary btn-sm rounded-pill px-4 fw-bold shadow-sm" onclick="openAddAssignmentModal()">
                     <i class="bi bi-plus-circle-fill me-1"></i>สั่งงานแรก
                 </button>
             </div>`;
@@ -2483,40 +2828,123 @@ function loadAssignments() {
             breakdownHtml = `<div class="d-flex flex-wrap gap-1 mt-2 pt-2 border-top">${parts.join('')}</div>`;
         }
 
+        const isQuiz = a.type === 'quiz' || !!a.quiz_id;
+        const isProject = a.type === 'project' || (Array.isArray(a.rubrics) && a.rubrics.length > 0);
+
         return `
         <div class="col-md-6 col-lg-6">
-            <div class="assignment-card h-100 d-flex flex-column">
+            <div class="assignment-card h-100 d-flex flex-column ${isQuiz ? 'border-warning-subtle shadow-xs' : isProject ? 'border-primary-subtle shadow-xs' : ''}">
                 <div class="d-flex justify-content-between align-items-start mb-2">
-                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1">
-                        <i class="bi bi-award-fill me-1"></i>${a.points || 10} คะแนน
-                    </span>
-                    <button class="btn btn-sm btn-link text-danger p-0" onclick="deleteAssignment(${idx})" title="ลบงานนี้">
-                        <i class="bi bi-trash3"></i>
-                    </button>
+                    <div class="d-flex align-items-center gap-1 flex-wrap">
+                        ${isQuiz ? `
+                            <span class="badge bg-warning text-dark border border-warning-subtle rounded-pill px-3 py-1 font-mono fw-bold">
+                                <i class="bi bi-patch-question-fill me-1"></i>Gyver Quiz
+                            </span>
+                        ` : isProject ? `
+                            <span class="badge text-white border rounded-pill px-3 py-1 font-mono fw-bold shadow-xs" style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);">
+                                <i class="bi bi-kanban-fill me-1"></i>โปรเจกต์ (รูบริก)
+                            </span>
+                        ` : ''}
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1">
+                            <i class="bi bi-award-fill me-1"></i>${a.points || 10} คะแนน
+                        </span>
+                    </div>
+                    <div class="d-flex align-items-center gap-1">
+                        <button class="btn btn-sm btn-link text-primary p-0 me-1" onclick="openEditAssignmentModal('${a.id}')" title="แก้ไขชิ้นงาน / กำหนดส่ง / เกณฑ์">
+                            <i class="bi bi-pencil-square fs-6"></i>
+                        </button>
+                        <button class="btn btn-sm btn-link text-danger p-0" onclick="deleteAssignment(${idx})" title="ลบงานนี้">
+                            <i class="bi bi-trash3 fs-6"></i>
+                        </button>
+                    </div>
                 </div>
 
-                <h5 class="fw-bold text-dark mb-1">${a.title}</h5>
-                <p class="text-muted small mb-3 flex-grow-1" style="font-size: 0.85rem;">${a.description || 'ไม่มีรายละเอียดเพิ่มเติม'}</p>
+                <h5 class="fw-bold text-dark mb-1">${escapeHtml(a.title)}</h5>
+                <p class="text-muted small mb-2 flex-grow-1" style="font-size: 0.85rem;">${escapeHtml(a.description || (isQuiz ? 'แบบทดสอบออนไลน์ Gyver Quiz' : isProject ? 'ชิ้นงานโปรเจกต์พร้อมเกณฑ์การประเมินรูบริก' : 'ไม่มีรายละเอียดเพิ่มเติม'))}</p>
+
+                ${isProject && Array.isArray(a.rubrics) && a.rubrics.length > 0 ? `
+                    <div class="p-2 px-2.5 rounded-3 border mb-3 small" style="background: rgba(99, 102, 241, 0.05); border-color: rgba(99, 102, 241, 0.2) !important;">
+                        <div class="fw-bold small text-dark mb-1 d-flex align-items-center gap-1">
+                            <i class="bi bi-ui-checks text-primary"></i> เกณฑ์การให้คะแนน (${a.rubrics.length} ด้าน):
+                        </div>
+                        <div class="d-flex flex-wrap gap-1">
+                            ${a.rubrics.map(r => `
+                                <span class="badge bg-white text-dark border font-mono px-2 py-0.5" style="font-size: 0.73rem;">
+                                    ${escapeHtml(r.title)} <b class="text-primary">(${r.max} คะแนน)</b>
+                                </span>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
 
                 <div class="bg-light p-2 px-3 rounded-3 mb-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <small class="text-muted"><i class="bi bi-clock me-1"></i>กำหนดส่ง: <b>${dueDateStr}</b></small>
                         <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill font-mono">
-                            ส่งแล้ว ${submittedCount}/${totalStudents} คน
+                            ${isQuiz ? `สอบแล้ว` : `ส่งแล้ว`} ${submittedCount}/${totalStudents} คน
                         </span>
                     </div>
                     ${breakdownHtml}
                 </div>
 
-                <div class="d-flex gap-2 pt-2 border-top mt-auto">
+                <div class="d-flex flex-wrap gap-2 pt-2 border-top mt-auto">
                     <button class="btn btn-primary btn-sm rounded-3 fw-bold flex-grow-1" onclick="openSubmissionsModal('${a.id}')">
                         <i class="bi bi-clipboard2-check me-1"></i>ตรวจงาน (${submittedCount} คน)
                     </button>
+                    <button class="btn btn-outline-secondary btn-sm rounded-3 fw-bold" onclick="openEditAssignmentModal('${a.id}')" title="แก้ไขข้อมูลงาน กำหนดส่ง หรือเกณฑ์คะแนน">
+                        <i class="bi bi-pencil me-1"></i>แก้ไข
+                    </button>
+                    ${isQuiz ? `
+                        <button class="btn btn-outline-warning text-dark btn-sm rounded-3 fw-bold" onclick="syncQuizSubmissionsForAssignment('${a.id}')" title="ดึงคะแนนสอบล่าสุดจาก Gyver Quiz">
+                            <i class="bi bi-arrow-repeat me-1"></i>ซิงค์คะแนน
+                        </button>
+                        <a href="../../features/education/quiz/quiz.html?id=${encodeURIComponent(a.quiz_id)}" target="_blank" class="btn btn-outline-secondary btn-sm rounded-3" title="เปิดดูข้อสอบ">
+                            <i class="bi bi-box-arrow-up-right"></i>
+                        </a>
+                    ` : ''}
                 </div>
             </div>
         </div>`;
     }).join('');
 }
+
+let editingAssignmentId = null;
+let editingAssignmentType = null;
+
+function openAddAssignmentModal() {
+    editingAssignmentId = null;
+    editingAssignmentType = null;
+
+    const form = document.getElementById('form-add-assignment');
+    if (form) form.reset();
+
+    const titleEl = document.getElementById('modal-add-assignment-title');
+    if (titleEl) {
+        titleEl.innerHTML = '<i class="bi bi-pencil-square me-2"></i>สั่งงาน / มอบหมายการบ้านใหม่';
+    }
+
+    const shortcuts = document.getElementById('assignment-shortcuts-container');
+    if (shortcuts) {
+        shortcuts.classList.remove('d-none');
+    }
+
+    const btn = document.getElementById('btn-save-assignment');
+    if (btn) {
+        btn.innerHTML = '<i class="bi bi-plus-circle-fill me-1"></i>สร้างงาน';
+    }
+
+    // Default due date: 7 days later
+    const dueDateInput = document.getElementById('assignment-due-date');
+    if (dueDateInput) {
+        const nextWeek = new Date();
+        nextWeek.setDate(nextWeek.getDate() + 7);
+        dueDateInput.value = nextWeek.toISOString().split('T')[0];
+    }
+
+    const modalEl = document.getElementById('addAssignmentModal');
+    if (modalEl) new bootstrap.Modal(modalEl).show();
+}
+window.openAddAssignmentModal = openAddAssignmentModal;
 
 async function handleSaveAssignment(e) {
     e.preventDefault();
@@ -2527,25 +2955,43 @@ async function handleSaveAssignment(e) {
     const points = parseInt(document.getElementById('assignment-points').value) || 10;
     const desc = document.getElementById('assignment-desc').value.trim();
 
-    const newAssignment = {
-        id: 'assign_' + Date.now(),
-        title: title,
-        due_date: dueDate,
-        points: points,
-        description: desc,
-        submissions: {},
-        created_at: new Date().toISOString()
-    };
-
     let assignments = getSharedCourseAssignments();
-    assignments.unshift(newAssignment);
+    const isEditing = !!editingAssignmentId;
+
+    if (isEditing) {
+        const target = assignments.find(a => a.id === editingAssignmentId);
+        if (target) {
+            target.title = title;
+            target.due_date = dueDate;
+            target.points = points;
+            target.description = desc;
+            target.updated_at = new Date().toISOString();
+        }
+    } else {
+        const newAssignment = {
+            id: 'assign_' + Date.now(),
+            title: title,
+            due_date: dueDate,
+            points: points,
+            description: desc,
+            submissions: {},
+            created_at: new Date().toISOString()
+        };
+        assignments.unshift(newAssignment);
+    }
 
     const btn = document.getElementById('btn-save-assignment');
     if (btn) btn.disabled = true;
 
     try {
         await saveSharedCourseAssignments(assignments);
-        showToast('success', 'สั่งงานสำเร็จ!', `งาน "${title}" ถูกสั่งไปยังทุกห้องในรายวิชานี้เรียบร้อยแล้ว (เกณฑ์เดียวกัน)`);
+        if (isEditing) {
+            showToast('success', 'บันทึกการแก้ไขเรียบร้อย!', `อัปเดตข้อมูลการบ้าน "${title}" ไปยังทุกห้องเรียบร้อยแล้ว`);
+        } else {
+            showToast('success', 'สั่งงานสำเร็จ!', `งาน "${title}" ถูกสั่งไปยังทุกห้องในรายวิชานี้เรียบร้อยแล้ว (เกณฑ์เดียวกัน)`);
+        }
+        editingAssignmentId = null;
+        editingAssignmentType = null;
         document.getElementById('form-add-assignment')?.reset();
         bootstrap.Modal.getInstance(document.getElementById('addAssignmentModal'))?.hide();
         loadAssignments();
@@ -2579,6 +3025,903 @@ async function deleteAssignment(idx) {
     loadAssignments();
 }
 
+// ==============================================================
+// 🚀 PROJECT RUBRIC ASSIGNMENTS: มอบหมายงานโปรเจกต์ & เกณฑ์ประเมิน
+// ==============================================================
+let currentProjectRubrics = [
+    { id: 'r1', title: 'ความถูกต้องของการทำงานของโค้ด/ผลงาน', max: 10 },
+    { id: 'r2', title: 'ความคิดสร้างสรรค์ & ความสวยงามประณีต', max: 10 },
+    { id: 'r3', title: 'การนำไปใช้งานได้จริง & ประโยชน์', max: 10 }
+];
+
+let activeGradeRubricStudent = {
+    assignmentId: null,
+    studentKey: null,
+    studentName: '',
+    roomName: ''
+};
+
+function switchToProjectModal() {
+    const modalEl = document.getElementById('addAssignmentModal');
+    if (modalEl) {
+        bootstrap.Modal.getInstance(modalEl)?.hide();
+    }
+    setTimeout(() => {
+        openAddProjectModal();
+    }, 300);
+}
+window.switchToProjectModal = switchToProjectModal;
+
+function openAddProjectModal() {
+    editingAssignmentId = null;
+    editingAssignmentType = null;
+
+    const form = document.getElementById('form-add-project');
+    if (form) form.reset();
+
+    const titleEl = document.getElementById('modal-add-project-title');
+    if (titleEl) {
+        titleEl.innerText = 'มอบหมายงานโปรเจกต์ / ชิ้นงาน (Rubric Criteria)';
+    }
+
+    const btn = document.getElementById('btn-save-project-assign');
+    if (btn) {
+        btn.innerHTML = '<i class="bi bi-check2-circle me-1"></i>มอบหมายงานโปรเจกต์';
+    }
+
+    // Default due date: 14 days later
+    const dueDateInput = document.getElementById('project-due-date');
+    if (dueDateInput) {
+        const next2Weeks = new Date();
+        next2Weeks.setDate(next2Weeks.getDate() + 14);
+        dueDateInput.value = next2Weeks.toISOString().split('T')[0];
+    }
+
+    // Default rubrics if empty
+    if (!currentProjectRubrics || currentProjectRubrics.length === 0) {
+        applyProjectRubricPreset('coding');
+    } else {
+        renderProjectRubricsList();
+        calcProjectTotalPoints();
+    }
+
+    const modalEl = document.getElementById('addProjectModal');
+    if (modalEl) new bootstrap.Modal(modalEl).show();
+}
+window.openAddProjectModal = openAddProjectModal;
+
+// ==============================================================
+// ✏️ EDIT ASSIGNMENT / PROJECT / QUIZ MODAL
+// ==============================================================
+function openEditAssignmentModal(assignmentId) {
+    const assignments = getSharedCourseAssignments();
+    const a = assignments.find(item => item.id === assignmentId);
+    if (!a) {
+        showToast('error', 'ไม่พบข้อมูลงาน', 'ไม่พบการบ้านหรือโปรเจกต์ที่ต้องการแก้ไข');
+        return;
+    }
+
+    if (a.type === 'project' || (Array.isArray(a.rubrics) && a.rubrics.length > 0)) {
+        openEditProjectModal(a);
+    } else if (a.type === 'quiz' || a.quiz_id) {
+        openEditQuizAssignmentModal(a);
+    } else {
+        openEditRegularAssignmentModal(a);
+    }
+}
+window.openEditAssignmentModal = openEditAssignmentModal;
+
+function openEditProjectModal(a) {
+    editingAssignmentId = a.id;
+    editingAssignmentType = 'project';
+
+    const form = document.getElementById('form-add-project');
+    if (form) form.reset();
+
+    const titleEl = document.getElementById('modal-add-project-title');
+    if (titleEl) {
+        titleEl.innerText = '✏️ แก้ไขงานโปรเจกต์ / เกณฑ์รูบริก';
+    }
+
+    const btn = document.getElementById('btn-save-project-assign');
+    if (btn) {
+        btn.innerHTML = '<i class="bi bi-floppy-fill me-1"></i>บันทึกการแก้ไขโปรเจกต์';
+    }
+
+    const titleInput = document.getElementById('project-title');
+    if (titleInput) titleInput.value = a.title || '';
+
+    const dueDateInput = document.getElementById('project-due-date');
+    if (dueDateInput) dueDateInput.value = a.due_date || '';
+
+    const descInput = document.getElementById('project-desc');
+    if (descInput) descInput.value = a.description || '';
+
+    if (Array.isArray(a.rubrics) && a.rubrics.length > 0) {
+        currentProjectRubrics = JSON.parse(JSON.stringify(a.rubrics));
+    } else {
+        applyProjectRubricPreset('coding');
+    }
+
+    renderProjectRubricsList();
+    calcProjectTotalPoints();
+
+    const modalEl = document.getElementById('addProjectModal');
+    if (modalEl) new bootstrap.Modal(modalEl).show();
+}
+window.openEditProjectModal = openEditProjectModal;
+
+function openEditRegularAssignmentModal(a) {
+    editingAssignmentId = a.id;
+    editingAssignmentType = 'regular';
+
+    const form = document.getElementById('form-add-assignment');
+    if (form) form.reset();
+
+    const titleEl = document.getElementById('modal-add-assignment-title');
+    if (titleEl) {
+        titleEl.innerHTML = '<i class="bi bi-pencil-square me-2"></i>แก้ไขการบ้าน / งานที่มอบหมาย';
+    }
+
+    const shortcuts = document.getElementById('assignment-shortcuts-container');
+    if (shortcuts) {
+        shortcuts.classList.add('d-none');
+    }
+
+    const btn = document.getElementById('btn-save-assignment');
+    if (btn) {
+        btn.innerHTML = '<i class="bi bi-floppy-fill me-1"></i>บันทึกการแก้ไข';
+    }
+
+    const titleInput = document.getElementById('assignment-title');
+    if (titleInput) titleInput.value = a.title || '';
+
+    const dueDateInput = document.getElementById('assignment-due-date');
+    if (dueDateInput) dueDateInput.value = a.due_date || '';
+
+    const pointsInput = document.getElementById('assignment-points');
+    if (pointsInput) pointsInput.value = a.points || 10;
+
+    const descInput = document.getElementById('assignment-desc');
+    if (descInput) descInput.value = a.description || '';
+
+    const modalEl = document.getElementById('addAssignmentModal');
+    if (modalEl) new bootstrap.Modal(modalEl).show();
+}
+window.openEditRegularAssignmentModal = openEditRegularAssignmentModal;
+
+async function openEditQuizAssignmentModal(a) {
+    editingAssignmentId = a.id;
+    editingAssignmentType = 'quiz';
+
+    await openAssignQuizModal(false, true);
+
+    const titleEl = document.getElementById('modal-assign-quiz-title');
+    if (titleEl) {
+        titleEl.innerText = '✏️ แก้ไขการสั่งสอบ Gyver Quiz';
+    }
+
+    const btn = document.getElementById('btn-save-quiz-assign');
+    if (btn) {
+        btn.innerHTML = '<i class="bi bi-floppy-fill me-1"></i>บันทึกการแก้ไข';
+    }
+
+    const titleInput = document.getElementById('assign-quiz-title');
+    if (titleInput) titleInput.value = a.title || '';
+
+    const dueDateInput = document.getElementById('assign-quiz-due-date');
+    if (dueDateInput) dueDateInput.value = a.due_date || '';
+
+    const pointsInput = document.getElementById('assign-quiz-points');
+    if (pointsInput) pointsInput.value = a.points || 10;
+
+    const descInput = document.getElementById('assign-quiz-desc');
+    if (descInput) descInput.value = a.description || '';
+
+    const select = document.getElementById('assign-quiz-select');
+    if (select && a.quiz_id) {
+        select.value = a.quiz_id;
+        onSelectQuizInModal(a.quiz_id);
+    }
+}
+window.openEditQuizAssignmentModal = openEditQuizAssignmentModal;
+
+function renderProjectRubricsList() {
+    const container = document.getElementById('project-rubrics-container');
+    if (!container) return;
+
+    container.innerHTML = currentProjectRubrics.map((r, idx) => `
+        <div class="p-2.5 bg-white rounded-3 border d-flex align-items-center gap-2 shadow-2xs">
+            <span class="badge bg-primary-subtle text-primary border font-mono rounded-pill px-2.5 py-1">เกณฑ์ที่ ${idx + 1}</span>
+            <input type="text" class="form-control form-control-sm rounded-2 flex-grow-1" placeholder="ชื่อเกณฑ์ เช่น ความถูกต้อง, ความสวยงาม..." value="${escapeHtml(r.title)}" oninput="updateProjectRubricTitle(${idx}, this.value)">
+            <div class="d-flex align-items-center gap-1" style="min-width: 140px;">
+                <input type="number" class="form-control form-control-sm rounded-2 text-center font-mono" min="1" max="100" style="width: 75px;" value="${r.max}" oninput="updateProjectRubricMax(${idx}, this.value)">
+                <span class="small text-muted font-mono">คะแนน</span>
+            </div>
+            <button type="button" class="btn btn-outline-danger btn-sm rounded-circle p-1" style="width: 28px; height: 28px; line-height: 1;" onclick="removeProjectRubricRow(${idx})" title="ลบเกณฑ์นี้" ${currentProjectRubrics.length <= 1 ? 'disabled' : ''}>
+                <i class="bi bi-trash3"></i>
+            </button>
+        </div>
+    `).join('');
+}
+window.renderProjectRubricsList = renderProjectRubricsList;
+
+function updateProjectRubricTitle(idx, val) {
+    if (currentProjectRubrics[idx]) {
+        currentProjectRubrics[idx].title = val;
+    }
+}
+window.updateProjectRubricTitle = updateProjectRubricTitle;
+
+function updateProjectRubricMax(idx, val) {
+    if (currentProjectRubrics[idx]) {
+        const num = parseFloat(val);
+        currentProjectRubrics[idx].max = isNaN(num) || num < 0 ? 0 : num;
+        calcProjectTotalPoints();
+    }
+}
+window.updateProjectRubricMax = updateProjectRubricMax;
+
+function addProjectRubricRow(title = '', max = 10) {
+    const newId = 'r_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+    currentProjectRubrics.push({
+        id: newId,
+        title: title || `เกณฑ์ที่ ${currentProjectRubrics.length + 1}`,
+        max: max
+    });
+    renderProjectRubricsList();
+    calcProjectTotalPoints();
+}
+window.addProjectRubricRow = addProjectRubricRow;
+
+function removeProjectRubricRow(idx) {
+    if (currentProjectRubrics.length <= 1) {
+        showToast('warning', 'ไม่สามารถลบได้', 'ต้องมีเกณฑ์การประเมินอย่างน้อย 1 ข้อ');
+        return;
+    }
+    currentProjectRubrics.splice(idx, 1);
+    renderProjectRubricsList();
+    calcProjectTotalPoints();
+}
+window.removeProjectRubricRow = removeProjectRubricRow;
+
+function applyProjectRubricPreset(type) {
+    if (type === 'coding') {
+        currentProjectRubrics = [
+            { id: 'r1', title: 'ความถูกต้องของการทำงานของโค้ด/โปรแกรม', max: 10 },
+            { id: 'r2', title: 'ความสวยงามและการออกแบบหน้าตา (UI/UX)', max: 10 },
+            { id: 'r3', title: 'การนำไปใช้งานได้จริง & ประสิทธิภาพ', max: 10 }
+        ];
+    } else if (type === 'invention') {
+        currentProjectRubrics = [
+            { id: 'r1', title: 'ความสวยงามและความประณีตของชิ้นงาน', max: 10 },
+            { id: 'r2', title: 'ความถูกต้องตรงตามฟังก์ชันและข้อกำหนด', max: 10 },
+            { id: 'r3', title: 'ความคงทน ปลอดภัย และการใช้งานได้จริง', max: 10 }
+        ];
+    } else if (type === 'report') {
+        currentProjectRubrics = [
+            { id: 'r1', title: 'ความถูกต้องและความสมบูรณ์ของเนื้อหา', max: 10 },
+            { id: 'r2', title: 'รูปเล่ม การจัดวาง และความสวยงามเรียบร้อย', max: 10 },
+            { id: 'r3', title: 'การคิดวิเคราะห์ สรุปผล และการอ้างอิง', max: 10 }
+        ];
+    } else if (type === 'presentation') {
+        currentProjectRubrics = [
+            { id: 'r1', title: 'ความมั่นใจและลีลาการสื่อสารนำเสนอ', max: 10 },
+            { id: 'r2', title: 'ความน่าสนใจและความสวยงามของสไลด์/สื่อ', max: 10 },
+            { id: 'r3', title: 'ความถูกต้องในการตอบข้อซักถาม', max: 10 }
+        ];
+    }
+    renderProjectRubricsList();
+    calcProjectTotalPoints();
+    showToast('info', 'โหลดเกณฑ์สำเร็จรูปแล้ว', `ตั้งค่าเกณฑ์แบบ "${type}" เรียบร้อย สามารถปรับแก้คะแนนและหัวข้อได้ตามต้องการ`);
+}
+window.applyProjectRubricPreset = applyProjectRubricPreset;
+
+function calcProjectTotalPoints() {
+    const total = currentProjectRubrics.reduce((sum, r) => sum + (parseFloat(r.max) || 0), 0);
+    const badge = document.getElementById('project-total-points-badge');
+    if (badge) {
+        badge.innerText = `${total} คะแนน`;
+    }
+    return total;
+}
+window.calcProjectTotalPoints = calcProjectTotalPoints;
+
+async function handleSaveProjectAssignment(e) {
+    e.preventDefault();
+    if (!activeClassroom) return;
+
+    const title = document.getElementById('project-title')?.value.trim();
+    if (!title) {
+        showToast('warning', 'กรุณาระบุชื่อโปรเจกต์', 'ต้องตั้งชื่อโปรเจกต์ก่อนบันทึก');
+        return;
+    }
+
+    const dueDate = document.getElementById('project-due-date')?.value || '';
+    const desc = document.getElementById('project-desc')?.value.trim() || '';
+
+    // Validate rubrics
+    if (!currentProjectRubrics || currentProjectRubrics.length === 0) {
+        showToast('warning', 'ขาดเกณฑ์การประเมิน', 'กรุณาเพิ่มเกณฑ์การให้คะแนนอย่างน้อย 1 ข้อ');
+        return;
+    }
+
+    for (let r of currentProjectRubrics) {
+        if (!r.title.trim()) {
+            showToast('warning', 'กรุณาระบุชื่อเกณฑ์', 'มีเกณฑ์ที่ยังไม่ได้ระบุชื่อ');
+            return;
+        }
+        if ((parseFloat(r.max) || 0) <= 0) {
+            showToast('warning', 'คะแนนไม่ถูกต้อง', `เกณฑ์ "${r.title}" ต้องมีคะแนนมากกว่า 0`);
+            return;
+        }
+    }
+
+    const totalPoints = calcProjectTotalPoints();
+    let assignments = getSharedCourseAssignments();
+    const isEditing = !!editingAssignmentId;
+
+    if (isEditing) {
+        const target = assignments.find(a => a.id === editingAssignmentId);
+        if (target) {
+            target.title = title;
+            target.due_date = dueDate;
+            target.points = totalPoints;
+            target.description = desc;
+            target.rubrics = currentProjectRubrics.map((r, i) => ({
+                id: r.id || `r_${i + 1}`,
+                title: r.title.trim(),
+                max: parseFloat(r.max) || 0
+            }));
+            target.updated_at = new Date().toISOString();
+        }
+    } else {
+        const newProject = {
+            id: 'project_' + Date.now(),
+            type: 'project',
+            title: title,
+            due_date: dueDate,
+            points: totalPoints,
+            description: desc,
+            rubrics: currentProjectRubrics.map((r, i) => ({
+                id: r.id || `r_${i + 1}`,
+                title: r.title.trim(),
+                max: parseFloat(r.max) || 0
+            })),
+            submissions: {},
+            created_at: new Date().toISOString()
+        };
+        assignments.unshift(newProject);
+    }
+
+    const btn = document.getElementById('btn-save-project-assign');
+    if (btn) btn.disabled = true;
+
+    try {
+        await saveSharedCourseAssignments(assignments);
+        if (isEditing) {
+            showToast('success', 'บันทึกการแก้ไขโปรเจกต์สำเร็จ!', `อัปเดตข้อมูลและเกณฑ์คะแนน "${title}" เรียบร้อยแล้ว`);
+        } else {
+            showToast('success', 'มอบหมายโปรเจกต์สำเร็จ!', `โปรเจกต์ "${title}" (เต็ม ${totalPoints} คะแนน ตามเกณฑ์ ${currentProjectRubrics.length} ข้อ) ถูกสั่งไปยังทุกห้องเรียบร้อยแล้ว`);
+        }
+        editingAssignmentId = null;
+        editingAssignmentType = null;
+        document.getElementById('form-add-project')?.reset();
+        bootstrap.Modal.getInstance(document.getElementById('addProjectModal'))?.hide();
+        loadAssignments();
+    } catch (err) {
+        console.warn("Save project error:", err);
+        showToast('error', 'บันทึกผิดพลาด', err?.message || 'เกิดข้อผิดพลาด');
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+window.handleSaveProjectAssignment = handleSaveProjectAssignment;
+
+// ==============================================================
+// 📊 EVALUATION: ประเมินคะแนนโปรเจกต์ตามเกณฑ์รูบริก
+// ==============================================================
+function openGradeProjectRubricModal(encodedStudentKey, assignmentId) {
+    const studentKey = decodeURIComponent(encodedStudentKey);
+    const assignments = getSharedCourseAssignments();
+    const assignment = assignments.find(a => a.id === assignmentId);
+    if (!assignment) return;
+
+    const allStudents = getAllStudentsInCourse();
+    const student = allStudents.find(s => (s.user_id || s.name) === studentKey) || { name: studentKey, _roomName: '-' };
+
+    activeGradeRubricStudent = {
+        assignmentId: assignmentId,
+        studentKey: studentKey,
+        studentName: student.name,
+        roomName: student._roomName
+    };
+
+    // Fill titles
+    const nameEl = document.getElementById('grade-rubric-student-name');
+    if (nameEl) nameEl.innerHTML = `<i class="bi bi-person-fill text-primary me-1"></i>${escapeHtml(student.name)} <span class="badge bg-primary-subtle text-primary font-mono ms-1">${escapeHtml(student._roomName)}</span>`;
+
+    const titleEl = document.getElementById('grade-rubric-assignment-title');
+    if (titleEl) titleEl.innerText = `โปรเจกต์: ${assignment.title} (คะแนนเต็มรวม ${assignment.points} คะแนน)`;
+
+    // Student submission preview
+    const sub = assignment.submissions?.[studentKey] || {};
+    const infoEl = document.getElementById('grade-rubric-submission-info');
+    if (infoEl) {
+        if (!sub.submitted_at && !sub.file_url && (!sub.files || sub.files.length === 0)) {
+            infoEl.innerHTML = `
+                <div class="d-flex align-items-center justify-content-between">
+                    <span class="badge bg-secondary-subtle text-secondary"><i class="bi bi-clock me-1"></i>ยังไม่ส่งงานในระบบ</span>
+                    <small class="text-muted">(ครูสามารถประเมินผลชิ้นงานจริงหรือการนำเสนอได้ทันที)</small>
+                </div>
+            `;
+        } else {
+            let filesHtml = '';
+            if (Array.isArray(sub.files) && sub.files.length > 0) {
+                filesHtml = `
+                    <div class="d-flex flex-wrap gap-1 mt-1">
+                        ${sub.files.map(f => `
+                            <a href="${f.url}" target="_blank" class="btn btn-outline-success btn-sm rounded-pill px-2.5 py-0.5 small d-inline-flex align-items-center gap-1" title="${f.name}">
+                                <i class="bi bi-file-earmark-arrow-down"></i> <span class="text-truncate" style="max-width: 160px;">${f.name}</span>
+                            </a>
+                        `).join('')}
+                    </div>
+                `;
+            } else if (sub.file_url) {
+                filesHtml = `
+                    <div class="mt-1">
+                        <a href="${sub.file_url}" target="_blank" class="btn btn-outline-primary btn-sm rounded-pill px-3 py-1 fw-bold">
+                            <i class="bi bi-box-arrow-up-right me-1"></i>เปิดดูไฟล์/ลิงก์ผลงาน
+                        </a>
+                    </div>
+                `;
+            }
+
+            infoEl.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="badge bg-success-subtle text-success"><i class="bi bi-check-circle-fill me-1"></i>ส่งงานแล้ว</span>
+                    <span class="small text-muted font-mono">ส่งเมื่อ: ${new Date(sub.submitted_at).toLocaleString('th-TH')}</span>
+                </div>
+                ${filesHtml}
+                ${sub.comment ? `<div class="mt-2 text-dark small bg-white p-2 rounded-2 border"><b>บันทึกจากนักเรียน:</b> "${escapeHtml(sub.comment)}"</div>` : ''}
+            `;
+        }
+    }
+
+    // Render Rubrics Criteria inputs
+    const inputsContainer = document.getElementById('grade-rubric-inputs-container');
+    const rubrics = assignment.rubrics || [
+        { id: 'r1', title: 'คะแนนรวม', max: assignment.points }
+    ];
+
+    const currentRubricScores = sub.rubric_scores || {};
+
+    if (inputsContainer) {
+        inputsContainer.innerHTML = rubrics.map((r, idx) => {
+            const val = currentRubricScores[r.id] !== undefined ? currentRubricScores[r.id] : '';
+            return `
+                <div class="p-2.5 bg-white rounded-3 border d-flex justify-content-between align-items-center gap-2">
+                    <div class="flex-grow-1">
+                        <div class="fw-bold text-dark small">${idx + 1}. ${escapeHtml(r.title)}</div>
+                        <small class="text-muted font-mono">(เต็ม ${r.max} คะแนน)</small>
+                    </div>
+                    <div class="d-flex align-items-center gap-1">
+                        <input type="number" 
+                            id="grade_rubric_input_${r.id}" 
+                            class="form-control form-control-sm text-center font-mono fw-bold rounded-2 grade-rubric-item-input" 
+                            data-max="${r.max}" 
+                            data-rubric-id="${r.id}"
+                            min="0" 
+                            max="${r.max}" 
+                            step="0.5" 
+                            value="${val}" 
+                            placeholder="0-${r.max}"
+                            style="width: 85px;" 
+                            oninput="updateGradeRubricTotalDisplay()">
+                        <span class="small text-secondary font-mono">/${r.max}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // Teacher feedback
+    const fbEl = document.getElementById('grade-rubric-feedback');
+    if (fbEl) {
+        fbEl.value = sub.feedback || sub.teacher_comment || '';
+    }
+
+    updateGradeRubricTotalDisplay(assignment.points);
+
+    const modalEl = document.getElementById('gradeProjectRubricModal');
+    if (modalEl) new bootstrap.Modal(modalEl).show();
+}
+window.openGradeProjectRubricModal = openGradeProjectRubricModal;
+
+function updateGradeRubricTotalDisplay(maxPointsOverride) {
+    const inputs = document.querySelectorAll('.grade-rubric-item-input');
+    let totalScore = 0;
+    let anyFilled = false;
+
+    inputs.forEach(inp => {
+        if (inp.value !== '') {
+            anyFilled = true;
+            let val = parseFloat(inp.value);
+            const max = parseFloat(inp.dataset.max) || 0;
+            if (val > max) {
+                inp.value = max;
+                val = max;
+            } else if (val < 0) {
+                inp.value = 0;
+                val = 0;
+            }
+            totalScore += isNaN(val) ? 0 : val;
+        }
+    });
+
+    const displayEl = document.getElementById('grade-rubric-total-display');
+    if (displayEl) {
+        const assignments = getSharedCourseAssignments();
+        const assignment = assignments.find(a => a.id === activeGradeRubricStudent.assignmentId);
+        const max = maxPointsOverride || assignment?.points || 0;
+        displayEl.innerText = `${anyFilled ? Math.round(totalScore * 100) / 100 : 0} / ${max} คะแนน`;
+    }
+}
+window.updateGradeRubricTotalDisplay = updateGradeRubricTotalDisplay;
+
+async function saveProjectRubricEvaluation() {
+    const { assignmentId, studentKey, studentName } = activeGradeRubricStudent;
+    if (!assignmentId || !studentKey) return;
+
+    let assignments = getSharedCourseAssignments();
+    const assignment = assignments.find(a => a.id === assignmentId);
+    if (!assignment) return;
+
+    if (!assignment.submissions) assignment.submissions = {};
+    const sub = assignment.submissions[studentKey] || {
+        submitted_at: new Date().toISOString()
+    };
+
+    const inputs = document.querySelectorAll('.grade-rubric-item-input');
+    const rubricScores = {};
+    let totalScore = 0;
+    let hasAnyScore = false;
+
+    inputs.forEach(inp => {
+        const rId = inp.dataset.rubricId;
+        if (inp.value !== '') {
+            hasAnyScore = true;
+            const val = parseFloat(inp.value);
+            rubricScores[rId] = isNaN(val) ? 0 : val;
+            totalScore += rubricScores[rId];
+        }
+    });
+
+    sub.score = hasAnyScore ? Math.round(totalScore * 100) / 100 : null;
+    sub.rubric_scores = rubricScores;
+    sub.feedback = document.getElementById('grade-rubric-feedback')?.value.trim() || '';
+    sub.graded_at = new Date().toISOString();
+
+    assignment.submissions[studentKey] = sub;
+
+    try {
+        await saveSharedCourseAssignments(assignments);
+        showToast('success', 'บันทึกคะแนนเรียบร้อย!', `ประเมินผลงาน ${studentName} ได้ ${sub.score ?? 0} / ${assignment.points} คะแนน`);
+        bootstrap.Modal.getInstance(document.getElementById('gradeProjectRubricModal'))?.hide();
+        renderSubmissionsTable(assignment);
+        loadAssignments();
+    } catch (err) {
+        console.warn("Save rubric grade error:", err);
+        showToast('error', 'บันทึกคะแนนผิดพลาด', err?.message || 'เกิดข้อผิดพลาด');
+    }
+}
+window.saveProjectRubricEvaluation = saveProjectRubricEvaluation;
+
+// ==============================================================
+// ⚡ GYVER QUIZ INTEGRATION: สั่งสอบ & ซิงค์คะแนนอัตโนมัติ
+// ==============================================================
+let cachedQuizzesForModal = [];
+
+function switchToQuizModal() {
+    const modalEl = document.getElementById('addAssignmentModal');
+    if (modalEl) {
+        bootstrap.Modal.getInstance(modalEl)?.hide();
+    }
+    setTimeout(() => {
+        openAssignQuizModal();
+    }, 300);
+}
+window.switchToQuizModal = switchToQuizModal;
+
+async function openAssignQuizModal(fromAddModal = false, isEditingQuiz = false) {
+    if (fromAddModal) {
+        const modalEl = document.getElementById('addAssignmentModal');
+        if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
+    }
+
+    if (!isEditingQuiz) {
+        editingAssignmentId = null;
+        editingAssignmentType = null;
+        const form = document.getElementById('form-assign-quiz');
+        if (form) form.reset();
+        const titleEl = document.getElementById('modal-assign-quiz-title');
+        if (titleEl) titleEl.innerText = 'สั่งสอบด้วย Gyver Quiz';
+        const btn = document.getElementById('btn-save-quiz-assign');
+        if (btn) btn.innerHTML = '<i class="bi bi-patch-question-fill me-1"></i>มอบหมายแบบทดสอบ';
+        const infoCard = document.getElementById('assign-quiz-info-card');
+        if (infoCard) infoCard.classList.add('d-none');
+    }
+
+    const select = document.getElementById('assign-quiz-select');
+    if (select) {
+        select.innerHTML = '<option value="">-- กำลังโหลดแบบทดสอบจากคลัง... --</option>';
+    }
+
+    // กำหนดวันส่งเริ่มต้น: 7 วันถัดไป (เฉพาะเมื่อสร้างใหม่)
+    if (!isEditingQuiz) {
+        const dueDateInput = document.getElementById('assign-quiz-due-date');
+        if (dueDateInput) {
+            const nextWeek = new Date();
+            nextWeek.setDate(nextWeek.getDate() + 7);
+            dueDateInput.value = nextWeek.toISOString().split('T')[0];
+        }
+    }
+
+    const modalEl = document.getElementById('assignQuizModal');
+    if (modalEl) new bootstrap.Modal(modalEl).show();
+
+    // ดึงแบบทดสอบจาก Supabase และ LocalStorage
+    cachedQuizzesForModal = [];
+    try {
+        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+            const { data, error } = await supabaseClient
+                .from('gyver_quizzes')
+                .select('*')
+                .order('created_at', { ascending: false });
+            if (!error && Array.isArray(data)) {
+                cachedQuizzesForModal = data.map(item => ({
+                    id: item.id,
+                    title: item.title,
+                    description: item.description,
+                    questions: Array.isArray(item.schema) ? item.schema : (item.schema?.questions || []),
+                    settings: item.schema?.settings || {}
+                }));
+            }
+        }
+    } catch (_) {}
+
+    try {
+        const localRaw = localStorage.getItem('gyver_quizzes_list');
+        if (localRaw) {
+            const localQuizzes = JSON.parse(localRaw);
+            if (Array.isArray(localQuizzes)) {
+                localQuizzes.forEach(lq => {
+                    if (!cachedQuizzesForModal.some(q => q.id === lq.id)) {
+                        cachedQuizzesForModal.push(lq);
+                    }
+                });
+            }
+        }
+    } catch (_) {}
+
+    if (select) {
+        if (cachedQuizzesForModal.length === 0) {
+            select.innerHTML = '<option value="">-- ไม่พบชุดข้อสอบในคลัง (คลิก "สร้าง/จัดการข้อสอบ" เพื่อสร้างใหม่) --</option>';
+        } else {
+            select.innerHTML = '<option value="">-- กรุณาเลือกชุดแบบทดสอบที่ต้องการสั่งสอบ --</option>' +
+                cachedQuizzesForModal.map(q => {
+                    const qCount = Array.isArray(q.questions) ? q.questions.length : 0;
+                    return `<option value="${q.id}">📝 ${escapeHtml(q.title)} (${qCount} ข้อ)</option>`;
+                }).join('');
+        }
+    }
+}
+window.openAssignQuizModal = openAssignQuizModal;
+
+function onSelectQuizInModal(quizId) {
+    const infoCard = document.getElementById('assign-quiz-info-card');
+    if (!quizId) {
+        if (infoCard) infoCard.classList.add('d-none');
+        return;
+    }
+
+    const quiz = cachedQuizzesForModal.find(q => q.id === quizId);
+    if (!quiz) return;
+
+    const qCount = Array.isArray(quiz.questions) ? quiz.questions.length : 0;
+    const timeLimit = quiz.settings?.timeLimit ? `${quiz.settings.timeLimit} นาที` : 'ไม่จำกัดเวลา';
+    const passScore = quiz.settings?.passingScore ? `ผ่าน ${quiz.settings.passingScore}%` : 'ผ่าน 70%';
+
+    const titleInput = document.getElementById('assign-quiz-title');
+    if (titleInput && (!titleInput.value || titleInput.value.startsWith('สอบ'))) {
+        titleInput.value = `สอบ: ${quiz.title}`;
+    }
+
+    const pointsInput = document.getElementById('assign-quiz-points');
+    if (pointsInput && !editingAssignmentId) {
+        pointsInput.value = qCount > 0 ? (qCount <= 30 ? qCount : 10) : 10;
+    }
+
+    const descInput = document.getElementById('assign-quiz-desc');
+    if (descInput && !descInput.value) {
+        descInput.value = quiz.description || 'ให้นักเรียนทำแบบทดสอบให้ครบทุกข้อ มีเวลาทำตามที่กำหนด';
+    }
+
+    if (infoCard) {
+        infoCard.classList.remove('d-none');
+        document.getElementById('assign-quiz-card-title').innerText = quiz.title;
+        document.getElementById('assign-quiz-card-qcount').innerText = `${qCount} ข้อ`;
+        document.getElementById('assign-quiz-card-desc').innerText = quiz.description || 'ไม่มีคำชี้แจง';
+        document.getElementById('assign-quiz-card-time').innerHTML = `<i class="bi bi-stopwatch me-1"></i>${timeLimit}`;
+        document.getElementById('assign-quiz-card-pass').innerHTML = `<i class="bi bi-award me-1"></i>${passScore}`;
+    }
+}
+window.onSelectQuizInModal = onSelectQuizInModal;
+
+async function handleSaveQuizAssignment(e) {
+    e.preventDefault();
+    if (!activeClassroom) return;
+
+    const select = document.getElementById('assign-quiz-select');
+    const quizId = select ? select.value : '';
+    if (!quizId) {
+        showToast('warning', 'กรุณาเลือกข้อสอบ', 'โปรดเลือกชุดแบบทดสอบที่ต้องการสั่งสอบ');
+        return;
+    }
+
+    const quiz = cachedQuizzesForModal.find(q => q.id === quizId) || { id: quizId, title: 'แบบทดสอบ' };
+    const title = document.getElementById('assign-quiz-title').value.trim() || quiz.title;
+    const dueDate = document.getElementById('assign-quiz-due-date').value;
+    const points = parseInt(document.getElementById('assign-quiz-points').value) || 10;
+    const desc = document.getElementById('assign-quiz-desc').value.trim() || quiz.description || '';
+
+    const qCount = Array.isArray(quiz.questions) ? quiz.questions.length : 0;
+
+    let assignments = getSharedCourseAssignments();
+    const isEditing = !!editingAssignmentId;
+
+    if (isEditing) {
+        const target = assignments.find(a => a.id === editingAssignmentId);
+        if (target) {
+            target.title = title;
+            target.due_date = dueDate;
+            target.points = points;
+            target.description = desc;
+            target.quiz_id = quiz.id;
+            target.quiz_title = quiz.title;
+            target.quiz_total_questions = qCount;
+            target.updated_at = new Date().toISOString();
+        }
+    } else {
+        const newAssignment = {
+            id: 'quiz_' + Date.now(),
+            type: 'quiz',
+            quiz_id: quiz.id,
+            quiz_title: quiz.title,
+            quiz_total_questions: qCount,
+            title: title,
+            due_date: dueDate,
+            points: points,
+            description: desc,
+            submissions: {},
+            created_at: new Date().toISOString()
+        };
+        assignments.unshift(newAssignment);
+    }
+
+    const btn = document.getElementById('btn-save-quiz-assign');
+    if (btn) btn.disabled = true;
+
+    try {
+        await saveSharedCourseAssignments(assignments);
+        if (isEditing) {
+            showToast('success', 'บันทึกการแก้ไขแบบทดสอบสำเร็จ!', `อัปเดตข้อมูลการสอบ "${title}" เรียบร้อยแล้ว`);
+        } else {
+            showToast('success', 'สั่งสอบสำเร็จ!', `มอบหมายแบบทดสอบ "${title}" ให้นักเรียนทุกห้องในรายวิชานี้เรียบร้อย`);
+        }
+        editingAssignmentId = null;
+        editingAssignmentType = null;
+        document.getElementById('form-assign-quiz')?.reset();
+        document.getElementById('assign-quiz-info-card')?.classList.add('d-none');
+        bootstrap.Modal.getInstance(document.getElementById('assignQuizModal'))?.hide();
+        loadAssignments();
+    } catch (err) {
+        console.warn("Save quiz assignment error:", err);
+        showToast('error', 'เกิดข้อผิดพลาด', err?.message || 'ไม่สามารถบันทึกได้');
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+window.handleSaveQuizAssignment = handleSaveQuizAssignment;
+
+// 🔄 ซิงค์คะแนนจาก Gyver Quiz เข้าสู่ห้องเรียนอัตโนมัติ
+async function syncQuizSubmissionsForAssignment(assignmentId) {
+    if (!activeClassroom) return;
+    const assignments = getSharedCourseAssignments();
+    const assignment = assignments.find(a => a.id === assignmentId);
+    if (!assignment || !assignment.quiz_id) return;
+
+    showToast('info', 'กำลังดึงคะแนน...', 'กำลังค้นหาผลสอบจากระบบ Gyver Quiz');
+
+    try {
+        let responses = [];
+        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+            const { data, error } = await supabaseClient
+                .from('gyver_quiz_responses')
+                .select('*')
+                .eq('quiz_id', assignment.quiz_id)
+                .order('created_at', { ascending: false });
+            if (!error && Array.isArray(data)) {
+                responses = data;
+            }
+        }
+
+        try {
+            const localRaw = localStorage.getItem(`gyver_quiz_responses_${assignment.quiz_id}`);
+            if (localRaw) {
+                const localList = JSON.parse(localRaw);
+                if (Array.isArray(localList)) {
+                    localList.forEach(lr => {
+                        const exists = responses.some(r => (r.student_name || '').trim().toLowerCase() === (lr.studentName || lr.student_name || '').trim().toLowerCase());
+                        if (!exists) {
+                            responses.push({
+                                student_name: lr.studentName || lr.student_name,
+                                score: lr.earnedPoints || lr.score,
+                                total: lr.totalPoints || lr.total,
+                                percentage: lr.percent || lr.percentage,
+                                is_passed: lr.isPassed || lr.is_passed,
+                                created_at: lr.submittedAt || lr.created_at
+                            });
+                        }
+                    });
+                }
+            }
+        } catch (_) {}
+
+        if (!assignment.submissions) assignment.submissions = {};
+        const allStudents = getAllStudentsInCourse();
+        let syncedCount = 0;
+        const maxPoints = Number(assignment.points) || 10;
+
+        allStudents.forEach(st => {
+            const studentKey = st.user_id || st.name;
+            const cleanStName = (st.name || '').trim().toLowerCase();
+            const cleanStNick = (st.nickname || '').trim().toLowerCase();
+
+            const match = responses.find(r => {
+                const rName = (r.student_name || '').trim().toLowerCase();
+                return rName === cleanStName || (cleanStNick && rName === cleanStNick) || rName.includes(cleanStName);
+            });
+
+            if (match) {
+                const rawScore = Number(match.score || 0);
+                const rawTotal = Number(match.total || 0);
+                const scaledScore = rawTotal > 0 ? Math.round((rawScore / rawTotal) * maxPoints * 10) / 10 : rawScore;
+
+                assignment.submissions[studentKey] = {
+                    score: scaledScore,
+                    raw_score: rawScore,
+                    raw_total: rawTotal,
+                    percentage: match.percentage,
+                    is_passed: match.is_passed,
+                    submitted_at: match.created_at || new Date().toISOString(),
+                    note: `ทำแบบทดสอบ Gyver Quiz ได้ ${rawScore}/${rawTotal} คะแนน`
+                };
+                syncedCount++;
+            }
+        });
+
+        await saveSharedCourseAssignments(assignments);
+        renderSubmissionsTable(assignment);
+        loadAssignments();
+        showToast('success', 'ซิงค์คะแนนสำเร็จ!', `ดึงคะแนนสอบจาก Gyver Quiz ได้ ${syncedCount} คน`);
+    } catch (err) {
+        console.warn("Sync quiz error:", err);
+        showToast('error', 'ซิงค์ผิดพลาด', err?.message || 'ไม่สามารถดึงคะแนนได้');
+    }
+}
+window.syncQuizSubmissionsForAssignment = syncQuizSubmissionsForAssignment;
+
 // 🔍 ตัวแปรสำหรับฟิลเตอร์กรองตรวจงานตามห้องเรียน ('all' หรือ classId)
 let currentSubmissionFilterRoom = 'all';
 
@@ -2592,6 +3935,36 @@ function openSubmissionsModal(assignmentId) {
 
     document.getElementById('submissions-modal-title').innerText = `ตรวจงาน: ${assignment.title}`;
     document.getElementById('submissions-modal-subtitle').innerText = `คะแนนเต็ม: ${assignment.points} คะแนน • กำหนดส่ง: ${assignment.due_date || 'ไม่ระบุ'}`;
+
+    const isQuiz = assignment.type === 'quiz' || !!assignment.quiz_id;
+    const bannerEl = document.getElementById('submissions-quiz-banner');
+    if (bannerEl) {
+        if (isQuiz) {
+            bannerEl.classList.remove('d-none');
+            bannerEl.innerHTML = `
+                <div class="alert alert-warning border border-warning-subtle d-flex flex-wrap justify-content-between align-items-center gap-2 p-2 px-3 mb-0 rounded-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-patch-question-fill text-warning fs-4"></i>
+                        <div>
+                            <div class="fw-bold text-dark small">แบบทดสอบ Gyver Quiz: ${escapeHtml(assignment.quiz_title || assignment.title)}</div>
+                            <div class="text-muted" style="font-size: 0.72rem;">ระบบบันทึกผลสอบของนักเรียนเข้าสู่ห้องเรียนอัตโนมัติ หรือกดปุ่มดึงคะแนนเพื่ออัปเดตล่าสุด</div>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <a href="../../features/education/quiz/quiz_lobby.html?quizId=${encodeURIComponent(assignment.quiz_id)}" target="_blank" class="btn btn-dark btn-sm rounded-pill px-3 fw-bold shadow-xs">
+                            <i class="bi bi-broadcast-pin me-1 text-warning"></i>เปิดห้องสอบสด (Lobby)
+                        </a>
+                        <button type="button" class="btn btn-warning text-dark btn-sm rounded-pill px-3 fw-bold shadow-xs" onclick="syncQuizSubmissionsForAssignment('${assignment.id}')">
+                            <i class="bi bi-arrow-repeat me-1"></i>ดึงคะแนนสอบล่าสุด
+                        </button>
+                    </div>
+                </div>
+            `;
+        } else {
+            bannerEl.classList.add('d-none');
+            bannerEl.innerHTML = '';
+        }
+    }
 
     renderSubmissionsFilterButtons(assignment);
     renderSubmissionsTable(assignment);
@@ -2686,59 +4059,117 @@ function renderSubmissionsTable(assignment) {
                 ${hasSubmitted ? `<span class="badge bg-success-subtle text-success font-mono">${new Date(sub.submitted_at).toLocaleDateString('th-TH')}</span>` : '<span class="badge bg-secondary-subtle text-secondary">ยังไม่ส่ง</span>'}
             </td>
             <td>
-                ${hasSubmitted && (sub.file_url || (Array.isArray(sub.files) && sub.files.length > 0)) ? `
-                    ${(Array.isArray(sub.files) && sub.files.length > 1) ? `
-                        <div class="d-flex flex-wrap gap-1" style="max-width: 260px;">
-                            ${sub.files.map((f, fIdx) => {
-                                const ext = (f.name || '').split('.').pop().toLowerCase();
-                                let icon = 'bi-file-earmark-arrow-down-fill';
-                                let btnColor = 'btn-outline-success';
-                                if (['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext)) {
-                                    icon = 'bi-file-earmark-image-fill';
-                                } else if (['doc', 'docx'].includes(ext)) {
-                                    icon = 'bi-file-earmark-word-fill';
-                                    btnColor = 'btn-outline-primary';
-                                } else if (['pdf'].includes(ext)) {
-                                    icon = 'bi-file-earmark-pdf-fill';
-                                    btnColor = 'btn-outline-danger';
-                                } else if (['xls', 'xlsx', 'csv'].includes(ext)) {
-                                    icon = 'bi-file-earmark-excel-fill';
-                                    btnColor = 'btn-outline-success';
-                                } else if (['ppt', 'pptx'].includes(ext)) {
-                                    icon = 'bi-file-earmark-slides-fill';
-                                    btnColor = 'btn-outline-warning';
-                                } else if (['zip', 'rar', '7z'].includes(ext)) {
-                                    icon = 'bi-file-earmark-zip-fill';
-                                    btnColor = 'btn-outline-secondary';
-                                }
-                                return `
-                                <a href="${f.url}" target="_blank" class="btn btn-sm ${btnColor} rounded-pill px-2 py-0 small d-inline-flex align-items-center gap-1 text-truncate" style="max-width: 125px; font-size: 0.76rem;" title="${f.name || `ไฟล์ที่ ${fIdx+1}`}">
-                                    <i class="bi ${icon}"></i>
-                                    <span class="text-truncate">${f.name || `ไฟล์ ${fIdx+1}`}</span>
-                                </a>`;
-                            }).join('')}
-                        </div>
-                    ` : (sub.file_url ? (
-                        (sub.file_url.includes('cloudinary.com') || sub.submission_type === 'file') ? `
-                            <a href="${sub.file_url}" target="_blank" class="btn btn-sm btn-outline-success rounded-pill px-3 py-1 fw-bold text-truncate" style="max-width: 200px;" title="${sub.file_name || 'ดูไฟล์งาน'}">
-                                <i class="bi bi-file-earmark-arrow-down-fill me-1"></i>${sub.file_name ? sub.file_name : 'ดูไฟล์งาน'}
-                            </a>
-                        ` : `
-                            <a href="${sub.file_url}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1" title="เปิดลิงก์งาน">
-                                <i class="bi bi-link-45deg me-1"></i>เปิดลิงก์งาน
-                            </a>
-                        `
-                    ) : '<span class="text-muted small">-</span>')}
-                    ${sub.comment ? `<div class="small text-muted mt-1">💬 "${sub.comment}"</div>` : ''}
-                ` : '<span class="text-muted small">-</span>'}
+                ${(() => {
+                    if (!hasSubmitted) return '<span class="text-muted small">-</span>';
+                    if (assignment.type === 'quiz' || assignment.quiz_id) {
+                        return `
+                            <div class="d-inline-flex flex-column align-items-start">
+                                <span class="badge bg-warning-subtle text-dark border border-warning-subtle rounded-pill px-2.5 py-1 font-mono">
+                                    <i class="bi bi-patch-question-fill text-warning me-1"></i>สอบผ่าน Gyver Quiz
+                                    ${sub.raw_score !== undefined ? `(${sub.raw_score}/${sub.raw_total || assignment.points} คะแนน)` : ''}
+                                </span>
+                                ${sub.percentage !== undefined ? `<div class="small text-muted font-mono mt-0.5" style="font-size:0.72rem;">คิดเป็น ${sub.percentage}%</div>` : ''}
+                            </div>
+                        `;
+                    }
+                    let content = '';
+                    if (Array.isArray(sub.files) && sub.files.length > 1) {
+                        content = `
+                            <div class="d-flex flex-wrap gap-1" style="max-width: 260px;">
+                                ${sub.files.map((f, fIdx) => {
+                                    const ext = (f.name || '').split('.').pop().toLowerCase();
+                                    let icon = 'bi-file-earmark-arrow-down-fill';
+                                    let btnColor = 'btn-outline-success';
+                                    if (['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext)) {
+                                        icon = 'bi-file-earmark-image-fill';
+                                    } else if (['doc', 'docx'].includes(ext)) {
+                                        icon = 'bi-file-earmark-word-fill';
+                                        btnColor = 'btn-outline-primary';
+                                    } else if (['pdf'].includes(ext)) {
+                                        icon = 'bi-file-earmark-pdf-fill';
+                                        btnColor = 'btn-outline-danger';
+                                    } else if (['xls', 'xlsx', 'csv'].includes(ext)) {
+                                        icon = 'bi-file-earmark-excel-fill';
+                                        btnColor = 'btn-outline-success';
+                                    } else if (['ppt', 'pptx'].includes(ext)) {
+                                        icon = 'bi-file-earmark-slides-fill';
+                                        btnColor = 'btn-outline-warning';
+                                    } else if (['zip', 'rar', '7z'].includes(ext)) {
+                                        icon = 'bi-file-earmark-zip-fill';
+                                        btnColor = 'btn-outline-secondary';
+                                    }
+                                    return `
+                                    <a href="${f.url}" target="_blank" class="btn btn-sm ${btnColor} rounded-pill px-2 py-0 small d-inline-flex align-items-center gap-1 text-truncate" style="max-width: 125px; font-size: 0.76rem;" title="${f.name || `ไฟล์ที่ ${fIdx+1}`}">
+                                        <i class="bi ${icon}"></i>
+                                        <span class="text-truncate">${f.name || `ไฟล์ ${fIdx+1}`}</span>
+                                    </a>`;
+                                }).join('')}
+                            </div>
+                        `;
+                    } else if (sub.file_url) {
+                        if (sub.file_url.includes('cloudinary.com') || sub.submission_type === 'file') {
+                            content = `
+                                <a href="${sub.file_url}" target="_blank" class="btn btn-sm btn-outline-success rounded-pill px-3 py-1 fw-bold text-truncate" style="max-width: 200px;" title="${sub.file_name || 'ดูไฟล์งาน'}">
+                                    <i class="bi bi-file-earmark-arrow-down-fill me-1"></i>${sub.file_name ? sub.file_name : 'ดูไฟล์งาน'}
+                                </a>
+                            `;
+                        } else {
+                            content = `
+                                <a href="${sub.file_url}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1" title="เปิดลิงก์งาน">
+                                    <i class="bi bi-link-45deg me-1"></i>เปิดลิงก์งาน
+                                </a>
+                            `;
+                        }
+                    } else {
+                        content = '<span class="text-muted small">-</span>';
+                    }
+                    if (sub.comment) {
+                        content += `<div class="small text-muted mt-1">💬 "${sub.comment}"</div>`;
+                    }
+                    return content;
+                })()}
             </td>
             <td>
-                <input type="number" class="form-control form-control-sm text-center font-mono" id="score_input_${idx}" value="${hasSubmitted ? (sub.score ?? '') : ''}" max="${assignment.points}" min="0" placeholder="0/${assignment.points}">
+                ${(() => {
+                    const isProject = assignment.type === 'project' || (Array.isArray(assignment.rubrics) && assignment.rubrics.length > 0);
+                    if (isProject) {
+                        const hasScore = sub && sub.score !== undefined && sub.score !== null;
+                        let rubricBreakdown = '';
+                        if (sub && sub.rubric_scores) {
+                            rubricBreakdown = `
+                                <div class="d-flex flex-wrap gap-1 mt-1 justify-content-center" style="max-width: 140px;">
+                                    ${(assignment.rubrics || []).map(r => {
+                                        const rSc = sub.rubric_scores[r.id];
+                                        return `<span class="badge bg-white text-dark border font-mono px-1 py-0" style="font-size: 0.65rem;" title="${escapeHtml(r.title)}">${escapeHtml(r.title.slice(0, 4))}: <b class="${rSc !== undefined ? 'text-primary' : 'text-muted'}">${rSc ?? '-'}</b>/${r.max}</span>`;
+                                    }).join('')}
+                                </div>
+                            `;
+                        }
+                        return `
+                            <div class="d-flex flex-column align-items-center">
+                                <button type="button" class="btn btn-sm text-white rounded-pill px-2.5 py-1 fw-bold shadow-xs d-inline-flex align-items-center gap-1" style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); font-size: 0.78rem;" onclick="openGradeProjectRubricModal('${encodeURIComponent(studentKey)}', '${assignment.id}')">
+                                    <i class="bi bi-sliders"></i> ประเมินเกณฑ์
+                                </button>
+                                <div class="font-mono fw-bold text-primary small mt-1">
+                                    ${hasScore ? `${sub.score} / ${assignment.points} คะแนน` : '<span class="text-muted" style="font-size:0.75rem;">ยังไม่ประเมิน</span>'}
+                                </div>
+                                ${rubricBreakdown}
+                            </div>
+                        `;
+                    }
+                    return `<input type="number" class="form-control form-control-sm text-center font-mono" id="score_input_${idx}" value="${hasSubmitted ? (sub.score ?? '') : ''}" max="${assignment.points}" min="0" placeholder="0/${assignment.points}">`;
+                })()}
             </td>
             <td class="text-end">
-                <button class="btn btn-sm btn-primary rounded-2 px-2" onclick="saveStudentGrade('${encodeURIComponent(studentKey)}', 'score_input_${idx}')" title="บันทึกคะแนน">
-                    <i class="bi bi-check2"></i>
-                </button>
+                ${assignment.type === 'project' || (Array.isArray(assignment.rubrics) && assignment.rubrics.length > 0) ? `
+                    <button class="btn btn-sm btn-outline-primary rounded-pill px-2.5" onclick="openGradeProjectRubricModal('${encodeURIComponent(studentKey)}', '${assignment.id}')" title="เปิดประเมินตามเกณฑ์">
+                        <i class="bi bi-pencil-square"></i>
+                    </button>
+                ` : `
+                    <button class="btn btn-sm btn-primary rounded-2 px-2" onclick="saveStudentGrade('${encodeURIComponent(studentKey)}', 'score_input_${idx}')" title="บันทึกคะแนน">
+                        <i class="bi bi-check2"></i>
+                    </button>
+                `}
             </td>
         </tr>`;
     }).join('');
@@ -3640,7 +5071,10 @@ function openImportAssignmentModal() {
     } else {
         select.innerHTML = assignments.map(a => {
             const count = a.submissions ? Object.keys(a.submissions).length : 0;
-            return `<option value="${a.id}">${a.title} (เต็ม ${a.max_score || 10} คะแนน • ส่งแล้ว ${count} คน)</option>`;
+            const isQuiz = a.type === 'quiz' || !!a.quiz_id;
+            const prefix = isQuiz ? '⚡ [Gyver Quiz] ' : '📝 ';
+            const maxPts = a.points || a.max_score || 10;
+            return `<option value="${a.id}">${prefix}${a.title} (เต็ม ${maxPts} คะแนน • ${isQuiz ? 'สอบแล้ว' : 'ส่งแล้ว'} ${count} คน)</option>`;
         }).join('');
     }
 
@@ -3972,8 +5406,9 @@ function printGradebookReport() {
     const finalMax = Number(cfg.final_max ?? 30);
 
     const attCols = columns.filter(c => c.term === 'attendance');
-    const midCols = columns.filter(c => c.term === 'midterm' || (!c.term && c.term !== 'final' && c.term !== 'attendance'));
+    const midCols = columns.filter(c => c.term === 'midterm' || (!c.term && c.term !== 'final' && c.term !== 'attendance' && c.term !== 'other'));
     const finalCols = columns.filter(c => c.term === 'final');
+    const otherCols = columns.filter(c => c.term === 'other');
 
     const attRawMax = attCols.reduce((sum, col) => sum + (col.is_bonus ? 0 : (Number(col.max) || 0)), 0);
     const midRawMax = midCols.reduce((sum, col) => sum + (col.is_bonus ? 0 : (Number(col.max) || 0)), 0);

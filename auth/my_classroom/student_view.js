@@ -171,44 +171,102 @@ function renderStudentAssignments() {
         const mySub = submissions[studentKey];
         const isSubmitted = !!mySub;
         const dueDateStr = a.due_date ? new Date(a.due_date).toLocaleDateString('th-TH') : 'ไม่ระบุ';
+        const isQuiz = a.type === 'quiz' || !!a.quiz_id;
+        const isProject = a.type === 'project' || (Array.isArray(a.rubrics) && a.rubrics.length > 0);
+        const quizUrl = isQuiz ? `../../features/education/quiz/quiz.html?id=${encodeURIComponent(a.quiz_id)}&name=${encodeURIComponent(currentStudentName)}&room=${encodeURIComponent(currentClassroom.class_name)}&class_id=${encodeURIComponent(currentClassroomId)}&assign_id=${encodeURIComponent(a.id)}&student_id=${encodeURIComponent(studentKey)}` : '';
 
         return `
         <div class="col-md-6">
-            <div class="assignment-card h-100 d-flex flex-column">
+            <div class="assignment-card h-100 d-flex flex-column ${isQuiz ? 'border-warning-subtle shadow-xs' : isProject ? 'border-primary-subtle shadow-xs' : ''}">
                 <div class="d-flex justify-content-between align-items-start mb-2">
-                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1">
-                        <i class="bi bi-award-fill me-1"></i>${a.points || 10} คะแนน
-                    </span>
+                    <div class="d-flex align-items-center gap-1 flex-wrap">
+                        ${isQuiz ? `
+                            <span class="badge bg-warning text-dark border border-warning-subtle rounded-pill px-2.5 py-1 font-mono fw-bold">
+                                <i class="bi bi-patch-question-fill me-1"></i>แบบทดสอบออนไลน์
+                            </span>
+                        ` : isProject ? `
+                            <span class="badge text-white border rounded-pill px-2.5 py-1 font-mono fw-bold shadow-xs" style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);">
+                                <i class="bi bi-kanban-fill me-1"></i>งานโปรเจกต์ (รูบริก)
+                            </span>
+                        ` : ''}
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1">
+                            <i class="bi bi-award-fill me-1"></i>${a.points || 10} คะแนน
+                        </span>
+                    </div>
                     ${isSubmitted 
-                        ? `<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1"><i class="bi bi-check-circle-fill me-1"></i>ส่งแล้ว</span>` 
-                        : `<span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1"><i class="bi bi-exclamation-circle-fill me-1"></i>ยังไม่ส่ง</span>`}
+                        ? `<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1"><i class="bi bi-check-circle-fill me-1"></i>${isQuiz ? 'สอบแล้ว' : 'ส่งแล้ว'}</span>` 
+                        : `<span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1"><i class="bi bi-exclamation-circle-fill me-1"></i>${isQuiz ? 'ยังไม่สอบ' : 'ยังไม่ส่ง'}</span>`}
                 </div>
 
-                <h5 class="fw-bold text-dark mb-1">${a.title}</h5>
-                <p class="text-muted small mb-3 flex-grow-1" style="font-size: 0.85rem;">${a.description || 'ไม่มีรายละเอียดเพิ่มเติม'}</p>
+                <h5 class="fw-bold text-dark mb-1">${escapeHtml(a.title)}</h5>
+                <p class="text-muted small mb-2 flex-grow-1" style="font-size: 0.85rem;">${escapeHtml(a.description || (isQuiz ? 'คลิกปุ่มด้านล่างเพื่อเริ่มทำแบบทดสอบออนไลน์' : isProject ? 'ชิ้นงานโปรเจกต์พร้อมเกณฑ์การประเมินรูบริก' : 'ไม่มีรายละเอียดเพิ่มเติม'))}</p>
+
+                ${isProject && Array.isArray(a.rubrics) && a.rubrics.length > 0 ? `
+                    <div class="p-2.5 px-3 rounded-3 border mb-3 small" style="background: rgba(99, 102, 241, 0.05); border-color: rgba(99, 102, 241, 0.2) !important;">
+                        <div class="fw-bold small text-dark mb-1.5 d-flex align-items-center justify-content-between">
+                            <span><i class="bi bi-ui-checks text-primary me-1"></i>เกณฑ์การให้คะแนน (${a.rubrics.length} ด้าน):</span>
+                            ${isSubmitted && mySub.score !== undefined && mySub.score !== null ? `<span class="badge text-white font-mono" style="background:#6366f1;">รวม ${mySub.score}/${a.points} คะแนน</span>` : ''}
+                        </div>
+                        <div class="d-flex flex-column gap-1">
+                            ${a.rubrics.map(r => {
+                                const rSc = mySub?.rubric_scores?.[r.id];
+                                return `
+                                    <div class="d-flex justify-content-between align-items-center bg-white p-1.5 px-2 rounded-2 border border-light-subtle">
+                                        <span class="text-dark small">${escapeHtml(r.title)}</span>
+                                        <span class="font-mono small ${rSc !== undefined && rSc !== null ? 'text-primary fw-bold' : 'text-muted'}">
+                                            ${rSc !== undefined && rSc !== null ? `<b class="text-success">${rSc}</b> / ` : ''}${r.max} คะแนน
+                                        </span>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                        ${mySub?.feedback ? `
+                            <div class="mt-2 text-primary small p-2 rounded-2 border bg-white border-primary-subtle">
+                                <i class="bi bi-chat-quote-fill me-1 text-primary"></i><b>ข้อเสนอแนะจากคุณครู:</b> "${escapeHtml(mySub.feedback)}"
+                            </div>
+                        ` : ''}
+                    </div>
+                ` : ''}
 
                 <div class="bg-light p-2 px-3 rounded-3 mb-3 small d-flex justify-content-between align-items-center">
                     <span class="text-muted"><i class="bi bi-clock me-1"></i>กำหนดส่ง: <b>${dueDateStr}</b></span>
                     ${isSubmitted && mySub.score !== undefined && mySub.score !== null 
-                        ? `<span class="badge bg-primary text-white font-mono">ได้: ${mySub.score}/${a.points} คะแนน</span>` 
+                        ? `<span class="badge bg-primary text-white font-mono">ได้: <b>${mySub.score}</b>/${a.points} คะแนน</span>` 
                         : ''}
                 </div>
 
                 <div class="d-flex flex-wrap gap-2 pt-2 border-top mt-auto">
-                    ${isSubmitted && mySub.file_url ? `
-                        ${Array.isArray(mySub.files) && mySub.files.length > 1 ? `
-                            <button class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-bold" onclick="openStudentViewFilesModal('${a.id}')" title="ดูไฟล์ที่ส่งไว้ทั้งหมด">
-                                <i class="bi bi-files me-1"></i>ดูงาน (${mySub.files.length} ไฟล์)
-                            </button>
+                    ${isQuiz ? `
+                        ${isSubmitted ? `
+                            <div class="w-100 d-flex gap-2 align-items-center">
+                                <div class="alert alert-success py-1.5 px-3 mb-0 rounded-pill small flex-grow-1 text-center fw-bold">
+                                    <i class="bi bi-check-circle-fill me-1"></i>ทำแบบทดสอบแล้ว (ได้ ${mySub.score}/${a.points} คะแนน)
+                                </div>
+                                <a href="${quizUrl}" class="btn btn-outline-secondary btn-sm rounded-pill px-3" title="เข้าดูข้อสอบ">
+                                    <i class="bi bi-box-arrow-up-right"></i>
+                                </a>
+                            </div>
                         ` : `
-                            <a href="${mySub.file_url}" target="_blank" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-bold" title="เปิดดูผลงานที่ส่งไว้">
-                                <i class="bi bi-box-arrow-up-right me-1"></i>ดูงานที่ส่ง
+                            <a href="${quizUrl}" class="btn btn-warning text-dark btn-sm rounded-pill fw-bold flex-grow-1 shadow-sm py-2">
+                                <i class="bi bi-pencil-fill me-1"></i>เริ่มทำข้อสอบ Gyver Quiz
                             </a>
                         `}
-                    ` : ''}
-                    <button class="btn ${isSubmitted ? 'btn-outline-success' : 'btn-primary'} btn-sm rounded-pill fw-bold flex-grow-1" onclick="openSubmitWorkModal('${a.id}')">
-                        <i class="bi ${isSubmitted ? 'bi-pencil' : 'bi-send-fill'} me-1"></i>${isSubmitted ? 'แก้ไขงานที่ส่ง' : 'ส่งการบ้านนี้'}
-                    </button>
+                    ` : `
+                        ${isSubmitted && mySub.file_url ? `
+                            ${Array.isArray(mySub.files) && mySub.files.length > 1 ? `
+                                <button class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-bold" onclick="openStudentViewFilesModal('${a.id}')" title="ดูไฟล์ที่ส่งไว้ทั้งหมด">
+                                    <i class="bi bi-files me-1"></i>ดูงาน (${mySub.files.length} ไฟล์)
+                                </button>
+                            ` : `
+                                <a href="${mySub.file_url}" target="_blank" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-bold" title="เปิดดูผลงานที่ส่งไว้">
+                                    <i class="bi bi-box-arrow-up-right me-1"></i>ดูงานที่ส่ง
+                                </a>
+                            `}
+                        ` : ''}
+                        <button class="btn ${isSubmitted ? 'btn-outline-success' : 'btn-primary'} btn-sm rounded-pill fw-bold flex-grow-1" onclick="openSubmitWorkModal('${a.id}')">
+                            <i class="bi ${isSubmitted ? 'bi-pencil' : 'bi-send-fill'} me-1"></i>${isSubmitted ? 'แก้ไขงานที่ส่ง' : 'ส่งการบ้านนี้'}
+                        </button>
+                    `}
                 </div>
             </div>
         </div>`;

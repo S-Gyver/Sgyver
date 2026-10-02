@@ -537,48 +537,95 @@
                         </div>
                         <div>
                             <h5 class="modal-title fw-bold m-0 font-kanit">วางข้อสอบทั้งชุด (Quick / Batch Import)</h5>
-                            <p class="text-subtle small m-0">วางโจทย์คำถามและตัวเลือกที่มีโค้ด หรือสัญลักษณ์ต่างๆ ได้ทันที ระบบจะแยกข้อ, ช้อยส์ A-D และเฉลยให้อัตโนมัติ</p>
+                            <p class="text-subtle small m-0">แยก 2 ฝั่งชัดเจน: ฝั่งซ้ายวางโจทย์ ฝั่งขวาวางเฉลย หรือกดขอ Prompt สั่ง AI ให้ออกข้อสอบมาวางได้ทันที</p>
                         </div>
                     </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body py-3">
-                    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                         <span class="text-subtle small">
-                            <i class="bi bi-info-circle me-1 text-info"></i>รองรับโจทย์หลายบรรทัด, โค้ด Python (Indent เว้นวรรค), ตัวเลือก A, B, C, D และตารางเฉลยท้ายชุด
+                            <i class="bi bi-info-circle me-1 text-info"></i>รองรับโจทย์หลายบรรทัด, โค้ดโปรแกรม (Indent), ตัวเลือก A-D และเฉลยแยกฝั่งอย่างแม่นยำ
                         </span>
-                        <button type="button" class="btn btn-sm btn-outline-warning fw-bold" onclick="loadPythonPresetQuestions()">
-                            <i class="bi bi-magic me-1"></i>โหลดตัวอย่างข้อสอบ Python 20 ข้อนี้
-                        </button>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <button type="button" class="btn btn-sm btn-quiz-glow fw-bold px-3 shadow-sm" onclick="openAiPromptModal()">
+                                <i class="bi bi-robot me-1"></i>ขอ Prompt สั่ง AI (ChatGPT/Gemini)
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-warning fw-bold px-3" onclick="loadPythonPresetQuestions()">
+                                <i class="bi bi-magic me-1"></i>โหลดตัวอย่างโจทย์ & เฉลย 20 ข้อ
+                            </button>
+                        </div>
                     </div>
 
-                    <textarea id="batch-import-textarea" class="form-control form-control-cyber font-mono small" rows="15" 
-                        placeholder="วางข้อความข้อสอบที่นี่ เช่น:
-ข้อที่ 1 ⭐
+                    <!-- แยกเป็น 2 ฝั่ง: ซ้ายใส่โจทย์ ขวาใส่เฉลย -->
+                    <div class="row g-3">
+                        <!-- ฝั่งซ้าย: วางโจทย์คำถามและตัวเลือก (A-D) -->
+                        <div class="col-12 col-lg-7">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label text-warning small fw-bold mb-0">
+                                    <i class="bi bi-ui-checks me-1"></i>1. ฝั่งใส่โจทย์และตัวเลือก (Questions & Choices)
+                                </label>
+                                <span class="badge bg-dark border border-secondary text-subtle font-mono" style="font-size: 0.72rem;">
+                                    ข้อ 1-X และช้อยส์ A-D หรือ ก-ง
+                                </span>
+                            </div>
+                            <textarea id="batch-import-questions-textarea" class="form-control form-control-cyber font-mono small" rows="15" 
+                                placeholder="วางโจทย์คำถามและตัวเลือกที่นี่ เช่น:
+ข้อที่ 1
 คำสั่งใดใช้สำหรับแสดงข้อความบนหน้าจอ?
 A. input()
 B. print()
 C. int()
 D. if
 
-ข้อที่ 5 ⭐
+ข้อที่ 2
 ผลลัพธ์ของโค้ดนี้คืออะไร?
 price = 100
 qty = 3
-total = price * qty
-print(total)
+print(price * qty)
 A. 103
 B. 97
 C. 300
-D. 30
+D. 30"></textarea>
+                            <div class="text-subtle small mt-1 font-kanit" style="font-size: 0.72rem;">
+                                💡 วางเฉพาะโจทย์และช้อยส์ A-D (หรือหากมีเฉลยปนอยู่ในนี้ ระบบก็จะตรวจจับให้อัตโนมัติ)
+                            </div>
+                        </div>
 
-✅ เฉลย
+                        <!-- ฝั่งขวา: วางเฉลยคำตอบ (Answer Keys) -->
+                        <div class="col-12 col-lg-5">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label text-info small fw-bold mb-0">
+                                    <i class="bi bi-key-fill me-1"></i>2. ฝั่งใส่เฉลยคำตอบ (Answer Keys)
+                                </label>
+                                <span class="badge bg-dark border border-secondary text-subtle font-mono" style="font-size: 0.72rem;">
+                                    1 B หรือ 1. B หรือ ตารางเฉลย
+                                </span>
+                            </div>
+                            <textarea id="batch-import-answers-textarea" class="form-control form-control-cyber font-mono small" rows="15" 
+                                placeholder="วางเฉลยคำตอบที่นี่ เช่น:
+1 B
+2 C
+3 C
+4 B
+
+หรือแบบมีหัวข้อเรื่อง:
 ข้อ คำตอบ เรื่อง
-1 B print()
-5 C *
-..."></textarea>
+1   B    print()
+2   C    input()
+3   C    ตัวแปร
 
-                    <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+หรือรูปแบบ:
+1. B
+2. C
+3. C"></textarea>
+                            <div class="text-subtle small mt-1 font-kanit" style="font-size: 0.72rem;">
+                                💡 รองรับ "1 B", "1. B", "ข้อ 1 ตอบ B", "1 B [คำอธิบาย]" หรือตารางเฉลย
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2 pt-2 border-top border-secondary">
                         <div class="d-flex align-items-center gap-3">
                             <div class="form-check form-check-inline m-0">
                                 <input class="form-check-input" type="radio" name="importMode" id="import-mode-replace" value="replace" checked>
@@ -601,6 +648,99 @@ D. 30
                     <button type="button" class="btn btn-quiz-glow px-4 fw-bold" onclick="executeBatchImport()">
                         <i class="bi bi-lightning-charge-fill me-1"></i>นำเข้าข้อสอบเข้าสู่ชุดนี้
                     </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====================================================
+         🤖 Modal: AI Prompt Generator (ขอ Prompt สั่ง AI)
+         ==================================================== -->
+    <div class="modal fade" id="aiPromptModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content cyber-card border-quiz text-white shadow-lg">
+                <div class="modal-header border-secondary pb-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="bg-primary bg-opacity-25 border border-primary rounded-circle p-2 d-inline-flex">
+                            <i class="bi bi-robot text-quiz fs-4"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold m-0 font-kanit">ตัวช่วยสร้าง Prompt สั่ง AI (ChatGPT / Gemini / Claude)</h5>
+                            <p class="text-subtle small m-0">กำหนดเงื่อนไขเพื่อให้ AI ส่งคำตอบแยก 2 ส่วน (โจทย์ & เฉลย) พร้อมนำมาวางลงในระบบได้ทันที</p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body py-3">
+                    <div class="row g-2 mb-3">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label text-subtle small fw-bold mb-1">1. วิชา / หัวข้อที่ต้องการออกสอบ:</label>
+                            <input type="text" id="ai-prompt-topic" class="form-control form-control-cyber form-control-sm"
+                                value="ภาษา Python พื้นฐาน (ตัวแปร, if-else, while loop)" oninput="updateGeneratedAiPrompt()">
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <label class="form-label text-subtle small fw-bold mb-1">2. ระดับชั้น:</label>
+                            <select id="ai-prompt-grade" class="form-select form-control-cyber form-select-sm" onchange="updateGeneratedAiPrompt()">
+                                <option value="มัธยมศึกษาปีที่ 1">ม.1</option>
+                                <option value="มัธยมศึกษาปีที่ 2">ม.2</option>
+                                <option value="มัธยมศึกษาปีที่ 3">ม.3</option>
+                                <option value="มัธยมศึกษาปีที่ 4" selected>ม.4</option>
+                                <option value="มัธยมศึกษาปีที่ 5">ม.5</option>
+                                <option value="มัธยมศึกษาปีที่ 6">ม.6</option>
+                                <option value="ปวช.">ปวช.</option>
+                                <option value="มหาวิทยาลัย">มหาวิทยาลัย</option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <label class="form-label text-subtle small fw-bold mb-1">3. จำนวนข้อ:</label>
+                            <select id="ai-prompt-count" class="form-select form-control-cyber form-select-sm" onchange="updateGeneratedAiPrompt()">
+                                <option value="5">5 ข้อ</option>
+                                <option value="10">10 ข้อ</option>
+                                <option value="15">15 ข้อ</option>
+                                <option value="20" selected>20 ข้อ</option>
+                                <option value="25">25 ข้อ</option>
+                                <option value="30">30 ข้อ</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-2">
+                            <label class="form-label text-subtle small fw-bold mb-1">4. ความยาก:</label>
+                            <select id="ai-prompt-difficulty" class="form-select form-control-cyber form-select-sm" onchange="updateGeneratedAiPrompt()">
+                                <option value="ง่าย (เน้นความเข้าใจพื้นฐาน)">ง่าย</option>
+                                <option value="ปานกลาง (มีโจทย์วิเคราะห์โค้ด)" selected>ปานกลาง</option>
+                                <option value="ยาก (ท้าทาย ซับซ้อน)">ยาก</option>
+                                <option value="คละระดับ (ง่าย-ปานกลาง-ยาก)">คละระดับ</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label text-warning small fw-bold mb-0">
+                            <i class="bi bi-clipboard2-check-fill me-1"></i>ข้อความคำสั่ง (Prompt) ที่สร้างให้อัตโนมัติ:
+                        </label>
+                        <button type="button" class="btn btn-sm btn-outline-info py-0 px-2 small font-mono" onclick="copyAiPromptToClipboard()">
+                            <i class="bi bi-copy me-1"></i>คัดลอก Prompt
+                        </button>
+                    </div>
+
+                    <textarea id="ai-generated-prompt-text" class="form-control form-control-cyber font-mono small text-white" rows="11" readonly style="background: rgba(15, 23, 42, 0.95);"></textarea>
+
+                    <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2 pt-2 border-top border-secondary">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="text-subtle small">เปิด AI ที่แนะนำ:</span>
+                            <a href="https://chatgpt.com" target="_blank" class="btn btn-sm btn-outline-success px-2 py-1 small">
+                                <i class="bi bi-box-arrow-up-right me-1"></i>ChatGPT
+                            </a>
+                            <a href="https://gemini.google.com" target="_blank" class="btn btn-sm btn-outline-primary px-2 py-1 small">
+                                <i class="bi bi-box-arrow-up-right me-1"></i>Gemini
+                            </a>
+                            <a href="https://claude.ai" target="_blank" class="btn btn-sm btn-outline-warning px-2 py-1 small">
+                                <i class="bi bi-box-arrow-up-right me-1"></i>Claude
+                            </a>
+                        </div>
+                        <button type="button" class="btn btn-quiz-glow px-4 fw-bold" onclick="copyAiPromptToClipboard()">
+                            <i class="bi bi-clipboard-check-fill me-1"></i>คัดลอก Prompt ไปใช้งานทันที
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

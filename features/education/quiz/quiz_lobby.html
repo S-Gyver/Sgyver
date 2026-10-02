@@ -48,10 +48,6 @@
             </div>
 
             <div class="d-flex align-items-center gap-2">
-                <span id="connection-status-badge" class="badge bg-secondary text-white px-3 py-2 cursor-pointer"
-                    onclick="openSqlSetupModal()">
-                    <i class="bi bi-arrow-repeat spin me-1"></i>กำลังเชื่อมต่อ Supabase...
-                </span>
                 <button id="btn-header-sql" class="btn btn-warning btn-sm d-none fw-bold" onclick="openSqlSetupModal()">
                     <i class="bi bi-database-exclamation me-1"></i>ตั้งค่า SQL
                 </button>
@@ -91,6 +87,100 @@
              1. Waiting Lobby Screen (หน้ารอนักเรียนเข้าห้อง)
              ==================================================== -->
         <div id="view-lobby-waiting">
+
+            <!-- ⚙️ Quick Exam Settings Card (ตั้งค่าจำนวนโจทย์, ชุดข้อสอบ, เวลาทำข้อสอบในหน้านี้ได้ทันที) -->
+            <div class="cyber-card border-quiz mb-4 py-3 px-3 px-md-4">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 pb-2 border-bottom border-secondary">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="bg-dark border border-warning rounded-2 p-1 px-2 d-inline-flex align-items-center text-warning shadow-sm">
+                            <i class="bi bi-sliders fs-5"></i>
+                        </div>
+                        <div>
+                            <span class="fw-bold text-white fs-5 font-kanit">ตั้งค่าเงื่อนไขการสอบ (Exam Settings)</span>
+                            <span class="text-subtle small ms-2 d-none d-md-inline">• ปรับเปลี่ยนและมีผลทันทีก่อนกดเริ่มสอบ</span>
+                        </div>
+                    </div>
+                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-1 font-mono small">
+                        <i class="bi bi-lightning-charge-fill me-1"></i>อัปเดตแบบเรียลไทม์
+                    </span>
+                </div>
+
+                <div class="row g-3 align-items-end">
+                    <!-- 1. จำนวนข้อที่สุ่มสอบ (Question Pool) -->
+                    <div class="col-12 col-sm-6 col-lg-3">
+                        <label class="form-label text-subtle small fw-bold mb-1 d-flex justify-content-between">
+                            <span><i class="bi bi-ui-checks me-1 text-warning"></i>จำนวนโจทย์ (ข้อ/คน)</span>
+                            <span id="setting-pool-label-ratio" class="text-warning font-mono fw-bold">-/-</span>
+                        </label>
+                        <div class="input-group input-group-sm">
+                            <input type="number" id="setting-pool-count" class="form-control bg-dark text-white border-secondary text-center font-mono fw-bold fs-6" min="1" max="500" value="10" oninput="onLobbySettingsChange()">
+                            <span class="input-group-text bg-secondary border-secondary text-white small font-mono" id="setting-total-pool-hint">/ - ข้อ</span>
+                        </div>
+                        <div class="text-subtle small mt-1 font-kanit" style="font-size: 0.73rem;">
+                            ดึงสุ่มจากคลังทั้งหมดมาแจก
+                        </div>
+                    </div>
+
+                    <!-- 2. จำนวนชุดข้อสอบย่อย (Anti-Cheating Sets) -->
+                    <div class="col-12 col-sm-6 col-lg-3">
+                        <label class="form-label text-subtle small fw-bold mb-1">
+                            <i class="bi bi-shield-lock-fill me-1 text-info"></i>ชุดข้อสอบย่อย (Sets)
+                        </label>
+                        <select id="setting-variant-count" class="form-select form-select-sm bg-dark text-white border-secondary font-mono fw-bold" onchange="onLobbySettingsChange()">
+                            <option value="5">5 ชุดย่อย (5 Sets)</option>
+                            <option value="10">10 ชุดย่อย (10 Sets)</option>
+                            <option value="15">15 ชุดย่อย (15 Sets)</option>
+                            <option value="20" selected>20 ชุดย่อย (20 Sets - แนะนำ)</option>
+                            <option value="30">30 ชุดย่อย (30 Sets)</option>
+                            <option value="40">40 ชุดย่อย (40 Sets)</option>
+                            <option value="50">50 ชุดย่อย (50 Sets)</option>
+                        </select>
+                        <div class="text-subtle small mt-1 font-kanit" style="font-size: 0.73rem;">
+                            สร้างชุดย่อยสลับข้อ/ตัวเลือกกัน
+                        </div>
+                    </div>
+
+                    <!-- 3. เวลาในการทำข้อสอบ (Time Limit) -->
+                    <div class="col-12 col-sm-6 col-lg-3">
+                        <label class="form-label text-subtle small fw-bold mb-1">
+                            <i class="bi bi-stopwatch-fill me-1 text-danger"></i>เวลาทำข้อสอบ
+                        </label>
+                        <select id="setting-time-limit" class="form-select form-select-sm bg-dark text-white border-secondary font-mono fw-bold" onchange="onLobbySettingsChange()">
+                            <option value="5">5 นาที</option>
+                            <option value="10">10 นาที</option>
+                            <option value="15" selected>15 นาที</option>
+                            <option value="20">20 นาที</option>
+                            <option value="25">25 นาที</option>
+                            <option value="30">30 นาที</option>
+                            <option value="45">45 นาที</option>
+                            <option value="60">60 นาที (1 ชั่วโมง)</option>
+                            <option value="90">90 นาที (1.5 ชั่วโมง)</option>
+                            <option value="0">ไม่จำกัดเวลา (นับเวลาขึ้น)</option>
+                        </select>
+                        <div class="text-subtle small mt-1 font-kanit" style="font-size: 0.73rem;">
+                            จับเวลานับถอยหลังพร้อมกัน
+                        </div>
+                    </div>
+
+                    <!-- 4. เกณฑ์คะแนนผ่าน (Passing Score) -->
+                    <div class="col-12 col-sm-6 col-lg-3">
+                        <label class="form-label text-subtle small fw-bold mb-1">
+                            <i class="bi bi-award-fill me-1 text-success"></i>เกณฑ์คะแนนผ่าน
+                        </label>
+                        <select id="setting-passing-score" class="form-select form-select-sm bg-dark text-white border-secondary font-mono fw-bold" onchange="onLobbySettingsChange()">
+                            <option value="50">ผ่าน 50%</option>
+                            <option value="60">ผ่าน 60%</option>
+                            <option value="70" selected>ผ่าน 70% (มาตรฐาน)</option>
+                            <option value="80">ผ่าน 80%</option>
+                            <option value="90">ผ่าน 90%</option>
+                        </select>
+                        <div class="text-subtle small mt-1 font-kanit" style="font-size: 0.73rem;">
+                            เกณฑ์ตัดสินในผลคะแนน
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="row g-4">
                 <!-- Left Column: PIN & QR Code Box for Projector -->
                 <div class="col-12 col-lg-5">

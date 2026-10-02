@@ -1101,6 +1101,17 @@ function renderTakerView() {
     document.getElementById('gate-pass-score').textContent = `${currentQuiz.settings?.passingScore || 70}%`;
 
     restoreTakerSession();
+
+    // 🏫 Auto-prefill student name and room from URL if provided (from Classroom)
+    try {
+        const takerParams = new URLSearchParams(window.location.search);
+        const prefillName = takerParams.get('name') || takerParams.get('student_name');
+        const prefillRoom = takerParams.get('room') || takerParams.get('student_room');
+        const nameEl = document.getElementById('taker-student-name');
+        const roomEl = document.getElementById('taker-student-room');
+        if (prefillName && nameEl && !nameEl.value) nameEl.value = prefillName;
+        if (prefillRoom && roomEl && !roomEl.value) roomEl.value = prefillRoom;
+    } catch (_) {}
 }
 
 function startTakingQuiz() {
@@ -1561,6 +1572,53 @@ async function syncQuizResponseToSupabase(record) {
         });
     } catch (e) {
         console.warn('Quiz response sync skipped', e);
+    }
+
+    // 🏫 บันทึกผลสอบเข้าห้องเรียนอัตโนมัติทันทีหากเข้าสอบผ่าน Classroom
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const classId = urlParams.get('class_id');
+        const assignId = urlParams.get('assign_id');
+        const studentId = urlParams.get('student_id');
+
+        if (classId && assignId && window.supabaseClient) {
+            const { data: cData } = await window.supabaseClient
+                .from('classrooms')
+                .select('*')
+                .eq('id', classId)
+                .single();
+
+            if (cData && Array.isArray(cData.assignments)) {
+                const targetAssign = cData.assignments.find(a => a.id === assignId);
+                if (targetAssign) {
+                    if (!targetAssign.submissions) targetAssign.submissions = {};
+                    const sKey = studentId || record.studentName;
+                    const maxPts = Number(targetAssign.points) || 10;
+                    const scaled = record.totalPoints > 0 
+                        ? Math.round((record.earnedPoints / record.totalPoints) * maxPts * 10) / 10
+                        : record.earnedPoints;
+
+                    targetAssign.submissions[sKey] = {
+                        score: scaled,
+                        raw_score: record.earnedPoints,
+                        raw_total: record.totalPoints,
+                        percentage: record.percent,
+                        is_passed: record.isPassed,
+                        submitted_at: record.submittedAt,
+                        note: `ทำแบบทดสอบ Gyver Quiz ได้ ${record.earnedPoints}/${record.totalPoints} คะแนน (${record.percent}%)`
+                    };
+
+                    await window.supabaseClient
+                        .from('classrooms')
+                        .update({ assignments: cData.assignments })
+                        .eq('id', classId);
+
+                    localStorage.setItem(`gyver_assignments_${classId}`, JSON.stringify(cData.assignments));
+                }
+            }
+        }
+    } catch (err) {
+        console.warn("Classroom direct quiz sync error:", err);
     }
 }
 
@@ -2053,27 +2111,57 @@ function openBatchImportModal() {
 }
 
 function loadPythonPresetQuestions() {
-    const textarea = document.getElementById('batch-import-textarea');
-    if (textarea) {
-        textarea.value = PYTHON_EXAM_PRESET_TEXT;
-        textarea.focus();
+    const qTextarea = document.getElementById('batch-import-questions-textarea');
+    const aTextarea = document.getElementById('batch-import-answers-textarea');
+    const oldTextarea = document.getElementById('batch-import-textarea');
+
+    const fullPreset = typeof PYTHON_EXAM_PRESET_TEXT !== 'undefined' ? PYTHON_EXAM_PRESET_TEXT : getPythonExamPresetText();
+    const answerSplitMatch = fullPreset.match(/(?:✅\s*เฉลย|เฉลยคำตอบ|เฉลย)([\s\S]*)$/i);
+
+    const qPart = answerSplitMatch ? fullPreset.substring(0, answerSplitMatch.index).trim() : fullPreset;
+    const aPart = answerSplitMatch ? answerSplitMatch[1].trim() : '';
+
+    if (qTextarea) {
+        qTextarea.value = qPart;
+        qTextarea.focus();
+    }
+    if (aTextarea) {
+        aTextarea.value = aPart;
+    }
+    if (oldTextarea) {
+        oldTextarea.value = fullPreset;
+    }
+
+    const swal = getCyberSwal();
+    if (swal) {
+        swal.fire({
+            icon: 'info',
+            title: 'โหลดตัวอย่างข้อสอบ 20 ข้อแล้ว ✨',
+            html: 'โจทย์ 20 ข้อถูกใส่ใน <b>ฝั่งซ้าย</b> และเฉลยถูกแยกใส่ใน <b>ฝั่งขวา</b> เรียบร้อยครับ',
+            timer: 2000,
+            showConfirmButton: false
+        });
     }
 }
 
 function executeBatchImport() {
-    const textarea = document.getElementById('batch-import-textarea');
-    const text = textarea ? textarea.value.trim() : '';
+    const qTextarea = document.getElementById('batch-import-questions-textarea');
+    const aTextarea = document.getElementById('batch-import-answers-textarea');
+    const oldTextarea = document.getElementById('batch-import-textarea');
 
-    if (!text) {
+    const qText = qTextarea ? qTextarea.value.trim() : (oldTextarea ? oldTextarea.value.trim() : '');
+    const aText = aTextarea ? aTextarea.value.trim() : '';
+
+    if (!qText) {
         const swal = getCyberSwal();
         if (swal) {
             swal.fire({
                 icon: 'warning',
-                title: 'กรุณาวางข้อความข้อสอบ',
-                text: 'โปรดวางเนื้อหาข้อสอบที่มีคำถาม ตัวเลือก A-D และเฉลยลงในกล่องข้อความก่อนกดนำเข้าครับ'
+                title: 'กรุณาวางโจทย์ข้อสอบ',
+                text: 'โปรดวางเนื้อหาโจทย์คำถามและตัวเลือก (A-D) ในฝั่งซ้ายก่อนกดนำเข้าครับ'
             });
         } else {
-            alert('กรุณาวางข้อความข้อสอบ');
+            alert('กรุณาวางโจทย์ข้อสอบในฝั่งซ้าย');
         }
         return;
     }
@@ -2081,7 +2169,7 @@ function executeBatchImport() {
     const defaultPoints = Number(document.getElementById('import-default-points')?.value) || 1;
     const isReplace = document.getElementById('import-mode-replace')?.checked ?? true;
 
-    const parsedQuestions = parseRawQuizText(text, defaultPoints);
+    const parsedQuestions = parseRawQuizText(qText, aText, defaultPoints);
 
     if (!parsedQuestions || parsedQuestions.length === 0) {
         const swal = getCyberSwal();
@@ -2089,7 +2177,7 @@ function executeBatchImport() {
             swal.fire({
                 icon: 'error',
                 title: 'ไม่สามารถแยกข้อสอบได้',
-                text: 'กรุณาตรวจสอบว่ามีรูปแบบ "ข้อที่ 1 ... A. ... B. ... C. ... D." และตารางเฉลยท้ายชุดหรือไม่'
+                text: 'กรุณาตรวจสอบว่าในฝั่งซ้ายมีรูปแบบ "ข้อที่ 1 ... A. ... B. ... C. ... D." และมีตัวเลือกอย่างน้อย 2 ช้อยส์ต่อข้อหรือไม่'
             });
         } else {
             alert('ไม่สามารถแยกข้อสอบได้');
@@ -2103,11 +2191,13 @@ function executeBatchImport() {
 
     if (isReplace) {
         currentQuiz.questions = parsedQuestions;
-        if (text.includes('Python') || text.includes('print(') || text.includes('while')) {
-            currentQuiz.title = 'แบบทดสอบภาษา Python พื้นฐาน (20 ข้อ)';
+        if (qText.includes('Python') || qText.includes('print(') || qText.includes('while')) {
+            currentQuiz.title = 'แบบทดสอบภาษา Python พื้นฐาน (' + parsedQuestions.length + ' ข้อ)';
             currentQuiz.description = 'ทดสอบความรู้ภาษา Python: คำสั่งพื้นฐาน ตัวแปร โอเปอเรเตอร์ if-else และลูป while พร้อมโจทย์วิเคราะห์โค้ด';
-            document.getElementById('builder-quiz-title').value = currentQuiz.title;
-            document.getElementById('builder-quiz-desc').value = currentQuiz.description;
+            const titleInput = document.getElementById('builder-quiz-title');
+            const descInput = document.getElementById('builder-quiz-desc');
+            if (titleInput) titleInput.value = currentQuiz.title;
+            if (descInput) descInput.value = currentQuiz.description;
         }
     } else {
         if (!currentQuiz.questions) currentQuiz.questions = [];
@@ -2129,7 +2219,7 @@ function executeBatchImport() {
         swal.fire({
             icon: 'success',
             title: `นำเข้าข้อสอบสำเร็จ ${parsedQuestions.length} ข้อ! 🎉`,
-            html: `ระบบแยกโจทย์โค้ด ตัวเลือกโค้ดหลายบรรทัด และเฉลยเรียบร้อยแล้ว<br><span class="text-subtle small">คุณสามารถแก้ไขเพิ่มเติม หรือกด "สุ่มสร้าง 20 ชุด" เพื่อเปิดห้องสอบได้ทันที</span>`,
+            html: `ระบบประมวลผลแยกโจทย์และเฉลยจากทั้ง 2 ฝั่งเรียบร้อยแล้ว<br><span class="text-subtle small">คุณสามารถแก้ไขเพิ่มเติม หรือกด "สุ่มสร้าง 20 ชุด" เพื่อเปิดห้องสอบได้ทันที</span>`,
             timer: 2600,
             showConfirmButton: false
         });
@@ -2137,53 +2227,85 @@ function executeBatchImport() {
 }
 
 /**
- * 🧩 Parser แยกข้อความข้อสอบดิบ -> Object คำถามและตัวเลือก
+ * 🧩 Parser แยกคำตอบ (Answer Keys) จากข้อความฝั่งขวา
  */
-function parseRawQuizText(text, defaultPoints = 1) {
-    let questionsText = text;
-    let answersText = '';
-
-    const answerSplitMatch = text.match(/(?:✅\s*เฉลย|เฉลยคำตอบ|เฉลย)([\s\S]*)$/i);
-    if (answerSplitMatch) {
-        answersText = answerSplitMatch[1];
-        questionsText = text.substring(0, answerSplitMatch.index);
-    }
-
-    // 1. Parse Answers
+function parseAnswersKeyText(answersText) {
     const answersMap = {};
-    if (answersText) {
-        const lines = answersText.split('\n');
-        for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed || trimmed.startsWith('ข้อ')) continue;
-            // Match "1 B print()" or "1\tB\tprint()"
-            const m = trimmed.match(/^(\d+)\s+([A-Dก-ง])(?:\s+(.*))?$/i);
-            if (m) {
+    if (!answersText || typeof answersText !== 'string') return answersMap;
+
+    const lines = answersText.split('\n');
+    for (const line of lines) {
+        let trimmed = line.trim();
+        if (!trimmed) continue;
+        if (trimmed.startsWith('ข้อ\t') || trimmed.startsWith('ข้อ ') || trimmed.startsWith('|--') || trimmed.startsWith('===')) continue;
+
+        // Clean markdown table pipes
+        trimmed = trimmed.replace(/^\|/, '').replace(/\|$/, '');
+
+        // Pattern 1: Multiple comma/space separated answers in one line (e.g., "1.B, 2.C, 3.D" or "1:B 2:C")
+        const multiMatches = [...trimmed.matchAll(/(?:ข้อที่|ข้อ)?\s*(\d+)[\.\)\:\s-]+\s*([A-Dก-ง])(?![a-zA-Zก-๙])/gi)];
+        if (multiMatches.length > 1) {
+            multiMatches.forEach(m => {
                 const qNum = parseInt(m[1], 10);
                 const letter = m[2].toUpperCase().replace('ก', 'A').replace('ข', 'B').replace('ค', 'C').replace('ง', 'D');
-                const topic = (m[3] || '').trim();
-                answersMap[qNum] = { letter, topic };
-            }
+                answersMap[qNum] = { letter, topic: '' };
+            });
+            continue;
+        }
+
+        // Pattern 2: Single line e.g. "1 B print()", "| 1 | B |", "ข้อ 1 ตอบ B", "1. B"
+        const m = trimmed.match(/(?:ข้อที่|ข้อ)?\s*(\d+)[\.\)\:\s|\t-]+\s*(?:ตอบ\s*)?([A-Dก-ง])(?:\s*\|?\s*(.*))?$/i);
+        if (m) {
+            const qNum = parseInt(m[1], 10);
+            const letter = m[2].toUpperCase().replace('ก', 'A').replace('ข', 'B').replace('ค', 'C').replace('ง', 'D');
+            const topic = (m[3] || '').replace(/\|/g, '').trim();
+            answersMap[qNum] = { letter, topic };
+        }
+    }
+    return answersMap;
+}
+
+/**
+ * 🧩 Parser แยกข้อความข้อสอบดิบ -> Object คำถามและตัวเลือก (รองรับทั้ง 2 ฝั่ง และโหมดรวมเดิม)
+ */
+function parseRawQuizText(questionsText, answersText = '', defaultPoints = 1) {
+    if (typeof answersText === 'number') {
+        defaultPoints = answersText;
+        answersText = '';
+    }
+
+    let qText = questionsText || '';
+    let aText = answersText || '';
+
+    // If answersText is empty, check if questionsText has an embedded answer key (like old format)
+    if (!aText) {
+        const answerSplitMatch = qText.match(/(?:✅\s*เฉลย|เฉลยคำตอบ|เฉลย)([\s\S]*)$/i);
+        if (answerSplitMatch) {
+            aText = answerSplitMatch[1];
+            qText = qText.substring(0, answerSplitMatch.index);
         }
     }
 
-    // 2. Split questions
-    const qBlocks = questionsText.split(/(?=(?:^|\n)\s*ข้อที่\s*\d+|(?:^|\n)\s*ข้อ\s*\d+)/i)
+    // 1. Parse Answers Map
+    const answersMap = parseAnswersKeyText(aText);
+
+    // 2. Split Questions
+    const qBlocks = qText.split(/(?=(?:^|\n)\s*(?:ข้อที่|ข้อ)\s*\d+|(?:^|\n)\s*\d+[\.\)]\s+)/i)
         .map(b => b.trim())
         .filter(b => b.length > 0);
 
     const questions = [];
 
     qBlocks.forEach((block, idx) => {
-        const headerMatch = block.match(/^(?:ข้อที่|ข้อ)\s*(\d+)[^\n]*/i);
-        const qNum = headerMatch ? parseInt(headerMatch[1], 10) : (idx + 1);
+        const headerMatch = block.match(/^(?:(?:ข้อที่|ข้อ)\s*(\d+)|\s*(\d+)[\.\)])[^\n]*/i);
+        const qNum = headerMatch ? parseInt(headerMatch[1] || headerMatch[2], 10) : (idx + 1);
 
         let content = block;
         if (headerMatch) {
             content = content.substring(headerMatch[0].length).trim();
         }
 
-        // Find choices: Look for A., B., C., D. or A), B), etc.
+        // Find choices: A., B., C., D. or A), B) or ก., ข., ค., ง.
         const choiceMarkerRegex = /(?:^|\n)\s*([A-Dก-ง])[\.\)]\s*/gi;
         const matches = [...content.matchAll(choiceMarkerRegex)];
 
@@ -2225,6 +2347,109 @@ function parseRawQuizText(text, defaultPoints = 1) {
     });
 
     return questions;
+}
+
+/**
+ * 🤖 AI PROMPT GENERATOR: สร้างคำสั่งสำหรับนำไปสั่ง ChatGPT / Gemini / Claude
+ */
+function openAiPromptModal() {
+    updateGeneratedAiPrompt();
+    const modalEl = document.getElementById('aiPromptModal');
+    if (modalEl && typeof bootstrap !== 'undefined') {
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+    }
+}
+
+function updateGeneratedAiPrompt() {
+    const topic = document.getElementById('ai-prompt-topic')?.value.trim() || 'ภาษา Python พื้นฐาน (ตัวแปร, if-else, while loop)';
+    const grade = document.getElementById('ai-prompt-grade')?.value || 'มัธยมศึกษาปีที่ 4';
+    const count = document.getElementById('ai-prompt-count')?.value || '20';
+    const difficulty = document.getElementById('ai-prompt-difficulty')?.value || 'ปานกลาง (มีโจทย์วิเคราะห์โค้ด)';
+
+    const promptText = `ช่วยออกข้อสอบปรนัย 4 ตัวเลือก วิชา/เรื่อง: "${topic}"
+สำหรับนักเรียนระดับ: ${grade}
+จำนวน: ${count} ข้อ
+ระดับความยาก: ${difficulty}
+
+⚠️ ข้อกำหนดสำคัญมาก: กรุณาจัดโครงสร้างคำตอบโดยแบ่งเป็น "2 ส่วนชัดเจน" ตามรูปแบบด้านล่างนี้เท่านั้น เพื่อให้นำไปคัดลอกวางลงในระบบตรวจข้อสอบอัตโนมัติได้ทันที:
+
+====================
+ส่วนที่ 1: โจทย์และตัวเลือก
+====================
+(ให้เขียนโจทย์คำถามและตัวเลือก A, B, C, D ตามลำดับ หากมีโค้ดโปรแกรมให้ขึ้นบรรทัดใหม่และจัดย่อหน้าให้ถูกต้อง ห้ามใส่เฉลยในส่วนนี้)
+
+ข้อที่ 1
+[คำถามโจทย์ข้อที่ 1]
+A. [ตัวเลือกที่ 1]
+B. [ตัวเลือกที่ 2]
+C. [ตัวเลือกที่ 3]
+D. [ตัวเลือกที่ 4]
+
+ข้อที่ 2
+[คำถามโจทย์ข้อที่ 2]
+A. [ตัวเลือกที่ 1]
+B. [ตัวเลือกที่ 2]
+C. [ตัวเลือกที่ 3]
+D. [ตัวเลือกที่ 4]
+
+(เขียนต่อไปจนครบ ${count} ข้อ)
+
+====================
+ส่วนที่ 2: เฉลยคำตอบ
+====================
+(ให้ขึ้นบรรทัดใหม่ในรูปแบบ "หมายเลขข้อ [เว้นวรรค] ตัวเลือกที่ถูก (A-D) [เว้นวรรค] คำอธิบายสั้นๆ")
+
+1 [A/B/C/D] [คำอธิบายสั้นๆ]
+2 [A/B/C/D] [คำอธิบายสั้นๆ]
+3 [A/B/C/D] [คำอธิบายสั้นๆ]
+(เขียนต่อไปจนครบ ${count} ข้อ)`;
+
+    const textarea = document.getElementById('ai-generated-prompt-text');
+    if (textarea) {
+        textarea.value = promptText;
+    }
+}
+
+function copyAiPromptToClipboard() {
+    const textarea = document.getElementById('ai-generated-prompt-text');
+    if (!textarea || !textarea.value) return;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(textarea.value).then(() => {
+            notifyAiPromptCopied();
+        }).catch(() => {
+            fallbackCopyText(textarea);
+        });
+    } else {
+        fallbackCopyText(textarea);
+    }
+}
+
+function fallbackCopyText(textarea) {
+    textarea.focus();
+    textarea.select();
+    try {
+        document.execCommand('copy');
+        notifyAiPromptCopied();
+    } catch (e) {
+        alert('กรุณากด Ctrl+C เพื่อคัดลอกข้อความในกล่องครับ');
+    }
+}
+
+function notifyAiPromptCopied() {
+    const swal = getCyberSwal();
+    if (swal) {
+        swal.fire({
+            icon: 'success',
+            title: 'คัดลอก Prompt สำเร็จ! 📋',
+            html: 'นำคำสั่งนี้ไปวางใน <b>ChatGPT / Gemini / Claude</b> ได้เลย<br><span class="text-subtle small mt-1 d-inline-block">เมื่อ AI ส่งข้อสอบกลับมา ให้นำโจทย์มาวางฝั่งซ้าย และเฉลยวางฝั่งขวาครับ</span>',
+            timer: 3200,
+            showConfirmButton: false
+        });
+    } else {
+        alert('คัดลอก Prompt สำเร็จ! นำไปวางใน ChatGPT/Gemini ได้เลย');
+    }
 }
 
 function getPythonExamPresetText() {
@@ -3275,4 +3500,6 @@ window.startExamLockdown = startExamLockdown;
 window.stopExamLockdown = stopExamLockdown;
 window.triggerLockdownScreen = triggerLockdownScreen;
 window.unlockExamByTeacherPin = unlockExamByTeacherPin;
-
+window.openAiPromptModal = openAiPromptModal;
+window.updateGeneratedAiPrompt = updateGeneratedAiPrompt;
+window.copyAiPromptToClipboard = copyAiPromptToClipboard;

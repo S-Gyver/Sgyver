@@ -100,21 +100,135 @@ async function loadQuizData(quizId) {
         ? (Number(currentQuiz.settings?.poolCount) > 0 ? Math.min(Number(currentQuiz.settings.poolCount), totalQ) : Math.min(20, totalQ))
         : totalQ;
 
+    const existingCount = (currentQuiz.variants && currentQuiz.variants.length > 0) ? currentQuiz.variants.length : 20;
     if (!currentQuiz.variants || currentQuiz.variants.length === 0 || (currentQuiz.variants[0]?.questions?.length !== poolCount)) {
-        const existingCount = (currentQuiz.variants && currentQuiz.variants.length > 0) ? currentQuiz.variants.length : 20;
         currentQuiz.variants = autoGenerate20Variants(currentQuiz.questions, poolCount, existingCount);
     }
 
-    const varCount = currentQuiz.variants.length;
-    // Update Header UI
+    populateSettingsInputs();
+    updateLobbySettingsUI();
+}
+
+function populateSettingsInputs() {
+    if (!currentQuiz) return;
+    const totalQ = (currentQuiz.questions || []).length;
+    const poolCountInput = document.getElementById('setting-pool-count');
+    const poolHint = document.getElementById('setting-total-pool-hint');
+    const poolRatio = document.getElementById('setting-pool-label-ratio');
+    const variantSelect = document.getElementById('setting-variant-count');
+    const timeLimitSelect = document.getElementById('setting-time-limit');
+    const passingSelect = document.getElementById('setting-passing-score');
+
+    const poolCount = Number(currentQuiz.settings?.poolCount) || Math.min(10, totalQ);
+    const variantCount = (currentQuiz.variants && currentQuiz.variants.length > 0) ? currentQuiz.variants.length : 20;
+    const timeLimit = currentQuiz.settings?.timeLimit !== undefined ? currentQuiz.settings.timeLimit : 15;
+    const passingScore = currentQuiz.settings?.passingScore || 70;
+
+    if (poolCountInput) {
+        poolCountInput.value = poolCount;
+        poolCountInput.max = totalQ;
+    }
+    if (poolHint) poolHint.textContent = `/ ${totalQ} ข้อ`;
+    if (poolRatio) poolRatio.textContent = `${poolCount}/${totalQ}`;
+    if (variantSelect) variantSelect.value = String(variantCount);
+    if (timeLimitSelect) timeLimitSelect.value = String(timeLimit);
+    if (passingSelect) passingSelect.value = String(passingScore);
+}
+
+function updateLobbySettingsUI() {
+    if (!currentQuiz) return;
+    const totalQ = (currentQuiz.questions || []).length;
+    const poolCount = Number(currentQuiz.settings?.poolCount) || (currentQuiz.variants?.[0]?.questions?.length || totalQ);
+    const varCount = (currentQuiz.variants && currentQuiz.variants.length > 0) ? currentQuiz.variants.length : 20;
+    const isPool = poolCount < totalQ;
+
     const qCountBadge = isPool ? `สุ่ม ${poolCount}/${totalQ} ข้อ (${varCount} SETS)` : `${totalQ} ข้อ (${varCount} SETS READY)`;
-    document.getElementById('lobby-quiz-title').innerHTML = `
-        ${escapeHtml(currentQuiz.title)}
-        <span class="badge bg-warning text-dark fs-6 font-mono"><i class="bi bi-shield-lock-fill me-1"></i>${qCountBadge}</span>
-    `;
-    document.getElementById('lobby-quiz-desc').textContent = isPool 
-        ? `ระบบสุ่มดึงข้อสอบคนละ ${poolCount} ข้อ จากคลังทั้งหมด ${totalQ} ข้อ แจกจ่าย 1 คนต่อ 1 ชุดไม่ซ้ำกัน (${varCount} ชุด)` 
-        : (currentQuiz.description || `สุ่มแจกจ่ายข้อสอบ ${varCount} ชุด ไม่ซ้ำกัน 1 คนต่อ 1 ชุด`);
+    const titleEl = document.getElementById('lobby-quiz-title');
+    if (titleEl) {
+        titleEl.innerHTML = `
+            ${escapeHtml(currentQuiz.title)}
+            <span class="badge bg-warning text-dark fs-6 font-mono"><i class="bi bi-shield-lock-fill me-1"></i>${qCountBadge}</span>
+        `;
+    }
+
+    const descEl = document.getElementById('lobby-quiz-desc');
+    if (descEl) {
+        descEl.textContent = isPool 
+            ? `ระบบสุ่มดึงข้อสอบคนละ ${poolCount} ข้อ จากคลังทั้งหมด ${totalQ} ข้อ แจกจ่าย 1 คนต่อ 1 ชุดไม่ซ้ำกัน (${varCount} ชุด)` 
+            : (currentQuiz.description || `สุ่มแจกจ่ายข้อสอบ ${varCount} ชุด ไม่ซ้ำกัน 1 คนต่อ 1 ชุด`);
+    }
+
+    const capacityBadge = document.getElementById('variants-capacity-badge');
+    if (capacityBadge) {
+        capacityBadge.innerHTML = `<i class="bi bi-shield-lock-fill me-1"></i>พร้อมแจก ${varCount} ชุดไม่ซ้ำกัน`;
+    }
+
+    const ratioLabel = document.getElementById('setting-pool-label-ratio');
+    if (ratioLabel) {
+        ratioLabel.textContent = `${poolCount}/${totalQ}`;
+    }
+
+    const startBtn = document.getElementById('btn-start-exam');
+    if (startBtn) {
+        startBtn.innerHTML = `<i class="bi bi-play-circle-fill me-2"></i>เริ่มการสอบทันที (สุ่มแจก 1 คนต่อ 1 ชุด)`;
+    }
+}
+
+function onLobbySettingsChange() {
+    if (!currentQuiz) return;
+    const totalQ = (currentQuiz.questions || []).length;
+    
+    const poolInput = document.getElementById('setting-pool-count');
+    const variantSelect = document.getElementById('setting-variant-count');
+    const timeLimitSelect = document.getElementById('setting-time-limit');
+    const passingSelect = document.getElementById('setting-passing-score');
+
+    let poolCount = parseInt(poolInput?.value, 10);
+    if (isNaN(poolCount) || poolCount < 1) poolCount = Math.min(10, totalQ);
+    if (poolCount > totalQ) poolCount = totalQ;
+    if (poolInput && poolInput.value !== String(poolCount)) poolInput.value = poolCount;
+
+    let variantCount = parseInt(variantSelect?.value, 10) || 20;
+    let timeLimit = parseInt(timeLimitSelect?.value, 10);
+    if (isNaN(timeLimit)) timeLimit = 15;
+    let passingScore = parseInt(passingSelect?.value, 10) || 70;
+
+    // Update settings
+    if (!currentQuiz.settings) currentQuiz.settings = {};
+    currentQuiz.settings.poolEnabled = (poolCount < totalQ);
+    currentQuiz.settings.poolCount = poolCount;
+    currentQuiz.settings.timeLimit = timeLimit;
+    currentQuiz.settings.passingScore = passingScore;
+
+    // Regenerate variants
+    currentQuiz.variants = autoGenerate20Variants(currentQuiz.questions, poolCount, variantCount);
+
+    // Update UI elements
+    updateLobbySettingsUI();
+
+    // Update lobbyData & sync
+    if (lobbyData) {
+        lobbyData.quiz_variants = currentQuiz.variants;
+        lobbyData.quiz_settings = currentQuiz.settings;
+        saveLocalLobby(lobbyData);
+        syncLobbySettingsToSupabase();
+    }
+}
+window.onLobbySettingsChange = onLobbySettingsChange;
+
+async function syncLobbySettingsToSupabase() {
+    if (!window.supabaseClient || !roomCode) return;
+    try {
+        await window.supabaseClient
+            .from('lobbies')
+            .update({
+                quiz_variants: currentQuiz.variants,
+                quiz_settings: currentQuiz.settings
+            })
+            .eq('room_code', roomCode);
+    } catch (e) {
+        console.warn('Sync settings to Supabase skipped:', e);
+    }
 }
 
 function autoGenerate20Variants(baseQuestions, poolCount, targetCount = 20) {
@@ -1066,14 +1180,26 @@ function renderMonitoringUI() {
 }
 
 function startExamTimer() {
-    const timeLimitMin = currentQuiz.settings?.timeLimit || 15;
+    const timeLimitMin = Number(currentQuiz.settings?.timeLimit);
+    if (isNaN(timeLimitMin) || timeLimitMin <= 0) {
+        // โหมดไม่จำกัดเวลา: นับเวลาที่ใช้ไปเรื่อยๆ (Count Up)
+        remainingExamSeconds = 0;
+        updateExamTimerText(true);
+        if (examTimerInterval) clearInterval(examTimerInterval);
+        examTimerInterval = setInterval(() => {
+            remainingExamSeconds++;
+            updateExamTimerText(true);
+        }, 1000);
+        return;
+    }
+
     remainingExamSeconds = timeLimitMin * 60;
-    updateExamTimerText();
+    updateExamTimerText(false);
 
     if (examTimerInterval) clearInterval(examTimerInterval);
     examTimerInterval = setInterval(() => {
         remainingExamSeconds--;
-        updateExamTimerText();
+        updateExamTimerText(false);
 
         if (remainingExamSeconds <= 0) {
             clearInterval(examTimerInterval);
@@ -1082,12 +1208,16 @@ function startExamTimer() {
     }, 1000);
 }
 
-function updateExamTimerText() {
+function updateExamTimerText(isCountUp = false) {
     const timerEl = document.getElementById('active-timer-display');
     if (!timerEl) return;
     const mins = Math.max(0, Math.floor(remainingExamSeconds / 60));
     const secs = Math.max(0, remainingExamSeconds % 60);
-    timerEl.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    if (isCountUp) {
+        timerEl.textContent = `⏱️ ${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    } else {
+        timerEl.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
 }
 
 function confirmEndExamEarly() {
