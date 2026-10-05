@@ -44,6 +44,10 @@ function restoreOpenWidgets() {
                     savedList.sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
                     savedList.forEach(item => {
                         if (item && item.type && widgetConfigs[item.type]) {
+                            // Ensure widget is not trapped underneath the 60px fixed top navbar
+                            if (item.top === undefined || item.top < 70) {
+                                item.top = 80;
+                            }
                             spawnWidget(item.type, null, item, true);
                         }
                     });
@@ -61,12 +65,12 @@ function restoreOpenWidgets() {
     // Spawn default welcome widgets if first time visit (use guest-friendly tools)
     if (!localStorage.getItem('cs_has_visited')) {
         localStorage.setItem('cs_has_visited', 'true');
-        spawnWidget('clock', { left: 40, top: 40 }, null, true);
-        spawnWidget('traffic', { left: 420, top: 40 }, null, true);
-        spawnWidget('symbol', { left: 600, top: 40 }, null, true);
+        spawnWidget('clock', { left: 40, top: 80 }, null, true);
+        spawnWidget('traffic', { left: 420, top: 80 }, null, true);
+        spawnWidget('symbol', { left: 600, top: 80 }, null, true);
     } else {
         // Default widget
-        spawnWidget('clock', { left: 40, top: 40 }, null, true);
+        spawnWidget('clock', { left: 40, top: 80 }, null, true);
     }
 }
 
@@ -988,24 +992,24 @@ function spawnWidget(type, customPos = null, savedState = null, silent = false) 
 
     const widgetCount = Object.keys(activeWidgets).length;
     let defaultLeft = 40 + (widgetCount % 6) * 35;
-    let defaultTop = 15 + (widgetCount % 6) * 25;
+    let defaultTop = 80 + (widgetCount % 6) * 25;
 
     if (isMobile) {
         // Center horizontally on mobile with safe screen margins
         defaultLeft = Math.max(10, Math.floor((winW - targetW) / 2));
-        defaultTop = Math.max(10, Math.min(20 + (widgetCount % 4) * 20, winH - targetH - 90));
+        defaultTop = Math.max(70, Math.min(80 + (widgetCount % 4) * 20, winH - targetH - 90));
     } else {
         if (savedState && savedState.left !== undefined) {
             defaultLeft = savedState.left;
-            defaultTop = savedState.top;
+            defaultTop = Math.max(70, savedState.top);
         } else if (customPos) {
             defaultLeft = customPos.left;
-            defaultTop = customPos.top;
+            defaultTop = Math.max(70, customPos.top);
         }
         if (defaultLeft + targetW > winW - 10) defaultLeft = Math.max(10, winW - targetW - 10);
-        if (defaultTop + targetH > winH - 60) defaultTop = Math.max(0, winH - targetH - 60);
-        if (defaultLeft < 0) defaultLeft = 0;
-        if (defaultTop < 0) defaultTop = 0;
+        if (defaultTop + targetH > winH - 60) defaultTop = Math.max(70, winH - targetH - 60);
+        if (defaultLeft < 0) defaultLeft = 10;
+        if (defaultTop < 70) defaultTop = 75;
     }
 
     const widgetEl = document.createElement('div');
@@ -1241,9 +1245,9 @@ function makeDraggable(element, handle) {
         let newTop = element.offsetTop - pos2;
         let newLeft = element.offsetLeft - pos1;
 
-        // Boundaries check - allow dragging all the way to the top!
+        // Boundaries check - prevent widget from sliding under fixed 60px top navbar
         const elWidth = element.offsetWidth || 120;
-        const minTop = 0;
+        const minTop = 68; // Safe area below fixed top navbar (60px) + margin
         const maxTop = Math.max(minTop, window.innerHeight - 50);
         const maxLeft = Math.max(0, window.innerWidth - elWidth);
 
@@ -1282,9 +1286,9 @@ function makeDraggable(element, handle) {
         let newTop = element.offsetTop - pos2;
         let newLeft = element.offsetLeft - pos1;
 
-        // Boundaries check for touch - allow dragging all the way to the top!
+        // Boundaries check for touch - safe area below 60px top navbar
         const elWidth = element.offsetWidth || 120;
-        const minTop = 0;
+        const minTop = 68;
         const maxTop = Math.max(minTop, window.innerHeight - 50);
         const maxLeft = Math.max(0, window.innerWidth - elWidth);
 
@@ -1494,7 +1498,7 @@ const widgetConfigs = {
         title: 'นาฬิกา & ปฏิทิน (Clock)',
         icon: 'bi bi-clock-fill text-info',
         render: (id) => `
-            <div class="clock-widget-box text-center" style="min-width: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 8px 12px;">
+            <div class="clock-widget-box text-center" style="min-width: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 8px 12px; cursor: grab; user-select: none;" title="คลิกลากเพื่อย้ายตำแหน่งนาฬิกาได้ทันที">
                 <!-- Big Time Display -->
                 <div id="clock-big-time-${id}"
                     style="font-size: clamp(2.8rem, 6vw, 4.5rem); font-weight: 900; font-family: 'Kanit', 'Courier New', monospace; letter-spacing: 4px; color: #ffffff; line-height: 1; text-shadow: 0 0 20px rgba(34,211,238,0.6), 0 0 40px rgba(34,211,238,0.3); filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5));">
@@ -1519,6 +1523,13 @@ const widgetConfigs = {
             updateClock();
             const interval = setInterval(updateClock, 1000);
             activeWidgets[id].cleanup = () => clearInterval(interval);
+
+            // Allow dragging directly by clicking anywhere on the clock display area
+            const widgetEl = document.getElementById(id);
+            const clockBox = document.getElementById(`body-${id}`)?.querySelector('.clock-widget-box');
+            if (widgetEl && clockBox) {
+                makeDraggable(widgetEl, clockBox);
+            }
         }
     },
 

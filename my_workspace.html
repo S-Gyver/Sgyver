@@ -342,10 +342,10 @@
                     placeholder="ค้นหาแอป & เครื่องมือ..." oninput="filterLaunchpadApps(this.value)">
             </div>
 
-            <!-- ⚡ 1. เครื่องมือด่วน & สุ่มเลือก (Quick & Random Tools) -->
+            <!-- ⚡ 1. เครื่องมือด่วน, สื่อ & กระดานห้องเรียน (Quick Tools & Canvas) -->
             <div class="launchpad-category">
                 <div class="launchpad-category-title">
-                    <span>⚡ 1. เครื่องมือด่วน & สุ่มเลือก (Quick Tools)</span>
+                    <span>⚡ 1. เครื่องมือด่วน, สื่อ & กระดานห้องเรียน (Quick Tools & Canvas)</span>
                 </div>
                 <div class="launchpad-grid">
                     <!-- Instant Wheel -->
@@ -427,15 +427,7 @@
                             <div class="launchpad-desc">เกมทายตัวเลขปริศนา แจ้งเตือนมากไป/น้อยไปทันที</div>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            <!-- ⏱️ 2. บริหารเวลา & วินัยห้องเรียน (Time & Classroom Rules) -->
-            <div class="launchpad-category">
-                <div class="launchpad-category-title">
-                    <span>⏱️ 2. บริหารเวลา & วินัยห้องเรียน (Time & Rules)</span>
-                </div>
-                <div class="launchpad-grid">
                     <!-- จับเวลา -->
                     <div class="launchpad-app-item" draggable="true" ondragstart="onLaunchpadDragStart(event, 'timer')"
                         onclick="launchTool('timer')" data-widget-type="timer"
@@ -516,18 +508,6 @@
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            <!-- 🎨 3. สื่อการสอน & กระดานทำงาน (Teaching Canvas & Media) -->
-            <div class="launchpad-category">
-                <div class="launchpad-category-title d-flex align-items-center">
-                    <span>🎨 3. สื่อการสอน & กระดานทำงาน (Canvas & Media)</span>
-                    <span
-                        class="badge bg-warning-subtle text-warning border border-warning-subtle ms-2 launchpad-member-badge"
-                        style="font-size: 0.68rem; display: none;"><i class="bi bi-lock-fill me-1"></i>สมาชิก</span>
-                </div>
-                <div class="launchpad-grid">
                     <!-- กระดานวาดรูป -->
                     <div class="launchpad-app-item" data-member-only="true" draggable="true"
                         ondragstart="onLaunchpadDragStart(event, 'draw')" onclick="launchTool('draw')"
@@ -615,10 +595,10 @@
                 </div>
             </div>
 
-            <!-- 🎮 4. กิจกรรมห้องเรียน & แข่งขัน (Interactive Games & Live) -->
+            <!-- 🎮 2. กิจกรรม & ห้องเรียนสด (Live Games & Studio) -->
             <div class="launchpad-category">
                 <div class="launchpad-category-title d-flex align-items-center">
-                    <span>🎮 4. กิจกรรม & ห้องเรียนสด (Live Games & Studio)</span>
+                    <span>🎮 2. กิจกรรม & ห้องเรียนสด (Live Games & Studio)</span>
                     <span
                         class="badge bg-warning-subtle text-warning border border-warning-subtle ms-2 launchpad-member-badge"
                         style="font-size: 0.68rem; display: none;"><i class="bi bi-lock-fill me-1"></i>สมาชิก</span>
@@ -677,10 +657,10 @@
                 </div>
             </div>
 
-            <!-- 📋 5. วัดผล & แบบทดสอบ (Assessment & Evaluation) -->
+            <!-- 📋 3. วัดผล & แบบทดสอบ (Assessment & Evaluation) -->
             <div class="launchpad-category">
                 <div class="launchpad-category-title d-flex align-items-center">
-                    <span>📋 5. วัดผล & ประเมิน (Assessment & Quiz)</span>
+                    <span>📋 3. วัดผล & ประเมิน (Assessment & Quiz)</span>
                     <span
                         class="badge bg-warning-subtle text-warning border border-warning-subtle ms-2 launchpad-member-badge"
                         style="font-size: 0.68rem; display: none;"><i class="bi bi-lock-fill me-1"></i>สมาชิก</span>
@@ -720,10 +700,10 @@
                 </div>
             </div>
 
-            <!-- 🎓 6. บริหารผู้สอน & คลังสื่อ (Teacher Studio) -->
+            <!-- 🎓 4. บริหารผู้สอน & คลังสื่อ (Teacher Studio) -->
             <div class="launchpad-category">
                 <div class="launchpad-category-title d-flex align-items-center">
-                    <span>🎓 6. บริหารผู้สอน & คลังสื่อ (Teacher Studio)</span>
+                    <span>🎓 4. บริหารผู้สอน & คลังสื่อ (Teacher Studio)</span>
                     <span
                         class="badge bg-warning-subtle text-warning border border-warning-subtle ms-2 launchpad-member-badge"
                         style="font-size: 0.68rem; display: none;"><i class="bi bi-lock-fill me-1"></i>สมาชิก</span>
@@ -1107,8 +1087,8 @@
                     <div class="d-flex align-items-start gap-2 mb-2">
                         <i class="bi bi-check-circle-fill text-success mt-1"></i>
                         <div class="small text-light">
-                            <strong class="text-info">ผู้ใช้ทั่วไป (ไม่ต้องสมัคร):</strong> ใช้ได้ทันทีเฉพาะ
-                            <strong>เครื่องมือด่วน (Quick Tools)</strong> และ <strong>บริหารเวลา (Time & Rules)</strong>
+                            <strong class="text-info">ผู้ใช้ทั่วไป (ไม่ต้องสมัคร):</strong> ใช้ได้ทันที
+                            <strong>เครื่องมือด่วน & บริหารเวลาห้องเรียน (Quick Tools)</strong>
                         </div>
                     </div>
                     <div class="d-flex align-items-start gap-2">

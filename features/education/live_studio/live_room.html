@@ -228,18 +228,64 @@
                     </div>
                 </div>
                 <div class="user-panel-controls">
-                    <button class="panel-icon-btn" id="panel-mic-btn" title="ไมค์" onclick="toggleMic()">
+                    <button class="panel-icon-btn" id="panel-mic-btn" title="ไมค์ (เปิด/ปิด)" onclick="toggleMic()">
                         <i class="bi bi-mic-fill"></i>
                     </button>
-                    <button class="panel-icon-btn" id="panel-cam-btn" title="กล้อง" onclick="toggleCamera()">
+                    <button class="panel-icon-btn" id="panel-cam-btn" title="กล้อง (เปิด/ปิด)" onclick="toggleCamera()">
                         <i class="bi bi-camera-video-fill"></i>
                     </button>
-                    <button class="panel-icon-btn" title="ตั้งค่า" onclick="showToast('info','ตั้งค่า','ระบบทำงานปกติ',2000)">
+                    <button class="panel-icon-btn" id="panel-settings-btn" title="เลือกไมค์ & ลำโพง (Device Settings)" onclick="toggleDeviceSettings(event)">
                         <i class="bi bi-gear-fill"></i>
                     </button>
                 </div>
+
+                <!-- 🎛️ Audio Device Selection Popover (Dropdown) -->
+                <div class="device-settings-popover" id="device-settings-popover" style="display:none" onclick="event.stopPropagation()">
+                    <div class="dsp-header">
+                        <div class="dsp-title"><i class="bi bi-sliders text-info me-1"></i> แหล่งที่มาของเสียง</div>
+                        <button type="button" class="dsp-close-btn" onclick="toggleDeviceSettings(event, false)"><i class="bi bi-x-lg"></i></button>
+                    </div>
+                    <div class="dsp-body">
+                        <!-- Input Device (Microphone) -->
+                        <div class="dsp-group">
+                            <label class="dsp-label" for="select-audio-input">
+                                <i class="bi bi-mic-fill text-success me-1"></i> ไมโครโฟน (Audio Input)
+                            </label>
+                            <select class="dsp-select" id="select-audio-input" onchange="onAudioInputChange(this.value)">
+                                <option value="">กำลังโหลดรายการไมค์...</option>
+                            </select>
+                            <!-- Live Mic Meter -->
+                            <div class="dsp-meter-container" title="ระดับความดังไมค์สด">
+                                <div class="dsp-meter-fill" id="mic-meter-fill"></div>
+                            </div>
+                        </div>
+
+                        <!-- Output Device (Speaker / Headphones) -->
+                        <div class="dsp-group">
+                            <label class="dsp-label" for="select-audio-output">
+                                <i class="bi bi-volume-up-fill text-primary me-1"></i> ลำโพง / หูฟัง (Audio Output)
+                            </label>
+                            <select class="dsp-select" id="select-audio-output" onchange="onAudioOutputChange(this.value)">
+                                <option value="">กำลังโหลดรายการลำโพง...</option>
+                            </select>
+                            <div class="dsp-output-actions">
+                                <button type="button" class="dsp-btn-test" onclick="testSpeakerSound()">
+                                    <i class="bi bi-volume-up-fill me-1"></i> ทดสอบเสียง
+                                </button>
+                                <span class="dsp-note" id="dsp-output-note"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </aside>
+
+        <!-- 🔊 Mobile Autoplay Unlock Banner -->
+        <div class="audio-unlock-banner" id="audio-unlock-banner" style="display:none" onclick="unlockAudioPlayback()">
+            <i class="bi bi-volume-mute-fill text-warning me-2 fs-5"></i>
+            <span>แตะที่นี่เพื่อเปิดเสียงห้องเรียน (Audio Paused)</span>
+            <button type="button" class="btn-unlock-audio"><i class="bi bi-volume-up-fill me-1"></i>เปิดเสียง</button>
+        </div>
 
         <!-- ── 2. MAIN STAGE (CENTER) ── -->
         <main class="studio-stage">

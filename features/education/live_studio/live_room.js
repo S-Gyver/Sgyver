@@ -53,6 +53,16 @@ const STATE = {
     activeScreenSharers:  new Map(), // name -> { name, role, isSelf, stream }
     currentViewingSharer: null,      // name of user whose screen is being viewed
     remoteScreenStreams:  new Map(), // name -> MediaStream
+    remoteAudioElements:  new Map(), // name -> HTMLAudioElement
+
+    // Audio device settings & analyser
+    selectedAudioInputId:  localStorage.getItem('gyver_audio_input_id') || '',
+    selectedAudioOutputId: localStorage.getItem('gyver_audio_output_id') || '',
+    audioContext:  null,
+    micAnalyser:   null,
+    micDataArray:  null,
+    micAnimFrame:  null,
+    lastScreenReqTime: 0,
 
     // Persistent items
     chatMessages:  [],
@@ -339,6 +349,11 @@ async function enterStudio() {
 
     // Setup Realtime signaling & WebRTC immediately
     setupRealtimeChannel(pin);
+
+    // Initialize audio device dropdowns (input/output) & mobile audio unlock
+    initDeviceManagement();
+    document.addEventListener('click', unlockAudioPlayback);
+    document.addEventListener('touchstart', unlockAudioPlayback);
 
     // 3. Background DB sync (non-blocking)
     (async () => {
@@ -1040,10 +1055,8 @@ function setupRealtimeChannel(pin) {
             const p = newPresences[0];
             if (p && p.id !== STATE.myId && p.name !== STATE.myName) {
                 STATE.participants.set(p.name, p);
-                // If this user has active media or screen share, initiate WebRTC connection
-                if (STATE.screenOn) {
-                    sendScreenTrackToPeer(p.name);
-                } else if (STATE.camOn || STATE.micOn) {
+                // If this user has any active media (screen share, microphone, camera), initiate WebRTC connection
+                if (STATE.screenOn || STATE.micOn || STATE.camOn) {
                     initiatePeerConnection(p.name);
                 }
             }
@@ -1053,6 +1066,7 @@ function setupRealtimeChannel(pin) {
             if (p && p.id !== STATE.myId) {
                 removeParticipant(p.name);
                 closePeerConnection(p.name);
+                removeRemoteAudio(p.name);
             }
         });
 
@@ -1374,7 +1388,10 @@ async function toggleMic() {
 
         if (!audioTrack || audioTrack.readyState === 'ended') {
             try {
-                const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const audioConstraints = STATE.selectedAudioInputId
+                    ? { deviceId: { exact: STATE.selectedAudioInputId } }
+                    : true;
+                const audioStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
                 const newTrack = audioStream.getAudioTracks()[0];
                 if (STATE.localStream) {
                     STATE.localStream.getAudioTracks().forEach(t => STATE.localStream.removeTrack(t));
@@ -1384,7 +1401,7 @@ async function toggleMic() {
                 }
                 audioTrack = newTrack;
 
-                // Add or replace audio track in peer connections
+                // Add or replace audio track in all peer connections
                 STATE.peerConnections.forEach(async (pc, peerName) => {
                     try {
                         const senders = pc.getSenders();
@@ -1393,17 +1410,26 @@ async function toggleMic() {
                             await audioSender.replaceTrack(audioTrack);
                         } else {
                             pc.addTrack(audioTrack, STATE.localStream);
-                            const offer = await pc.createOffer();
-                            await pc.setLocalDescription(offer);
-                            if (STATE.channel) {
-                                STATE.channel.send({
-                                    type: 'broadcast',
-                                    event: 'signal_offer',
-                                    payload: { target: peerName, sender: STATE.myName, sdp: offer }
-                                });
+                            if (pc.signalingState === 'stable') {
+                                const offer = await pc.createOffer();
+                                await pc.setLocalDescription(offer);
+                                if (STATE.channel) {
+                                    STATE.channel.send({
+                                        type: 'broadcast',
+                                        event: 'signal_offer',
+                                        payload: { target: peerName, sender: STATE.myName, sdp: offer }
+                                    });
+                                }
                             }
                         }
                     } catch (e) {}
+                });
+
+                // Connect to any participant who doesn't have a peer connection yet
+                STATE.participants.forEach((p, pName) => {
+                    if (pName !== STATE.myName && !STATE.peerConnections.has(pName)) {
+                        initiatePeerConnection(pName);
+                    }
                 });
             } catch (err) {
                 console.error('[Mic Error]:', err);
@@ -1425,6 +1451,7 @@ async function toggleMic() {
             audioTrack.enabled = true;
         }
         STATE.micOn = true;
+        setupMicAudioAnalyser(STATE.localStream);
     } else {
         // 🔴 ปิดไมโครโฟน (Mute)
         if (STATE.localStream) {
@@ -1433,6 +1460,7 @@ async function toggleMic() {
             });
         }
         STATE.micOn = false;
+        stopMicAudioAnalyser();
     }
 
     const ctrlMic = el('ctrl-mic');
@@ -1766,11 +1794,19 @@ function selectScreenStream(targetName) {
         if (screenVideo) {
             screenVideo.srcObject = stream;
             screenVideo.style.display = 'block';
-            screenVideo.play().catch(err => {
-                console.warn('Autoplay unmuted blocked, retrying muted:', err);
+            if (isSelf) {
                 screenVideo.muted = true;
-                screenVideo.play().catch(e => console.error('Play error:', e));
-            });
+                screenVideo.play().catch(e => console.error('Play self screen error:', e));
+            } else {
+                screenVideo.muted = false;
+                screenVideo.play().catch(err => {
+                    console.warn('Autoplay unmuted blocked on remote screen, playing muted:', err);
+                    screenVideo.muted = true;
+                    screenVideo.play().catch(e => console.error('Play remote screen error:', e));
+                    const banner = el('audio-unlock-banner');
+                    if (banner) banner.classList.add('visible');
+                });
+            }
         }
         if (placeholder) placeholder.style.display = 'none';
         if (box) box.classList.add('sharing');
@@ -1782,13 +1818,17 @@ function selectScreenStream(targetName) {
 
         // Request stream directly from the sharer via signaling broadcast
         if (!isSelf) {
-            console.log(`[selectScreenStream] Stream for "${targetName}" not ready. Sending request_screen_stream...`);
-            if (STATE.channel) {
-                STATE.channel.send({
-                    type: 'broadcast',
-                    event: 'request_screen_stream',
-                    payload: { requester: STATE.myName, target: targetName }
-                });
+            const now = Date.now();
+            if (!STATE.lastScreenReqTime || (now - STATE.lastScreenReqTime > 2500)) {
+                STATE.lastScreenReqTime = now;
+                console.log(`[selectScreenStream] Stream for "${targetName}" not ready. Sending request_screen_stream...`);
+                if (STATE.channel) {
+                    STATE.channel.send({
+                        type: 'broadcast',
+                        event: 'request_screen_stream',
+                        payload: { requester: STATE.myName, target: targetName }
+                    });
+                }
             }
 
             if (STATE._screenStreamPoll) {
@@ -1826,24 +1866,27 @@ function selectScreenStream(targetName) {
                         if (sv) {
                             sv.srcObject = s;
                             sv.style.display = 'block';
+                            sv.muted = false;
                             sv.play().catch(err => {
                                 sv.muted = true;
                                 sv.play().catch(e => {});
+                                const banner = el('audio-unlock-banner');
+                                if (banner) banner.classList.add('visible');
                             });
                         }
                         if (placeholder) placeholder.style.display = 'none';
                         if (box) box.classList.add('sharing');
                     }
                 } else {
-                    // Retry request every 1.6s if not yet received
-                    if (tries % 4 === 0 && tries < 28 && STATE.channel) {
+                    // Retry request every 2.4s if not yet received
+                    if (tries % 6 === 0 && tries < 24 && STATE.channel) {
                         STATE.channel.send({
                             type: 'broadcast',
                             event: 'request_screen_stream',
                             payload: { requester: STATE.myName, target: targetName }
                         });
                     }
-                    if (tries >= 30) {
+                    if (tries >= 25) {
                         clearInterval(STATE._screenStreamPoll);
                         STATE._screenStreamPoll = null;
                     }
@@ -1965,31 +2008,24 @@ async function toggleScreenShare() {
             });
         }
 
-        // Send screen track to all connected peers
-        const screenTrack = STATE.screenStream.getVideoTracks()[0];
-
-        // Re-negotiate on all existing peer connections
+        // Re-negotiate on all existing peer connections with all active tracks (screen + mic)
         for (const [peerName, pc] of STATE.peerConnections.entries()) {
             try {
-                const senders = pc.getSenders();
-                const videoSender = senders.find(s => s.track && s.track.kind === 'video');
-                if (videoSender) {
-                    await videoSender.replaceTrack(screenTrack);
-                } else {
-                    pc.addTrack(screenTrack, STATE.screenStream);
-                }
-                const offer = await pc.createOffer();
-                await pc.setLocalDescription(offer);
-                if (STATE.channel) {
-                    STATE.channel.send({
-                        type: 'broadcast',
-                        event: 'signal_offer',
-                        payload: {
-                            target: peerName,
-                            sender: STATE.myName,
-                            sdp: offer
-                        }
-                    });
+                attachAllActiveTracksToPeer(pc);
+                if (pc.signalingState === 'stable') {
+                    const offer = await pc.createOffer();
+                    await pc.setLocalDescription(offer);
+                    if (STATE.channel) {
+                        STATE.channel.send({
+                            type: 'broadcast',
+                            event: 'signal_offer',
+                            payload: {
+                                target: peerName,
+                                sender: STATE.myName,
+                                sdp: offer
+                            }
+                        });
+                    }
                 }
             } catch (e) {
                 console.warn('[Screen track renegotiation error]:', e);
@@ -2074,38 +2110,416 @@ function updatePeerMediaState(payload) {
     }
 }
 
+// ── AUDIO DEVICE MANAGEMENT & ANALYZER ─────────────────────────
+async function initDeviceManagement() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+        console.warn('enumerateDevices not supported in this browser');
+        return;
+    }
+    await updateDeviceList();
+    try {
+        navigator.mediaDevices.addEventListener('devicechange', updateDeviceList);
+    } catch (e) {}
+
+    // Close settings popover when clicking outside
+    document.addEventListener('click', (e) => {
+        const popover = el('device-settings-popover');
+        const btn = el('panel-settings-btn');
+        if (popover && popover.style.display !== 'none' && popover.classList.contains('active')) {
+            if (!popover.contains(e.target) && (!btn || !btn.contains(e.target))) {
+                toggleDeviceSettings(null, false);
+            }
+        }
+    });
+}
+
+async function updateDeviceList() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+    try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const inputSelect  = el('select-audio-input');
+        const outputSelect = el('select-audio-output');
+
+        if (inputSelect) {
+            const currentVal = inputSelect.value || STATE.selectedAudioInputId;
+            inputSelect.innerHTML = '';
+            const inputs = devices.filter(d => d.kind === 'audioinput');
+            if (inputs.length === 0) {
+                inputSelect.innerHTML = '<option value="">ไมค์เริ่มต้นของระบบ</option>';
+            } else {
+                inputs.forEach((d, idx) => {
+                    const opt = document.createElement('option');
+                    opt.value = d.deviceId;
+                    opt.textContent = d.label || `ไมโครโฟน ${idx + 1}`;
+                    if (d.deviceId === currentVal || (!currentVal && idx === 0)) {
+                        opt.selected = true;
+                        STATE.selectedAudioInputId = d.deviceId;
+                    }
+                    inputSelect.appendChild(opt);
+                });
+            }
+        }
+
+        if (outputSelect) {
+            const currentVal = outputSelect.value || STATE.selectedAudioOutputId;
+            outputSelect.innerHTML = '';
+            const outputs = devices.filter(d => d.kind === 'audiooutput');
+            if (outputs.length === 0) {
+                outputSelect.innerHTML = '<option value="">ลำโพงเริ่มต้นของระบบ</option>';
+            } else {
+                outputs.forEach((d, idx) => {
+                    const opt = document.createElement('option');
+                    opt.value = d.deviceId;
+                    opt.textContent = d.label || `ลำโพง/หูฟัง ${idx + 1}`;
+                    if (d.deviceId === currentVal || (!currentVal && idx === 0)) {
+                        opt.selected = true;
+                        STATE.selectedAudioOutputId = d.deviceId;
+                    }
+                    outputSelect.appendChild(opt);
+                });
+            }
+        }
+    } catch (e) {
+        console.warn('[updateDeviceList error]:', e);
+    }
+}
+
+async function onAudioInputChange(deviceId) {
+    STATE.selectedAudioInputId = deviceId;
+    localStorage.setItem('gyver_audio_input_id', deviceId);
+
+    if (STATE.micOn) {
+        try {
+            const constraints = {
+                audio: deviceId ? { deviceId: { exact: deviceId } } : true
+            };
+            const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+            const newTrack = newStream.getAudioTracks()[0];
+
+            if (STATE.localStream) {
+                STATE.localStream.getAudioTracks().forEach(t => {
+                    t.stop();
+                    STATE.localStream.removeTrack(t);
+                });
+                STATE.localStream.addTrack(newTrack);
+            } else {
+                STATE.localStream = newStream;
+            }
+
+            // Replace track on all existing peer connections
+            STATE.peerConnections.forEach(pc => {
+                const senders = pc.getSenders();
+                const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
+                if (audioSender) {
+                    audioSender.replaceTrack(newTrack).catch(() => {});
+                } else {
+                    try { pc.addTrack(newTrack, STATE.localStream); } catch (e) {}
+                }
+            });
+
+            setupMicAudioAnalyser(STATE.localStream);
+            showToast('info', 'เปลี่ยนไมโครโฟนแล้ว', 'สลับไมโครโฟนสำหรับการพูดคุยเรียบร้อย', 2000);
+        } catch (err) {
+            console.error('[onAudioInputChange error]:', err);
+            showToast('error', 'เปลี่ยนไมค์ไม่สำเร็จ', err.message || '', 3000);
+        }
+    }
+}
+
+async function onAudioOutputChange(deviceId) {
+    STATE.selectedAudioOutputId = deviceId;
+    localStorage.setItem('gyver_audio_output_id', deviceId);
+
+    // Apply to all remote peer audio elements
+    STATE.remoteAudioElements.forEach(async (audioEl) => {
+        if (audioEl && typeof audioEl.setSinkId === 'function') {
+            try {
+                await audioEl.setSinkId(deviceId);
+            } catch (e) {
+                console.warn('[setSinkId error]:', e);
+            }
+        }
+    });
+
+    // Also apply to screen video element
+    const screenVideo = el('screen-video');
+    if (screenVideo && typeof screenVideo.setSinkId === 'function') {
+        try {
+            await screenVideo.setSinkId(deviceId);
+        } catch (e) {}
+    }
+
+    showToast('info', 'เปลี่ยนลำโพง/หูฟังแล้ว', 'สลับอุปกรณ์รับฟังเสียงเรียบร้อย', 2000);
+}
+
+function testSpeakerSound() {
+    try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+        const ctx = new AudioContextClass();
+
+        // 3-tone pleasant chime (C5, E5, G5)
+        const notes = [523.25, 659.25, 783.99];
+        notes.forEach((freq, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.13);
+
+            gain.gain.setValueAtTime(0, ctx.currentTime + idx * 0.13);
+            gain.gain.linearRampToValueAtTime(0.2, ctx.currentTime + idx * 0.13 + 0.03);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.13 + 0.35);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc.start(ctx.currentTime + idx * 0.13);
+            osc.stop(ctx.currentTime + idx * 0.13 + 0.4);
+        });
+
+        if (typeof ctx.setSinkId === 'function' && STATE.selectedAudioOutputId) {
+            ctx.setSinkId(STATE.selectedAudioOutputId).catch(() => {});
+        }
+    } catch (e) {
+        console.warn('[testSpeakerSound error]:', e);
+    }
+}
+
+function setupMicAudioAnalyser(stream) {
+    stopMicAudioAnalyser();
+    try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass || !stream) return;
+        STATE.audioContext = new AudioContextClass();
+        if (STATE.audioContext.state === 'suspended') {
+            STATE.audioContext.resume().catch(() => {});
+        }
+        const source = STATE.audioContext.createMediaStreamSource(stream);
+        STATE.micAnalyser = STATE.audioContext.createAnalyser();
+        STATE.micAnalyser.fftSize = 64;
+        source.connect(STATE.micAnalyser);
+
+        STATE.micDataArray = new Uint8Array(STATE.micAnalyser.frequencyBinCount);
+
+        function updateMeter() {
+            if (!STATE.micOn || !STATE.micAnalyser) {
+                const fill = el('mic-meter-fill');
+                if (fill) fill.style.width = '0%';
+                return;
+            }
+            STATE.micAnalyser.getByteFrequencyData(STATE.micDataArray);
+            let sum = 0;
+            for (let i = 0; i < STATE.micDataArray.length; i++) {
+                sum += STATE.micDataArray[i];
+            }
+            const avg = sum / STATE.micDataArray.length;
+            const percent = Math.min(100, Math.round((avg / 120) * 100));
+            const fill = el('mic-meter-fill');
+            if (fill) fill.style.width = `${percent}%`;
+
+            STATE.micAnimFrame = requestAnimationFrame(updateMeter);
+        }
+        updateMeter();
+    } catch (e) {
+        console.warn('[setupMicAudioAnalyser error]:', e);
+    }
+}
+
+function stopMicAudioAnalyser() {
+    if (STATE.micAnimFrame) {
+        cancelAnimationFrame(STATE.micAnimFrame);
+        STATE.micAnimFrame = null;
+    }
+    if (STATE.audioContext) {
+        try { STATE.audioContext.close(); } catch(e){}
+        STATE.audioContext = null;
+    }
+    STATE.micAnalyser = null;
+    const fill = el('mic-meter-fill');
+    if (fill) fill.style.width = '0%';
+}
+
+function toggleDeviceSettings(event, forceState) {
+    if (event && event.stopPropagation) event.stopPropagation();
+    const popover = el('device-settings-popover');
+    if (!popover) return;
+    const shouldOpen = (forceState !== undefined) ? !!forceState : (popover.style.display === 'none' || !popover.classList.contains('active'));
+    if (shouldOpen) {
+        popover.style.display = 'block';
+        popover.classList.add('active');
+        updateDeviceList();
+    } else {
+        popover.style.display = 'none';
+        popover.classList.remove('active');
+    }
+}
+
+// ── REMOTE AUDIO PLAYBACK MANAGER (Solves Mobile & Browser Muting) ──
+function getOrCreateRemoteAudio(peerName) {
+    let audioEl = STATE.remoteAudioElements.get(peerName);
+    if (!audioEl || !document.body.contains(audioEl)) {
+        audioEl = document.createElement('audio');
+        audioEl.id = `remote-audio-${peerName}`;
+        audioEl.className = 'remote-peer-audio';
+        audioEl.autoplay = true;
+        audioEl.playsInline = true;
+        audioEl.style.position = 'fixed';
+        audioEl.style.left = '-9999px';
+        audioEl.style.top = '-9999px';
+        audioEl.style.width = '1px';
+        audioEl.style.height = '1px';
+        audioEl.style.opacity = '0';
+        audioEl.style.pointerEvents = 'none';
+        document.body.appendChild(audioEl);
+        STATE.remoteAudioElements.set(peerName, audioEl);
+    }
+    return audioEl;
+}
+
+function playRemoteAudio(peerName, track) {
+    if (!track) return;
+    const audioEl = getOrCreateRemoteAudio(peerName);
+
+    if (!audioEl.srcObject) {
+        audioEl.srcObject = new MediaStream([track]);
+    } else {
+        const currentTracks = audioEl.srcObject.getAudioTracks();
+        if (!currentTracks.some(t => t.id === track.id)) {
+            audioEl.srcObject.addTrack(track);
+        }
+    }
+    audioEl.muted = false;
+    audioEl.volume = 1.0;
+
+    if (STATE.selectedAudioOutputId && typeof audioEl.setSinkId === 'function') {
+        audioEl.setSinkId(STATE.selectedAudioOutputId).catch(() => {});
+    }
+
+    const tryPlay = () => {
+        audioEl.play().then(() => {
+            const banner = el('audio-unlock-banner');
+            if (banner) banner.classList.remove('visible');
+        }).catch(err => {
+            console.warn(`[Remote Audio ${peerName}] Autoplay blocked:`, err);
+            const banner = el('audio-unlock-banner');
+            if (banner) banner.classList.add('visible');
+        });
+    };
+
+    tryPlay();
+    track.onunmute = () => { tryPlay(); };
+}
+
+function removeRemoteAudio(peerName) {
+    const audioEl = STATE.remoteAudioElements.get(peerName);
+    if (audioEl) {
+        try {
+            audioEl.pause();
+            audioEl.srcObject = null;
+            audioEl.remove();
+        } catch (e) {}
+        STATE.remoteAudioElements.delete(peerName);
+    }
+}
+
+function unlockAudioPlayback() {
+    STATE.remoteAudioElements.forEach(audioEl => {
+        if (audioEl) {
+            audioEl.muted = false;
+            audioEl.play().catch(() => {});
+        }
+    });
+
+    const screenVideo = el('screen-video');
+    if (screenVideo && STATE.currentViewingSharer && STATE.currentViewingSharer !== STATE.myName) {
+        screenVideo.muted = false;
+        screenVideo.play().catch(() => {});
+    }
+
+    const banner = el('audio-unlock-banner');
+    if (banner) banner.classList.remove('visible');
+}
+
+// ── WEBRTC TRACK ATTACHMENT HELPER ─────────────────────────────
+function attachAllActiveTracksToPeer(pc) {
+    if (!pc) return;
+    const senders = pc.getSenders();
+
+    // 1. Microphone voice audio track
+    if (STATE.localStream) {
+        const audioTracks = STATE.localStream.getAudioTracks();
+        if (audioTracks.length > 0) {
+            const micTrack = audioTracks[0];
+            const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
+            if (audioSender) {
+                try { audioSender.replaceTrack(micTrack); } catch (e) {}
+            } else {
+                try { pc.addTrack(micTrack, STATE.localStream); } catch (e) {}
+            }
+        }
+    }
+
+    // 2. Camera or Screen Video track
+    let activeVideoTrack = null;
+    let videoSourceStream = null;
+    if (STATE.screenStream && STATE.screenOn) {
+        const screenVideos = STATE.screenStream.getVideoTracks();
+        if (screenVideos.length > 0 && screenVideos[0].readyState !== 'ended') {
+            activeVideoTrack = screenVideos[0];
+            videoSourceStream = STATE.screenStream;
+        }
+    } else if (STATE.localStream && STATE.camOn) {
+        const camVideos = STATE.localStream.getVideoTracks();
+        if (camVideos.length > 0 && camVideos[0].readyState !== 'ended') {
+            activeVideoTrack = camVideos[0];
+            videoSourceStream = STATE.localStream;
+        }
+    }
+
+    if (activeVideoTrack && videoSourceStream) {
+        const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+        if (videoSender) {
+            try { videoSender.replaceTrack(activeVideoTrack); } catch (e) {}
+        } else {
+            try { pc.addTrack(activeVideoTrack, videoSourceStream); } catch (e) {}
+        }
+    }
+
+    // 3. Screen system audio track if present
+    if (STATE.screenStream && STATE.screenOn) {
+        const screenAudios = STATE.screenStream.getAudioTracks();
+        if (screenAudios.length > 0 && screenAudios[0].readyState !== 'ended') {
+            const screenAudioTrack = screenAudios[0];
+            const hasTrackAlready = senders.some(s => s.track === screenAudioTrack);
+            if (!hasTrackAlready) {
+                try { pc.addTrack(screenAudioTrack, STATE.screenStream); } catch (e) {}
+            }
+        }
+    }
+}
+
 // ── WEBRTC CALL SETUP ──────────────────────────────────────────
 async function initiatePeerConnection(peerName) {
     if (!peerName || peerName === STATE.myName) return;
     try {
         const pc = createPeerConnection(peerName);
-        if (STATE.localStream) {
-            STATE.localStream.getTracks().forEach(t => {
-                if (!pc.getSenders().some(s => s.track === t)) {
-                    try { pc.addTrack(t, STATE.localStream); } catch(e){}
-                }
-            });
-        }
-        if (STATE.screenStream) {
-            STATE.screenStream.getTracks().forEach(t => {
-                if (!pc.getSenders().some(s => s.track === t)) {
-                    try { pc.addTrack(t, STATE.screenStream); } catch(e){}
-                }
-            });
-        }
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
+        attachAllActiveTracksToPeer(pc);
 
-        if (STATE.channel) {
-            STATE.channel.send({
-                type: 'broadcast',
-                event: 'signal_offer',
-                payload: {
-                    target: peerName,
-                    sender: STATE.myName,
-                    sdp:    offer
-                }
-            });
+        if (pc.signalingState === 'stable') {
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+
+            if (STATE.channel) {
+                STATE.channel.send({
+                    type: 'broadcast',
+                    event: 'signal_offer',
+                    payload: {
+                        target: peerName,
+                        sender: STATE.myName,
+                        sdp:    offer
+                    }
+                });
+            }
         }
     } catch (err) {
         console.warn('[initiatePeerConnection error]:', err);
@@ -2145,50 +2559,38 @@ function createPeerConnection(peerName) {
         const track = event.track;
         console.log(`[ontrack from ${peerName}] kind:`, track.kind);
 
+        // 🔊 Route audio directly to dedicated audio player
+        if (track.kind === 'audio') {
+            playRemoteAudio(peerName, track);
+        }
+
         let peerStream = STATE.remoteScreenStreams.get(peerName);
         if (!peerStream) {
             peerStream = new MediaStream();
             STATE.remoteScreenStreams.set(peerName, peerStream);
         }
 
-        // Cleanly combine video and audio tracks without overwriting
         if (track.kind === 'video') {
             peerStream.getVideoTracks().forEach(t => {
                 if (t.id !== track.id) peerStream.removeTrack(t);
             });
-        } else if (track.kind === 'audio') {
-            peerStream.getAudioTracks().forEach(t => {
-                if (t.id !== track.id) peerStream.removeTrack(t);
-            });
-        }
-        if (!peerStream.getTracks().some(t => t.id === track.id)) {
             peerStream.addTrack(track);
-        }
 
-        const attachAndPlayScreen = () => {
-            if (track.kind === 'video') {
+            const attachAndPlayScreen = () => {
                 if (!STATE.currentViewingSharer || STATE.currentViewingSharer === peerName || STATE.currentViewingSharer === STATE.myName) {
-                    STATE.currentViewingSharer = peerName;
-                    const screenVideo = el('screen-video');
-                    if (screenVideo) {
-                        screenVideo.srcObject = peerStream;
-                        screenVideo.style.display = 'block';
-                        screenVideo.play().catch(err => {
-                            console.warn('Autoplay unmuted blocked, retrying muted:', err);
-                            screenVideo.muted = true;
-                            screenVideo.play().catch(e => console.error('Play error:', e));
-                        });
-                        if (el('screen-placeholder')) el('screen-placeholder').style.display = 'none';
-                    }
-                    if (el('main-screen-box')) el('main-screen-box').classList.add('sharing');
+                    selectScreenStream(peerName);
                 }
-            }
-        };
+            };
 
-        attachAndPlayScreen();
-        track.onunmute = () => {
             attachAndPlayScreen();
-        };
+            track.onunmute = () => {
+                attachAndPlayScreen();
+            };
+        } else if (track.kind === 'audio') {
+            if (!peerStream.getTracks().some(t => t.id === track.id)) {
+                peerStream.addTrack(track);
+            }
+        }
 
         addRemoteTrack(peerName, peerStream);
     };
@@ -2223,7 +2625,13 @@ async function handleSignalOffer(payload) {
             pc._pendingIceCandidates = [];
         }
 
-        // Immediately check if incoming offer has a video receiver to render
+        // Check if incoming offer has an audio receiver to play
+        const audioReceiver = pc.getReceivers().find(r => r.track && r.track.kind === 'audio' && r.track.readyState !== 'ended');
+        if (audioReceiver && audioReceiver.track) {
+            playRemoteAudio(payload.sender, audioReceiver.track);
+        }
+
+        // Check if incoming offer has a video receiver to render
         const videoReceiver = pc.getReceivers().find(r => r.track && r.track.kind === 'video' && r.track.readyState !== 'ended');
         if (videoReceiver && videoReceiver.track) {
             let peerStream = STATE.remoteScreenStreams.get(payload.sender);
@@ -2235,35 +2643,12 @@ async function handleSignalOffer(payload) {
                 peerStream.getVideoTracks().forEach(t => peerStream.removeTrack(t));
                 peerStream.addTrack(videoReceiver.track);
             }
-            if (STATE.currentViewingSharer === payload.sender) {
-                const screenVideo = el('screen-video');
-                if (screenVideo) {
-                    screenVideo.srcObject = peerStream;
-                    screenVideo.style.display = 'block';
-                    screenVideo.play().catch(e => {
-                        screenVideo.muted = true;
-                        screenVideo.play().catch(() => {});
-                    });
-                    if (el('screen-placeholder')) el('screen-placeholder').style.display = 'none';
-                }
-                if (el('main-screen-box')) el('main-screen-box').classList.add('sharing');
+            if (!STATE.currentViewingSharer || STATE.currentViewingSharer === payload.sender) {
+                selectScreenStream(payload.sender);
             }
         }
 
-        if (STATE.localStream) {
-            STATE.localStream.getTracks().forEach(t => {
-                if (!pc.getSenders().some(s => s.track === t)) {
-                    try { pc.addTrack(t, STATE.localStream); } catch(e){}
-                }
-            });
-        }
-        if (STATE.screenStream) {
-            STATE.screenStream.getTracks().forEach(t => {
-                if (!pc.getSenders().some(s => s.track === t)) {
-                    try { pc.addTrack(t, STATE.screenStream); } catch(e){}
-                }
-            });
-        }
+        attachAllActiveTracksToPeer(pc);
 
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
@@ -2303,6 +2688,12 @@ async function handleSignalAnswer(payload) {
                 pc._pendingIceCandidates = [];
             }
 
+            // Immediately play audio receiver if present
+            const audioReceiver = pc.getReceivers().find(r => r.track && r.track.kind === 'audio' && r.track.readyState !== 'ended');
+            if (audioReceiver && audioReceiver.track) {
+                playRemoteAudio(payload.sender, audioReceiver.track);
+            }
+
             // Immediately check if answer finalized video receiver
             const videoReceiver = pc.getReceivers().find(r => r.track && r.track.kind === 'video' && r.track.readyState !== 'ended');
             if (videoReceiver && videoReceiver.track) {
@@ -2315,18 +2706,8 @@ async function handleSignalAnswer(payload) {
                     peerStream.getVideoTracks().forEach(t => peerStream.removeTrack(t));
                     peerStream.addTrack(videoReceiver.track);
                 }
-                if (STATE.currentViewingSharer === payload.sender) {
-                    const screenVideo = el('screen-video');
-                    if (screenVideo) {
-                        screenVideo.srcObject = peerStream;
-                        screenVideo.style.display = 'block';
-                        screenVideo.play().catch(e => {
-                            screenVideo.muted = true;
-                            screenVideo.play().catch(() => {});
-                        });
-                        if (el('screen-placeholder')) el('screen-placeholder').style.display = 'none';
-                    }
-                    if (el('main-screen-box')) el('main-screen-box').classList.add('sharing');
+                if (!STATE.currentViewingSharer || STATE.currentViewingSharer === payload.sender) {
+                    selectScreenStream(payload.sender);
                 }
             }
         }
@@ -2375,14 +2756,12 @@ function closePeerConnection(name) {
         try { pc.close(); } catch(e){}
         STATE.peerConnections.delete(name);
     }
+    removeRemoteAudio(name);
 }
 
-// Send the current screen share track to a specific peer (used when a participant joins mid-share or requests screen)
+// Send current screen share and mic tracks to a specific peer
 async function sendScreenTrackToPeer(peerName) {
     if (!STATE.screenStream || !STATE.screenOn) return;
-
-    const screenTrack = STATE.screenStream.getVideoTracks()[0];
-    if (!screenTrack) return;
 
     try {
         let pc = STATE.peerConnections.get(peerName);
@@ -2390,54 +2769,28 @@ async function sendScreenTrackToPeer(peerName) {
             pc = createPeerConnection(peerName);
         }
 
-        const senders = pc.getSenders();
-        const videoSender = senders.find(s => s.track && s.track.kind === 'video');
-        if (videoSender) {
-            await videoSender.replaceTrack(screenTrack);
-        } else {
-            pc.addTrack(screenTrack, STATE.screenStream);
-        }
+        attachAllActiveTracksToPeer(pc);
 
-        // Screen audio track if present
-        const audioTracks = STATE.screenStream.getAudioTracks();
-        if (audioTracks.length > 0) {
-            const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
-            if (audioSender) {
-                try { await audioSender.replaceTrack(audioTracks[0]); } catch (e) {}
-            } else {
-                try { pc.addTrack(audioTracks[0], STATE.screenStream); } catch (e) {}
+        if (pc.signalingState === 'stable') {
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+
+            if (STATE.channel) {
+                STATE.channel.send({
+                    type: 'broadcast',
+                    event: 'signal_offer',
+                    payload: {
+                        target: peerName,
+                        sender: STATE.myName,
+                        sdp: offer
+                    }
+                });
+                STATE.channel.send({
+                    type: 'broadcast',
+                    event: 'screen_share_start',
+                    payload: { name: STATE.myName, role: STATE.myRole }
+                });
             }
-        }
-
-        let offer;
-        try {
-            offer = await pc.createOffer();
-        } catch (err) {
-            console.warn('[sendScreenTrackToPeer] createOffer failed on existing pc, recreating...', err);
-            try { pc.close(); } catch (e) {}
-            STATE.peerConnections.delete(peerName);
-            pc = createPeerConnection(peerName);
-            pc.addTrack(screenTrack, STATE.screenStream);
-            offer = await pc.createOffer();
-        }
-
-        await pc.setLocalDescription(offer);
-
-        if (STATE.channel) {
-            STATE.channel.send({
-                type: 'broadcast',
-                event: 'signal_offer',
-                payload: {
-                    target: peerName,
-                    sender: STATE.myName,
-                    sdp: offer
-                }
-            });
-            STATE.channel.send({
-                type: 'broadcast',
-                event: 'screen_share_start',
-                payload: { name: STATE.myName, role: STATE.myRole }
-            });
         }
     } catch (e) {
         console.warn('[sendScreenTrackToPeer error]:', e);

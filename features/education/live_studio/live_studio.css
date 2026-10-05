@@ -1114,4 +1114,180 @@ html,body{height:100%;height:100dvh;overflow:hidden;background-color:var(--disco
     pointer-events: none !important;
 }
 
+/* 🎛️ Audio Device Settings Popover (Discord/Studio Style) */
+.device-settings-popover {
+    position: absolute;
+    bottom: calc(100% + 12px);
+    left: 8px;
+    width: 295px;
+    background: rgba(15, 23, 42, 0.98);
+    backdrop-filter: blur(28px) saturate(190%);
+    -webkit-backdrop-filter: blur(28px) saturate(190%);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 16px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75), 0 0 25px rgba(99, 102, 241, 0.25);
+    z-index: 1100;
+    padding: 16px;
+    animation: popIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.dsp-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dsp-title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    align-items: center;
+}
+
+.dsp-close-btn {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 2px 7px;
+    border-radius: 6px;
+    transition: all 0.15s ease;
+}
+
+.dsp-close-btn:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.dsp-group {
+    margin-bottom: 14px;
+}
+
+.dsp-group:last-child {
+    margin-bottom: 0;
+}
+
+.dsp-label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #cbd5e1;
+    margin-bottom: 6px;
+}
+
+.dsp-select {
+    width: 100%;
+    background: #090d16;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 10px;
+    color: #f8fafc;
+    font-size: 0.82rem;
+    padding: 8px 10px;
+    font-family: inherit;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.dsp-select:focus {
+    border-color: #38bdf8;
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25);
+}
+
+.dsp-select option {
+    background: #0f172a;
+    color: #fff;
+}
+
+.dsp-meter-container {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    margin-top: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.dsp-meter-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #10b981, #22c55e, #eab308);
+    border-radius: 4px;
+    transition: width 0.05s ease;
+}
+
+.dsp-output-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 8px;
+}
+
+.dsp-btn-test {
+    background: rgba(56, 189, 248, 0.15);
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    color: #38bdf8;
+    font-size: 0.78rem;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 4px 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.dsp-btn-test:hover {
+    background: rgba(56, 189, 248, 0.3);
+    color: #fff;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+}
+
+.dsp-note {
+    font-size: 0.72rem;
+    color: #94a3b8;
+}
+
+/* 🔊 Mobile / Browser Autoplay Unlock Banner */
+.audio-unlock-banner {
+    position: fixed;
+    top: 65px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, rgba(234, 179, 8, 0.95), rgba(249, 115, 22, 0.95));
+    color: #0f172a;
+    padding: 8px 18px;
+    border-radius: 30px;
+    box-shadow: 0 8px 25px rgba(234, 179, 8, 0.45);
+    font-size: 0.86rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 9999;
+    cursor: pointer;
+    animation: bounceSlow 2s infinite;
+}
+
+.btn-unlock-audio {
+    background: #0f172a;
+    color: #facc15;
+    border: none;
+    border-radius: 20px;
+    padding: 3px 12px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+@keyframes bounceSlow {
+    0%, 100% { transform: translate(-50%, 0); }
+    50% { transform: translate(-50%, -4px); }
+}
+
 
