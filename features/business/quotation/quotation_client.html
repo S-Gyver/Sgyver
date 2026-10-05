@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S-Gyver – ตรวจสอบและอนุมัติใบเสนอราคาออนไลน์</title>
+    <meta name="description" content="หน้าตรวจสอบใบเสนอราคาออนไลน์และลงลายมือชื่อดิจิทัล">
+
+    <!-- Bootstrap 5, Icons & Fonts -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500;600;700&family=Kanit:wght@300;400;500;600;700;800&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Shared Modules -->
+    <link rel="stylesheet" href="../../../assets/css/toast_shared.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../../assets/js/supabaseClient.js"></script>
+    <script src="../../../assets/js/toast_shared.js"></script>
+
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <!-- Quotation CSS -->
+    <link rel="stylesheet" href="quotation.css">
+
+    <style>
+        .client-page-bg {
+            background-color: #0f172a;
+            min-height: 100vh;
+            padding-bottom: 60px;
+        }
+        .client-action-bar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+        .signature-canvas-wrapper {
+            background: #fff;
+            border: 2px dashed #94a3b8;
+            border-radius: 8px;
+            position: relative;
+            touch-action: none;
+        }
+        #sig-canvas {
+            display: block;
+            width: 100%;
+            height: 160px;
+            cursor: crosshair;
+        }
+        .sig-placeholder-hint {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #94a3b8;
+            pointer-events: none;
+            font-size: 0.9rem;
+            user-select: none;
+        }
+    </style>
+</head>
+<body class="client-page-bg">
+
+    <!-- Action Bar for Customer -->
+    <div class="client-action-bar no-print">
+        <div class="d-flex align-items-center gap-3">
+            <div class="d-flex align-items-center gap-2">
+                <span class="fs-4">🤖</span>
+                <span class="fw-bold text-white fs-6">S-GYVER QUOTATION</span>
+            </div>
+            <span class="badge-status badge-draft" id="client-badge-status">
+                ● กำลังโหลด...
+            </span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-outline-light btn-sm px-3" onclick="window.print()">
+                <i class="bi bi-printer me-1"></i> พิมพ์ / บันทึก PDF
+            </button>
+            <button type="button" class="btn btn-success btn-sm px-3 fw-bold" id="btn-open-sign-modal" onclick="openSignatureModal()">
+                <i class="bi bi-pen-fill me-1"></i> เซ็นอนุมัติใบเสนอราคานี้
+            </button>
+        </div>
+    </div>
+
+    <!-- Paper Container -->
+    <div class="d-flex justify-content-center py-4 px-2">
+        <div class="a4-wrapper">
+            <div class="a4-sheet theme-terracotta" id="a4-sheet">
+
+                <!-- Watermark -->
+                <div class="a4-watermark" id="a4-watermark">RECEIPT</div>
+
+                <!-- Abstract Organic Watermark Shapes -->
+                <div class="receipt-shape-top"></div>
+                <div class="receipt-shape-bottom"></div>
+
+                <!-- 1. Centered Title -->
+                <div class="receipt-main-title" id="tc-doc-title">ใบเสร็จรับเงิน (Receipt)</div>
+
+                <!-- 2. Header Grid (2 Columns separated by Terracotta lines) -->
+                <div class="receipt-header-grid">
+                    <!-- Row 1: Seller & Phone/Email -->
+                    <div class="receipt-row-1">
+                        <div class="receipt-cell">
+                            <div><strong>ผู้ออกใบ:</strong> <span id="tc-seller-name">—</span></div>
+                            <div style="font-size: 0.77rem; color: #555;">
+                                <strong>ที่อยู่:</strong> <span id="tc-seller-address">—</span>
+                            </div>
+                        </div>
+                        <div class="receipt-cell border-left">
+                            <div><strong>โทร:</strong> <span id="tc-seller-phone">—</span></div>
+                            <div><strong>อีเมล:</strong> <span id="tc-seller-email">—</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Row 2: Customer & Date/Project -->
+                    <div class="receipt-row-2">
+                        <div class="receipt-cell">
+                            <div><strong>นามลูกค้า:</strong> <span id="tc-client-name" class="fw-bold">—</span></div>
+                            <div style="font-size: 0.77rem; color: #555;">
+                                <strong>ที่อยู่:</strong> <span id="tc-client-address">—</span>
+                            </div>
+                            <div style="font-size: 0.77rem;">
+                                <strong>เลขประจำตัวผู้เสียภาษี:</strong> <span id="tc-client-tax" class="font-mono">—</span>
+                            </div>
+                        </div>
+                        <div class="receipt-cell border-left p-0 d-flex flex-column justify-content-between">
+                            <div class="receipt-cell border-bottom">
+                                <strong>วันที่:</strong> <span id="tc-doc-date" class="font-mono">—</span>
+                            </div>
+                            <div class="receipt-cell">
+                                <strong>ชื่องาน:</strong> <span id="tc-project-title" class="fw-bold text-dark">—</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Receipt Table (Solid Terracotta with Image Support) -->
+                <table class="receipt-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 48px;">ลำดับ</th>
+                            <th>รายการ</th>
+                            <th style="width: 75px;">จำนวน</th>
+                            <th style="width: 100px;">ราคา</th>
+                            <th style="width: 110px;">ราคาสุทธิ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tc-items-tbody"></tbody>
+                </table>
+
+                <!-- 4. Totals Table (Matching reference exactly) -->
+                <table class="receipt-totals-table">
+                    <tbody>
+                        <tr>
+                            <td class="text-end fw-bold" style="border-right: 1.5px solid var(--tc-border); padding-right: 24px; color: var(--tc-primary-dark);">
+                                จำนวนเงินรวมทั้งสิ้น
+                            </td>
+                            <td style="width: 110px;" class="text-center font-mono fw-bold" id="tc-subtotal">
+                                0.-
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="width: 50%; text-align: center; font-weight: 700; color: var(--tc-primary-dark); border-right: 1.5px solid var(--tc-border);">
+                                จำนวนเงินรวมทั้งสิ้น
+                            </td>
+                            <td class="bg-peach-highlight" id="tc-baht-text" style="color: var(--tc-primary-dark); font-weight: 700; font-size: 0.85rem;">
+                                ศูนย์บาทถ้วน
+                            </td>
+                        </tr>
+                        <tr id="tc-wht-row">
+                            <td class="text-end fw-bold" style="border-right: 1.5px solid var(--tc-border); padding-right: 24px; color: var(--tc-primary-dark);">
+                                ภาษีถูกหัก ณ ที่จ่าย <span id="tc-wht-rate"></span>
+                            </td>
+                            <td class="text-center font-mono" id="tc-wht-amount" style="width: 110px;">
+                                
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="text-end fw-bold" style="border-right: 1.5px solid var(--tc-border); padding-right: 24px; color: var(--tc-primary-dark); font-size: 0.95rem;">
+                                จำนวนเงินที่ต้องชำระ
+                            </td>
+                            <td class="text-center font-mono fw-bold" style="color: var(--tc-primary-dark); font-size: 0.95rem; width: 110px;" id="tc-grand-total">
+                                0.-
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- Full-width Divider Line -->
+                <div class="tc-divider-line"></div>
+
+                <!-- Terms & Conditions Block -->
+                <div class="tc-footer-terms mb-3">
+                    <div class="tc-footer-title">เงื่อนไข:</div>
+                    <div id="tc-terms-content" class="tc-terms-body">—</div>
+                </div>
+
+                <!-- 5. Signatures Area -->
+                <div class="a4-signatures-grid mt-2 mb-4">
+                    <div class="a4-sign-box" style="border-color: var(--tc-border);">
+                        <div class="fw-bold mb-1" style="color: var(--tc-primary);">ผู้สั่งซื้อ / ผู้มีอำนาจลงนาม</div>
+                        <div class="a4-sign-line" id="client-sign-line-container">
+                            <span id="client-sign-placeholder" style="color: #cbd5e1; font-size: 0.75rem;">(ลงลายมือชื่อดิจิทัล)</span>
+                            <img id="client-sign-rendered-img" class="a4-sign-img" style="display:none;" alt="Customer Signature">
+                        </div>
+                        <div class="fw-bold" id="a4-client-sign-name">ผู้สั่งซื้อ / ผู้มีอำนาจลงนาม</div>
+                        <div id="a4-client-sign-date">วันที่ ............/............/............</div>
+                    </div>
+                    <div class="a4-sign-box" style="border-color: var(--tc-border);">
+                        <div class="fw-bold mb-1" style="color: var(--tc-primary);">ขอแสดงความนับถือ</div>
+                        <div class="a4-sign-line">
+                            <span style="color: var(--tc-primary); font-weight: bold; font-family: 'Fira Code', monospace;">[ S-GYVER VERIFIED ]</span>
+                        </div>
+                        <div class="fw-bold" id="a4-seller-sign-name">ศรัศนันท์ ตราชู</div>
+                        <div id="a4-seller-sign-date">ผู้ออกเอกสาร</div>
+                    </div>
+                </div>
+
+                <!-- Bottom Solid Terracotta Stripe -->
+                <div class="tc-bottom-stripe"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         SIGNATURE MODAL (ONLINE APPROVAL)
+         ══════════════════════════════════════════════════════════════ -->
+    <div class="modal fade" id="signatureModal" tabindex="-1" aria-labelledby="signatureModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="background: #1e293b; color: #fff; border: 1px solid rgba(255,255,255,0.15); border-radius: 16px;">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title font-kanit" id="signatureModalLabel">
+                        <i class="bi bi-pen-fill text-success me-2"></i>เซ็นอนุมัติใบเสนอราคาออนไลน์
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label text-secondary small fw-bold">ชื่อ-นามสกุล ผู้มีอำนาจลงนาม</label>
+                        <input type="text" class="form-input form-control bg-dark text-white border-secondary" id="modal-signer-name" placeholder="ระบุชื่อและนามสกุลของคุณ">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-secondary small fw-bold">ตำแหน่ง / แผนก</label>
+                        <input type="text" class="form-input form-control bg-dark text-white border-secondary" id="modal-signer-position" placeholder="เช่น ผู้จัดการฝ่ายจัดซื้อ / ผู้อำนวยการ">
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label text-secondary small fw-bold mb-0">วาดลายมือชื่อ (ด้วยนิ้ว / เมาส์)</label>
+                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size:0.75rem" onclick="clearSignatureCanvas()">
+                                <i class="bi bi-eraser me-1"></i>ล้าง
+                            </button>
+                        </div>
+                        <div class="signature-canvas-wrapper">
+                            <canvas id="sig-canvas"></canvas>
+                            <span class="sig-placeholder-hint" id="sig-hint">วาดลายเซ็นของคุณที่นี่</span>
+                        </div>
+                    </div>
+                    <div class="alert alert-info py-2 px-3 small border-0 bg-opacity-10 bg-info text-info">
+                        <i class="bi bi-shield-check me-1"></i>การกดอนุมัติถือเป็นการยืนยันคำสั่งซื้อตามรายการและเงื่อนไขที่ระบุในใบเสนอราคานี้
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="button" class="btn btn-success fw-bold px-4" onclick="confirmSignatureApproval()">
+                        <i class="bi bi-check-circle-fill me-1"></i> ยืนยันการอนุมัติ
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        let currentQuote = null;
+        let sigModal = null;
+        let sigCanvas, sigCtx;
+        let isDrawing = false;
+        let hasSigned = false;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            sigModal = new bootstrap.Modal(document.getElementById('signatureModal'));
+            initCanvas();
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const docNo = urlParams.get('id');
+
+            if (!docNo) {
+                alert('ไม่พบรหัสใบเสนอราคาในลิงก์');
+                return;
+            }
+
+            await loadDocumentData(docNo);
+        });
+
+        async function loadDocumentData(docNo) {
+            let found = null;
+
+            // Try Supabase
+            if (window.supabaseClient) {
+                try {
+                    const { data, error } = await window.supabaseClient
+                        .from('quotations')
+                        .select('*')
+                        .eq('doc_no', docNo)
+                        .single();
+
+                    if (!error && data) {
+                        found = {
+                            docNo: data.doc_no,
+                            date: data.date,
+                            validUntil: data.valid_until,
+                            status: data.status,
+                            projectTitle: data.project_title,
+                            client: data.client_data || { name: data.client_name },
+                            seller: data.seller_data,
+                            items: data.items || [],
+                            subtotal: data.subtotal,
+                            discountAmount: data.discount_amount,
+                            vatAmount: data.vat_amount,
+                            withholdingTaxAmount: data.wht_amount,
+                            grandTotal: data.grand_total,
+                            bahtText: data.baht_text,
+                            paymentTerms: data.payment_terms,
+                            bankAccount: data.bank_account,
+                            deliveryDays: 14,
+                            notes: data.notes,
+                            sellerSignName: data.seller_sign_name,
+                            clientSignName: data.client_sign_name,
+                            clientSignatureImg: data.client_signature_img,
+                            clientSignDate: data.client_sign_date
+                        };
+                    }
+                } catch (e) {
+                    console.warn('[Supabase load error]:', e);
+                }
+            }
+
+            // Fallback LocalStorage
+            if (!found) {
+                try {
+                    const raw = localStorage.getItem('sgyver_quotations');
+                    const list = raw ? JSON.parse(raw) : [];
+                    found = list.find(q => q.docNo === docNo);
+                } catch(e) {}
+            }
+
+            if (!found) {
+                alert(`ไม่พบข้อมูลใบเสนอราคาเลขที่: ${docNo}`);
+                return;
+            }
+
+            currentQuote = found;
+            renderQuoteToView(currentQuote);
+        }
+
+        function renderQuoteToView(q) {
+            // Status badge
+            const badge = document.getElementById('client-badge-status');
+            if (badge) {
+                badge.className = `badge-status badge-${(q.status || 'DRAFT').toLowerCase()}`;
+                badge.innerHTML = `● สถานะ: ${getStatusLabel(q.status)}`;
+            }
+
+            const btnSign = document.getElementById('btn-open-sign-modal');
+            if (btnSign) {
+                if (q.status === 'APPROVED') {
+                    btnSign.disabled = true;
+                    btnSign.className = 'btn btn-secondary btn-sm px-3';
+                    btnSign.innerHTML = '<i class="bi bi-check2-all me-1"></i> อนุมัติเอกสารนี้เรียบร้อยแล้ว';
+                }
+            }
+
+            // Title
+            setText('tc-doc-title', q.docType || 'ใบเสร็จรับเงิน (Receipt)');
+
+            // Header Grid (Left)
+            setText('tc-seller-name', q.seller?.name || 'ศรัศนันท์ ตราชู');
+            setText('tc-seller-address', q.seller?.address || '—');
+            setText('tc-client-name', q.client?.name || '—');
+            setText('tc-client-address', q.client?.address || '—');
+            setText('tc-client-tax', q.client?.taxId || '—');
+
+            // Header Grid (Right)
+            setText('tc-seller-phone', q.seller?.phone || '—');
+            setText('tc-seller-email', q.seller?.email || '—');
+            setText('tc-doc-date', formatDateCustom(q.date));
+            setText('tc-project-title', q.projectTitle || '—');
+
+            // Items Table Body
+            const tbody = document.getElementById('tc-items-tbody');
+            if (tbody && q.items) {
+                tbody.innerHTML = q.items.map((item, idx) => {
+                    const lineTotal = (item.qty * item.price) - (item.discount || 0);
+                    
+                    let specsHtml = '';
+                    if (item.dimWidth) specsHtml += `<div>กว้าง : ${escapeHtml(item.dimWidth)}</div>`;
+                    if (item.dimLength) specsHtml += `<div>ยาว : ${escapeHtml(item.dimLength)}</div>`;
+                    if (item.dimHeight) specsHtml += `<div>สูง : ${escapeHtml(item.dimHeight)}</div>`;
+                    if (item.desc) specsHtml += `<div style="white-space:pre-line;">${escapeHtml(item.desc)}</div>`;
+
+                    return `
+                        <tr>
+                            <td class="text-center" style="width: 48px; font-weight: 600; color: var(--tc-primary);">
+                                ${idx + 1}.
+                            </td>
+                            <td>
+                                <div class="item-title-terracotta">${escapeHtml(item.name || '—')}</div>
+                                <div class="item-visual-block">
+                                    ${item.img ? `<img src="${item.img}" class="item-thumbnail-img" alt="${escapeHtml(item.name)}">` : ''}
+                                    ${specsHtml ? `<div class="item-specs-list">${specsHtml}</div>` : ''}
+                                </div>
+                            </td>
+                            <td class="text-center font-mono" style="width: 75px; font-size: 0.95rem;">
+                                ${item.qty}
+                            </td>
+                            <td class="text-center font-mono" style="width: 100px; font-size: 0.95rem;">
+                                ${formatCurrencySuffix(item.price)}
+                            </td>
+                            <td class="text-center font-mono fw-bold" style="width: 110px; font-size: 0.95rem;">
+                                ${formatCurrencySuffix(lineTotal)}
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            // Totals Table
+            setText('tc-subtotal', formatCurrencySuffix(q.subtotal));
+            setText('tc-baht-text', q.bahtText || 'ศูนย์บาทถ้วน');
+
+            const whtRow = document.getElementById('tc-wht-row');
+            if (whtRow) {
+                if (q.withholdingTaxRate > 0) {
+                    setText('tc-wht-rate', `(${q.withholdingTaxRate}%)`);
+                    setText('tc-wht-amount', `-${formatCurrencySuffix(q.withholdingTaxAmount)}`);
+                } else {
+                    setText('tc-wht-rate', '');
+                    setText('tc-wht-amount', '');
+                }
+            }
+
+            setText('tc-grand-total', formatCurrencySuffix(q.grandTotal));
+
+            // Footer Terms & Bank Account
+            const termsArr = [];
+            if (q.paymentTerms) termsArr.push(q.paymentTerms);
+            if (q.bankAccount) termsArr.push(q.bankAccount);
+            if (q.notes) termsArr.push(`หมายเหตุ: ${q.notes}`);
+            if (q.deliveryDays) termsArr.push(`กำหนดส่งมอบงาน: ภายใน ${q.deliveryDays} วัน`);
+            
+            setText('tc-terms-content', termsArr.join('\n') || '—');
+            setText('a4-seller-sign-name', q.sellerSignName || q.seller?.name || 'ผู้มีอำนาจลงนาม');
+
+            // Buyer signature status
+            if (q.clientSignatureImg) {
+                const img = document.getElementById('client-sign-rendered-img');
+                const placeholder = document.getElementById('client-sign-placeholder');
+                if (img) {
+                    img.src = q.clientSignatureImg;
+                    img.style.display = 'block';
+                }
+                if (placeholder) placeholder.style.display = 'none';
+            }
+            if (q.clientSignName) {
+                setText('a4-client-sign-name', q.clientSignName);
+            }
+            if (q.clientSignDate) {
+                setText('a4-client-sign-date', formatDateThai(q.clientSignDate));
+            }
+
+            // Watermark
+            const watermark = document.getElementById('a4-watermark');
+            if (watermark) {
+                watermark.textContent = q.status;
+                watermark.className = `a4-watermark ${q.status.toLowerCase()}`;
+            }
+        }
+
+        // Signature Canvas
+        function initCanvas() {
+            sigCanvas = document.getElementById('sig-canvas');
+            if (!sigCanvas) return;
+            sigCtx = sigCanvas.getContext('2d');
+
+            function resize() {
+                const rect = sigCanvas.getBoundingClientRect();
+                sigCanvas.width = rect.width;
+                sigCanvas.height = 160;
+                sigCtx.lineWidth = 2.5;
+                sigCtx.lineCap = 'round';
+                sigCtx.strokeStyle = '#0f172a';
+            }
+            resize();
+            window.addEventListener('resize', resize);
+
+            function getPos(e) {
+                const rect = sigCanvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                return {
+                    x: clientX - rect.left,
+                    y: clientY - rect.top
+                };
+            }
+
+            function startDraw(e) {
+                isDrawing = true;
+                hasSigned = true;
+                const hint = document.getElementById('sig-hint');
+                if (hint) hint.style.display = 'none';
+                const pos = getPos(e);
+                sigCtx.beginPath();
+                sigCtx.moveTo(pos.x, pos.y);
+            }
+
+            function draw(e) {
+                if (!isDrawing) return;
+                e.preventDefault();
+                const pos = getPos(e);
+                sigCtx.lineTo(pos.x, pos.y);
+                sigCtx.stroke();
+            }
+
+            function stopDraw() {
+                isDrawing = false;
+            }
+
+            sigCanvas.addEventListener('mousedown', startDraw);
+            sigCanvas.addEventListener('mousemove', draw);
+            sigCanvas.addEventListener('mouseup', stopDraw);
+            sigCanvas.addEventListener('mouseleave', stopDraw);
+
+            sigCanvas.addEventListener('touchstart', startDraw, { passive: false });
+            sigCanvas.addEventListener('touchmove', draw, { passive: false });
+            sigCanvas.addEventListener('touchend', stopDraw);
+        }
+
+        function clearSignatureCanvas() {
+            if (!sigCtx || !sigCanvas) return;
+            sigCtx.clearRect(0, 0, sigCanvas.width, sigCanvas.height);
+            hasSigned = false;
+            const hint = document.getElementById('sig-hint');
+            if (hint) hint.style.display = 'block';
+        }
+
+        function openSignatureModal() {
+            if (currentQuote && currentQuote.client) {
+                const inputName = document.getElementById('modal-signer-name');
+                if (inputName && !inputName.value) {
+                    inputName.value = currentQuote.client.contactPerson || currentQuote.client.name || '';
+                }
+            }
+            sigModal.show();
+            setTimeout(() => {
+                const rect = sigCanvas.getBoundingClientRect();
+                sigCanvas.width = rect.width;
+                sigCanvas.height = 160;
+                sigCtx.lineWidth = 2.5;
+                sigCtx.lineCap = 'round';
+                sigCtx.strokeStyle = '#0f172a';
+            }, 300);
+        }
+
+        async function confirmSignatureApproval() {
+            const signerName = document.getElementById('modal-signer-name').value.trim();
+            const position = document.getElementById('modal-signer-position').value.trim();
+
+            if (!signerName) {
+                alert('กรุณากรอกชื่อ-นามสกุลผู้มีอำนาจลงนาม');
+                return;
+            }
+            if (!hasSigned) {
+                alert('กรุณาวาดลายมือชื่อในช่องก่อนกดยืนยัน');
+                return;
+            }
+
+            const signatureDataUrl = sigCanvas.toDataURL('image/png');
+            const signDate = new Date().toISOString().split('T')[0];
+            const fullTitle = position ? `${signerName} (${position})` : signerName;
+
+            currentQuote.status = 'APPROVED';
+            currentQuote.clientSignName = fullTitle;
+            currentQuote.clientSignDate = signDate;
+            currentQuote.clientSignatureImg = signatureDataUrl;
+
+            // Sync to Supabase
+            if (window.supabaseClient) {
+                try {
+                    await window.supabaseClient
+                        .from('quotations')
+                        .update({
+                            status: 'APPROVED',
+                            client_sign_name: fullTitle,
+                            client_sign_date: signDate,
+                            client_signature_img: signatureDataUrl,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('doc_no', currentQuote.docNo);
+                } catch(e) {}
+            }
+
+            // Sync to LocalStorage
+            try {
+                const raw = localStorage.getItem('sgyver_quotations');
+                let list = raw ? JSON.parse(raw) : [];
+                const idx = list.findIndex(q => q.docNo === currentQuote.docNo);
+                if (idx >= 0) {
+                    list[idx] = currentQuote;
+                    localStorage.setItem('sgyver_quotations', JSON.stringify(list));
+                }
+            } catch(e) {}
+
+            sigModal.hide();
+            renderQuoteToView(currentQuote);
+
+            // Trigger Confetti
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+            }
+
+            if (typeof showToast === 'function') {
+                showToast('success', 'อนุมัติเรียบร้อยแล้ว', 'ระบบได้บันทึกการอนุมัติและลายมือชื่อของคุณแล้ว', 4000);
+            } else {
+                alert('อนุมัติใบเสนอราคาเรียบร้อยแล้ว ขอบคุณที่ไว้วางใจ S-Gyver');
+            }
+        }
+
+        // Helpers
+        function setText(id, text) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = text || '';
+        }
+        function formatCurrency(amount) {
+            if (isNaN(amount) || amount === null) return '0.00';
+            return Number(amount).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        function formatCurrencySuffix(amount) {
+            if (isNaN(amount) || amount === null) return '0.-';
+            return Number(amount).toLocaleString('th-TH') + '.-';
+        }
+        function formatDateThai(isoDateStr) {
+            if (!isoDateStr) return '—';
+            try {
+                const parts = isoDateStr.split('-');
+                if (parts.length === 3) {
+                    const y = parseInt(parts[0], 10) > 2500 ? parseInt(parts[0], 10) : parseInt(parts[0], 10) + 543;
+                    const m = parseInt(parts[1], 10);
+                    const d = parseInt(parts[2], 10);
+                    const thMonths = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+                    return `${d} ${thMonths[m]} ${y}`;
+                }
+            } catch(e) {}
+            return isoDateStr;
+        }
+        function formatDateCustom(isoDateStr) {
+            if (!isoDateStr) return '—';
+            try {
+                const parts = isoDateStr.split('-');
+                if (parts.length === 3) {
+                    let y = parseInt(parts[0], 10);
+                    if (y < 2500) y += 543;
+                    const m = String(parts[1]).padStart(2, '0');
+                    const d = String(parts[2]).padStart(2, '0');
+                    return `${d}/${m}/${y}`;
+                }
+            } catch(e) {}
+            return isoDateStr;
+        }
+        function getStatusLabel(status) {
+            switch (status) {
+                case 'APPROVED': return 'อนุมัติแล้ว (Approved)';
+                case 'SENT': return 'รอการอนุมัติ (Pending)';
+                case 'REJECTED': return 'ยกเลิก / ปฏิเสธ';
+                case 'DRAFT':
+                default: return 'แบบร่าง (Draft)';
+            }
+        }
+        function escapeHtml(text) {
+            if (!text) return '';
+            return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+        }
+    </script>
+</body>
+</html>

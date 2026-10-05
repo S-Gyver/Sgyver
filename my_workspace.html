@@ -773,18 +773,6 @@
                         </div>
                     </div>
 
-                    <div class="launchpad-app-item disabled" data-app-name="Quotation Creator ออกใบเสนอราคา คำนวณภาษี"
-                        title="Quotation Creator (เร็วๆ นี้): ระบบออกใบเสนอราคา คำนวณภาษี และดาวน์โหลด PDF">
-                        <span class="launchpad-badge-pill launchpad-badge-soon">Soon</span>
-                        <div class="launchpad-icon"
-                            style="background: linear-gradient(145deg, #94a3b8, #64748b, #334155);"><i
-                                class="bi bi-receipt-cutoff"></i></div>
-                        <div class="launchpad-content">
-                            <div class="launchpad-title">ใบเสนอราคา</div>
-                            <div class="launchpad-desc">ระบบออกใบเสนอราคา คำนวณภาษี และดาวน์โหลด PDF</div>
-                        </div>
-                    </div>
-
                     <div class="launchpad-app-item" data-member-only="true" draggable="true"
                         ondragstart="onLaunchpadDragStart(event, 'app_profile')" onclick="launchTool('app_profile')"
                         data-app-name="จัดการโปรไฟล์ครูผู้สอน Profile Settings"
@@ -798,6 +786,29 @@
                         <div class="launchpad-content">
                             <div class="launchpad-title">โปรไฟล์ครู</div>
                             <div class="launchpad-desc">แก้ไขชื่อ รูปโปรไฟล์ และข้อมูลส่วนตัว</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 💼 5. บริหารธุรกิจ & เอกสารการค้า (Business Studio) -->
+            <div class="launchpad-category">
+                <div class="launchpad-category-title d-flex align-items-center">
+                    <span>💼 5. บริหารธุรกิจ & เอกสารการค้า (Business Studio)</span>
+                </div>
+                <div class="launchpad-grid">
+                    <div class="launchpad-app-item" draggable="true"
+                        ondragstart="onLaunchpadDragStart(event, 'app_quotation')" onclick="launchTool('app_quotation')"
+                        data-app-name="Quotation Studio ระบบออกใบเสนอราคา คำนวณภาษี เซ็นออนไลน์"
+                        title="Quotation Studio: ระบบออกใบเสนอราคา พิมพ์ A4 และเซ็นอนุมัติออนไลน์ (ลากไปวางที่ Dock หรือคลิกเปิด)">
+                        <button type="button" class="launchpad-pin-btn" onclick="togglePinTool(event, 'app_quotation')"
+                            title="ปักหมุดที่ Dock"><i class="bi bi-pin-angle-fill"></i></button>
+                        <div class="launchpad-icon"
+                            style="background: linear-gradient(145deg, #3b82f6, #1d4ed8, #1e3a8a);"><i
+                                class="bi bi-receipt-cutoff"></i></div>
+                        <div class="launchpad-content">
+                            <div class="launchpad-title">ใบเสนอราคา</div>
+                            <div class="launchpad-desc">ระบบออกใบเสนอราคา คำนวณ VAT พิมพ์ A4 และเซ็นออนไลน์</div>
                         </div>
                     </div>
                 </div>
@@ -1784,6 +1795,7 @@
             'app_manage': { id: 'app_manage', title: 'จัดการ นร.', icon: 'bi bi-people-fill', colorClass: 'text-success', type: 'link', url: 'auth/classroom_manage/classroom_manage.html' },
             'app_history': { id: 'app_history', title: 'ประวัติ', icon: 'bi bi-clock-history', colorClass: 'text-info', type: 'link', url: 'auth/history/history.html' },
             'app_profile': { id: 'app_profile', title: 'โปรไฟล์ครู', icon: 'bi bi-person-gear', colorClass: 'text-secondary', type: 'link', url: 'auth/profile/profile.html' },
+            'app_quotation': { id: 'app_quotation', title: 'ใบเสนอราคา', icon: 'bi bi-receipt-cutoff', colorClass: 'text-primary', type: 'link', url: 'features/business/quotation/quotation.html' },
             'app_change_pw': { id: 'app_change_pw', title: 'เปลี่ยนรหัสผ่าน', icon: 'bi bi-shield-lock', colorClass: 'text-warning', type: 'link', url: 'auth/change_password/change_password.html' }
         };
 

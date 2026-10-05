@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S-Gyver Quotation Studio – ระบบออกใบเสนอราคาอัจฉริยะ</title>
+    <meta name="description" content="ระบบสร้างและจัดการใบเสนอราคาออนไลน์สำหรับธุรกิจ S-Gyver หุ่นยนต์และการศึกษา">
+
+    <!-- Bootstrap 5 CSS, Bootstrap Icons & Fonts -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500;600;700&family=Kanit:wght@300;400;500;600;700;800&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Shared Modules -->
+    <link rel="stylesheet" href="../../../assets/css/toast_shared.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../../assets/js/supabaseClient.js"></script>
+    <script src="../../../assets/js/toast_shared.js"></script>
+
+    <!-- Quotation CSS -->
+    <link rel="stylesheet" href="quotation.css">
+</head>
+<body>
+
+    <!-- Ambient Glows -->
+    <div class="bg-glow-container">
+        <div class="bg-glow-1"></div>
+        <div class="bg-glow-2"></div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         TOP NAVIGATION BAR
+         ══════════════════════════════════════════════════════════════ -->
+    <header class="qt-topbar">
+        <div class="d-flex align-items-center gap-3">
+            <a href="../../../index.html" class="btn btn-sm btn-outline-secondary text-white border-0 me-1" title="กลับหน้าหลัก">
+                <i class="bi bi-arrow-left fs-5"></i>
+            </a>
+            <div class="qt-brand">
+                <div class="qt-brand-icon">
+                    <i class="bi bi-file-earmark-spreadsheet-fill"></i>
+                </div>
+                <div class="qt-brand-text">
+                    <h1>S-GYVER QUOTATION STUDIO</h1>
+                    <span>ระบบออกใบเสนอราคา & เอกสารการค้า</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mode Switcher Tabs -->
+        <div class="qt-topbar-tabs">
+            <button class="qt-tab-btn active" id="tab-btn-editor" onclick="switchTab('editor')">
+                <i class="bi bi-pencil-square"></i> สร้าง / แก้ไขเอกสาร
+            </button>
+            <button class="qt-tab-btn" id="tab-btn-list" onclick="switchTab('list')">
+                <i class="bi bi-folder2-open"></i> รายการทั้งหมด
+            </button>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="qt-topbar-actions">
+            <button class="btn-cyber btn-cyber-outline text-warning border-warning" onclick="loadDemoSample()" title="ดูตัวอย่างเอกสารที่มีรูปภาพและสเปก">
+                <i class="bi bi-lightbulb-fill"></i> ดูตัวอย่าง
+            </button>
+            <button class="btn-cyber btn-cyber-outline text-danger border-danger" onclick="clearFormToBlank()" title="ล้างข้อมูลทั้งหมดให้เป็นฟอร์มว่าง">
+                <i class="bi bi-arrow-counterclockwise"></i> ล้างฟอร์ม
+            </button>
+            <button class="btn-cyber btn-cyber-outline" onclick="createNewQuotation()" title="เริ่มสร้างใบใหม่">
+                <i class="bi bi-plus-lg"></i> ใบใหม่
+            </button>
+            <button class="btn-cyber btn-cyber-primary" onclick="saveQuotation()" title="บันทึกลงระบบ">
+                <i class="bi bi-floppy2-fill"></i> บันทึก
+            </button>
+            <button class="btn-cyber btn-cyber-success" onclick="printQuotation()" title="พิมพ์ A4 หรือเซฟเป็น PDF">
+                <i class="bi bi-printer-fill"></i> พิมพ์ / PDF
+            </button>
+            <button class="btn-cyber btn-cyber-outline" onclick="copyClientApprovalLink()" title="แชร์ลิงก์ให้ลูกค้าดูและเซ็นอนุมัติ">
+                <i class="bi bi-share-fill"></i> ลิงก์ลูกค้า
+            </button>
+        </div>
+    </header>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         1. SPLIT VIEW: EDITOR & LIVE A4 PREVIEW
+         ══════════════════════════════════════════════════════════════ -->
+    <main class="qt-studio-container" id="editor-layout">
+
+        <!-- ── LEFT PANE: FORM EDITOR ── -->
+        <section class="qt-editor-pane" id="editor-pane">
+
+            <!-- Card 1: Document Meta -->
+            <div class="qt-card">
+                <div class="qt-card-header">
+                    <div class="qt-card-title">
+                        <i class="bi bi-info-circle-fill"></i> ข้อมูลเอกสาร
+                    </div>
+                    <span class="badge bg-warning text-dark font-mono fw-bold" id="doc-badge-status">TERRACOTTA PHOTO</span>
+                </div>
+                <div class="qt-form-row">
+                    <div class="qt-form-group">
+                        <label class="qt-form-label" for="form-doc-type">ประเภทเอกสาร</label>
+                        <select class="qt-form-select fw-bold" id="form-doc-type" onchange="recalculateFinancials()">
+                            <option value="ใบเสร็จรับเงิน (Receipt)">ใบเสร็จรับเงิน (Receipt)</option>
+                            <option value="ใบเสนอราคา (Quotation)">ใบเสนอราคา (Quotation)</option>
+                            <option value="ใบแจ้งหนี้ (Invoice)">ใบแจ้งหนี้ (Invoice)</option>
+                        </select>
+                    </div>
+                    <div class="qt-form-group">
+                        <label class="qt-form-label" for="form-template-style">สไตล์เอกสาร</label>
+                        <select class="qt-form-select fw-bold" id="form-template-style" onchange="recalculateFinancials()">
+                            <option value="terracotta">สไตล์สีส้มอิฐใส่รูปภาพ (Terracotta Photo - ตามภาพ)</option>
+                            <option value="classic">สไตล์สีน้ำเงินคลาสสิก (Classic Blue)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="qt-form-row">
+                    <div class="qt-form-group">
+                        <label class="qt-form-label" for="form-doc-no">เลขที่เอกสาร (Doc No.)</label>
+                        <input type="text" class="qt-form-input font-mono fw-bold" id="form-doc-no" oninput="recalculateFinancials()">
+                    </div>
+                    <div class="qt-form-group">
+                        <label class="qt-form-label" for="form-doc-status">สถานะเอกสาร</label>
+                        <select class="qt-form-select" id="form-doc-status" onchange="recalculateFinancials()">
+                            <option value="DRAFT">แบบร่าง (Draft)</option>
+                            <option value="SENT">ส่งให้ลูกค้าแล้ว (Sent)</option>
+                            <option value="APPROVED">อนุมัติแล้ว (Approved)</option>
+                            <option value="REJECTED">ยกเลิก / ปฏิเสธ (Rejected)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="qt-form-row">
+                    <div class="qt-form-group">
+                        <label class="qt-form-label" for="form-doc-date">วันที่ออกเอกสาร</label>
+                        <input type="date" class="qt-form-input" id="form-doc-date" onchange="recalculateFinancials()">
+                    </div>
+                    <div class="qt-form-group">
+                        <label class="qt-form-label" for="form-doc-valid">กำหนดยืนราคาถึงวันที่ (ถ้ามี)</label>
+                        <input type="date" class="qt-form-input" id="form-doc-valid" onchange="recalculateFinancials()">
+                    </div>
+                </div>
+                <div class="qt-form-group mb-0">
+                    <label class="qt-form-label" for="form-project-title">ชื่องาน / โครงการ (Project Title)</label>
+                    <input type="text" class="qt-form-input fw-bold" id="form-project-title" placeholder="เช่น Backdrop Discovery หรือ โครงการจัดซื้อชุดสื่อการสอน" oninput="recalculateFinancials()">
+                </div>
+            </div>
+
+            <!-- Card 2: Client Info -->
+            <div class="qt-card">
+                <div class="qt-card-header">
+                    <div class="qt-card-title">
+                        <i class="bi bi-building"></i> ข้อมูลลูกค้า / ผู้รับใบเสนอราคา
+                    </div>
+                </div>
+                <div class="qt-form-row">
+                    <div class="qt-form-group">
+                        <label class="qt-form-label" for="form-client-name">ชื่อบริษัท / โรงเรียน / ผู้ว่าจ้าง</label>
+                        <input type="text" class="qt-form-input fw-bold" id="form-client-name" placeholder="เช่น โรงเรียนสาธิตนวัตกรรมวิทยาศาสตร์ หรือ บจก. เอบีซี" oninput="recalculateFinancials()">
+                    </div>
+                    <div class="qt-form-group">
+                        <label class="qt-form-label" for="form-client-person">ผู้ติดต่อ / แผนก</label>
+                        <input type="text" class="qt-form-input" id="form-client-person" placeholder="เช่น ดร. สมเกียรติ (ฝ่ายวิชาการ)" oninput="recalculateFinancials()">
+                    </div>
+                </div>
+                <div class="qt-form-row">
+                    <div class="qt-form-group">
+                        <label class="qt-form-label" for="form-client-tax">เลขประจำตัวผู้เสียภาษี</label>
+                        <input type="text" class="qt-form-input font-mono" id="form-client-tax" placeholder="เลข 13 หลัก" oninput="recalculateFinancials()">
+                    </div>
+                    <div class="qt-form-group">
+                        <label class="qt-form-label" for="form-client-branch">สาขา</label>
+                        <input type="text" class="qt-form-input" id="form-client-branch" value="สำนักงานใหญ่" oninput="recalculateFinancials()">
+                    </div>
+                </div>
+                <div class="qt-form-row">
+                    <div class="qt-form-group">
+                        <label class="qt-form-label" for="form-client-phone">เบอร์โทรศัพท์</label>
+                        <input type="text" class="qt-form-input" id="form-client-phone" placeholder="02-xxx-xxxx, 08x-xxx-xxxx" oninput="recalculateFinancials()">
+                    </div>
+                    <div class="qt-form-group">
+                        <label class="qt-form-label" for="form-client-email">อีเมล</label>
+                        <input type="email" class="qt-form-input" id="form-client-email" placeholder="client@company.com" oninput="recalculateFinancials()">
+                    </div>
+                </div>
+                <div class="qt-form-group mb-0">
+                    <label class="qt-form-label" for="form-client-address">ที่อยู่ลูกค้า</label>
+                    <textarea class="qt-form-textarea" id="form-client-address" rows="2" placeholder="เลขที่ ถนน แขวง/ตำบล เขต/อำเภอ จังหวัด รหัสไปรษณีย์" oninput="recalculateFinancials()"></textarea>
+                </div>
+            </div>
+
+            <!-- Card 3: Line Items (Products & Services) -->
+            <div class="qt-card">
+                <div class="qt-card-header">
+                    <div class="qt-card-title">
+                        <i class="bi bi-cart-check-fill"></i> รายการสินค้าและบริการ
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-warning" onclick="loadDemoSample()" title="ดูตัวอย่างสินค้าและรูปถ่าย">
+                            <i class="bi bi-lightbulb-fill me-1"></i> ดูตัวอย่าง
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary text-white" onclick="clearFormToBlank()" title="ล้างรายการทั้งหมด">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i> ล้างฟอร์ม
+                        </button>
+                        <button type="button" class="btn btn-sm btn-primary" onclick="addNewItemRow()">
+                            <i class="bi bi-plus-lg me-1"></i> เพิ่มแถว
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Items Editor Table -->
+                <div class="table-responsive">
+                    <table class="editor-items-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 28px;">#</th>
+                                <th style="min-width: 190px;">รายการ & รายละเอียด</th>
+                                <th style="width: 75px; min-width: 75px;" class="text-center">จำนวน</th>
+                                <th style="width: 80px; min-width: 80px;" class="text-center">หน่วย</th>
+                                <th style="width: 125px; min-width: 125px;" class="text-end">ราคา/หน่วย</th>
+                                <th style="width: 36px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="editor-items-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Card 4: Financials & Taxes -->
+            <div class="qt-card">
+                <div class="qt-card-header">
+                    <div class="qt-card-title">
+                        <i class="bi bi-calculator-fill"></i> ส่วนลด ภาษี และเงื่อนไขการเงิน
+                    </div>
+                </div>
+                <div class="qt-form-row-3">
+                    <div class="qt-form-group">
+                        <label class="qt-form-label" for="form-discount-amount">ส่วนลดท้ายบิล (บาท)</label>
+                        <input type="number" step="any" class="qt-form-input text-end font-mono" id="form-discount-amount" value="0" oninput="recalculateFinancials()">
+                    </div>
+                    <div class="qt-form-group">
+                        <label class="qt-form-label" for="form-vat-type">ภาษีมูลค่าเพิ่ม (VAT)</label>
+                        <select class="qt-form-select" id="form-vat-type" onchange="recalculateFinancials()">
+                            <option value="exclusive">แยกนอก (VAT 7%)</option>
+                            <option value="inclusive">รวมใน (VAT 7% รวมแล้ว)</option>
+                            <option value="none">ไม่คิดภาษีมูลค่าเพิ่ม (0%)</option>
+                        </select>
+                    </div>
+                    <div class="qt-form-group">
+                        <label class="qt-form-label" for="form-wht-rate">หัก ณ ที่จ่าย (WHT)</label>
+                        <select class="qt-form-select" id="form-wht-rate" onchange="recalculateFinancials()">
+                            <option value="0">ไม่มีการหัก (0%)</option>
+                            <option value="1">1% (ค่าขนส่ง)</option>
+                            <option value="2">2% (ค่าโฆษณา)</option>
+                            <option value="3">3% (ค่าบริการ / จ้างทำของ)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 5: Terms, Delivery & Seller Signer -->
+            <div class="qt-card">
+                <div class="qt-card-header">
+                    <div class="qt-card-title">
+                        <i class="bi bi-shield-check"></i> เงื่อนไขการชำระเงินและข้อมูลผู้เสนอราคา
+                    </div>
+                </div>
+                <div class="qt-form-row">
+                    <div class="qt-form-group">
+                        <label class="qt-form-label" for="form-payment-terms">เงื่อนไขการชำระเงิน</label>
+                        <textarea class="qt-form-textarea" id="form-payment-terms" rows="2" placeholder="เช่น ชำระมัดจำ 50% หรือชำระเงินเมื่อส่งมอบงานเรียบร้อย" oninput="recalculateFinancials()"></textarea>
+                    </div>
+                    <div class="qt-form-group">
+                        <label class="qt-form-label" for="form-bank-account">เลขที่บัญชีรับโอนเงิน</label>
+                        <textarea class="qt-form-textarea" id="form-bank-account" rows="2" placeholder="เช่น ธนาคารกสิกรไทย เลขที่ 123-4-56789-0 ชื่อบัญชี นาย/บจก...." oninput="recalculateFinancials()"></textarea>
+                    </div>
+                </div>
+                <div class="qt-form-row">
+                    <div class="qt-form-group">
+                        <label class="qt-form-label" for="form-delivery-days">กำหนดส่งมอบ (วัน)</label>
+                        <input type="number" class="qt-form-input" id="form-delivery-days" value="14" oninput="recalculateFinancials()">
+                    </div>
+                    <div class="qt-form-group">
+                        <label class="qt-form-label" for="form-seller-sign-name">ชื่อผู้มีอำนาจลงนาม (ผู้เสนอราคา)</label>
+                        <input type="text" class="qt-form-input" id="form-seller-sign-name" placeholder="ชื่อ-นามสกุล หรือตำแหน่งผู้ลงนาม" oninput="recalculateFinancials()">
+                    </div>
+                </div>
+                <div class="qt-form-group mb-0">
+                    <label class="qt-form-label" for="form-notes">หมายเหตุเพิ่มเติม</label>
+                    <textarea class="qt-form-textarea" id="form-notes" rows="2" placeholder="ระบุข้อความหรือหมายเหตุเพิ่มเติม (กด Enter เพื่อขึ้นบรรทัดใหม่ได้)" oninput="recalculateFinancials()"></textarea>
+                </div>
+            </div>
+
+            <!-- Card 6: Seller Info (Collapsible) -->
+            <details class="qt-card">
+                <summary class="qt-card-title" style="cursor: pointer;">
+                    <i class="bi bi-gear-fill"></i> ข้อมูลผู้ขาย / ผู้ออกเอกสาร (คลิกเพื่อแก้ไข)
+                </summary>
+                <div class="pt-3">
+                    <div class="qt-form-row">
+                        <div class="qt-form-group">
+                            <label class="qt-form-label" for="form-seller-name">ชื่อร้านค้า / บริษัท / ผู้ออกเอกสาร</label>
+                            <input type="text" class="qt-form-input fw-bold" id="form-seller-name" placeholder="เช่น บจก. เอส-ไกเวอร์ หรือชื่อบุคคล" oninput="recalculateFinancials()">
+                        </div>
+                        <div class="qt-form-group">
+                            <label class="qt-form-label" for="form-seller-tax">เลขประจำตัวผู้เสียภาษี</label>
+                            <input type="text" class="qt-form-input font-mono" id="form-seller-tax" placeholder="เลข 13 หลัก (ถ้ามี)" oninput="recalculateFinancials()">
+                        </div>
+                    </div>
+                    <div class="qt-form-row">
+                        <div class="qt-form-group">
+                            <label class="qt-form-label" for="form-seller-phone">เบอร์โทรศัพท์</label>
+                            <input type="text" class="qt-form-input" id="form-seller-phone" placeholder="08x-xxx-xxxx" oninput="recalculateFinancials()">
+                        </div>
+                        <div class="qt-form-group">
+                            <label class="qt-form-label" for="form-seller-email">อีเมล</label>
+                            <input type="text" class="qt-form-input" id="form-seller-email" placeholder="contact@example.com" oninput="recalculateFinancials()">
+                        </div>
+                    </div>
+                    <div class="qt-form-group mb-0">
+                        <label class="qt-form-label" for="form-seller-address">ที่อยู่ผู้ขาย / ร้านค้า</label>
+                        <textarea class="qt-form-textarea" id="form-seller-address" rows="2" placeholder="เลขที่ ถนน ตำบล/แขวง อำเภอ/เขต จังหวัด รหัสไปรษณีย์" oninput="recalculateFinancials()"></textarea>
+                    </div>
+                </div>
+            </details>
+
+        </section>
+
+        <!-- ── RIGHT PANE: LIVE REALTIME A4 SHEET ── -->
+        <section class="qt-preview-pane" id="preview-pane">
+
+            <!-- Zoom & Viewport Toolbar -->
+            <div class="qt-preview-toolbar no-print">
+                <button type="button" class="btn btn-sm btn-outline-secondary text-white" onclick="adjustZoom(-0.1)" title="ย่อขนาด">
+                    <i class="bi bi-zoom-out"></i>
+                </button>
+                <span class="qt-zoom-indicator" id="zoom-indicator">100%</span>
+                <button type="button" class="btn btn-sm btn-outline-secondary text-white" onclick="adjustZoom(0.1)" title="ขยายขนาด">
+                    <i class="bi bi-zoom-in"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary text-white" onclick="setZoom(1.0)" title="ขนาด 100%">
+                    1:1
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary text-white" onclick="fitZoomToPreviewPane()" title="ปรับขนาดให้พอดีช่อง">
+                    <i class="bi bi-arrows-fullscreen"></i> พอดีจอ
+                </button>
+                <div class="vr bg-secondary mx-1"></div>
+                <button type="button" class="btn btn-sm btn-primary px-3 fw-bold" onclick="printQuotation()">
+                    <i class="bi bi-printer me-1"></i> พิมพ์เอกสาร
+                </button>
+            </div>
+
+            <!-- The A4 Sheet Wrapper -->
+            <div class="a4-wrapper" id="a4-wrapper">
+                <div class="a4-sheet theme-terracotta" id="a4-sheet">
+
+                    <!-- Watermark -->
+                    <div class="a4-watermark" id="a4-watermark">RECEIPT</div>
+
+                    <!-- ══════════════════════════════════════════════════════════
+                         TEMPLATE A: TERRACOTTA PHOTO RECEIPT (MATCHING IMAGE)
+                         ══════════════════════════════════════════════════════════ -->
+                    <div id="a4-terracotta-view">
+                        <!-- Abstract Organic Watermark Shapes -->
+                        <div class="receipt-shape-top"></div>
+                        <div class="receipt-shape-bottom"></div>
+
+                        <!-- 1. Centered Title -->
+                        <div class="receipt-main-title" id="tc-doc-title">ใบเสร็จรับเงิน (Receipt)</div>
+
+                        <!-- 2. Header Grid (2 Columns separated by Terracotta lines) -->
+                        <div class="receipt-header-grid">
+                            <!-- Row 1: Seller & Phone/Email -->
+                            <div class="receipt-row-1">
+                                <div class="receipt-cell">
+                                    <div><strong>ผู้ออกใบ:</strong> <span id="tc-seller-name">ศรัศนันท์ ตราชู</span></div>
+                                    <div style="font-size: 0.77rem; color: #555;">
+                                        <strong>ที่อยู่:</strong> <span id="tc-seller-address">222/56 ม.4 มบ.ลัดดาวิลล์1 ถ.บ้านกล้วย-ไทรน้อย ต.พิมลราช อ.บางบัวทอง จ.นนทบุรี 11110</span>
+                                    </div>
+                                </div>
+                                <div class="receipt-cell border-left">
+                                    <div><strong>โทร:</strong> <span id="tc-seller-phone">085-849-8956</span></div>
+                                    <div><strong>อีเมล:</strong> <span id="tc-seller-email">s.gyver36@gmail.com</span></div>
+                                </div>
+                            </div>
+
+                            <!-- Row 2: Customer & Date/Project -->
+                            <div class="receipt-row-2">
+                                <div class="receipt-cell">
+                                    <div><strong>นามลูกค้า:</strong> <span id="tc-client-name" class="fw-bold">โรงเรียนสาธิตสถาบันการจัดการปัญญาภิวัฒน์ (สำนักงานใหญ่)</span></div>
+                                    <div style="font-size: 0.77rem; color: #555;">
+                                        <strong>ที่อยู่:</strong> <span id="tc-client-address">45/23 ม.2 ถ.แจ้งวัฒนะ ต.บางตลาด อ.ปากเกร็ด จ.นนทบุรี 11120</span>
+                                    </div>
+                                    <div style="font-size: 0.77rem;">
+                                        <strong>เลขประจำตัวผู้เสียภาษี:</strong> <span id="tc-client-tax" class="font-mono">0994001476136</span>
+                                    </div>
+                                </div>
+                                <div class="receipt-cell border-left p-0 d-flex flex-column justify-content-between">
+                                    <div class="receipt-cell border-bottom">
+                                        <strong>วันที่:</strong> <span id="tc-doc-date" class="font-mono">22/08/2569</span>
+                                    </div>
+                                    <div class="receipt-cell">
+                                        <strong>ชื่องาน:</strong> <span id="tc-project-title" class="fw-bold text-dark">Backdrop Discovery</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3. Receipt Table (Solid Terracotta with Image Support) -->
+                        <table class="receipt-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 48px;">ลำดับ</th>
+                                    <th>รายการ</th>
+                                    <th style="width: 75px;">จำนวน</th>
+                                    <th style="width: 100px;">ราคา</th>
+                                    <th style="width: 110px;">ราคาสุทธิ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tc-items-tbody"></tbody>
+                        </table>
+
+                        <!-- 4. Totals Table (Matching reference exactly) -->
+                        <table class="receipt-totals-table">
+                            <tbody>
+                                <tr>
+                                    <td class="text-end fw-bold" style="border-right: 1.5px solid var(--tc-border); padding-right: 24px; color: var(--tc-primary-dark);">
+                                        จำนวนเงินรวมทั้งสิ้น
+                                    </td>
+                                    <td style="width: 110px;" class="text-center font-mono fw-bold" id="tc-subtotal">
+                                        0.-
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="width: 50%; text-align: center; font-weight: 700; color: var(--tc-primary-dark); border-right: 1.5px solid var(--tc-border);">
+                                        จำนวนเงินรวมทั้งสิ้น
+                                    </td>
+                                    <td class="bg-peach-highlight" id="tc-baht-text" style="color: var(--tc-primary-dark); font-weight: 700; font-size: 0.85rem;">
+                                        ศูนย์บาทถ้วน
+                                    </td>
+                                </tr>
+                                <tr id="tc-wht-row">
+                                    <td class="text-end fw-bold" style="border-right: 1.5px solid var(--tc-border); padding-right: 24px; color: var(--tc-primary-dark);">
+                                        ภาษีถูกหัก ณ ที่จ่าย <span id="tc-wht-rate"></span>
+                                    </td>
+                                    <td class="text-center font-mono" id="tc-wht-amount" style="width: 110px;">
+                                        
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="text-end fw-bold" style="border-right: 1.5px solid var(--tc-border); padding-right: 24px; color: var(--tc-primary-dark); font-size: 0.95rem;">
+                                        จำนวนเงินที่ต้องชำระ
+                                    </td>
+                                    <td class="text-center font-mono fw-bold" style="color: var(--tc-primary-dark); font-size: 0.95rem; width: 110px;" id="tc-grand-total">
+                                        0.-
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- Full-width Divider Line -->
+                        <div class="tc-divider-line"></div>
+
+                        <!-- 5. Footer Section: Terms & Signature (Matching user reference) -->
+                        <div class="tc-footer-section">
+                            <!-- Background Soft Star Ornament on bottom left -->
+                            <svg class="tc-bg-star-ornament" viewBox="0 0 200 200" fill="#f8f1e3">
+                                <path d="M100 15 C100 65 140 100 185 100 C140 100 100 135 100 185 C100 135 60 100 15 100 C60 100 100 65 100 15 Z" />
+                                <circle cx="100" cy="100" r="32" fill="#ffffff" />
+                            </svg>
+
+                            <!-- Left: Terms & Bank Account -->
+                            <div class="tc-footer-terms">
+                                <div class="tc-footer-title">เงื่อนไข:</div>
+                                <div id="tc-terms-content" class="tc-terms-body">—</div>
+                            </div>
+
+                            <!-- Right: Signature Block -->
+                            <div class="tc-footer-signature">
+                                <div class="tc-sig-title">ขอแสดงความนับถือ</div>
+                                <div class="tc-sig-line"></div>
+                                <div class="tc-sig-line"></div>
+                                <div class="tc-sig-date-line">
+                                    <span>วันที่</span>
+                                    <span class="tc-sig-date-box" id="tc-sig-date-text"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bottom Solid Terracotta Stripe -->
+                        <div class="tc-bottom-stripe"></div>
+                    </div>
+
+                    <!-- ══════════════════════════════════════════════════════════
+                         TEMPLATE B: CLASSIC BLUE (WHEN TOGGLED)
+                         ══════════════════════════════════════════════════════════ -->
+                    <div id="a4-classic-view" style="display: none;">
+                        <!-- Header -->
+                        <div class="a4-header">
+                            <div class="a4-company-brand">
+                                <div class="a4-logo"><i class="bi bi-robot"></i></div>
+                                <div class="a4-company-info">
+                                    <h2 id="a4-seller-name">ศรัศนันท์ ตราชู</h2>
+                                    <p id="a4-seller-tax"></p>
+                                    <p id="a4-seller-address"></p>
+                                    <p id="a4-seller-contact"></p>
+                                </div>
+                            </div>
+                            <div class="a4-doc-title-block">
+                                <div class="a4-doc-title-th" id="a4-classic-title">ใบเสนอราคา</div>
+                                <div class="a4-doc-meta">
+                                    <div>เลขที่: <strong id="a4-doc-no">QT-202610-0001</strong></div>
+                                    <div>วันที่: <span id="a4-doc-date"></span></div>
+                                    <div>กำหนดยืนราคา: <span id="a4-doc-valid"></span></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Customer Info Box -->
+                        <div class="a4-info-grid">
+                            <div class="a4-info-box">
+                                <div class="a4-info-box-title"><i class="bi bi-person-fill"></i> ลูกค้า / Customer:</div>
+                                <p><strong id="a4-client-name"></strong></p>
+                                <p id="a4-client-tax"></p>
+                            </div>
+                            <div class="a4-info-box">
+                                <div class="a4-info-box-title"><i class="bi bi-geo-alt-fill"></i> ที่อยู่ / Address:</div>
+                                <p id="a4-client-address"></p>
+                                <p id="a4-client-contact"></p>
+                            </div>
+                        </div>
+
+                        <!-- Items Table -->
+                        <table class="a4-items-table">
+                            <thead>
+                                <tr>
+                                    <th class="text-center" style="width: 38px;">ลำดับ</th>
+                                    <th>รายการ / รายละเอียดสินค้า</th>
+                                    <th class="text-center" style="width: 60px;">จำนวน</th>
+                                    <th class="text-center" style="width: 60px;">หน่วย</th>
+                                    <th class="text-right" style="width: 95px;">ราคา/หน่วย</th>
+                                    <th class="text-right" style="width: 105px;">จำนวนเงิน</th>
+                                </tr>
+                            </thead>
+                            <tbody id="a4-items-tbody"></tbody>
+                        </table>
+
+                        <div class="a4-summary-container">
+                            <div class="a4-terms-box">
+                                <div class="a4-terms-title"><i class="bi bi-info-circle me-1"></i>เงื่อนไข:</div>
+                                <div id="a4-terms-text" style="white-space: pre-line;"></div>
+                            </div>
+                            <div class="a4-totals-box">
+                                <div class="a4-total-row grand-total">
+                                    <span>จำนวนเงินรวมทั้งสิ้น:</span>
+                                    <span class="font-mono" id="a4-grand-total">0.00</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="a4-baht-text-bar">
+                            <span>ตัวอักษร:</span>
+                            <strong id="a4-baht-text">ศูนย์บาทถ้วน</strong>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         2. LIST VIEW: ALL QUOTATIONS DASHBOARD
+         ══════════════════════════════════════════════════════════════ -->
+    <section class="qt-list-container" id="list-pane" style="display: none;">
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="fs-4 fw-bold text-white mb-1"><i class="bi bi-collection-fill text-primary me-2"></i>คลังใบเสนอราคาทั้งหมด</h2>
+                <p class="text-secondary mb-0">ติดตามสถานะใบเสนอราคา ตรวจสอบยอดรวม และส่งต่อให้ลูกค้าออนไลน์</p>
+            </div>
+            <button class="btn-cyber btn-cyber-primary" onclick="createNewQuotation()">
+                <i class="bi bi-plus-lg"></i> สร้างใบเสนอราคาใหม่
+            </button>
+        </div>
+
+        <!-- 4 Stat Cards -->
+        <div class="stats-cards-grid">
+            <div class="stat-card">
+                <div class="stat-icon primary"><i class="bi bi-files"></i></div>
+                <div class="stat-info">
+                    <h4>เอกสารทั้งหมด</h4>
+                    <div class="stat-value" id="stat-total-count">0</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon cyan"><i class="bi bi-cash-stack"></i></div>
+                <div class="stat-info">
+                    <h4>มูลค่ารวมที่เสนอ</h4>
+                    <div class="stat-value" id="stat-total-value">0.00 ฿</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon emerald"><i class="bi bi-check2-circle"></i></div>
+                <div class="stat-info">
+                    <h4>อนุมัติแล้ว</h4>
+                    <div class="stat-value" id="stat-approved-count">0</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon amber"><i class="bi bi-wallet2"></i></div>
+                <div class="stat-info">
+                    <h4>ยอดขายที่ปิดได้</h4>
+                    <div class="stat-value" id="stat-approved-value">0.00 ฿</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quotations Table -->
+        <div class="table-responsive">
+            <table class="table-glass">
+                <thead>
+                    <tr>
+                        <th style="width: 140px;">เลขที่เอกสาร</th>
+                        <th>ลูกค้า / โครงการ</th>
+                        <th style="width: 110px;">วันที่ออก</th>
+                        <th style="width: 110px;">ยืนราคาถึง</th>
+                        <th style="width: 130px;" class="text-end">ยอดสุทธิ</th>
+                        <th style="width: 140px;">สถานะ</th>
+                        <th style="width: 160px;" class="text-center">จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody id="quotations-list-tbody"></tbody>
+            </table>
+        </div>
+
+    </section>
+
+    <!-- Quotation Script -->
+    <script src="quotation.js"></script>
+</body>
+</html>

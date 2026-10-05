@@ -267,5 +267,44 @@ ALTER TABLE public.classrooms ADD COLUMN IF NOT EXISTS materials JSONB DEFAULT '
 ALTER TABLE public.classrooms ADD COLUMN IF NOT EXISTS assignments JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.classrooms ADD COLUMN IF NOT EXISTS gradebook JSONB DEFAULT '{}'::jsonb;
 
+-- ------------------------------------------------------------------------------
+-- 12. ตาราง quotations (ระบบใบเสนอราคา S-Gyver Quotation Studio)
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.quotations (
+    doc_no TEXT PRIMARY KEY,
+    date DATE DEFAULT CURRENT_DATE,
+    valid_until DATE,
+    status TEXT DEFAULT 'DRAFT', -- DRAFT, SENT, APPROVED, REJECTED
+    project_title TEXT,
+    client_name TEXT,
+    client_data JSONB DEFAULT '{}'::jsonb,
+    seller_data JSONB DEFAULT '{}'::jsonb,
+    items JSONB DEFAULT '[]'::jsonb,
+    subtotal NUMERIC(12, 2) DEFAULT 0,
+    discount_amount NUMERIC(12, 2) DEFAULT 0,
+    vat_amount NUMERIC(12, 2) DEFAULT 0,
+    wht_amount NUMERIC(12, 2) DEFAULT 0,
+    grand_total NUMERIC(12, 2) DEFAULT 0,
+    baht_text TEXT,
+    payment_terms TEXT,
+    bank_account TEXT,
+    notes TEXT,
+    seller_sign_name TEXT,
+    client_sign_name TEXT,
+    client_sign_date DATE,
+    client_signature_img TEXT,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.quotations ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all access to quotations" ON public.quotations;
+CREATE POLICY "Allow all access to quotations" ON public.quotations
+    FOR ALL
+    TO anon, authenticated
+    USING (true)
+    WITH CHECK (true);
+
+
 
 
