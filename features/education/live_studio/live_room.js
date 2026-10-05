@@ -60,6 +60,7 @@ const STATE = {
     selectedAudioOutputId: localStorage.getItem('gyver_audio_output_id') || '',
     audioContext:  null,
     micAnalyser:   null,
+    micSourceNode: null,
     micDataArray:  null,
     micAnimFrame:  null,
     lastScreenReqTime: 0,
@@ -1063,11 +1064,26 @@ function setupRealtimeChannel(pin) {
         })
         .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
             const p = leftPresences[0];
-            if (p && p.id !== STATE.myId) {
-                removeParticipant(p.name);
-                closePeerConnection(p.name);
-                removeRemoteAudio(p.name);
-            }
+            if (!p || p.id === STATE.myId || p.name === STATE.myName) return;
+
+            // Wait a 2.5s grace period to distinguish between a presence state update/diff vs an actual user leaving
+            setTimeout(() => {
+                if (!STATE.channel) return;
+                const state = STATE.channel.presenceState();
+                let isStillHere = false;
+                for (const k in state) {
+                    if (state[k].some(item => item.name === p.name || item.id === p.id)) {
+                        isStillHere = true;
+                        break;
+                    }
+                }
+                if (!isStillHere) {
+                    console.log(`[Presence] ${p.name} disconnected and truly left the room.`);
+                    removeParticipant(p.name);
+                    closePeerConnection(p.name);
+                    removeRemoteAudio(p.name);
+                }
+            }, 2500);
         });
 
     // Subscribe
@@ -2294,10 +2310,10 @@ function setupMicAudioAnalyser(stream) {
         if (STATE.audioContext.state === 'suspended') {
             STATE.audioContext.resume().catch(() => {});
         }
-        const source = STATE.audioContext.createMediaStreamSource(stream);
+        STATE.micSourceNode = STATE.audioContext.createMediaStreamSource(stream);
         STATE.micAnalyser = STATE.audioContext.createAnalyser();
         STATE.micAnalyser.fftSize = 64;
-        source.connect(STATE.micAnalyser);
+        STATE.micSourceNode.connect(STATE.micAnalyser);
 
         STATE.micDataArray = new Uint8Array(STATE.micAnalyser.frequencyBinCount);
 
@@ -2329,6 +2345,10 @@ function stopMicAudioAnalyser() {
     if (STATE.micAnimFrame) {
         cancelAnimationFrame(STATE.micAnimFrame);
         STATE.micAnimFrame = null;
+    }
+    if (STATE.micSourceNode) {
+        try { STATE.micSourceNode.disconnect(); } catch (e) {}
+        STATE.micSourceNode = null;
     }
     if (STATE.audioContext) {
         try { STATE.audioContext.close(); } catch(e){}
@@ -2385,17 +2405,31 @@ function playRemoteAudio(peerName, track) {
     } else {
         const currentTracks = audioEl.srcObject.getAudioTracks();
         if (!currentTracks.some(t => t.id === track.id)) {
+            // Remove old ended or inactive tracks
+            currentTracks.forEach(t => {
+                if (t.readyState === 'ended' || t.id !== track.id) {
+                    try { audioEl.srcObject.removeTrack(t); } catch(e){}
+                }
+            });
             audioEl.srcObject.addTrack(track);
         }
     }
     audioEl.muted = false;
     audioEl.volume = 1.0;
 
+    // Prevent browser auto-suspending audio element
+    audioEl.onpause = () => {
+        if (audioEl.srcObject && audioEl.srcObject.getAudioTracks().some(t => t.readyState === 'live')) {
+            audioEl.play().catch(() => {});
+        }
+    };
+
     if (STATE.selectedAudioOutputId && typeof audioEl.setSinkId === 'function') {
         audioEl.setSinkId(STATE.selectedAudioOutputId).catch(() => {});
     }
 
     const tryPlay = () => {
+        audioEl.muted = false;
         audioEl.play().then(() => {
             const banner = el('audio-unlock-banner');
             if (banner) banner.classList.remove('visible');
@@ -2408,6 +2442,22 @@ function playRemoteAudio(peerName, track) {
 
     tryPlay();
     track.onunmute = () => { tryPlay(); };
+}
+
+// 🛡️ Periodic Audio Watchdog: keeps all remote voices streaming without dropping
+if (!window._gyverAudioWatchdog) {
+    window._gyverAudioWatchdog = setInterval(() => {
+        if (typeof STATE === 'undefined' || !STATE.remoteAudioElements) return;
+        STATE.remoteAudioElements.forEach((audioEl, name) => {
+            if (audioEl && audioEl.srcObject) {
+                const liveTracks = audioEl.srcObject.getAudioTracks().filter(t => t.readyState === 'live');
+                if (liveTracks.length > 0 && audioEl.paused) {
+                    audioEl.muted = false;
+                    audioEl.play().catch(() => {});
+                }
+            }
+        });
+    }, 2000);
 }
 
 function removeRemoteAudio(peerName) {
@@ -2550,7 +2600,14 @@ function createPeerConnection(peerName) {
 
     pc.oniceconnectionstatechange = () => {
         console.log(`[ICE ${peerName}] state:`, pc.iceConnectionState);
-        if (pc.iceConnectionState === 'failed') {
+        if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
+            try { pc.restartIce(); } catch(e){}
+        }
+    };
+
+    pc.onconnectionstatechange = () => {
+        console.log(`[PC ${peerName}] state:`, pc.connectionState);
+        if (pc.connectionState === 'failed') {
             try { pc.restartIce(); } catch(e){}
         }
     };
@@ -2562,6 +2619,9 @@ function createPeerConnection(peerName) {
         // 🔊 Route audio directly to dedicated audio player
         if (track.kind === 'audio') {
             playRemoteAudio(peerName, track);
+            track.onunmute = () => {
+                playRemoteAudio(peerName, track);
+            };
         }
 
         let peerStream = STATE.remoteScreenStreams.get(peerName);
@@ -2739,7 +2799,7 @@ function addRemoteTrack(name, stream) {
         tile.className = 'video-tile';
         tile.id = `video-tile-${name}`;
         tile.innerHTML = `
-            <video autoplay playsinline style="width:100%;height:100%;object-fit:cover"></video>
+            <video autoplay playsinline muted style="width:100%;height:100%;object-fit:cover"></video>
             <img class="tile-avatar" src="https://api.dicebear.com/8.x/thumbs/svg?seed=${encodeURIComponent(name)}" alt="${escapeHtml(name)}" style="display:none">
             <div class="tile-name">${escapeHtml(name)}</div>
             <div class="tile-mic-badge"><i class="bi bi-mic-fill"></i></div>
@@ -2747,7 +2807,10 @@ function addRemoteTrack(name, stream) {
         el('video-grid').appendChild(tile);
     }
     const video = tile.querySelector('video');
-    if (video) video.srcObject = stream;
+    if (video) {
+        video.muted = true;
+        video.srcObject = stream;
+    }
 }
 
 function closePeerConnection(name) {
