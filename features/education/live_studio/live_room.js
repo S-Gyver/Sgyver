@@ -54,6 +54,7 @@ const STATE = {
     currentViewingSharer: null,      // name of user whose screen is being viewed
     remoteScreenStreams:  new Map(), // name -> MediaStream
     remoteAudioElements:  new Map(), // name -> HTMLAudioElement
+    speakerMuted:         false,     // Deafen / Mute incoming speaker sound
 
     // Audio device settings & analyser
     selectedAudioInputId:  localStorage.getItem('gyver_audio_input_id') || '',
@@ -1498,6 +1499,55 @@ async function toggleMic() {
     broadcastMediaState();
 }
 
+function toggleSpeaker() {
+    STATE.speakerMuted = !STATE.speakerMuted;
+
+    // Apply mute/unmute to all remote peer audio elements
+    STATE.remoteAudioElements.forEach(audioEl => {
+        if (audioEl) {
+            audioEl.muted = STATE.speakerMuted;
+        }
+    });
+
+    // Apply mute/unmute to screen video element (if viewing another user's screen)
+    const screenVideo = el('screen-video');
+    if (screenVideo && STATE.currentViewingSharer && STATE.currentViewingSharer !== STATE.myName) {
+        screenVideo.muted = STATE.speakerMuted;
+    }
+
+    // Update Control Deck button UI (#ctrl-speaker, #ctrl-speaker-icon)
+    const ctrlSpeaker = el('ctrl-speaker');
+    const ctrlSpeakerIcon = el('ctrl-speaker-icon');
+    if (ctrlSpeaker) {
+        ctrlSpeaker.classList.toggle('off', STATE.speakerMuted);
+        ctrlSpeaker.title = STATE.speakerMuted ? 'เปิดเสียงลำโพง (D)' : 'ปิดเสียงลำโพง (D)';
+    }
+    if (ctrlSpeakerIcon) {
+        ctrlSpeakerIcon.className = STATE.speakerMuted ? 'bi bi-volume-mute-fill' : 'bi bi-volume-up-fill';
+    }
+
+    // Update User Panel button UI (#panel-speaker-btn, #panel-speaker-icon)
+    const panelSpeakerBtn = el('panel-speaker-btn');
+    const panelSpeakerIcon = el('panel-speaker-icon');
+    if (panelSpeakerBtn) {
+        panelSpeakerBtn.classList.toggle('muted', STATE.speakerMuted);
+        panelSpeakerBtn.title = STATE.speakerMuted ? 'เปิดเสียงลำโพง' : 'ปิดเสียงลำโพง';
+    }
+    if (panelSpeakerIcon) {
+        panelSpeakerIcon.className = STATE.speakerMuted ? 'bi bi-volume-mute-fill' : 'bi bi-volume-up-fill';
+    }
+
+    // Toast feedback
+    if (typeof showToast === 'function') {
+        if (STATE.speakerMuted) {
+            showToast('warning', 'ปิดเสียงลำโพงแล้ว (Deafen)', 'คุณจะไม่ได้ยินเสียงของทุกคนและเสียงแชร์หน้าจอในห้อง', 2500);
+        } else {
+            showToast('info', 'เปิดเสียงลำโพงแล้ว', 'คุณจะได้ยินเสียงการสนทนาในห้องตามปกติ', 2500);
+        }
+    }
+}
+window.toggleSpeaker = toggleSpeaker;
+
 function createVirtualCameraStream(userName) {
     const canvas = document.createElement('canvas');
     canvas.width = 640;
@@ -1817,7 +1867,7 @@ function selectScreenStream(targetName) {
                 screenVideo.muted = true;
                 screenVideo.play().catch(e => console.error('Play self screen error:', e));
             } else {
-                screenVideo.muted = false;
+                screenVideo.muted = !!STATE.speakerMuted;
                 screenVideo.play().catch(err => {
                     console.warn('Autoplay unmuted blocked on remote screen, playing muted:', err);
                     screenVideo.muted = true;
@@ -1885,7 +1935,7 @@ function selectScreenStream(targetName) {
                         if (sv) {
                             sv.srcObject = s;
                             sv.style.display = 'block';
-                            sv.muted = false;
+                            sv.muted = !!STATE.speakerMuted;
                             sv.play().catch(err => {
                                 sv.muted = true;
                                 sv.play().catch(e => {});
@@ -2428,7 +2478,7 @@ function playRemoteAudio(peerName, track) {
             audioEl.srcObject.addTrack(track);
         }
     }
-    audioEl.muted = false;
+    audioEl.muted = !!STATE.speakerMuted;
     audioEl.volume = 1.0;
 
     // Prevent browser auto-suspending audio element
@@ -2443,7 +2493,7 @@ function playRemoteAudio(peerName, track) {
     }
 
     const tryPlay = () => {
-        audioEl.muted = false;
+        audioEl.muted = !!STATE.speakerMuted;
         audioEl.play().then(() => {
             const banner = el('audio-unlock-banner');
             if (banner) banner.classList.remove('visible');
@@ -2466,7 +2516,7 @@ if (!window._gyverAudioWatchdog) {
             if (audioEl && audioEl.srcObject) {
                 const liveTracks = audioEl.srcObject.getAudioTracks().filter(t => t.readyState === 'live');
                 if (liveTracks.length > 0 && audioEl.paused) {
-                    audioEl.muted = false;
+                    audioEl.muted = !!STATE.speakerMuted;
                     audioEl.play().catch(() => {});
                 }
             }
@@ -2489,14 +2539,14 @@ function removeRemoteAudio(peerName) {
 function unlockAudioPlayback() {
     STATE.remoteAudioElements.forEach(audioEl => {
         if (audioEl) {
-            audioEl.muted = false;
+            audioEl.muted = !!STATE.speakerMuted;
             audioEl.play().catch(() => {});
         }
     });
 
     const screenVideo = el('screen-video');
     if (screenVideo && STATE.currentViewingSharer && STATE.currentViewingSharer !== STATE.myName) {
-        screenVideo.muted = false;
+        screenVideo.muted = !!STATE.speakerMuted;
         screenVideo.play().catch(() => {});
     }
 
@@ -3144,6 +3194,9 @@ document.addEventListener('keydown', (e) => {
     } else if (key === 'm') {
         e.preventDefault();
         toggleMic();
+    } else if (key === 'd') {
+        e.preventDefault();
+        toggleSpeaker();
     } else if (key === 'v') {
         e.preventDefault();
         toggleCamera();
