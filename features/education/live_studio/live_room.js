@@ -1400,67 +1400,43 @@ async function toggleMic() {
 
     if (!STATE.micOn) {
         // 🟢 เปิดไมโครโฟน
-        let audioTrack = STATE.localStream ? STATE.localStream.getAudioTracks()[0] : null;
+        let audioTrack = null;
 
-        if (!audioTrack || audioTrack.readyState === 'ended') {
-            try {
-                const audioConstraints = STATE.selectedAudioInputId
-                    ? { deviceId: { exact: STATE.selectedAudioInputId } }
-                    : true;
+        try {
+            const audioConstraints = STATE.selectedAudioInputId
+                ? { deviceId: { exact: STATE.selectedAudioInputId }, echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+                : { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
+
+            const hasLiveAudio = STATE.localStream && STATE.localStream.getAudioTracks().some(t => t.readyState === 'live');
+            if (!hasLiveAudio) {
                 const audioStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
                 const newTrack = audioStream.getAudioTracks()[0];
                 if (STATE.localStream) {
-                    STATE.localStream.getAudioTracks().forEach(t => STATE.localStream.removeTrack(t));
+                    STATE.localStream.getAudioTracks().forEach(t => {
+                        try { t.stop(); } catch(e){}
+                        STATE.localStream.removeTrack(t);
+                    });
                     STATE.localStream.addTrack(newTrack);
                 } else {
                     STATE.localStream = audioStream;
                 }
                 audioTrack = newTrack;
-
-                // Add or replace audio track in all peer connections
-                STATE.peerConnections.forEach(async (pc, peerName) => {
-                    try {
-                        const senders = pc.getSenders();
-                        const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
-                        if (audioSender) {
-                            await audioSender.replaceTrack(audioTrack);
-                        } else {
-                            pc.addTrack(audioTrack, STATE.localStream);
-                            if (pc.signalingState === 'stable') {
-                                const offer = await pc.createOffer();
-                                await pc.setLocalDescription(offer);
-                                if (STATE.channel) {
-                                    STATE.channel.send({
-                                        type: 'broadcast',
-                                        event: 'signal_offer',
-                                        payload: { target: peerName, sender: STATE.myName, sdp: offer }
-                                    });
-                                }
-                            }
-                        }
-                    } catch (e) {}
-                });
-
-                // Connect to any participant who doesn't have a peer connection yet
-                STATE.participants.forEach((p, pName) => {
-                    if (pName !== STATE.myName && !STATE.peerConnections.has(pName)) {
-                        initiatePeerConnection(pName);
-                    }
-                });
-            } catch (err) {
-                console.error('[Mic Error]:', err);
-                let msg = err.message || 'ไม่สามารถเข้าถึงไมโครโฟนได้';
-                if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError' || err.name === 'SecurityError') {
-                    msg = 'เบราว์เซอร์บล็อกการเข้าถึงไมค์: กรุณาคลิกไอคอนรูปแม่กุญแจ/Site Settings ที่หน้าแถบ URL ด้านบนเพื่อเลือก "อนุญาต (Allow)" ไมโครโฟน';
-                } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-                    msg = 'ไม่พบอุปกรณ์ไมโครโฟนที่เชื่อมต่อกับคอมพิวเตอร์';
-                } else if (err.name === 'NotReadableError') {
-                    msg = 'ไมโครโฟนกำลังถูกโปรแกรมอื่นใช้งานอยู่ หรือเกิดข้อผิดพลาดในการเปิดไมค์';
-                }
-                if (typeof window.showToast === 'function') window.showToast('error', 'ไมค์', msg, 5000);
-                else alert(msg);
-                return;
+            } else {
+                audioTrack = STATE.localStream.getAudioTracks()[0];
             }
+        } catch (err) {
+            console.error('[Mic Error]:', err);
+            let msg = err.message || 'ไม่สามารถเข้าถึงไมโครโฟนได้';
+            if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError' || err.name === 'SecurityError') {
+                msg = 'เบราว์เซอร์บล็อกการเข้าถึงไมค์: กรุณาคลิกไอคอนรูปแม่กุญแจที่หน้าแถบ URL ด้านบนเพื่อเลือก "อนุญาต (Allow)" ไมโครโฟน';
+            } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+                msg = 'ไม่พบอุปกรณ์ไมโครโฟนที่เชื่อมต่อกับคอมพิวเตอร์';
+            } else if (err.name === 'NotReadableError') {
+                msg = 'ไมโครโฟนกำลังถูกโปรแกรมอื่นใช้งานอยู่ หรือเกิดข้อผิดพลาดในการเปิดไมค์';
+            }
+            if (typeof window.showToast === 'function') window.showToast('error', 'ไมค์', msg, 5000);
+            else alert(msg);
+            return;
         }
 
         if (audioTrack) {
@@ -1468,6 +1444,33 @@ async function toggleMic() {
         }
         STATE.micOn = true;
         setupMicAudioAnalyser(STATE.localStream);
+
+        // Always attach or replace active mic track on all existing peer connections
+        STATE.peerConnections.forEach(async (pc, peerName) => {
+            try {
+                attachAllActiveTracksToPeer(pc);
+                if (pc.signalingState === 'stable') {
+                    const offer = await pc.createOffer();
+                    await pc.setLocalDescription(offer);
+                    if (STATE.channel) {
+                        STATE.channel.send({
+                            type: 'broadcast',
+                            event: 'signal_offer',
+                            payload: { target: peerName, sender: STATE.myName, sdp: offer }
+                        });
+                    }
+                }
+            } catch (e) {
+                console.warn('[toggleMic peer notify error]:', e);
+            }
+        });
+
+        // Connect to any participant who doesn't have a peer connection yet
+        STATE.participants.forEach((p, pName) => {
+            if (pName !== STATE.myName && !STATE.peerConnections.has(pName)) {
+                initiatePeerConnection(pName);
+            }
+        });
     } else {
         // 🔴 ปิดไมโครโฟน (Mute)
         if (STATE.localStream) {
@@ -2140,9 +2143,11 @@ async function initDeviceManagement() {
     // Close settings popover when clicking outside
     document.addEventListener('click', (e) => {
         const popover = el('device-settings-popover');
-        const btn = el('panel-settings-btn');
+        const btn1 = el('panel-settings-btn');
+        const btn2 = el('ctrl-mic-arrow');
         if (popover && popover.style.display !== 'none' && popover.classList.contains('active')) {
-            if (!popover.contains(e.target) && (!btn || !btn.contains(e.target))) {
+            const clickedTrigger = (btn1 && btn1.contains(e.target)) || (btn2 && btn2.contains(e.target));
+            if (!popover.contains(e.target) && !clickedTrigger) {
                 toggleDeviceSettings(null, false);
             }
         }
@@ -2365,6 +2370,15 @@ function toggleDeviceSettings(event, forceState) {
     if (!popover) return;
     const shouldOpen = (forceState !== undefined) ? !!forceState : (popover.style.display === 'none' || !popover.classList.contains('active'));
     if (shouldOpen) {
+        const fromDeck = event && event.target && (event.target.closest('#control-deck') || event.target.closest('.ctrl-mic-wrapper'));
+        if (fromDeck) {
+            popover.classList.add('docked-center');
+            document.body.appendChild(popover);
+        } else {
+            popover.classList.remove('docked-center');
+            const userPanel = document.querySelector('.user-panel');
+            if (userPanel && !userPanel.contains(popover)) userPanel.appendChild(popover);
+        }
         popover.style.display = 'block';
         popover.classList.add('active');
         updateDeviceList();
@@ -2583,6 +2597,11 @@ function createPeerConnection(peerName) {
     const pc = new RTCPeerConnection(ICE_SERVERS);
     pc._pendingIceCandidates = [];
     STATE.peerConnections.set(peerName, pc);
+
+    // Pre-allocate audio transceiver so audio m-line is negotiated from the very start
+    try {
+        pc.addTransceiver('audio', { direction: 'sendrecv' });
+    } catch (e) {}
 
     pc.onicecandidate = ({ candidate }) => {
         if (candidate && STATE.channel) {

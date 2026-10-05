@@ -395,10 +395,15 @@
             <!-- Control Deck -->
             <div class="control-deck" id="control-deck">
                 <div class="ctrl-group">
-                    <!-- Mic -->
-                    <button class="ctrl-btn off" id="ctrl-mic" title="ไมค์ (M)" onclick="toggleMic()">
-                        <i class="bi bi-mic-mute-fill" id="ctrl-mic-icon"></i>
-                    </button>
+                    <!-- Mic with Device Selector Dropdown -->
+                    <div class="ctrl-mic-wrapper">
+                        <button class="ctrl-btn off" id="ctrl-mic" title="ไมค์ (M)" onclick="toggleMic()">
+                            <i class="bi bi-mic-mute-fill" id="ctrl-mic-icon"></i>
+                        </button>
+                        <button class="ctrl-mic-arrow-btn" id="ctrl-mic-arrow" title="เลือกไมโครโฟน / ลำโพง (Device Settings)" onclick="toggleDeviceSettings(event)">
+                            <i class="bi bi-chevron-up"></i>
+                        </button>
+                    </div>
                     <!-- Camera -->
                     <button class="ctrl-btn off" id="ctrl-cam" title="กล้อง (V)" onclick="toggleCamera()">
                         <i class="bi bi-camera-video-off-fill" id="ctrl-cam-icon"></i>

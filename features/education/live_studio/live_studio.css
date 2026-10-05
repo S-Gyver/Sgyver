@@ -41,7 +41,7 @@ html,body{height:100%;height:100dvh;overflow:hidden;background-color:var(--disco
 .live-stream-badge{background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;font-size:.65rem;font-weight:700;padding:1px 6px;border-radius:4px;display:inline-flex;align-items:center;gap:3px;cursor:pointer;animation:pulseScreen 2s infinite;flex-shrink:0}
 .live-stream-badge:hover{transform:scale(1.05)}
 .vc-count{background:var(--discord-surface);color:var(--discord-muted);font-size:.68rem;border-radius:10px;padding:1px 6px}
-.user-panel{height:56px;background:rgba(0,0,0,.2);display:flex;align-items:center;justify-content:space-between;padding:0 10px;border-top:1px solid var(--discord-border);flex-shrink:0}
+.user-panel{height:56px;background:rgba(0,0,0,.2);display:flex;align-items:center;justify-content:space-between;padding:0 10px;border-top:1px solid var(--discord-border);flex-shrink:0;position:relative}
 .user-panel-info{display:flex;align-items:center;gap:8px;overflow:hidden}
 .user-panel-info img{width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0}
 .user-panel-name{font-weight:600;color:var(--discord-white);font-size:.82rem;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1117,18 +1117,57 @@ html,body{height:100%;height:100dvh;overflow:hidden;background-color:var(--disco
 /* 🎛️ Audio Device Settings Popover (Discord/Studio Style) */
 .device-settings-popover {
     position: absolute;
-    bottom: calc(100% + 12px);
-    left: 8px;
-    width: 295px;
-    background: rgba(15, 23, 42, 0.98);
-    backdrop-filter: blur(28px) saturate(190%);
-    -webkit-backdrop-filter: blur(28px) saturate(190%);
+    bottom: calc(100% + 10px);
+    left: 4px;
+    width: 275px;
+    background: #18191c;
     border: 1px solid rgba(255, 255, 255, 0.18);
     border-radius: 16px;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75), 0 0 25px rgba(99, 102, 241, 0.25);
-    z-index: 1100;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), 0 0 25px rgba(99, 102, 241, 0.25);
+    z-index: 99999;
     padding: 16px;
-    animation: popIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: popIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.device-settings-popover.docked-center {
+    position: fixed;
+    bottom: calc(var(--control-h) + 14px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 320px;
+    z-index: 99999;
+}
+
+.ctrl-mic-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.ctrl-mic-arrow-btn {
+    position: absolute;
+    top: -3px;
+    right: -4px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--discord-mid);
+    border: 1.5px solid rgba(255, 255, 255, 0.25);
+    color: var(--discord-text);
+    font-size: 0.65rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    z-index: 5;
+}
+
+.ctrl-mic-arrow-btn:hover {
+    background: #38bdf8;
+    color: #0f172a;
+    border-color: #38bdf8;
+    transform: scale(1.15);
 }
 
 .dsp-header {
