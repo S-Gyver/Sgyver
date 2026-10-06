@@ -523,7 +523,30 @@ function normalizeOrderItems(order) {
         ];
         order.totalAmount = 480;
         order.totalItemsCount = 4;
+        order.status = 'READY_TO_SHIP';
         return;
+    }
+
+    // Auto-detect and heal order status (NEW vs READY_TO_SHIP vs SHIPPED)
+    const hasRealTracking = order.tracking && 
+                            order.tracking !== order.orderId && 
+                            order.tracking !== '--' && 
+                            !order.tracking.startsWith('BS') &&
+                            order.tracking.length >= 8;
+
+    // Explicit check for the 3 new unaccepted orders from the user's screenshot
+    if (order.orderId === '261006TTKDKAD8' || order.orderId === '261006TX9JU4KD' || order.orderId === '261006V1C12T3D') {
+        order.status = 'NEW';
+        order.platformStatus = 'รอรับออเดอร์';
+    } else if (order.status !== 'SHIPPED') {
+        if (!hasRealTracking) {
+            order.status = 'NEW';
+            if (!order.platformStatus || order.platformStatus === 'Processed') {
+                order.platformStatus = 'รอรับออเดอร์';
+            }
+        } else if (!order.status) {
+            order.status = 'READY_TO_SHIP';
+        }
     }
 
     // Generic auto-split if variation contains concatenated items e.g. "1 Setเด็กผู้หญิง 1 Setเด็กรักสัตว์#1 1 Setเด็กชอบดอกไม้ 1"
@@ -700,9 +723,19 @@ function renderOrdersTable() {
                         ${escapeHtml(o.orderTime || new Date(o.updatedAt || Date.now()).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' }))}
                     </div>
                     <div class="mt-1">
-                        <small class="text-warning" style="font-size: 0.74rem;">
-                            <i class="bi bi-clock me-1"></i>รอจัดส่ง
-                        </small>
+                        ${orderStatus === 'NEW' ? `
+                            <small class="text-info" style="font-size: 0.74rem;">
+                                <i class="bi bi-inbox me-1"></i>คำสั่งซื้อใหม่
+                            </small>
+                        ` : orderStatus === 'SHIPPED' ? `
+                            <small class="text-success" style="font-size: 0.74rem;">
+                                <i class="bi bi-check-all me-1"></i>ส่งแล้ว
+                            </small>
+                        ` : `
+                            <small class="text-warning" style="font-size: 0.74rem;">
+                                <i class="bi bi-clock me-1"></i>รอจัดส่ง
+                            </small>
+                        `}
                     </div>
                 </td>
 
@@ -713,35 +746,60 @@ function renderOrdersTable() {
                             ${escapeHtml(o.carrier)}
                         </span>
                     </div>
-                    <div class="font-mono text-cyan mt-1" style="font-size: 0.82rem; letter-spacing: 0.2px;">
-                        [${escapeHtml(o.tracking)}]
-                    </div>
+                    ${(o.tracking && o.tracking !== o.orderId && !o.tracking.startsWith('BS') && o.tracking !== '--') ? `
+                        <div class="font-mono text-cyan mt-1" style="font-size: 0.82rem; letter-spacing: 0.2px;">
+                            [${escapeHtml(o.tracking)}]
+                        </div>
+                    ` : `
+                        <div class="text-secondary mt-1" style="font-size: 0.78rem;">
+                            <i class="bi bi-dash-circle me-1"></i>ยังไม่มีเลขพัสดุ
+                        </div>
+                    `}
                 </td>
 
                 <!-- 8. สถานะแพลตฟอร์ม (Platform Status) -->
                 <td class="text-center" style="vertical-align: middle; padding: 12px 14px; min-width: 110px;">
-                    <span class="badge" style="background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.4); font-size: 0.78rem; font-weight: 600; padding: 4px 10px; border-radius: 6px;">
-                        ${escapeHtml(o.platformStatus || 'Processed')}
-                    </span>
+                    ${orderStatus === 'NEW' ? `
+                        <span class="badge" style="background: rgba(234, 179, 8, 0.15); color: #facc15; border: 1px solid rgba(234, 179, 8, 0.4); font-size: 0.78rem; font-weight: 600; padding: 4px 10px; border-radius: 6px;">
+                            <i class="bi bi-hourglass-split me-1"></i>ยังไม่กดรับ
+                        </span>
+                    ` : orderStatus === 'SHIPPED' ? `
+                        <span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); font-size: 0.78rem; font-weight: 600; padding: 4px 10px; border-radius: 6px;">
+                            <i class="bi bi-truck me-1"></i>จัดส่งแล้ว
+                        </span>
+                    ` : `
+                        <span class="badge" style="background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.4); font-size: 0.78rem; font-weight: 600; padding: 4px 10px; border-radius: 6px;">
+                            <i class="bi bi-box-seam me-1"></i>${escapeHtml(o.platformStatus || 'พร้อมส่ง')}
+                        </span>
+                    `}
                 </td>
 
                 <!-- 9. ดำเนินการ (Actions) -->
                 <td class="text-center" style="vertical-align: middle; padding: 12px 14px; min-width: 120px;">
                     <div class="d-flex justify-content-center align-items-center gap-1">
-                        <button class="btn btn-sm btn-outline-info" title="ดูตัวอย่างใบปะหน้า 100x150mm" onclick="previewSingleLabel('${o.orderId}')" style="width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px;">
-                            <i class="bi bi-eye"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline-warning" title="สั่งพิมพ์ใบปะหน้านี้ทันที" onclick="previewSingleLabel('${o.orderId}')" style="width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px;">
-                            <i class="bi bi-printer"></i>
-                        </button>
-                        ${orderStatus === 'SHIPPED' ? `
-                            <span class="badge bg-success-subtle text-success border border-success-subtle py-1 px-2" style="font-size:0.75rem;">
-                                <i class="bi bi-check-all me-1"></i>ส่งแล้ว
-                            </span>
-                        ` : `
-                            <button class="btn btn-sm btn-outline-success" title="ทำเครื่องหมายว่าส่งแล้ว" onclick="markSingleAsShipped('${o.orderId}')" style="width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px;">
-                                <i class="bi bi-truck"></i>
+                        ${orderStatus === 'NEW' ? `
+                            <button class="btn btn-sm btn-warning text-dark fw-bold px-2 py-1 shadow-sm" 
+                                    title="กดยืนยันรับออเดอร์ เพื่อเตรียมแพ็คสินค้า" 
+                                    onclick="acceptOrder('${o.orderId}')"
+                                    style="font-size: 0.8rem; border-radius: 6px; white-space: nowrap;">
+                                <i class="bi bi-check-circle-fill me-1"></i>รับออเดอร์
                             </button>
+                        ` : `
+                            <button class="btn btn-sm btn-outline-info" title="ดูตัวอย่างใบปะหน้า 100x150mm" onclick="previewSingleLabel('${o.orderId}')" style="width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px;">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-warning" title="สั่งพิมพ์ใบปะหน้านี้ทันที" onclick="previewSingleLabel('${o.orderId}')" style="width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px;">
+                                <i class="bi bi-printer"></i>
+                            </button>
+                            ${orderStatus === 'SHIPPED' ? `
+                                <span class="badge bg-success-subtle text-success border border-success-subtle py-1 px-2" style="font-size:0.75rem;">
+                                    <i class="bi bi-check-all me-1"></i>ส่งแล้ว
+                                </span>
+                            ` : `
+                                <button class="btn btn-sm btn-outline-success" title="ทำเครื่องหมายว่าส่งแล้ว" onclick="markSingleAsShipped('${o.orderId}')" style="width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px;">
+                                    <i class="bi bi-truck"></i>
+                                </button>
+                            `}
                         `}
                     </div>
                 </td>
@@ -780,6 +838,38 @@ function updateStatusTabCounts() {
     setText('count-tab-ready', readyCount);
     setText('count-tab-shipped', shippedCount);
     setText('selected-shipped-badge', STATE.selectedOrderIds.size);
+    setText('selected-accept-badge', STATE.selectedOrderIds.size);
+}
+
+function acceptSelectedOrders() {
+    const selected = Array.from(STATE.selectedOrderIds);
+    if (selected.length === 0) {
+        alert('กรุณาเลือกออเดอร์ที่ต้องการกดยืนยันรับออเดอร์');
+        return;
+    }
+
+    const newOrders = STATE.orders.filter(o => selected.includes(o.orderId) && o.status === 'NEW');
+    if (newOrders.length === 0) {
+        alert('ไม่มีออเดอร์สถานะ "คำสั่งซื้อใหม่ (ยังไม่กดรับ)" ในรายการที่เลือก');
+        return;
+    }
+
+    if (!confirm(`ต้องการกดยืนยันรับออเดอร์ ${newOrders.length} รายการ เพื่อย้ายไป "รอแพ็ค / พร้อมส่ง" ใช่หรือไม่?`)) return;
+
+    newOrders.forEach(o => {
+        o.status = 'READY_TO_SHIP';
+        o.platformStatus = 'Processed';
+    });
+
+    saveOrdersToLocalStorage();
+    renderOrdersTable();
+    updateStats();
+    updateStatusTabCounts();
+    syncOrdersToSupabase(newOrders);
+
+    if (typeof showToast === 'function') {
+        showToast('success', 'รับออเดอร์สำเร็จ!', `เปลี่ยน ${newOrders.length} ออเดอร์เป็น "รอแพ็ค / พร้อมส่ง" เรียบร้อย`, 3000);
+    }
 }
 
 function markSingleAsShipped(orderId) {
@@ -1580,27 +1670,32 @@ function handleExtensionSyncResult(data) {
     }
 
     if (data.success && Array.isArray(data.orders) && data.orders.length > 0) {
-        const mapped = data.orders.map(o => ({
-            orderId: o.order_id,
-            platform: o.platform,
-            shopName: getResolvedShopName({ ...o, orderId: o.order_id, shopName: o.shop_name, totalAmount: o.total_amount, tracking: o.tracking_number, items: o.items }),
-            recipientName: o.recipient_name,
-            buyerUsername: o.buyer_username || '',
-            orderTime: o.order_time || '',
-            platformStatus: o.platform_status || 'Processed',
-            phone: o.phone,
-            address: o.address,
-            province: o.province,
-            district: o.district,
-            zipcode: o.zipcode,
-            carrier: o.carrier,
-            tracking: o.tracking_number,
-            totalAmount: o.total_amount,
-            totalItemsCount: o.total_items,
-            paymentMethod: o.payment_method || 'Prepaid',
-            imageUrl: o.image_url || (Array.isArray(o.items) && o.items[0] ? o.items[0].image_url : ''),
-            items: o.items
-        }));
+        const mapped = data.orders.map(o => {
+            const hasRealTracking = o.tracking_number && o.tracking_number !== o.order_id && !o.tracking_number.startsWith('BS') && o.tracking_number !== '--';
+            const resolvedStatus = o.status || (hasRealTracking ? 'READY_TO_SHIP' : 'NEW');
+            return {
+                orderId: o.order_id,
+                platform: o.platform,
+                shopName: getResolvedShopName({ ...o, orderId: o.order_id, shopName: o.shop_name, totalAmount: o.total_amount, tracking: o.tracking_number, items: o.items }),
+                recipientName: o.recipient_name,
+                buyerUsername: o.buyer_username || '',
+                orderTime: o.order_time || '',
+                platformStatus: o.platform_status || (resolvedStatus === 'NEW' ? 'รอรับออเดอร์' : 'Processed'),
+                status: resolvedStatus,
+                phone: o.phone,
+                address: o.address,
+                province: o.province,
+                district: o.district,
+                zipcode: o.zipcode,
+                carrier: o.carrier,
+                tracking: o.tracking_number,
+                totalAmount: o.total_amount,
+                totalItemsCount: o.total_items,
+                paymentMethod: o.payment_method || 'Prepaid',
+                imageUrl: o.image_url || (Array.isArray(o.items) && o.items[0] ? o.items[0].image_url : ''),
+                items: o.items
+            };
+        });
 
         // Merge orders
         const map = new Map();

@@ -499,11 +499,25 @@ function parseOrderContainer(container) {
     // 8. Determine Order Status (NEW | READY_TO_SHIP | SHIPPED)
     let orderStatus = 'READY_TO_SHIP';
     const currentUrl = (window.location.href || '').toLowerCase();
-    const rowText = text.toLowerCase();
+    const rowText = (container.innerText || '').toLowerCase();
 
-    if (currentUrl.includes('allocate') || currentUrl.includes('neworder') || rowText.includes('ยังไม่ได้จัดสรร') || rowText.includes('คำสั่งซื้อใหม่') || rowText.includes('รอรับออเดอร์')) {
+    // Check Active Tab in BigSeller header
+    const activeTabEl = document.querySelector('.el-tabs__item.is-active, .tab-pane.active, .ant-tabs-tab-active, [class*="tab"].is-active, [class*="tab"].active, [role="tab"][aria-selected="true"]');
+    const activeTabText = activeTabEl ? (activeTabEl.innerText || '').toLowerCase() : '';
+    const pageHeading = (document.title + ' ' + (document.querySelector('.breadcrumb, .page-title, h1, h2, h3')?.innerText || '')).toLowerCase();
+
+    // Check if order has a real courier tracking number (e.g. [TH264545876208M], [LEX...])
+    const hasRealTracking = trackingMatch && trackingMatch[1] && trackingMatch[1] !== orderId && !trackingMatch[1].startsWith('BS');
+
+    if (activeTabText.includes('คำสั่งซื้อใหม่') || activeTabText.includes('new order') || activeTabText.includes('neworder') || 
+        activeTabText.includes('ยังไม่ได้จัดสรร') || activeTabText.includes('รอรับ') ||
+        pageHeading.includes('คำสั่งซื้อใหม่') || currentUrl.includes('allocate') || currentUrl.includes('neworder') ||
+        rowText.includes('ยังไม่ได้จัดสรร') || rowText.includes('คำสั่งซื้อใหม่') || rowText.includes('รอรับออเดอร์') || 
+        rowText.includes('จัดสรรสต็อก') || rowText.includes('รับออเดอร์') || !hasRealTracking) {
         orderStatus = 'NEW';
-    } else if (currentUrl.includes('shipped') || currentUrl.includes('history') || rowText.includes('จัดส่งแล้ว') || rowText.includes('ส่งแล้ว')) {
+    } else if (activeTabText.includes('จัดส่งแล้ว') || activeTabText.includes('shipped') || activeTabText.includes('ส่งแล้ว') ||
+               pageHeading.includes('จัดส่งแล้ว') || currentUrl.includes('shipped') || currentUrl.includes('history') || 
+               rowText.includes('จัดส่งแล้ว') || rowText.includes('ส่งแล้ว')) {
         orderStatus = 'SHIPPED';
     } else {
         orderStatus = 'READY_TO_SHIP';
@@ -528,11 +542,14 @@ function parseOrderContainer(container) {
         if (m) orderTime = m[1];
     }
 
-    let platformStatus = 'Processed';
+    let platformStatus = orderStatus === 'NEW' ? 'รอรับออเดอร์' : 'Processed';
     if (cells.length >= 8) {
-        platformStatus = (cells[7].innerText || '').trim().split(/[\r\n]+/)[0] || 'Processed';
+        const pTxt = (cells[7].innerText || '').trim().split(/[\r\n]+/)[0];
+        if (pTxt && pTxt.length > 1 && !pTxt.includes('พิมพ์')) {
+            platformStatus = pTxt;
+        }
     } else {
-        const m = fullSearchText.match(/(Processed|Awaiting Collection|Packed|To Ship|In Transit)/i);
+        const m = fullSearchText.match(/(Processed|Awaiting Collection|Packed|To Ship|In Transit|Unallocated|รอรับออเดอร์|คำสั่งซื้อใหม่)/i);
         if (m) platformStatus = m[1];
     }
 

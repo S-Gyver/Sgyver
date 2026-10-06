@@ -23,7 +23,7 @@
     <script src="../../../assets/js/toast_shared.js"></script>
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="shopee_orders.css?v=20261006_18">
+    <link rel="stylesheet" href="shopee_orders.css?v=20261006_19">
 
     <style>
         /* High-Contrast Card Rows & Distinct Separation */
@@ -234,6 +234,9 @@
                 </button>
             </div>
             <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-sm btn-outline-warning border-warning text-warning" id="btn-batch-accept" onclick="acceptSelectedOrders()" title="กดยืนยันรับออเดอร์ที่เลือก">
+                    <i class="bi bi-check-circle-fill me-1"></i> รับออเดอร์ที่เลือก (<span id="selected-accept-badge">0</span>)
+                </button>
                 <button class="btn btn-sm btn-outline-success border-success text-success" id="btn-batch-shipped" onclick="markSelectedAsShipped()" title="เปลี่ยนสถานะออเดอร์ที่เลือกเป็น 'จัดส่งแล้ว'">
                     <i class="bi bi-check2-circle me-1"></i> ทำเครื่องหมายส่งแล้ว (<span id="selected-shipped-badge">0</span>)
                 </button>
@@ -349,6 +352,6 @@
     </div>
 
     <!-- Shopee Orders Logic -->
-    <script src="shopee_orders.js?v=20261006_18"></script>
+    <script src="shopee_orders.js?v=20261006_19"></script>
 </body>
 </html>
