@@ -191,22 +191,65 @@ function parseOrderContainer(container) {
     if (!orderIdMatch) return null;
     const orderId = orderIdMatch[1];
 
-    // 2. Platform & Store Name (e.g. "TikTok: SD_TikTok", "Lazada: Home Artistic", "Shopee: whatever_glitters")
+    // 2. Platform & Store Name (Shopee 3 stores, TikTok: SD_TikTok, Lazada: Home Artistic)
     let platform = 'Shopee';
     let shopName = 'Shopee Store';
 
-    const storeMatch = text.match(/(TikTok|Lazada|Shopee)\s*:\s*([^\n\r\|]+)/i);
+    // Gather full text including parent card or previous header row
+    let fullSearchText = text;
+    const orderCard = container.closest('.order-item, .order-card, .el-table, table, .ant-table, [class*="order"]') || container.parentElement;
+    if (orderCard && orderCard !== container) {
+        fullSearchText = (orderCard.innerText || '') + '\n' + fullSearchText;
+    }
+    if (container.previousElementSibling) {
+        fullSearchText = (container.previousElementSibling.innerText || '') + '\n' + fullSearchText;
+    }
+
+    // Try regex for Platform: StoreName (handles :, ：, -, --, newlines)
+    const storeMatch = fullSearchText.match(/(TikTok|Lazada|Shopee)\s*[:：\-\–]\s*([^\n\r\|<]+)/i) ||
+                       fullSearchText.match(/(?:ร้านค้า|ร้าน)\s*[:：]\s*([^\n\r\|<]+)/i);
+
     if (storeMatch) {
-        const rawP = storeMatch[1].toLowerCase();
+        const rawP = (storeMatch[1] || '').toLowerCase();
         if (rawP.includes('tiktok')) platform = 'TikTok';
         else if (rawP.includes('lazada')) platform = 'Lazada';
         else platform = 'Shopee';
-        shopName = storeMatch[2].trim();
-    } else {
-        const lower = text.toLowerCase();
-        if (lower.includes('tiktok')) { platform = 'TikTok'; shopName = 'SD_TikTok'; }
-        else if (lower.includes('lazada')) { platform = 'Lazada'; shopName = 'Home Artistic'; }
-        else if (lower.includes('whatever_glitters')) { platform = 'Shopee'; shopName = 'whatever_glitters'; }
+
+        let extractedName = (storeMatch[2] || '').trim();
+        // Clean out trailing UI words like 'กำลังดำเนินการ', 'Paid', etc.
+        extractedName = extractedName.split(/[\t\n\r]/)[0]
+                                     .replace(/\s*(กำลังดำเนินการ|คำสั่งซื้อใหม่|จัดส่งแล้ว|รอดำเนินการ|Paid|Expire|Created).*$/i, '')
+                                     .trim();
+        if (extractedName && extractedName.length > 1 && !extractedName.includes('โลจิสติกส์')) {
+            shopName = extractedName;
+        }
+    }
+
+    // DOM Element lookup for store name / tooltip / title
+    const searchRoot = orderCard || container;
+    const storeDOMElements = Array.from(searchRoot.querySelectorAll('[class*="shop"], [class*="store"], [class*="account"], [title*="Shopee"], [title*="TikTok"], [title*="Lazada"]'));
+    for (const el of storeDOMElements) {
+        const titleOrText = (el.getAttribute('title') || el.innerText || '').trim();
+        if (titleOrText && (titleOrText.includes('Shopee') || titleOrText.includes('TikTok') || titleOrText.includes('Lazada'))) {
+            const m = titleOrText.match(/(?:TikTok|Lazada|Shopee)\s*[:：\-\–]?\s*([^\n\r\|<]+)/i);
+            if (m && m[1].trim().length > 1) {
+                shopName = m[1].trim();
+                break;
+            }
+        }
+    }
+
+    // Fallback checks
+    const lower = fullSearchText.toLowerCase();
+    if (lower.includes('tiktok')) {
+        platform = 'TikTok';
+        if (shopName === 'Shopee Store') shopName = 'SD_TikTok';
+    } else if (lower.includes('lazada')) {
+        platform = 'Lazada';
+        if (shopName === 'Shopee Store') shopName = 'Home Artistic';
+    } else if (lower.includes('whatever_glitters')) {
+        platform = 'Shopee';
+        shopName = 'whatever_glitters';
     }
 
     // 3. Tracking Number (inside brackets e.g. [TH265919702870Q] or [66771014369125] or [LEXPU0715830217])
