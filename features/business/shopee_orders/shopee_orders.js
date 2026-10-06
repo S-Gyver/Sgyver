@@ -460,7 +460,7 @@ function renderOrdersTable() {
         const orderStatus = o.status || 'READY_TO_SHIP';
 
         return `
-            <tr>
+            <tr class="order-card-row platform-${platformClass} ${isChecked ? 'selected' : ''}">
                 <td class="text-center">
                     <input type="checkbox" class="order-checkbox" value="${o.orderId}" ${isChecked ? 'checked' : ''} onchange="toggleOrderSelection('${o.orderId}', this.checked)">
                 </td>
@@ -478,8 +478,10 @@ function renderOrdersTable() {
                     </div>
                 </td>
                 <td>
-                    <div class="font-mono fw-bold text-white">${o.orderId}</div>
-                    <small class="text-secondary">${o.items.length} รายการ</small>
+                    <div class="order-id-badge font-mono fw-bold text-white mb-1" style="background: rgba(255, 255, 255, 0.08); padding: 3px 8px; border-radius: 6px; display: inline-block; border: 1px solid rgba(255, 255, 255, 0.12); font-size: 0.88rem; letter-spacing: 0.3px;">
+                        ${o.orderId}
+                    </div>
+                    <div><small class="text-secondary">${o.items.length} รายการ</small></div>
                 </td>
                 <td>
                     <span class="badge-carrier ${carrierClass} mb-1">${escapeHtml(o.carrier)}</span>

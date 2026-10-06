@@ -383,35 +383,68 @@ body {
     border: 1px solid rgba(16, 185, 129, 0.35);
 }
 
-/* 4. Glass Table */
+/* 4. Order Card Rows (Separated Card Design) */
 .so-table-wrap {
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    background: var(--bg-card);
-    overflow: hidden;
+    background: transparent !important;
+    border: none !important;
+    overflow-x: auto;
+    padding-bottom: 8px;
 }
 .table-glass {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate !important;
+    border-spacing: 0 12px !important; /* 12px clear separation gap between each order */
     margin: 0;
 }
 .table-glass th {
-    background: rgba(255, 255, 255, 0.03);
-    padding: 12px 14px;
+    background: rgba(15, 23, 42, 0.7);
+    padding: 10px 16px;
     text-align: left;
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     color: var(--text-secondary);
-    font-weight: 600;
-    border-bottom: 1px solid var(--border-color);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: none !important;
 }
-.table-glass td {
-    padding: 12px 14px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-    font-size: 0.86rem;
-    vertical-align: middle;
+.table-glass tbody tr {
+    background: #111827 !important; /* Distinct dark card background */
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .table-glass tbody tr:hover {
-    background: rgba(255, 255, 255, 0.02);
+    background: #182238 !important;
+    box-shadow: 0 8px 24px rgba(6, 182, 212, 0.2);
+    transform: translateY(-2px);
+}
+.table-glass tbody tr.selected {
+    background: #162444 !important;
+}
+.table-glass td {
+    padding: 16px 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    font-size: 0.88rem;
+    vertical-align: middle;
+}
+.table-glass tbody tr td:first-child {
+    border-left: 5px solid #ee4d2d !important; /* Accent color on the left of each order */
+    border-top-left-radius: 12px;
+    border-bottom-left-radius: 12px;
+}
+.table-glass tbody tr.platform-tiktok td:first-child {
+    border-left-color: #06b6d4 !important; /* TikTok Cyan */
+}
+.table-glass tbody tr.platform-lazada td:first-child {
+    border-left-color: #3b82f6 !important; /* Lazada Blue */
+}
+.table-glass tbody tr.platform-shopee td:first-child {
+    border-left-color: #ee4d2d !important; /* Shopee Orange */
+}
+.table-glass tbody tr td:last-child {
+    border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-top-right-radius: 12px;
+    border-bottom-right-radius: 12px;
 }
 
 /* Platform & Store Badges */
