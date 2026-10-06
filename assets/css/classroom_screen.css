@@ -1896,7 +1896,7 @@ body.in-app-view #cs-widget-canvas {
 }
 
 /* ====================================================
-   🔒 Member-Only Lock Indicators & Badges
+   🔒 3-Tier Multi-Level Lock Indicators & Badges (Guest, Lv.1, Lv.2)
    ==================================================== */
 .launchpad-lock-pill {
     position: absolute;
@@ -1917,24 +1917,70 @@ body.in-app-view #cs-widget-canvas {
     pointer-events: none;
 }
 
+.launchpad-lock-pill.pill-vip {
+    background: linear-gradient(135deg, rgba(30, 27, 75, 0.96), rgba(88, 28, 135, 0.96));
+    border: 1px solid rgba(244, 63, 94, 0.85);
+    color: #fb7185;
+    box-shadow: 0 2px 10px rgba(244, 63, 94, 0.45);
+}
+
+/* 👥 Tier 0: Guest (Unauthenticated / Lv.0) */
+body.is-guest .launchpad-app-item[data-required-level="1"] .launchpad-lock-pill,
+body.is-guest .launchpad-app-item[data-required-level="2"] .launchpad-lock-pill,
 body.is-guest .launchpad-app-item[data-member-only="true"] .launchpad-lock-pill {
     display: inline-flex !important;
 }
 
+body.is-guest .launchpad-member-badge,
+body.is-guest .launchpad-vip-badge {
+    display: inline-flex !important;
+}
+
+body.is-guest .launchpad-app-item[data-required-level="1"],
+body.is-guest .launchpad-app-item[data-required-level="2"],
 body.is-guest .launchpad-app-item[data-member-only="true"] {
     position: relative;
     border-color: rgba(255, 255, 255, 0.1);
 }
 
+body.is-guest .launchpad-app-item[data-required-level="1"]:hover,
 body.is-guest .launchpad-app-item[data-member-only="true"]:hover {
     border-color: rgba(245, 158, 11, 0.5);
 }
 
-body.is-guest .launchpad-member-badge {
+body.is-guest .launchpad-app-item[data-required-level="2"]:hover {
+    border-color: rgba(244, 63, 94, 0.6);
+}
+
+/* 🌟 Tier 1: Member (Lv.1) - Unlocks the 12 tools, keeps Lv.2 tools locked */
+body.is-lv1 .launchpad-app-item[data-required-level="2"] .launchpad-lock-pill {
     display: inline-flex !important;
 }
 
-body.is-guest .cs-tool-btn.member-locked::after {
+body.is-lv1 .launchpad-vip-badge {
+    display: inline-flex !important;
+}
+
+body.is-lv1 .launchpad-app-item[data-required-level="2"] {
+    position: relative;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.is-lv1 .launchpad-app-item[data-required-level="2"]:hover {
+    border-color: rgba(244, 63, 94, 0.6);
+}
+
+/* 👑 Tier 2: VIP / Admin (Lv.2+) - All tools fully unlocked */
+body.is-lv2 .launchpad-lock-pill,
+body.is-lv2 .launchpad-member-badge,
+body.is-lv2 .launchpad-vip-badge {
+    display: none !important;
+}
+
+/* ⚓ Dock button lock indicators */
+body.is-guest .cs-tool-btn.member-locked::after,
+body.is-guest .cs-tool-btn.vip-locked::after,
+body.is-lv1 .cs-tool-btn.vip-locked::after {
     content: '\F47C'; /* bootstrap icon bi-lock-fill */
     font-family: 'bootstrap-icons' !important;
     position: absolute;
@@ -1954,6 +2000,12 @@ body.is-guest .cs-tool-btn.member-locked::after {
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
     z-index: 5;
     pointer-events: none;
+}
+
+body.is-guest .cs-tool-btn.vip-locked::after,
+body.is-lv1 .cs-tool-btn.vip-locked::after {
+    color: #f43f5e;
+    border-color: rgba(244, 63, 94, 0.7);
 }
 
 
