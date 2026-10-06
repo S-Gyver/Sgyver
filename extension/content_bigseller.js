@@ -240,6 +240,8 @@ async function sendOrdersToSupabase(orders) {
                 'apikey': SUPABASE_KEY,
                 'Authorization': `Bearer ${SUPABASE_KEY}`,
                 'Content-Type': 'application/json',
+                'Accept-Profile': 'public',
+                'Content-Profile': 'public',
                 'Prefer': 'resolution=merge-duplicates'
             },
             body: JSON.stringify(orders)
