@@ -23,7 +23,7 @@
     <script src="../../../assets/js/toast_shared.js"></script>
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="shopee_orders.css">
+    <link rel="stylesheet" href="shopee_orders.css?v=20261006_2">
 </head>
 <body>
 
@@ -264,30 +264,38 @@
     <!-- ══════════════════════════════════════════════════════════════
          7. PRODUCT IMAGE PREVIEW POPUP MODAL (LIGHTBOX)
          ══════════════════════════════════════════════════════════════ -->
-    <div class="image-lightbox-modal no-print" id="productImageModal" style="display: none;" onclick="if(event.target === this) closeProductImageModal()">
-        <div class="image-lightbox-dialog">
-            <div class="image-lightbox-header">
-                <div>
-                    <h6 class="modal-title fw-bold text-white mb-0" id="productImageModalTitle">
+    <div class="image-lightbox-modal no-print" id="productImageModal" 
+         style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100vw; height: 100vh; z-index: 99999999; background: rgba(0, 0, 0, 0.88); backdrop-filter: blur(8px); align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; overflow-y: auto;" 
+         onclick="if(event.target === this) closeProductImageModal()">
+        <div class="image-lightbox-dialog" 
+             style="background: #0f172a; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 16px; box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85); max-width: 480px; width: 95%; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; margin: auto;">
+            <div class="image-lightbox-header" 
+                 style="display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: rgba(255, 255, 255, 0.04); border-bottom: 1px solid rgba(255, 255, 255, 0.08); flex-shrink: 0;">
+                <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 12px;">
+                    <h6 class="modal-title fw-bold text-white mb-0" id="productImageModalTitle" style="font-size: 0.95rem;">
                         <i class="bi bi-image text-cyan me-1"></i> รูปภาพสินค้า
                     </h6>
                     <small class="text-secondary font-mono" id="productImageModalSubtitle" style="font-size: 0.75rem;"></small>
                 </div>
-                <button type="button" class="btn-close-lightbox" onclick="closeProductImageModal()" aria-label="Close">✕</button>
+                <button type="button" class="btn-close-lightbox" onclick="closeProductImageModal()" aria-label="Close" 
+                        style="background: transparent; border: none; color: #94a3b8; font-size: 22px; cursor: pointer; line-height: 1; padding: 4px 8px; border-radius: 6px;">✕</button>
             </div>
-            <div class="image-lightbox-body">
-                <img id="productImageModalImg" src="" alt="product large">
+            <div class="image-lightbox-body" 
+                 style="padding: 12px; background: #020617; display: flex; align-items: center; justify-content: center; flex: 1; overflow: hidden; min-height: 180px;">
+                <img id="productImageModalImg" src="" alt="product large" 
+                     style="max-width: 100%; max-height: min(58vh, 420px); object-fit: contain; border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6); display: block;">
             </div>
-            <div class="image-lightbox-footer">
-                <a id="productImageModalLink" href="#" target="_blank" class="btn btn-sm btn-outline-info text-info">
+            <div class="image-lightbox-footer" 
+                 style="display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: rgba(255, 255, 255, 0.04); border-top: 1px solid rgba(255, 255, 255, 0.08); flex-shrink: 0;">
+                <a id="productImageModalLink" href="#" target="_blank" class="btn btn-sm btn-outline-info text-info" style="font-size: 0.8rem;">
                     <i class="bi bi-box-arrow-up-right me-1"></i> เปิดดูรูปต้นฉบับ
                 </a>
-                <button type="button" class="btn btn-sm btn-secondary" onclick="closeProductImageModal()">ปิดหน้าต่าง</button>
+                <button type="button" class="btn btn-sm btn-secondary" onclick="closeProductImageModal()" style="font-size: 0.8rem; padding: 4px 14px;">ปิดหน้าต่าง</button>
             </div>
         </div>
     </div>
 
     <!-- Shopee Orders Logic -->
-    <script src="shopee_orders.js"></script>
+    <script src="shopee_orders.js?v=20261006_2"></script>
 </body>
 </html>

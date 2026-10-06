@@ -494,7 +494,7 @@ function renderOrdersTable() {
                 <td>
                     <div class="d-flex align-items-center gap-3">
                         ${imgUrl ? `
-                            <div class="order-thumb-wrap" onclick="showProductImageModal('${encodeURIComponent(imgUrl)}', '${encodeURIComponent(o.items[0]?.name || 'สินค้า')}', '${encodeURIComponent(o.orderId)}')" title="คลิกดูรูปใหญ่">
+                            <div class="order-thumb-wrap" onclick="openOrderImagePreview('${escapeHtml(o.orderId)}')" title="คลิกดูรูปใหญ่" style="position: relative; width: 44px; height: 44px; min-width: 44px; max-width: 44px; min-height: 44px; max-height: 44px; flex-shrink: 0; cursor: pointer; border-radius: 8px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.22); background: #1e293b; display: inline-flex; align-items: center; justify-content: center;">
                                 <img src="${imgUrl}" 
                                      class="order-thumb-img" 
                                      alt="product" 
@@ -502,7 +502,9 @@ function renderOrdersTable() {
                                      height="44" 
                                      style="width: 44px !important; height: 44px !important; min-width: 44px !important; max-width: 44px !important; min-height: 44px !important; max-height: 44px !important; object-fit: cover !important; border-radius: 7px; display: block !important;" 
                                      onerror="this.parentElement.style.display='none'">
-                                <div class="thumb-zoom-hint"><i class="bi bi-arrows-angle-expand"></i></div>
+                                <span style="position: absolute; bottom: 1px; right: 2px; font-size: 8px; color: #38bdf8; background: rgba(0,0,0,0.75); padding: 0 3px; border-radius: 3px; line-height: 1.1; pointer-events: none;">
+                                    <i class="bi bi-arrows-angle-expand"></i>
+                                </span>
                             </div>
                         ` : `
                             <div class="order-thumb-placeholder" style="width: 44px; height: 44px; min-width: 44px; border-radius: 8px;"><i class="bi bi-box-seam"></i></div>
@@ -908,10 +910,16 @@ function printSingleLabelFromModal() {
     printSingleLabel(activeModalOrderId);
 }
 
-function showProductImageModal(encodedUrl, encodedTitle, encodedOrderId) {
-    const imageUrl = decodeURIComponent(encodedUrl || '');
-    const productName = decodeURIComponent(encodedTitle || 'รูปภาพสินค้า');
-    const orderId = decodeURIComponent(encodedOrderId || '');
+function openOrderImagePreview(orderId) {
+    const order = STATE.orders.find(o => o.orderId === orderId);
+    if (!order) return;
+    const imgUrl = order.imageUrl || (order.items && order.items[0] && order.items[0].image_url ? order.items[0].image_url : '');
+    if (!imgUrl) return;
+    const title = order.items && order.items[0] ? order.items[0].name : 'สินค้า';
+    showProductImageModal(imgUrl, title, order.orderId);
+}
+
+function showProductImageModal(imageUrl, productName, orderId) {
     if (!imageUrl) return;
 
     const imgEl = document.getElementById('productImageModalImg');
@@ -921,7 +929,7 @@ function showProductImageModal(encodedUrl, encodedTitle, encodedOrderId) {
     const modalEl = document.getElementById('productImageModal');
 
     if (imgEl) imgEl.src = imageUrl;
-    if (titleEl) titleEl.innerHTML = `<i class="bi bi-image text-cyan me-1"></i> ${escapeHtml(productName)}`;
+    if (titleEl) titleEl.innerHTML = `<i class="bi bi-image text-cyan me-1"></i> ${escapeHtml(productName || 'รูปภาพสินค้า')}`;
     if (subtitleEl) subtitleEl.textContent = orderId ? `เลขคำสั่งซื้อ: ${orderId}` : '';
     if (linkEl) linkEl.href = imageUrl;
 
