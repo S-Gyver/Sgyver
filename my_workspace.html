@@ -796,23 +796,23 @@
                 <div class="launchpad-category-title d-flex align-items-center">
                     <span>💼 5. บริหารธุรกิจ & เอกสารการค้า (Business Studio)</span>
                     <span
-                        class="badge bg-danger-subtle text-danger border border-danger-subtle ms-2 launchpad-vip-badge"
-                        style="font-size: 0.68rem; display: none;"><i class="bi bi-star-fill me-1"></i>VIP Lv.2</span>
+                        class="badge bg-danger-subtle text-danger border border-danger-subtle ms-2 launchpad-vip-badge launchpad-lv3-badge"
+                        style="font-size: 0.68rem; display: none;"><i class="bi bi-star-fill me-1"></i>VIP Lv.3</span>
                 </div>
                 <div class="launchpad-grid">
-                    <div class="launchpad-app-item" data-required-level="2" draggable="true"
+                    <div class="launchpad-app-item" data-required-level="3" draggable="true"
                         ondragstart="onLaunchpadDragStart(event, 'app_quotation')" onclick="launchTool('app_quotation')"
                         data-app-name="Quotation Studio ระบบออกใบเสนอราคา คำนวณภาษี เซ็นออนไลน์"
                         title="Quotation Studio: ระบบออกใบเสนอราคา พิมพ์ A4 และเซ็นอนุมัติออนไลน์ (ลากไปวางที่ Dock หรือคลิกเปิด)">
                         <button type="button" class="launchpad-pin-btn" onclick="togglePinTool(event, 'app_quotation')"
                             title="ปักหมุดที่ Dock"><i class="bi bi-pin-angle-fill"></i></button>
-                        <span class="launchpad-lock-pill pill-vip"><i class="bi bi-star-fill"></i> VIP Lv.2</span>
+                        <span class="launchpad-lock-pill pill-vip pill-lv3"><i class="bi bi-star-fill"></i> VIP Lv.3</span>
                         <div class="launchpad-icon"
                             style="background: linear-gradient(145deg, #3b82f6, #1d4ed8, #1e3a8a);"><i
                                 class="bi bi-receipt-cutoff"></i></div>
                         <div class="launchpad-content">
                             <div class="launchpad-title">ใบเสนอราคา</div>
-                            <div class="launchpad-desc">ระบบออกใบเสนอราคา คำนวณ VAT พิมพ์ A4 และเซ็นออนไลน์ (VIP Lv.2)</div>
+                            <div class="launchpad-desc">ระบบออกใบเสนอราคา คำนวณ VAT พิมพ์ A4 และเซ็นออนไลน์ (VIP Lv.3)</div>
                         </div>
                     </div>
                 </div>
@@ -1239,12 +1239,16 @@
             'symbol'
         ]);
 
+        // ⭐ Tools restricted to VIP Lv.3+ (Teacher Admin / Business):
+        const VIP_LV3_TOOLS = new Set([
+            'app_quotation'
+        ]);
+
         // ⭐ Tools restricted to VIP (Lv.2+) / Admin:
         const VIP_LV2_TOOLS = new Set([
             'app_race',
             'app_live_studio',
             'app_forms',
-            'app_quotation',
             'app_shopee_orders'
         ]);
 
@@ -1260,6 +1264,7 @@
 
         function getToolRequiredLevel(toolId) {
             if (!toolId) return 0;
+            if (VIP_LV3_TOOLS.has(toolId)) return 3;
             if (VIP_LV2_TOOLS.has(toolId)) return 2;
             if (isToolAllowedForGuest(toolId)) return 0;
             return 1; // Default member level (Lv.1)
@@ -1274,7 +1279,7 @@
                 if (currentUserLevel === 0) {
                     showMemberLockModal(name);
                 } else {
-                    showVipUpgradeModal(name);
+                    showVipUpgradeModal(name, reqLv);
                 }
             }
             return false;
@@ -1295,16 +1300,17 @@
             modal.show();
         }
 
-        function showVipUpgradeModal(toolTitle) {
+        function showVipUpgradeModal(toolTitle, reqLv = 2) {
             const modalEl = document.getElementById('vipLockModal');
             if (!modalEl) return;
             const titleEl = document.getElementById('vipLockModalTitle');
             const descEl = document.getElementById('vipLockModalDesc');
+            const levelLabel = reqLv >= 3 ? 'VIP Lv.3' : 'VIP Lv.2';
             if (titleEl) {
-                titleEl.textContent = toolTitle ? `เฉพาะสมาชิก VIP (${toolTitle})` : 'เฉพาะสมาชิกระดับ VIP (Lv.2 ขึ้นไป)';
+                titleEl.textContent = toolTitle ? `เฉพาะสมาชิก ${levelLabel} (${toolTitle})` : `เฉพาะสมาชิกระดับ ${levelLabel} ขึ้นไป`;
             }
             if (descEl) {
-                descEl.textContent = `เครื่องมือ "${toolTitle || 'นี้'}" สงวนสิทธิ์สำหรับสมาชิกระดับ VIP (Lv.2 ขึ้นไป) หรือผู้ดูแลระบบ`;
+                descEl.textContent = `เครื่องมือ "${toolTitle || 'นี้'}" สงวนสิทธิ์สำหรับสมาชิกระดับ ${levelLabel} ขึ้นไป หรือผู้ดูแลระบบ`;
             }
             const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
             modal.show();
@@ -1335,7 +1341,7 @@
             if (!getClient()) {
                 isUserLoggedIn = false;
                 currentUserLevel = 0;
-                document.body.classList.remove('is-lv1', 'is-lv2');
+                document.body.classList.remove('is-lv1', 'is-lv2', 'is-lv3');
                 document.body.classList.add('is-guest');
                 return;
             }
@@ -1375,7 +1381,7 @@
                             }
                             if (prof.role === 'admin' || (prof.username && prof.username.toLowerCase() === 'admin')) {
                                 isUserAdmin = true;
-                                userLevel = Math.max(userLevel, 2);
+                                userLevel = Math.max(userLevel, 3);
                             } else {
                                 isUserAdmin = false;
                             }
@@ -1384,12 +1390,14 @@
 
                     if (!isUserAdmin && session.user.user_metadata?.username && session.user.user_metadata.username.toLowerCase() === 'admin') {
                         isUserAdmin = true;
-                        userLevel = Math.max(userLevel, 2);
+                        userLevel = Math.max(userLevel, 3);
                     }
 
                     currentUserLevel = userLevel;
-                    document.body.classList.remove('is-guest', 'is-lv1', 'is-lv2');
-                    if (currentUserLevel >= 2) {
+                    document.body.classList.remove('is-guest', 'is-lv1', 'is-lv2', 'is-lv3');
+                    if (currentUserLevel >= 3) {
+                        document.body.classList.add('is-lv3');
+                    } else if (currentUserLevel === 2) {
                         document.body.classList.add('is-lv2');
                     } else {
                         document.body.classList.add('is-lv1');
@@ -1424,7 +1432,7 @@
                     isUserLoggedIn = false;
                     currentWorkspaceUser = null;
                     currentUserLevel = 0;
-                    document.body.classList.remove('is-lv1', 'is-lv2');
+                    document.body.classList.remove('is-lv1', 'is-lv2', 'is-lv3');
                     document.body.classList.add('is-guest');
                     if (loginBtn) loginBtn.classList.remove('d-none');
                     if (userZone) {
@@ -1455,7 +1463,7 @@
             } catch (e) {
                 isUserLoggedIn = false;
                 currentUserLevel = 0;
-                document.body.classList.remove('is-lv1', 'is-lv2');
+                document.body.classList.remove('is-lv1', 'is-lv2', 'is-lv3');
                 document.body.classList.add('is-guest');
             }
 
@@ -1979,7 +1987,9 @@
                 btn.className = 'cs-tool-btn';
                 const reqLv = getToolRequiredLevel(toolId);
                 if (currentUserLevel < reqLv) {
-                    if (reqLv >= 2) {
+                    if (reqLv >= 3) {
+                        btn.classList.add('vip-locked', 'req-lv3');
+                    } else if (reqLv >= 2) {
                         btn.classList.add('vip-locked');
                     } else {
                         btn.classList.add('member-locked');

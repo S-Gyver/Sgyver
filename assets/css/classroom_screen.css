@@ -1927,6 +1927,7 @@ body.in-app-view #cs-widget-canvas {
 /* 👥 Tier 0: Guest (Unauthenticated / Lv.0) */
 body.is-guest .launchpad-app-item[data-required-level="1"] .launchpad-lock-pill,
 body.is-guest .launchpad-app-item[data-required-level="2"] .launchpad-lock-pill,
+body.is-guest .launchpad-app-item[data-required-level="3"] .launchpad-lock-pill,
 body.is-guest .launchpad-app-item[data-member-only="true"] .launchpad-lock-pill {
     display: inline-flex !important;
 }
@@ -1938,6 +1939,7 @@ body.is-guest .launchpad-vip-badge {
 
 body.is-guest .launchpad-app-item[data-required-level="1"],
 body.is-guest .launchpad-app-item[data-required-level="2"],
+body.is-guest .launchpad-app-item[data-required-level="3"],
 body.is-guest .launchpad-app-item[data-member-only="true"] {
     position: relative;
     border-color: rgba(255, 255, 255, 0.1);
@@ -1948,12 +1950,14 @@ body.is-guest .launchpad-app-item[data-member-only="true"]:hover {
     border-color: rgba(245, 158, 11, 0.5);
 }
 
-body.is-guest .launchpad-app-item[data-required-level="2"]:hover {
+body.is-guest .launchpad-app-item[data-required-level="2"]:hover,
+body.is-guest .launchpad-app-item[data-required-level="3"]:hover {
     border-color: rgba(244, 63, 94, 0.6);
 }
 
-/* 🌟 Tier 1: Member (Lv.1) - Unlocks the 12 tools, keeps Lv.2 tools locked */
-body.is-lv1 .launchpad-app-item[data-required-level="2"] .launchpad-lock-pill {
+/* 🌟 Tier 1: Member (Lv.1) - Unlocks the 12 tools, keeps Lv.2 and Lv.3 tools locked */
+body.is-lv1 .launchpad-app-item[data-required-level="2"] .launchpad-lock-pill,
+body.is-lv1 .launchpad-app-item[data-required-level="3"] .launchpad-lock-pill {
     display: inline-flex !important;
 }
 
@@ -1961,26 +1965,47 @@ body.is-lv1 .launchpad-vip-badge {
     display: inline-flex !important;
 }
 
-body.is-lv1 .launchpad-app-item[data-required-level="2"] {
+body.is-lv1 .launchpad-app-item[data-required-level="2"],
+body.is-lv1 .launchpad-app-item[data-required-level="3"] {
     position: relative;
     border-color: rgba(255, 255, 255, 0.1);
 }
 
-body.is-lv1 .launchpad-app-item[data-required-level="2"]:hover {
+body.is-lv1 .launchpad-app-item[data-required-level="2"]:hover,
+body.is-lv1 .launchpad-app-item[data-required-level="3"]:hover {
     border-color: rgba(244, 63, 94, 0.6);
 }
 
-/* 👑 Tier 2: VIP / Admin (Lv.2+) - All tools fully unlocked */
-body.is-lv2 .launchpad-lock-pill,
-body.is-lv2 .launchpad-member-badge,
-body.is-lv2 .launchpad-vip-badge {
+/* 🔵 Tier 2: Pro Member (Lv.2) - Unlocks Lv.1 & Lv.2 tools, keeps Lv.3 tools locked */
+body.is-lv2 .launchpad-app-item[data-required-level="3"] .launchpad-lock-pill {
+    display: inline-flex !important;
+}
+
+body.is-lv2 .launchpad-lv3-badge {
+    display: inline-flex !important;
+}
+
+body.is-lv2 .launchpad-app-item[data-required-level="3"] {
+    position: relative;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.is-lv2 .launchpad-app-item[data-required-level="3"]:hover {
+    border-color: rgba(168, 85, 247, 0.6);
+}
+
+/* 👑 Tier 3 / Admin (Lv.3+) - All tools fully unlocked */
+body.is-lv3 .launchpad-lock-pill,
+body.is-lv3 .launchpad-member-badge,
+body.is-lv3 .launchpad-vip-badge {
     display: none !important;
 }
 
 /* ⚓ Dock button lock indicators */
 body.is-guest .cs-tool-btn.member-locked::after,
 body.is-guest .cs-tool-btn.vip-locked::after,
-body.is-lv1 .cs-tool-btn.vip-locked::after {
+body.is-lv1 .cs-tool-btn.vip-locked::after,
+body.is-lv2 .cs-tool-btn.vip-locked.req-lv3::after {
     content: '\F47C'; /* bootstrap icon bi-lock-fill */
     font-family: 'bootstrap-icons' !important;
     position: absolute;
@@ -2003,7 +2028,8 @@ body.is-lv1 .cs-tool-btn.vip-locked::after {
 }
 
 body.is-guest .cs-tool-btn.vip-locked::after,
-body.is-lv1 .cs-tool-btn.vip-locked::after {
+body.is-lv1 .cs-tool-btn.vip-locked::after,
+body.is-lv2 .cs-tool-btn.vip-locked.req-lv3::after {
     color: #f43f5e;
     border-color: rgba(244, 63, 94, 0.7);
 }
