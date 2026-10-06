@@ -492,12 +492,13 @@ body {
     font-weight: 600;
     text-transform: uppercase;
 }
-.badge-carrier.spx     { background: rgba(238, 77, 45, 0.15); color: #ee4d2d; border: 1px solid rgba(238, 77, 45, 0.3); }
-.badge-carrier.flash   { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
-.badge-carrier.kerry   { background: rgba(249, 115, 22, 0.15); color: #fb923c; border: 1px solid rgba(249, 115, 22, 0.3); }
-.badge-carrier.jnt     { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
-.badge-carrier.ems     { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
-.badge-carrier.default { background: rgba(148, 163, 184, 0.15); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.3); }
+.badge-carrier.spx     { background: #ffedd5; color: #c2410c; border: 1.5px solid #fdba74; }
+.badge-carrier.flash   { background: #fef9c3; color: #854d0e; border: 1.5px solid #facc15; }
+.badge-carrier.kerry   { background: #ffedd5; color: #ea580c; border: 1.5px solid #fb923c; }
+.badge-carrier.jnt     { background: #fee2e2; color: #b91c1c; border: 1.5px solid #fca5a5; }
+.badge-carrier.ems     { background: #e0f2fe; color: #0369a1; border: 1.5px solid #7dd3fc; }
+.badge-carrier.lex     { background: #dbeafe; color: #1e40af; border: 1.5px solid #93c5fd; }
+.badge-carrier.default { background: #e2e8f0; color: #0f172a; border: 1.5px solid #cbd5e1; }
 
 /* Item List in Table Row */
 .order-thumb-wrap {

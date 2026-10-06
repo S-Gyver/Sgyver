@@ -265,12 +265,13 @@ function normalizeCarrierName(carrierRaw) {
 }
 
 function getCarrierClass(carrierName) {
-    const lower = carrierName.toLowerCase();
+    const lower = (carrierName || '').toLowerCase();
     if (lower.includes('shopee') || lower.includes('spx')) return 'spx';
     if (lower.includes('flash')) return 'flash';
     if (lower.includes('kerry')) return 'kerry';
     if (lower.includes('j&t') || lower.includes('jnt')) return 'jnt';
     if (lower.includes('ems')) return 'ems';
+    if (lower.includes('lex') || lower.includes('lazada')) return 'lex';
     return 'default';
 }
 
