@@ -500,11 +500,41 @@ function parseOrderContainer(container) {
         orderStatus = 'READY_TO_SHIP';
     }
 
+    // 9. Extract Buyer Username, Time, Platform Status (BigSeller Columns 4, 5, 7)
+    let buyerUsername = '';
+    if (cells.length >= 5) {
+        const c4Lines = (cells[4].innerText || '').split(/[\r\n]+/).map(l => l.trim()).filter(Boolean);
+        buyerUsername = c4Lines.find(l => l !== orderId && !l.includes(orderId) && l.length > 2) || '';
+    }
+
+    let orderTime = '';
+    if (cells.length >= 6) {
+        const timeText = (cells[5].innerText || '').trim();
+        const m = timeText.match(/(\d{1,2}\s+[^\n\r]+\d{4}\s+\d{1,2}:\d{2})/);
+        if (m) orderTime = m[1];
+        else if (timeText) orderTime = timeText.split(/[\r\n]+/)[0];
+    }
+    if (!orderTime) {
+        const m = fullSearchText.match(/(\d{1,2}\s+[^\n\r]+\d{4}\s+\d{1,2}:\d{2})/);
+        if (m) orderTime = m[1];
+    }
+
+    let platformStatus = 'Processed';
+    if (cells.length >= 8) {
+        platformStatus = (cells[7].innerText || '').trim().split(/[\r\n]+/)[0] || 'Processed';
+    } else {
+        const m = fullSearchText.match(/(Processed|Awaiting Collection|Packed|To Ship|In Transit)/i);
+        if (m) platformStatus = m[1];
+    }
+
     return {
         order_id: orderId,
         platform: platform,
         shop_name: shopName,
         recipient_name: recipientName,
+        buyer_username: buyerUsername,
+        order_time: orderTime,
+        platform_status: platformStatus,
         phone: '08X-XXX-XXXX',
         address: province,
         province: province,

@@ -527,47 +527,22 @@ function renderOrdersTable() {
 
         return `
             <tr class="order-card-row platform-${platformClass} ${isChecked ? 'selected' : ''}">
-                <td class="text-center" style="width: 50px;">
+                <!-- 1. Checkbox & Index -->
+                <td class="text-center" style="width: 44px; vertical-align: top; padding-top: 14px;">
                     <div class="d-flex flex-column align-items-center gap-1">
                         <span style="font-size: 0.72rem; font-family: monospace; font-weight: 700; color: #94a3b8; background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1);">#${idx + 1}</span>
                         <input type="checkbox" class="order-checkbox" value="${o.orderId}" ${isChecked ? 'checked' : ''} onchange="toggleOrderSelection('${o.orderId}', this.checked)">
                     </div>
                 </td>
-                <td>
-                    <span class="badge-platform ${platformClass} mb-1">
-                        ${getPlatformIcon(platformName)} ${platformName}
-                    </span>
-                    <div class="mt-1 d-flex gap-1 flex-wrap">
-                        <span class="badge-payment ${isCOD ? 'cod' : 'prepaid'}">
-                            ${isCOD ? '<i class="bi bi-cash me-1"></i>COD ปลายทาง' : '<i class="bi bi-credit-card-2-front me-1"></i>ชำระแล้ว'}
-                        </span>
-                        <span class="badge-status ${orderStatus.toLowerCase()}">
-                            ${getStatusBadgeLabel(orderStatus)}
-                        </span>
-                    </div>
-                </td>
-                <td>
-                    <div class="order-id-badge font-mono fw-bold text-white mb-1" style="background: rgba(255, 255, 255, 0.08); padding: 3px 8px; border-radius: 6px; display: inline-block; border: 1px solid rgba(255, 255, 255, 0.12); font-size: 0.88rem; letter-spacing: 0.3px;">
-                        ${o.orderId}
-                    </div>
-                    <div><small class="text-secondary">${o.items.length} รายการ</small></div>
-                </td>
-                <td>
-                    <span class="badge-carrier ${carrierClass} mb-1">${escapeHtml(o.carrier)}</span>
-                    <div class="font-mono text-cyan" style="font-size: 0.8rem;">${escapeHtml(o.tracking)}</div>
-                </td>
-                <td>
-                    <div class="fw-bold text-white">${escapeHtml(o.recipientName)}</div>
-                    <small class="text-secondary d-block text-truncate" style="max-width: 220px;" title="${escapeHtml(o.province || o.address)}">
-                        <i class="bi bi-geo-alt-fill text-danger me-1"></i>${escapeHtml(o.province || o.address)}
-                    </small>
-                <td class="order-items-cell" style="vertical-align: top; padding: 12px 14px;">
+
+                <!-- 2. รายละเอียดสินค้า (Product Details) -->
+                <td class="order-items-cell" style="vertical-align: top; padding: 12px 14px; min-width: 260px;">
                     <div class="bigseller-items-list d-flex flex-column gap-2">
                         ${o.items.map((it, itemIdx) => {
                             const itImg = it.image_url || o.imageUrl || '';
                             const itPrice = it.price ? Number(it.price).toLocaleString('th-TH', { minimumFractionDigits: 0 }) : '';
                             return `
-                                <div class="bigseller-item-row d-flex align-items-center gap-3 ${itemIdx > 0 ? 'pt-2 border-top border-secondary-subtle' : ''}">
+                                <div class="bigseller-item-row d-flex align-items-center gap-2 ${itemIdx > 0 ? 'pt-2 border-top border-secondary-subtle' : ''}">
                                     ${itImg ? `
                                         <div class="bigseller-item-thumb-wrap" onclick="openProductImageModal('${escapeHtml(itImg)}')" title="คลิกดูรูปใหญ่" style="width: 48px; height: 48px; min-width: 48px; max-width: 48px; border-radius: 8px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.2); background: #1e293b; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.3); flex-shrink: 0;">
                                             <img src="${itImg}" 
@@ -580,8 +555,8 @@ function renderOrdersTable() {
                                     ` : `
                                         <div class="bigseller-item-thumb-placeholder" style="width: 48px; height: 48px; min-width: 48px; border-radius: 8px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 1.2rem; flex-shrink: 0;"><i class="bi bi-box-seam"></i></div>
                                     `}
-                                    <div class="bigseller-item-info d-flex flex-column" style="line-height: 1.35; min-width: 150px;">
-                                        <span class="bigseller-item-name" style="color: #a78bfa; font-weight: 600; font-size: 0.9rem;">
+                                    <div class="bigseller-item-info d-flex flex-column" style="line-height: 1.35;">
+                                        <span class="bigseller-item-name" style="color: #a78bfa; font-weight: 600; font-size: 0.88rem;">
                                             ${escapeHtml(it.name)}
                                         </span>
                                         ${(it.variation && it.variation !== it.name && it.variation !== '--') ? `
@@ -590,8 +565,8 @@ function renderOrdersTable() {
                                             </span>
                                         ` : ''}
                                         <div class="bigseller-item-meta d-flex align-items-center gap-2 mt-1">
-                                            ${itPrice ? `<span class="font-mono text-cyan" style="font-size: 0.8rem; font-weight: 600;">THB ${itPrice}</span>` : ''}
-                                            <span class="badge" style="background: rgba(234, 179, 8, 0.15); color: #facc15; border: 1px solid rgba(234, 179, 8, 0.4); font-size: 0.78rem; font-weight: 700; padding: 2px 6px; border-radius: 4px;">
+                                            ${itPrice ? `<span class="font-mono text-cyan" style="font-size: 0.78rem; font-weight: 600;">THB ${itPrice}</span>` : ''}
+                                            <span class="badge" style="background: rgba(234, 179, 8, 0.15); color: #facc15; border: 1px solid rgba(234, 179, 8, 0.4); font-size: 0.76rem; font-weight: 700; padding: 2px 6px; border-radius: 4px;">
                                                 × ${it.qty || 1}
                                             </span>
                                         </div>
@@ -601,34 +576,94 @@ function renderOrdersTable() {
                         }).join('')}
                     </div>
                 </td>
-                <td class="text-center font-mono fw-bold text-warning">${o.totalItemsCount}</td>
-                <td class="text-end font-mono fw-bold text-emerald">${Number(o.totalAmount).toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿</td>
-                <td class="text-center">
-                    <div class="d-flex justify-content-center gap-1 flex-wrap">
-                        ${orderStatus === 'NEW' ? `
-                            <button class="btn btn-sm btn-info text-dark fw-bold px-2 py-1" title="กดยืนยันรับออเดอร์" onclick="acceptOrder('${o.orderId}')">
-                                <i class="bi bi-check2-circle me-1"></i>รับออเดอร์
-                            </button>
-                        ` : `
-                            <button class="btn btn-sm btn-outline-info" title="ดูตัวอย่างใบปะหน้า 100x150mm" onclick="previewSingleLabel('${o.orderId}')">
-                                <i class="bi bi-eye"></i>
-                            </button>
-                            <button class="btn btn-sm btn-outline-warning" title="สั่งพิมพ์เฉพาะใบนี้" onclick="printSingleLabel('${o.orderId}')">
-                                <i class="bi bi-printer"></i>
-                            </button>
-                            ${orderStatus === 'SHIPPED' ? `
-                                <span class="badge bg-success-subtle text-success border border-success-subtle py-1 px-2" style="font-size:0.75rem;">
-                                    <i class="bi bi-check-all me-1"></i>ส่งแล้ว
-                                </span>
-                            ` : `
-                                <button class="btn btn-sm btn-outline-success" title="ทำเครื่องหมายว่าส่งแล้ว" onclick="markSingleAsShipped('${o.orderId}')">
-                                    <i class="bi bi-truck"></i> ส่งแล้ว
-                                </button>
-                            `}
-                        `}
-                        <button class="btn btn-sm btn-outline-secondary" title="สร้างใบเสร็จใน Quotation Studio" onclick="createReceiptFromOrder('${o.orderId}')">
-                            <i class="bi bi-receipt"></i>
+
+                <!-- 3. มูลค่าคำสั่งซื้อ & การชำระเงิน (Order Value & Payment) -->
+                <td style="vertical-align: top; padding: 12px 14px; min-width: 130px;">
+                    <div class="fw-bold text-white font-mono" style="font-size: 0.95rem;">
+                        THB ${Number(o.totalAmount).toLocaleString('th-TH', { minimumFractionDigits: 0 })}
+                    </div>
+                    <div class="mt-2">
+                        <span class="badge ${isCOD ? 'bg-danger-subtle text-danger border border-danger-subtle' : 'bg-success-subtle text-success border border-success-subtle'}" style="font-size: 0.75rem; font-weight: 700; padding: 3px 8px; border-radius: 4px;">
+                            ${isCOD ? 'COD' : 'Prepaid (ชำระแล้ว)'}
+                        </span>
+                    </div>
+                </td>
+
+                <!-- 4. ผู้รับ & ภูมิภาค (Recipient & Region) -->
+                <td style="vertical-align: top; padding: 12px 14px; min-width: 150px;">
+                    <div class="fw-bold text-white" style="font-size: 0.88rem;">${escapeHtml(o.recipientName)}</div>
+                    <small class="text-secondary d-block mt-1" style="font-size: 0.8rem; line-height: 1.4;">
+                        <i class="bi bi-geo-alt-fill text-danger me-1"></i>${escapeHtml(o.province || o.address)}
+                    </small>
+                </td>
+
+                <!-- 5. หมายเลขคำสั่งซื้อ & ผู้ซื้อ (Order ID & Buyer) -->
+                <td style="vertical-align: top; padding: 12px 14px; min-width: 170px;">
+                    <div class="font-mono fw-bold" style="color: #60a5fa; font-size: 0.88rem; letter-spacing: 0.2px;">
+                        ${escapeHtml(o.orderId)}
+                    </div>
+                    <div class="text-secondary d-flex align-items-center gap-1 mt-1" style="font-size: 0.8rem;">
+                        <i class="bi bi-person text-muted"></i>
+                        <span>${escapeHtml(o.buyerUsername || 'ลูกค้า')}</span>
+                        <i class="bi bi-chat-dots-fill text-cyan ms-1" style="cursor: pointer;" title="แชทกับผู้ซื้อ"></i>
+                    </div>
+                    <div class="mt-2">
+                        <span class="badge-platform ${platformClass}" style="font-size: 0.74rem; padding: 2px 7px;">
+                            ${getPlatformIcon(platformName)} ${platformName}
+                        </span>
+                    </div>
+                </td>
+
+                <!-- 6. เวลา (Time) -->
+                <td style="vertical-align: top; padding: 12px 14px; min-width: 130px;">
+                    <div class="text-secondary" style="font-size: 0.76rem;">Created</div>
+                    <div class="text-white font-mono" style="font-size: 0.82rem;">
+                        ${escapeHtml(o.orderTime || new Date(o.updatedAt || Date.now()).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' }))}
+                    </div>
+                    <div class="mt-1">
+                        <small class="text-warning" style="font-size: 0.74rem;">
+                            <i class="bi bi-clock me-1"></i>รอจัดส่ง
+                        </small>
+                    </div>
+                </td>
+
+                <!-- 7. การตั้งค่าการจัดส่ง & หมายเลขแทร็กกิ้ง (Logistics & Tracking) -->
+                <td style="vertical-align: top; padding: 12px 14px; min-width: 170px;">
+                    <div>
+                        <span class="badge-carrier ${carrierClass}" style="font-size: 0.78rem;">
+                            ${escapeHtml(o.carrier)}
+                        </span>
+                    </div>
+                    <div class="font-mono text-cyan mt-1" style="font-size: 0.82rem; letter-spacing: 0.2px;">
+                        [${escapeHtml(o.tracking)}]
+                    </div>
+                </td>
+
+                <!-- 8. สถานะแพลตฟอร์ม (Platform Status) -->
+                <td class="text-center" style="vertical-align: middle; padding: 12px 14px; min-width: 110px;">
+                    <span class="badge" style="background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.4); font-size: 0.78rem; font-weight: 600; padding: 4px 10px; border-radius: 6px;">
+                        ${escapeHtml(o.platformStatus || 'Processed')}
+                    </span>
+                </td>
+
+                <!-- 9. ดำเนินการ (Actions) -->
+                <td class="text-center" style="vertical-align: middle; padding: 12px 14px; min-width: 120px;">
+                    <div class="d-flex justify-content-center align-items-center gap-1">
+                        <button class="btn btn-sm btn-outline-info" title="ดูตัวอย่างใบปะหน้า 100x150mm" onclick="previewSingleLabel('${o.orderId}')" style="width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px;">
+                            <i class="bi bi-eye"></i>
                         </button>
+                        <button class="btn btn-sm btn-outline-warning" title="สั่งพิมพ์ใบปะหน้านี้ทันที" onclick="previewSingleLabel('${o.orderId}')" style="width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px;">
+                            <i class="bi bi-printer"></i>
+                        </button>
+                        ${orderStatus === 'SHIPPED' ? `
+                            <span class="badge bg-success-subtle text-success border border-success-subtle py-1 px-2" style="font-size:0.75rem;">
+                                <i class="bi bi-check-all me-1"></i>ส่งแล้ว
+                            </span>
+                        ` : `
+                            <button class="btn btn-sm btn-outline-success" title="ทำเครื่องหมายว่าส่งแล้ว" onclick="markSingleAsShipped('${o.orderId}')" style="width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px;">
+                                <i class="bi bi-truck"></i>
+                            </button>
+                        `}
                     </div>
                 </td>
             </tr>
@@ -1471,6 +1506,9 @@ function handleExtensionSyncResult(data) {
             platform: o.platform,
             shopName: getResolvedShopName({ ...o, orderId: o.order_id, shopName: o.shop_name, totalAmount: o.total_amount, tracking: o.tracking_number, items: o.items }),
             recipientName: o.recipient_name,
+            buyerUsername: o.buyer_username || '',
+            orderTime: o.order_time || '',
+            platformStatus: o.platform_status || 'Processed',
             phone: o.phone,
             address: o.address,
             province: o.province,
