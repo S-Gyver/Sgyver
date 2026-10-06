@@ -13,6 +13,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         broadcastOrdersToSgyver(request.orders);
         sendResponse({ success: true });
         return true;
+    } else if (request.action === 'UPDATE_ORDER_STATUS') {
+        broadcastStatusUpdateToSgyver(request.orderIds, request.status, request.platformStatus);
+        sendResponse({ success: true });
+        return true;
     } else if (request.action === 'SYNC_ORDERS_TO_SUPABASE') {
         syncToSupabase(request.orders).then(() => {
             sendResponse({ success: true });
@@ -41,6 +45,40 @@ async function broadcastOrdersToSgyver(orders) {
         }
     } catch (e) {
         console.error('Error broadcasting orders:', e);
+    }
+}
+
+async function broadcastStatusUpdateToSgyver(orderIds, status, platformStatus) {
+    try {
+        if (!Array.isArray(orderIds) || orderIds.length === 0) return;
+
+        // Also update cached orders in storage if present
+        const stored = await chrome.storage.local.get(['lastExtractedOrders']);
+        if (stored && Array.isArray(stored.lastExtractedOrders)) {
+            stored.lastExtractedOrders.forEach(o => {
+                if (orderIds.includes(o.order_id || o.orderId)) {
+                    o.status = status;
+                    if (platformStatus) o.platform_status = platformStatus;
+                }
+            });
+            await chrome.storage.local.set({ lastExtractedOrders: stored.lastExtractedOrders });
+        }
+
+        const tabs = await chrome.tabs.query({});
+        for (const tab of tabs) {
+            if (tab.url && (tab.url.includes('shopee_orders') || tab.url.includes('Sgyver') || tab.url.includes('s-gyver'))) {
+                try {
+                    chrome.tabs.sendMessage(tab.id, { 
+                        action: 'AUTO_ORDER_STATUS_UPDATE', 
+                        orderIds: orderIds, 
+                        status: status, 
+                        platformStatus: platformStatus 
+                    });
+                } catch (e) {}
+            }
+        }
+    } catch (e) {
+        console.error('Error broadcasting status update:', e);
     }
 }
 

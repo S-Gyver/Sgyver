@@ -533,19 +533,24 @@ function parseOrderContainer(container) {
     const pageHeading = (document.title + ' ' + (document.querySelector('.breadcrumb, .page-title, h1, h2, h3')?.innerText || '')).toLowerCase();
 
     // Check if order has a real courier tracking number (e.g. [TH264545876208M], [LEX...])
-    const hasRealTracking = trackingMatch && trackingMatch[1] && trackingMatch[1] !== orderId && !trackingMatch[1].startsWith('BS');
+    const hasRealTracking = trackingMatch && trackingMatch[1] && trackingMatch[1] !== orderId && !trackingMatch[1].startsWith('BS') && trackingMatch[1].length >= 8;
 
-    if (activeTabText.includes('คำสั่งซื้อใหม่') || activeTabText.includes('new order') || activeTabText.includes('neworder') || 
-        activeTabText.includes('ยังไม่ได้จัดสรร') || activeTabText.includes('รอรับ') ||
-        pageHeading.includes('คำสั่งซื้อใหม่') || currentUrl.includes('allocate') || currentUrl.includes('neworder') ||
-        rowText.includes('ยังไม่ได้จัดสรร') || rowText.includes('คำสั่งซื้อใหม่') || rowText.includes('รอรับออเดอร์') || 
-        rowText.includes('จัดสรรสต็อก') || rowText.includes('รับออเดอร์') || !hasRealTracking) {
-        orderStatus = 'NEW';
-    } else if (activeTabText.includes('จัดส่งแล้ว') || activeTabText.includes('shipped') || activeTabText.includes('ส่งแล้ว') ||
-               pageHeading.includes('จัดส่งแล้ว') || currentUrl.includes('shipped') || currentUrl.includes('history') || 
-               rowText.includes('จัดส่งแล้ว') || rowText.includes('ส่งแล้ว')) {
+    const isShippedTab = activeTabText.includes('จัดส่งแล้ว') || activeTabText.includes('shipped') || 
+                         activeTabText.includes('ส่งแล้ว') || pageHeading.includes('จัดส่งแล้ว') || 
+                         currentUrl.includes('shipped') || currentUrl.includes('history') || 
+                         rowText.includes('จัดส่งแล้ว') || rowText.includes('ส่งแล้ว');
+
+    const isNewOrdersTab = activeTabText.includes('คำสั่งซื้อใหม่') || activeTabText.includes('new order') || 
+                           activeTabText.includes('neworder') || activeTabText.includes('ยังไม่ได้จัดสรร') || 
+                           pageHeading.includes('คำสั่งซื้อใหม่') || currentUrl.includes('allocate') || 
+                           currentUrl.includes('neworder');
+
+    if (isShippedTab) {
         orderStatus = 'SHIPPED';
+    } else if (isNewOrdersTab && !hasRealTracking) {
+        orderStatus = 'NEW';
     } else {
+        // Any order in 'กำลังดำเนินการ (In Process)', 'เพื่อจัดส่ง (To Ship)', 'รอพิมพ์' or with tracking is READY_TO_SHIP
         orderStatus = 'READY_TO_SHIP';
     }
 
@@ -738,3 +743,68 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         sendResponse({ orders });
     }
 });
+
+// ── 7. DETECT USER ACTIONS IN BIGSELLER (ACCEPT ORDER / PACK / ALLOCATE) ────
+document.addEventListener('click', (event) => {
+    try {
+        const target = event.target;
+        if (!target) return;
+        const btn = target.closest('button, a, .el-button, [role="button"], span.btn, div.btn');
+        if (!btn) return;
+
+        const btnText = (btn.innerText || btn.textContent || '').trim();
+        // Check if button is an "accept / pack / allocate / confirm / print" action
+        const isAcceptAction = /(?:จัดสรรสต็อก|จัดสรร|รับออเดอร์|รับคำสั่งซื้อ|ยืนยันคำสั่งซื้อ|ยืนยัน|แพ็ค|Pack|Allocate|Confirm|พิมพ์ใบปะหน้า|Print|จัดการ)/i.test(btnText);
+        
+        if (isAcceptAction) {
+            console.log('🎯 [S-Gyver Assistant] User clicked order action button in BigSeller:', btnText);
+            
+            // 1. Try finding specific row orderId
+            const row = btn.closest('tr, .order-item, .order-card, .el-table__row');
+            let affectedIds = [];
+            if (row) {
+                const text = row.innerText || '';
+                const m = text.match(/(2\d{5}[A-Z0-9]{8,12}|58\d{16}|112\d{13}|\b[0-9]{15,20}\b)/);
+                if (m) affectedIds.push(m[1]);
+            }
+            
+            // 2. If bulk action (e.g. top toolbar "จัดสรรสต็อก" button), collect selected row orderIds
+            if (affectedIds.length === 0) {
+                const checkedBoxes = Array.from(document.querySelectorAll('.el-checkbox.is-checked, input[type="checkbox"]:checked'));
+                checkedBoxes.forEach(cb => {
+                    const cbRow = cb.closest('tr, .order-item, .order-card, .el-table__row');
+                    if (cbRow) {
+                        const m = (cbRow.innerText || '').match(/(2\d{5}[A-Z0-9]{8,12}|58\d{16}|112\d{13}|\b[0-9]{15,20}\b)/);
+                        if (m && !affectedIds.includes(m[1])) affectedIds.push(m[1]);
+                    }
+                });
+            }
+
+            if (affectedIds.length > 0) {
+                console.log('⚡ [S-Gyver Assistant] Detected order accepted action for:', affectedIds);
+                chrome.runtime.sendMessage({
+                    action: 'UPDATE_ORDER_STATUS',
+                    orderIds: affectedIds,
+                    status: 'READY_TO_SHIP',
+                    platformStatus: 'กดรับออเดอร์แล้ว (พร้อมส่ง)'
+                });
+
+                // Update float button indicator
+                const floatBtnText = document.querySelector('#sgyver-quick-sync-btn span:last-child');
+                if (floatBtnText) {
+                    floatBtnText.textContent = `⚡ อัปเดตสถานะกดรับแล้ว (${affectedIds.length}) -> S-Gyver`;
+                    setTimeout(() => {
+                        if (floatBtnText) floatBtnText.textContent = '🚀 ส่งออเดอร์เข้า S-Gyver (1-Click)';
+                    }, 4000);
+                }
+            }
+
+            // Also trigger re-sync after 1.5s and 3.5s when BigSeller backend finishes updating
+            setTimeout(() => runAutoSync('after_click_1'), 1500);
+            setTimeout(() => runAutoSync('after_click_2'), 3500);
+        }
+    } catch (e) {
+        console.warn('Click watcher error:', e);
+    }
+}, true);
+

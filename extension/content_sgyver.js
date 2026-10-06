@@ -74,6 +74,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             orders: request.orders
         }, '*');
         sendResponse({ received: true });
+    } else if (request.action === 'AUTO_ORDER_STATUS_UPDATE' && Array.isArray(request.orderIds)) {
+        console.log('⚡ [S-Gyver Assistant] Live status update from BigSeller tab:', request.orderIds, request.status);
+        window.postMessage({
+            type: 'SGYVER_AUTO_STATUS_UPDATE',
+            orderIds: request.orderIds,
+            status: request.status,
+            platformStatus: request.platformStatus
+        }, '*');
+        sendResponse({ received: true });
     }
 });
 

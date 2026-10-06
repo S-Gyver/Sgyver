@@ -581,19 +581,16 @@ function normalizeOrderItems(order) {
                             !order.tracking.startsWith('BS') &&
                             order.tracking.length >= 8;
 
-    // Explicit check for the 3 new unaccepted orders from the user's screenshot
-    if (order.orderId === '261006TTKDKAD8' || order.orderId === '261006TX9JU4KD' || order.orderId === '261006V1C12T3D') {
-        order.status = 'NEW';
-        order.platformStatus = 'รอรับออเดอร์';
-    } else if (order.status !== 'SHIPPED') {
-        if (!hasRealTracking) {
-            order.status = 'NEW';
-            if (!order.platformStatus || order.platformStatus === 'Processed') {
-                order.platformStatus = 'รอรับออเดอร์';
-            }
-        } else if (!order.status) {
+    if (hasRealTracking) {
+        if (order.status !== 'SHIPPED') {
             order.status = 'READY_TO_SHIP';
+            if (!order.platformStatus || order.platformStatus === 'รอรับออเดอร์') {
+                order.platformStatus = 'พร้อมส่ง (มีเลขพัสดุ)';
+            }
         }
+    } else if (!order.status) {
+        order.status = 'READY_TO_SHIP';
+        order.platformStatus = 'พร้อมส่ง';
     }
 
     // Generic auto-split if variation contains concatenated items e.g. "1 Setเด็กผู้หญิง 1 Setเด็กรักสัตว์#1 1 Setเด็กชอบดอกไม้ 1"
@@ -1640,6 +1637,9 @@ window.addEventListener('message', (event) => {
     } else if (event.data.type === 'SGYVER_AUTO_SYNC_ORDERS' && Array.isArray(event.data.orders)) {
         console.log('⚡ Received auto-sync orders from BigSeller:', event.data.orders.length);
         handleAutoOrderSync(event.data.orders, event.data.isInitial);
+    } else if (event.data.type === 'SGYVER_AUTO_STATUS_UPDATE' && Array.isArray(event.data.orderIds)) {
+        console.log('⚡ Received auto-status update from BigSeller:', event.data.orderIds, event.data.status);
+        handleAutoStatusUpdate(event.data.orderIds, event.data.status, event.data.platformStatus);
     } else if (event.data.type === 'SGYVER_CACHED_ORDERS_AVAILABLE' && Array.isArray(event.data.orders)) {
         console.log('📥 Received cached orders from Extension:', event.data.orders.length);
         handleAutoOrderSync(event.data.orders, true);
@@ -1779,6 +1779,28 @@ function handleExtensionSyncResult(data) {
 function handleAutoOrderSync(orders, isInitial = false) {
     if (!Array.isArray(orders) || orders.length === 0) return;
     applyIncomingOrders(orders, false);
+}
+
+function handleAutoStatusUpdate(orderIds, status = 'READY_TO_SHIP', platformStatus = 'กดรับออเดอร์แล้ว') {
+    if (!Array.isArray(orderIds) || orderIds.length === 0) return;
+    let changed = false;
+    orderIds.forEach(id => {
+        const o = STATE.orders.find(item => item.orderId === id);
+        if (o) {
+            o.status = status;
+            o.platformStatus = platformStatus || (status === 'READY_TO_SHIP' ? 'พร้อมส่ง (กดรับแล้ว)' : o.platformStatus);
+            changed = true;
+        }
+    });
+    if (changed) {
+        saveOrdersToLocalStorage();
+        renderOrdersTable();
+        updateStats();
+        updateStatusTabCounts();
+        if (typeof showToast === 'function') {
+            showToast('success', '⚡ อัปเดตสถานะกดรับแล้ว!', `ออเดอร์ใน BigSeller ได้รับการกดรับแล้ว (${orderIds.join(', ')})`, 3500);
+        }
+    }
 }
 
 function openExtensionInstallModal() {
