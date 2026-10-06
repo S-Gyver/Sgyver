@@ -635,34 +635,89 @@ function editOrderShopName(orderId) {
     const o = STATE.orders.find(item => item.orderId === orderId);
     if (!o) return;
 
-    const currentName = o.shopName || (o.platform + ' Store');
-    const newName = prompt(`แก้ไขชื่อร้านค้าสำหรับออเดอร์ ${orderId}:\n(ระบุชื่อร้านค้าจริงของคุณ เช่น whatever_glitters)`, currentName === 'Shopee Store' ? 'whatever_glitters' : currentName);
-    
-    if (newName && newName.trim() && newName.trim() !== currentName) {
-        const cleanName = newName.trim();
-        o.shopName = cleanName;
+    let picker = document.getElementById('shop-picker-modal');
+    if (picker) picker.remove();
 
-        // Option to apply to all other orders that still have generic "Shopee Store"
-        if (currentName === 'Shopee Store' || currentName === 'Shopee ร้านค้า') {
-            const updateAll = confirm(`ต้องการเปลี่ยนชื่อร้านเป็น "${cleanName}" ให้กับทุกออเดอร์ที่เป็น Shopee Store ด้วยเลยหรือไม่?`);
-            if (updateAll) {
-                STATE.orders.forEach(item => {
-                    if (item.platform === 'Shopee' && (item.shopName === 'Shopee Store' || item.shopName === 'Shopee ร้านค้า' || !item.shopName)) {
-                        item.shopName = cleanName;
-                    }
-                });
-            }
+    picker = document.createElement('div');
+    picker.id = 'shop-picker-modal';
+    picker.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:999999; display:flex; align-items:center; justify-content:center; padding:16px; backdrop-filter:blur(8px);';
+    picker.onclick = (e) => { if (e.target === picker) picker.remove(); };
+
+    const shops = [
+        { name: 'whatever_glitters', platform: 'Shopee', desc: 'ร้าน Shopee 1 (เสื้อผ้า/แฟชั่น/หมวก)', badge: '#ee4d2d' },
+        { name: 'homeart1993', platform: 'Shopee', desc: 'ร้าน Shopee 2 (งานไม้/ของแต่งบ้าน)', badge: '#ee4d2d' },
+        { name: 's.design2022', platform: 'Shopee', desc: 'ร้าน Shopee 3 (งานดีไซน์)', badge: '#ee4d2d' },
+        { name: 'SD_TikTok', platform: 'TikTok', desc: 'ร้าน TikTok Shop', badge: '#06b6d4' },
+        { name: 'Home Artistic', platform: 'Lazada', desc: 'ร้าน Lazada', badge: '#3b82f6' }
+    ];
+
+    picker.innerHTML = `
+        <div style="background:#0f172a; border:1px solid #334155; border-radius:18px; max-width:480px; width:100%; padding:24px; color:#f8fafc; box-shadow:0 25px 60px rgba(0,0,0,0.8);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                <h4 style="margin:0; font-size:17px; font-weight:700; color:#38bdf8; display:flex; align-items:center; gap:8px;">
+                    <span>🏪</span> เลือกร้านค้า (5 ร้านค้า)
+                </h4>
+                <button onclick="document.getElementById('shop-picker-modal').remove()" style="background:transparent; border:none; color:#94a3b8; font-size:20px; cursor:pointer;">✕</button>
+            </div>
+            <div style="font-size:13px; color:#94a3b8; margin-bottom:16px;">
+                เลขออเดอร์: <strong class="text-white">${o.orderId}</strong> (ปัจจุบัน: <span class="text-warning">${escapeHtml(o.shopName || o.platform)}</span>)
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:18px;">
+                ${shops.map(s => `
+                    <button type="button" class="btn text-start p-3 d-flex align-items-center justify-content-between" 
+                            style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:12px; color:#f1f5f9; transition:all 0.2s;"
+                            onmouseover="this.style.background='rgba(56,189,248,0.12)'; this.style.borderColor='#38bdf8'"
+                            onmouseout="this.style.background='rgba(255,255,255,0.04)'; this.style.borderColor='rgba(255,255,255,0.1)'"
+                            onclick="applyShopSelection('${o.orderId}', '${s.name}', '${s.platform}')">
+                        <div>
+                            <div style="font-weight:700; font-size:15px; color:#fff;">${s.name}</div>
+                            <small style="color:#94a3b8; font-size:12px;">${s.desc}</small>
+                        </div>
+                        <span class="badge" style="background:${s.badge}; font-size:11px;">${s.platform}</span>
+                    </button>
+                `).join('')}
+            </div>
+
+            <div style="display:flex; justify-content:flex-end;">
+                <button onclick="document.getElementById('shop-picker-modal').remove()" class="btn btn-sm btn-outline-secondary px-3">ปิด</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(picker);
+}
+
+function applyShopSelection(orderId, shopName, platform) {
+    const o = STATE.orders.find(item => item.orderId === orderId);
+    if (!o) return;
+
+    o.shopName = shopName;
+    if (platform) o.platform = platform;
+
+    const picker = document.getElementById('shop-picker-modal');
+    if (picker) picker.remove();
+
+    // Check if other orders still have generic "Shopee Store"
+    const genericCount = STATE.orders.filter(item => item.platform === 'Shopee' && (item.shopName === 'Shopee Store' || item.shopName === 'Shopee ร้านค้า')).length;
+    if (genericCount > 0) {
+        if (confirm(`ต้องการเปลี่ยนชื่อร้านเป็น "${shopName}" ให้กับออเดอร์ Shopee ที่ยังเป็น Shopee Store อีก ${genericCount} รายการด้วยหรือไม่?`)) {
+            STATE.orders.forEach(item => {
+                if (item.platform === 'Shopee' && (item.shopName === 'Shopee Store' || item.shopName === 'Shopee ร้านค้า')) {
+                    item.shopName = shopName;
+                }
+            });
         }
+    }
 
-        saveOrdersToLocalStorage();
-        renderOrdersTable();
-        updateStats();
-        populatePlatformFilter();
-        syncOrdersToSupabase(STATE.orders);
+    saveOrdersToLocalStorage();
+    renderOrdersTable();
+    updateStats();
+    populatePlatformFilter();
+    syncOrdersToSupabase(STATE.orders);
 
-        if (typeof showToast === 'function') {
-            showToast('success', 'เปลี่ยนชื่อร้านแล้ว', `อัปเดตชื่อร้านเป็น "${cleanName}" เรียบร้อย`, 2500);
-        }
+    if (typeof showToast === 'function') {
+        showToast('success', 'เปลี่ยนชื่อร้านแล้ว', `ตั้งเป็น "${shopName}" เรียบร้อย`, 2500);
     }
 }
 
@@ -1071,8 +1126,26 @@ function loadSavedOrders() {
         if (raw) {
             const list = JSON.parse(raw);
             if (Array.isArray(list) && list.length > 0) {
+                // Auto-upgrade generic Shopee Store names based on the 3 active Shopee stores
+                list.forEach(o => {
+                    if (o.platform === 'Shopee' && (!o.shopName || o.shopName === 'Shopee Store' || o.shopName === 'Shopee ร้านค้า')) {
+                        const itemStr = JSON.stringify(o.items || '').toLowerCase();
+                        if (itemStr.includes('ไม้') || itemStr.includes('shelf') || itemStr.includes('tray') || itemStr.includes('wood') || itemStr.includes('s012001') || itemStr.includes('homeart')) {
+                            o.shopName = 'homeart1993';
+                        } else if (itemStr.includes('หมวก') || itemStr.includes('เลื่อม') || itemStr.includes('glitter') || itemStr.includes('กางเกง') || itemStr.includes('short') || itemStr.includes('shirt')) {
+                            o.shopName = 'whatever_glitters';
+                        } else if (itemStr.includes('design') || itemStr.includes('s.design')) {
+                            o.shopName = 's.design2022';
+                        } else {
+                            // Default to homeart1993 if wood-like, else whatever_glitters
+                            o.shopName = o.totalAmount > 200 ? 'homeart1993' : 'whatever_glitters';
+                        }
+                    }
+                });
+
                 STATE.orders = list;
                 STATE.selectedOrderIds = new Set(list.map(o => o.orderId));
+                saveOrdersToLocalStorage();
                 renderOrdersTable();
                 updateStats();
                 populatePlatformFilter();

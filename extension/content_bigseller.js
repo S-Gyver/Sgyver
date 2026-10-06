@@ -239,17 +239,23 @@ function parseOrderContainer(container) {
         }
     }
 
-    // Fallback checks
+    // Exact store detection for the 5 active stores (Shopee x 3, TikTok x 1, Lazada x 1)
     const lower = fullSearchText.toLowerCase();
-    if (lower.includes('tiktok')) {
-        platform = 'TikTok';
-        if (shopName === 'Shopee Store') shopName = 'SD_TikTok';
-    } else if (lower.includes('lazada')) {
-        platform = 'Lazada';
-        if (shopName === 'Shopee Store') shopName = 'Home Artistic';
-    } else if (lower.includes('whatever_glitters')) {
+    if (lower.includes('whatever_glitters') || lower.includes('whatever')) {
         platform = 'Shopee';
         shopName = 'whatever_glitters';
+    } else if (lower.includes('homeart1993') || lower.includes('homeart')) {
+        platform = 'Shopee';
+        shopName = 'homeart1993';
+    } else if (lower.includes('s.design2022') || lower.includes('s.design') || lower.includes('sdesign')) {
+        platform = 'Shopee';
+        shopName = 's.design2022';
+    } else if (lower.includes('sd_tiktok') || lower.includes('tiktok')) {
+        platform = 'TikTok';
+        shopName = 'SD_TikTok';
+    } else if (lower.includes('home artistic') || lower.includes('lazada')) {
+        platform = 'Lazada';
+        shopName = 'Home Artistic';
     }
 
     // 3. Tracking Number (inside brackets e.g. [TH265919702870Q] or [66771014369125] or [LEXPU0715830217])
