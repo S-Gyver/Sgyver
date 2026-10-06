@@ -338,7 +338,18 @@ function parseOrderContainer(container) {
         // If genuinely multiple product images exist, anchor each item to its unique product image container
         if (cellImgs.length > 1) {
             itemNodes = cellImgs.map(img => {
-                return img.closest('.goods-item, .product-item, .goods-list-item, tr, li, .el-row') ||
+                // Find ancestor of this image that contains THB / price text
+                let curr = img.parentElement;
+                let best = null;
+                while (curr && curr !== productCell) {
+                    const txt = curr.innerText || '';
+                    if (txt.includes('THB') || txt.match(/[xX×*]\s*\d+/)) {
+                        best = curr;
+                        break;
+                    }
+                    curr = curr.parentElement;
+                }
+                return best || img.closest('.goods-item, .product-item, .goods-list-item, tr, li, .el-row') ||
                        img.parentElement?.parentElement ||
                        img.parentElement;
             });

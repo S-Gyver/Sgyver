@@ -561,31 +561,44 @@ function renderOrdersTable() {
                     <small class="text-secondary d-block text-truncate" style="max-width: 220px;" title="${escapeHtml(o.province || o.address)}">
                         <i class="bi bi-geo-alt-fill text-danger me-1"></i>${escapeHtml(o.province || o.address)}
                     </small>
-                </td>
-                <td>
-                    <div class="d-flex align-items-center gap-3">
-                        ${imgUrl ? `
-                            <div class="order-thumb-wrap" onclick="openOrderImagePreview('${escapeHtml(o.orderId)}')" title="คลิกดูรูปใหญ่" style="position: relative; width: 44px; height: 44px; min-width: 44px; max-width: 44px; min-height: 44px; max-height: 44px; flex-shrink: 0; cursor: pointer; border-radius: 8px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.22); background: #1e293b; display: inline-flex; align-items: center; justify-content: center;">
-                                <img src="${imgUrl}" 
-                                     class="order-thumb-img" 
-                                     alt="product" 
-                                     width="44" 
-                                     height="44" 
-                                     style="width: 44px !important; height: 44px !important; min-width: 44px !important; max-width: 44px !important; min-height: 44px !important; max-height: 44px !important; object-fit: cover !important; border-radius: 7px; display: block !important;" 
-                                     onerror="this.parentElement.style.display='none'">
-                            </div>
-                        ` : `
-                            <div class="order-thumb-placeholder" style="width: 44px; height: 44px; min-width: 44px; border-radius: 8px;"><i class="bi bi-box-seam"></i></div>
-                        `}
-                        <div class="order-items-snippet">
-                            ${o.items.map(it => `
-                                <div class="order-item-line">
-                                    <strong class="text-light">${escapeHtml(it.name)}</strong>
-                                    ${it.variation ? `<span class="order-item-variation">${escapeHtml(it.variation)}</span>` : ''}
-                                    <span class="badge bg-secondary-subtle text-warning ms-1">x${it.qty || 1}</span>
+                <td class="order-items-cell" style="vertical-align: top; padding: 12px 14px;">
+                    <div class="bigseller-items-list d-flex flex-column gap-2">
+                        ${o.items.map((it, itemIdx) => {
+                            const itImg = it.image_url || o.imageUrl || '';
+                            const itPrice = it.price ? Number(it.price).toLocaleString('th-TH', { minimumFractionDigits: 0 }) : '';
+                            return `
+                                <div class="bigseller-item-row d-flex align-items-center gap-3 ${itemIdx > 0 ? 'pt-2 border-top border-secondary-subtle' : ''}">
+                                    ${itImg ? `
+                                        <div class="bigseller-item-thumb-wrap" onclick="openProductImageModal('${escapeHtml(itImg)}')" title="คลิกดูรูปใหญ่" style="width: 48px; height: 48px; min-width: 48px; max-width: 48px; border-radius: 8px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.2); background: #1e293b; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.3); flex-shrink: 0;">
+                                            <img src="${itImg}" 
+                                                 alt="product" 
+                                                 width="48" 
+                                                 height="48" 
+                                                 style="width: 48px !important; height: 48px !important; min-width: 48px !important; max-width: 48px !important; object-fit: cover !important; display: block !important;" 
+                                                 onerror="this.parentElement.style.display='none'">
+                                        </div>
+                                    ` : `
+                                        <div class="bigseller-item-thumb-placeholder" style="width: 48px; height: 48px; min-width: 48px; border-radius: 8px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 1.2rem; flex-shrink: 0;"><i class="bi bi-box-seam"></i></div>
+                                    `}
+                                    <div class="bigseller-item-info d-flex flex-column" style="line-height: 1.35; min-width: 150px;">
+                                        <span class="bigseller-item-name" style="color: #a78bfa; font-weight: 600; font-size: 0.9rem;">
+                                            ${escapeHtml(it.name)}
+                                        </span>
+                                        ${(it.variation && it.variation !== it.name && it.variation !== '--') ? `
+                                            <span class="bigseller-item-variation text-white" style="font-size: 0.82rem; font-weight: 500;">
+                                                ${escapeHtml(it.variation)}
+                                            </span>
+                                        ` : ''}
+                                        <div class="bigseller-item-meta d-flex align-items-center gap-2 mt-1">
+                                            ${itPrice ? `<span class="font-mono text-cyan" style="font-size: 0.8rem; font-weight: 600;">THB ${itPrice}</span>` : ''}
+                                            <span class="badge" style="background: rgba(234, 179, 8, 0.15); color: #facc15; border: 1px solid rgba(234, 179, 8, 0.4); font-size: 0.78rem; font-weight: 700; padding: 2px 6px; border-radius: 4px;">
+                                                × ${it.qty || 1}
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
-                            `).join('')}
-                        </div>
+                            `;
+                        }).join('')}
                     </div>
                 </td>
                 <td class="text-center font-mono fw-bold text-warning">${o.totalItemsCount}</td>
@@ -1532,3 +1545,34 @@ function openExtensionInstallModal() {
         document.body.appendChild(modal);
     }
 }
+
+// ── 12. IMAGE PREVIEW LIGHTBOX HELPERS ───────────────────────────────────────
+function openProductImageModal(imgUrl) {
+    if (!imgUrl) return;
+    const modal = document.getElementById('productImageModal');
+    const modalImg = document.getElementById('productImageModalImg');
+    if (modal && modalImg) {
+        modalImg.src = imgUrl;
+        modal.style.display = 'flex';
+    }
+}
+
+function closeProductImageModal() {
+    const modal = document.getElementById('productImageModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+function openOrderImagePreview(orderId) {
+    const order = STATE.orders.find(o => o.orderId === orderId);
+    const imgUrl = (order && order.imageUrl) || (order && order.items && order.items[0] && order.items[0].image_url);
+    if (imgUrl) {
+        openProductImageModal(imgUrl);
+    }
+}
+
+window.openProductImageModal = openProductImageModal;
+window.closeProductImageModal = closeProductImageModal;
+window.openOrderImagePreview = openOrderImagePreview;
+
