@@ -152,7 +152,7 @@ function findOrderContainers() {
     const rows = Array.from(document.querySelectorAll('tr, .order-item, .order-card, .el-table__row'));
     const orderRows = rows.filter(r => {
         const t = r.innerText || '';
-        return t.match(/(2\d{5}[A-Z0-9]{8,12}|58\d{16}|112\d{13})/);
+        return t.match(/(2\d{5}[A-Z0-9]{8,12}|58\d{16}|112\d{13}|BS[A-Z0-9]{6,16})/);
     });
 
     if (orderRows.length > 0) {
@@ -188,8 +188,8 @@ function parseOrderContainer(container) {
     const text = container.innerText || '';
     if (!text || text.length < 15) return null;
 
-    // 1. Order ID (Shopee: 2\d{5}[A-Z0-9]{8,12}, TikTok: 58\d{16}, Lazada: 112\d{13}, or generic)
-    const orderIdMatch = text.match(/(2\d{5}[A-Z0-9]{8,12}|58\d{16}|112\d{13}|\b[0-9]{15,20}\b)/);
+    // 1. Order ID (Shopee: 2\d{5}[A-Z0-9]{8,12}, TikTok: 58\d{16}, Lazada: 112\d{13}, or generic / BS ID)
+    const orderIdMatch = text.match(/(2\d{5}[A-Z0-9]{8,12}|58\d{16}|112\d{13}|\b[0-9]{15,20}\b|BS[A-Z0-9]{6,16})/);
     if (!orderIdMatch) return null;
     const orderId = orderIdMatch[1];
 
@@ -527,31 +527,52 @@ function parseOrderContainer(container) {
     const currentUrl = (window.location.href || '').toLowerCase();
     const rowText = (container.innerText || '').toLowerCase();
 
-    // Check Active Tab in BigSeller header
+    // 1. Check Left Sidebar in BigSeller (English: "New Orders", Thai: "คำสั่งซื้อใหม่")
+    const activeMenuEl = document.querySelector('.el-menu-item.is-active, .menu-item.is-active, [class*="menu"].is-active, [class*="sidebar"] .is-active, [class*="nav"] .is-active, [class*="nav"] .active, .menu_active');
+    const activeMenuText = activeMenuEl ? (activeMenuEl.innerText || '').toLowerCase() : '';
+
+    // 2. Check Active Sub-tabs in BigSeller (English: "To Pack", Thai: "รอจัดสรร" / "คำสั่งซื้อใหม่")
     const activeTabEl = document.querySelector('.el-tabs__item.is-active, .tab-pane.active, .ant-tabs-tab-active, [class*="tab"].is-active, [class*="tab"].active, [role="tab"][aria-selected="true"]');
     const activeTabText = activeTabEl ? (activeTabEl.innerText || '').toLowerCase() : '';
     const pageHeading = (document.title + ' ' + (document.querySelector('.breadcrumb, .page-title, h1, h2, h3')?.innerText || '')).toLowerCase();
 
+    // 3. Check Action Buttons visible on the page (Green "Pack" button = New Orders!)
+    const allButtonsText = Array.from(document.querySelectorAll('button, .el-button')).map(b => (b.innerText || '').trim()).join(' ');
+    const hasPackButton = /\b(Pack|จัดสรรสต็อก|จัดสรร)\b/i.test(allButtonsText);
+
     // Check if order has a real courier tracking number (e.g. [TH264545876208M], [LEX...])
     const hasRealTracking = trackingMatch && trackingMatch[1] && trackingMatch[1] !== orderId && !trackingMatch[1].startsWith('BS') && trackingMatch[1].length >= 8;
 
-    const isShippedTab = activeTabText.includes('จัดส่งแล้ว') || activeTabText.includes('shipped') || 
-                         activeTabText.includes('ส่งแล้ว') || pageHeading.includes('จัดส่งแล้ว') || 
+    // Check Shipped Tab
+    const isShippedTab = activeMenuText.includes('shipped') || activeMenuText.includes('จัดส่งแล้ว') || 
+                         activeTabText.includes('จัดส่งแล้ว') || activeTabText.includes('shipped') || 
                          currentUrl.includes('shipped') || currentUrl.includes('history') || 
                          rowText.includes('จัดส่งแล้ว') || rowText.includes('ส่งแล้ว');
 
-    const isNewOrdersTab = activeTabText.includes('คำสั่งซื้อใหม่') || activeTabText.includes('new order') || 
+    // Check In Process Tab (Accepted / To Print / Ready to Ship)
+    const isInProcessTab = activeMenuText.includes('in process') || activeMenuText.includes('กำลังดำเนินการ') ||
+                           activeTabText.includes('to print') || activeTabText.includes('printable') || 
+                           activeTabText.includes('printed') || activeTabText.includes('รอพิมพ์') ||
+                           activeTabText.includes('wave') || currentUrl.includes('inprocess') || currentUrl.includes('in_process');
+
+    // Check New Orders Tab (To Pack / คำสั่งซื้อใหม่ / ยังไม่ได้กดรับ)
+    const isNewOrdersTab = activeMenuText.includes('new order') || activeMenuText.includes('คำสั่งซื้อใหม่') || 
+                           activeTabText.includes('to pack') || activeTabText.includes('packing') ||
+                           activeTabText.includes('คำสั่งซื้อใหม่') || activeTabText.includes('new order') || 
                            activeTabText.includes('neworder') || activeTabText.includes('ยังไม่ได้จัดสรร') || 
+                           activeTabText.includes('รอรับ') || (hasPackButton && !isInProcessTab) ||
                            pageHeading.includes('คำสั่งซื้อใหม่') || currentUrl.includes('allocate') || 
-                           currentUrl.includes('neworder');
+                           currentUrl.includes('neworder') || currentUrl.includes('pack');
 
     if (isShippedTab) {
         orderStatus = 'SHIPPED';
-    } else if (isNewOrdersTab && !hasRealTracking) {
+    } else if (isInProcessTab) {
+        orderStatus = 'READY_TO_SHIP';
+    } else if (isNewOrdersTab) {
         orderStatus = 'NEW';
     } else {
-        // Any order in 'กำลังดำเนินการ (In Process)', 'เพื่อจัดส่ง (To Ship)', 'รอพิมพ์' or with tracking is READY_TO_SHIP
-        orderStatus = 'READY_TO_SHIP';
+        // Fallback: if has tracking it's READY_TO_SHIP, otherwise default to NEW if in doubt
+        orderStatus = hasRealTracking ? 'READY_TO_SHIP' : 'NEW';
     }
 
     // 9. Extract Buyer Username, Time, Platform Status (BigSeller Columns 4, 5, 7)
