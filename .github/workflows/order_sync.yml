@@ -1,0 +1,27 @@
+name: S-Gyver Cloud Order Sync Bot
+
+on:
+  workflow_dispatch: # Allows manual trigger button in GitHub Actions
+  schedule:
+    # Runs every hour at minute 0 (24/7 on GitHub Cloud)
+    - cron: '0 * * * *'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run S-Gyver Order Sync Bot
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://igiihteeeprpcxxlldkd.supabase.co' }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnaWlodGVlZXBycGN4eGxsZGtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5ODkwNzksImV4cCI6MjEwMDU2NTA3OX0.fr8_ZAYKQ3D-JgEtAWGJnNvKjoUmYxs1T7tjzzsEltw' }}
+        run: |
+          node features/business/shopee_orders/sync_bot.js
