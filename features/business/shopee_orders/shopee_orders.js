@@ -490,13 +490,13 @@ function renderOrdersTable() {
     tbody.innerHTML = filtered.map((o, idx) => {
         const isChecked = STATE.selectedOrderIds.has(o.orderId);
         const carrierClass = getCarrierClass(o.carrier);
-        const platformClass = (o.platform || 'shopee').toLowerCase();
+        const rawP = (o.platform || 'Shopee').toLowerCase();
+        const platformName = rawP.includes('tiktok') ? 'TikTok' : (rawP.includes('lazada') ? 'Lazada' : 'Shopee');
+        const platformClass = platformName.toLowerCase();
         const pMethod = o.paymentMethod || 'Prepaid';
         const isCOD = pMethod === 'COD';
         const imgUrl = o.imageUrl || (o.items && o.items[0] && o.items[0].image_url ? o.items[0].image_url : '');
         const orderStatus = o.status || 'READY_TO_SHIP';
-        const displayShopName = getResolvedShopName(o);
-        o.shopName = displayShopName;
 
         return `
             <tr class="order-card-row platform-${platformClass} ${isChecked ? 'selected' : ''}">
@@ -507,8 +507,8 @@ function renderOrdersTable() {
                     </div>
                 </td>
                 <td>
-                    <span class="badge-platform ${platformClass} mb-1" onclick="editOrderShopName('${escapeHtml(o.orderId)}')" title="คลิกเพื่อเปลี่ยน/แก้ไขชื่อร้านค้า" style="cursor: pointer;">
-                        ${getPlatformIcon(o.platform)} ${escapeHtml(displayShopName)} <i class="bi bi-pencil-fill ms-1" style="font-size: 0.65rem; opacity: 0.6;"></i>
+                    <span class="badge-platform ${platformClass} mb-1">
+                        ${getPlatformIcon(platformName)} ${platformName}
                     </span>
                     <div class="mt-1 d-flex gap-1 flex-wrap">
                         <span class="badge-payment ${isCOD ? 'cod' : 'prepaid'}">
@@ -783,10 +783,11 @@ function getFilteredOrders() {
                 return false;
             }
         }
-        // Platform / Store filter
+        // Platform filter
         if (STATE.activePlatformFilter) {
-            const filterVal = STATE.activePlatformFilter;
-            if (o.platform !== filterVal && o.shopName !== filterVal) {
+            const filterVal = STATE.activePlatformFilter.toLowerCase();
+            const orderP = (o.platform || 'Shopee').toLowerCase();
+            if (!orderP.includes(filterVal)) {
                 return false;
             }
         }
@@ -830,23 +831,10 @@ function populatePlatformFilter() {
     const select = document.getElementById('filter-platform');
     if (!select) return;
 
-    const baseShops = ['whatever_glitters', 'homeart1993', 's.design2022', 'SD_TikTok', 'Home Artistic'];
-    const orderShops = STATE.orders.map(o => o.shopName).filter(Boolean);
-    const shops = [...new Set([...baseShops, ...orderShops])].filter(s => s !== 'Shopee Store' && s !== 'Shopee ร้านค้า');
-    const platforms = ['Shopee', 'TikTok', 'Lazada'];
-
-    let html = '<option value="">ทุกแพลตฟอร์ม / ทุกร้าน (5 ร้านค้า)</option>';
-    html += '<optgroup label="แยกตามแพลตฟอร์ม">';
-    platforms.forEach(p => {
-        html += `<option value="${p}" ${STATE.activePlatformFilter === p ? 'selected' : ''}>${p}</option>`;
-    });
-    html += '</optgroup>';
-
-    html += '<optgroup label="แยกตามร้านค้า (5 ร้าน)">';
-    shops.forEach(s => {
-        html += `<option value="${s}" ${STATE.activePlatformFilter === s ? 'selected' : ''}>${s}</option>`;
-    });
-    html += '</optgroup>';
+    let html = '<option value="">ทุกแพลตฟอร์ม (Shopee, TikTok, Lazada)</option>';
+    html += '<option value="Shopee"' + (STATE.activePlatformFilter === 'Shopee' ? ' selected' : '') + '>Shopee</option>';
+    html += '<option value="TikTok"' + (STATE.activePlatformFilter === 'TikTok' ? ' selected' : '') + '>TikTok</option>';
+    html += '<option value="Lazada"' + (STATE.activePlatformFilter === 'Lazada' ? ' selected' : '') + '>Lazada</option>';
 
     select.innerHTML = html;
 }
