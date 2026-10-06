@@ -920,15 +920,9 @@ function showProductImageModal(imageUrl, productName, orderId) {
     if (!imageUrl) return;
 
     const imgEl = document.getElementById('productImageModalImg');
-    const titleEl = document.getElementById('productImageModalTitle');
-    const subtitleEl = document.getElementById('productImageModalSubtitle');
-    const linkEl = document.getElementById('productImageModalLink');
     const modalEl = document.getElementById('productImageModal');
 
     if (imgEl) imgEl.src = imageUrl;
-    if (titleEl) titleEl.innerHTML = `<i class="bi bi-image text-cyan me-1"></i> ${escapeHtml(productName || 'รูปภาพสินค้า')}`;
-    if (subtitleEl) subtitleEl.textContent = orderId ? `เลขคำสั่งซื้อ: ${orderId}` : '';
-    if (linkEl) linkEl.href = imageUrl;
 
     if (modalEl) {
         modalEl.style.display = 'flex';
