@@ -101,61 +101,32 @@ async function handleBigSellerExtractAndSend() {
     }
 }
 
-// 4. DOM Parser for BigSeller Order Tables
+// 4. Precision DOM & Text Parser for BigSeller Order Tables
 function extractOrdersFromDom() {
     const extracted = [];
-    const rows = document.querySelectorAll('table tbody tr, .el-table__body tr, .ant-table-row');
-
-    rows.forEach((row) => {
-        const text = row.innerText || '';
-        if (!text || text.length < 20) return;
-
-        // Try extracting order ID (format usually numbers/letters or Shopee/TikTok/Lazada formats)
-        const orderIdMatch = text.match(/(2\d{13,16}[A-Z0-9]*|57\d{15,19}|[0-9]{15,20}|[A-Z0-9]{12,25})/);
-        if (!orderIdMatch) return;
-        const orderId = orderIdMatch[0];
-
-        // Detect platform
-        let platform = 'Shopee';
-        let shopName = 'Shopee Store';
-        const lower = text.toLowerCase();
-        if (lower.includes('tiktok')) {
-            platform = 'TikTok';
-            shopName = 'TikTok Shop';
-        } else if (lower.includes('lazada')) {
-            platform = 'Lazada';
-            shopName = 'Lazada Store';
+    
+    // Approach A: Parse by BigSeller Order Item Containers
+    const containers = Array.from(document.querySelectorAll('table tbody tr, .el-table__body tr, .ant-table-row, div[class*="order"], tr'));
+    containers.forEach((el) => {
+        const text = el.innerText || '';
+        if (text.includes('# BS') || text.match(/(2\d{5}[A-Z0-9]{8,12}|58\d{16}|112\d{13})/)) {
+            const parsed = parseOrderBlock(text);
+            if (parsed) extracted.push(parsed);
         }
-
-        // Extract tracking or carrier
-        let carrier = 'Standard Delivery';
-        if (lower.includes('spx') || lower.includes('shopee xpress')) carrier = 'SPX Express';
-        else if (lower.includes('flash')) carrier = 'Flash Express';
-        else if (lower.includes('j&t') || lower.includes('jnt')) carrier = 'J&T Express';
-        else if (lower.includes('kerry') || lower.includes('kerry express')) carrier = 'KEX (Kerry)';
-        else if (lower.includes('ninja')) carrier = 'Ninja Van';
-
-        extracted.push({
-            order_id: orderId,
-            platform: platform,
-            shop_name: shopName,
-            recipient_name: 'ลูกค้า ' + platform,
-            phone: '08X-XXX-XXXX',
-            address: 'ที่อยู่ตามระบบแพลตฟอร์ม',
-            province: 'กรุงเทพฯ',
-            district: '-',
-            zipcode: '-',
-            carrier: carrier,
-            tracking_number: orderId,
-            total_items: 1,
-            total_amount: 150.00,
-            items: [{ name: 'สินค้าตามคำสั่งซื้อ', qty: 1, price: 150.00 }],
-            status: 'READY_TO_SHIP',
-            updated_at: new Date().toISOString()
-        });
     });
 
-    // Remove duplicates
+    // Approach B: Split whole page text by BigSeller order prefix '# BS'
+    const fullText = document.body.innerText || '';
+    const bsSections = fullText.split(/#\s*BS[0-9A-Z]+/i);
+    if (bsSections.length > 1) {
+        for (let i = 1; i < bsSections.length; i++) {
+            const block = bsSections[i];
+            const parsed = parseOrderBlock(block);
+            if (parsed) extracted.push(parsed);
+        }
+    }
+
+    // Deduplicate by order_id
     const unique = [];
     const seen = new Set();
     for (const item of extracted) {
@@ -166,6 +137,86 @@ function extractOrdersFromDom() {
     }
 
     return unique;
+}
+
+function parseOrderBlock(text) {
+    if (!text || text.length < 15) return null;
+
+    // 1. Order ID (Shopee: 2\d{5}[A-Z0-9]{8,12}, TikTok: 58\d{16}, Lazada: 112\d{13}, or generic)
+    const orderIdMatch = text.match(/(2\d{5}[A-Z0-9]{8,12}|58\d{16}|112\d{13}|\b[0-9]{15,20}\b)/);
+    if (!orderIdMatch) return null;
+    const orderId = orderIdMatch[1];
+
+    // 2. Platform & Store Name (e.g. "TikTok: SD_TikTok", "Lazada: Home Artistic", "Shopee: whatever_glitters")
+    let platform = 'Shopee';
+    let shopName = 'Shopee ร้านค้า';
+
+    const storeMatch = text.match(/(TikTok|Lazada|Shopee)\s*:\s*([^\n\r]+)/i);
+    if (storeMatch) {
+        const rawP = storeMatch[1].toLowerCase();
+        if (rawP.includes('tiktok')) platform = 'TikTok';
+        else if (rawP.includes('lazada')) platform = 'Lazada';
+        else platform = 'Shopee';
+        shopName = storeMatch[2].trim();
+    } else {
+        const lower = text.toLowerCase();
+        if (lower.includes('tiktok')) { platform = 'TikTok'; shopName = 'TikTok Shop'; }
+        else if (lower.includes('lazada')) { platform = 'Lazada'; shopName = 'Lazada Store'; }
+    }
+
+    // 3. Tracking Number (inside brackets e.g. [TH2659197028700] or [66771014369125] or [LEXPU0715830217])
+    const trackingMatch = text.match(/\[([A-Z0-9]{8,25})\]/);
+    const tracking = trackingMatch ? trackingMatch[1] : orderId;
+
+    // 4. Carrier
+    let carrier = 'Standard Delivery';
+    const carrierMatch = text.match(/Buyer-designated Logistics:\s*([^\n\r]+)/i) ||
+                         text.match(/(Shopee-TH-[^\n\r\[]+|TikTok-TH-[^\n\r\[]+|Lazada-TH-[^\n\r\[]+)/i);
+    if (carrierMatch) {
+        carrier = carrierMatch[1].replace(/\[.*\]/, '').trim();
+    } else {
+        const lower = text.toLowerCase();
+        if (lower.includes('spx') || lower.includes('shopee xpress')) carrier = 'SPX Express';
+        else if (lower.includes('best express')) carrier = 'BEST Express';
+        else if (lower.includes('lex th') || lower.includes('lazada express')) carrier = 'LEX TH';
+        else if (lower.includes('flash')) carrier = 'Flash Express';
+        else if (lower.includes('j&t') || lower.includes('jnt')) carrier = 'J&T Express';
+        else if (lower.includes('kerry')) carrier = 'KEX (Kerry)';
+    }
+
+    // 5. Amount
+    const amountMatch = text.match(/THB\s*([0-9,]+(\.[0-9]+)?)/i);
+    const totalAmount = amountMatch ? parseFloat(amountMatch[1].replace(/,/g, '')) : 0;
+
+    // 6. Recipient & Province
+    let recipientName = 'ลูกค้า ' + platform;
+    let province = 'กรุงเทพฯ';
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    for (const line of lines) {
+        if (line.includes('จังหวัด') || line.includes('อุตรดิตถ์') || line.includes('เชียงราย') || line.includes('อยุธยา') || line.includes('Thailand') || line.includes('ไทย')) {
+            province = line;
+            break;
+        }
+    }
+
+    return {
+        order_id: orderId,
+        platform: platform,
+        shop_name: shopName,
+        recipient_name: recipientName,
+        phone: '08X-XXX-XXXX',
+        address: province,
+        province: province,
+        district: '-',
+        zipcode: '-',
+        carrier: carrier,
+        tracking_number: tracking,
+        total_items: 1,
+        total_amount: totalAmount,
+        items: [{ name: 'สินค้าตามคำสั่งซื้อ', qty: 1, price: totalAmount }],
+        status: 'READY_TO_SHIP',
+        updated_at: new Date().toISOString()
+    };
 }
 
 // 5. Direct Supabase Delivery
