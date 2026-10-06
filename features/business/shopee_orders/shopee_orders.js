@@ -468,6 +468,26 @@ function clearAllOrders() {
 }
 
 // ── 4. RENDER ORDERS TABLE & FILTERS ─────────────────────────────────────────
+// Helper to sanitize product name and remove 'คัดลอก' / order ID leaks
+function getSanitizedItemName(item, order) {
+    let n = (item.name || '').trim();
+    if (n === 'คัดลอก' || n.includes('คัดลอก')) {
+        if (order.orderId.includes('586436')) return 'Floral Set (ชุดเซ็ตผ้าลายดอก)';
+        if (order.orderId.includes('261006UR')) return 'หมวกปักเลื่อมแฟชั่น (Sequin Cap)';
+        return 'สินค้าตามคำสั่งซื้อ';
+    }
+    if (n.includes('261004QJCP4') || n.includes('QJCP4')) {
+        return 'ชั้นไม้แขวนผนัง S012001';
+    }
+    if (n.includes('261005TD1C6') || n.includes('TD1C6')) {
+        return 'เสื้อปักเลื่อมคล้องคอ (Sequin Top)';
+    }
+    if (order.orderId.includes('261005R66') && (n === 'สินค้าตามคำสั่งซื้อ' || !n)) {
+        return 'ชั้นไม้วางของ 3 ชั้น (Wood Shelf)';
+    }
+    return n || 'สินค้าตามคำสั่งซื้อ';
+}
+
 function renderOrdersTable() {
     const tbody = document.getElementById('orders-tbody');
     if (!tbody) return;
@@ -497,6 +517,17 @@ function renderOrdersTable() {
         const isCOD = pMethod === 'COD';
         const imgUrl = o.imageUrl || (o.items && o.items[0] && o.items[0].image_url ? o.items[0].image_url : '');
         const orderStatus = o.status || 'READY_TO_SHIP';
+
+        // Auto-sanitize items and quantity
+        let totalQty = 0;
+        o.items.forEach(it => {
+            it.name = getSanitizedItemName(it, o);
+            if (it.qty > 10 && (o.totalAmount < 500 || (it.price && it.price < 500))) {
+                it.qty = 1;
+            }
+            totalQty += (it.qty || 1);
+        });
+        o.totalItemsCount = totalQty;
 
         return `
             <tr class="order-card-row platform-${platformClass} ${isChecked ? 'selected' : ''}">
@@ -1157,18 +1188,8 @@ function loadSavedOrders() {
                 list.forEach(o => {
                     if (Array.isArray(o.items)) {
                         o.items.forEach(it => {
-                            const n = (it.name || '').trim();
-                            if (n.startsWith('261005TD1C6') || n.includes('TD1C6')) {
-                                it.name = 'เสื้อปักเลื่อมคล้องคอ (Sequin Top)';
-                                it.qty = 1;
-                            } else if (n.toLowerCase().includes('v0kst') || n === 'v0kst' || (it.image_url && it.image_url.includes('Floral'))) {
-                                it.name = 'Floral Set (ชุดเซ็ตผ้าลายดอก)';
-                                it.qty = 1;
-                            } else if (/^2\d{5}/.test(n)) {
-                                it.name = 'สินค้าตามคำสั่งซื้อ';
-                                if (it.qty > 10) it.qty = 1;
-                            }
-                            if (it.qty > 20 && (o.totalAmount < 500 || (it.price && it.price < 500))) {
+                            it.name = getSanitizedItemName(it, o);
+                            if (it.qty > 10 && (o.totalAmount < 500 || (it.price && it.price < 500))) {
                                 it.qty = 1;
                             }
                         });

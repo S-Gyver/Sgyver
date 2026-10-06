@@ -315,36 +315,62 @@ function parseOrderContainer(container) {
     }
 
     if (productCell) {
-        const cellText = productCell.innerText || '';
-        const cellLines = cellText.split(/[\n\r]+/).map(l => l.trim()).filter(Boolean);
+        // Strip copy buttons, buttons, icons, and action links from cell clone
+        let cleanCellText = '';
+        try {
+            const cellClone = productCell.cloneNode(true);
+            cellClone.querySelectorAll('button, a[class*="copy"], span[class*="copy"], div[class*="copy"], [class*="btn"], i, svg').forEach(el => el.remove());
+            cleanCellText = (cellClone.innerText || '').trim();
+        } catch (e) {
+            cleanCellText = productCell.innerText || '';
+        }
 
-        // 1. Extract Quantity strictly from cell: Look for 'THB ... x 1', 'x 1', '× 2'
-        const qtyMatch = cellText.match(/(?:THB\s*[0-9,.]+)?\s*[xX×*]\s*(\d{1,3})\b/);
+        // Clean out words like 'คัดลอก', 'Copy'
+        cleanCellText = cleanCellText.replace(/\b(คัดลอก|Copy|copy|แก้ไข|ลบ|พิมพ์|ดูเพิ่มเติม|จัดการ)\b/g, '').trim();
+
+        // 1. Extract Quantity: Require whitespace around x / × (e.g. 'THB 65  x  1' or ' x 1') to never match order IDs like QJCP4X49
+        const qtyMatch = cleanCellText.match(/(?:THB\s*[0-9,.]+)?\s+[xX×*]\s+(\d{1,3})\b/) ||
+                         cleanCellText.match(/[\s\r\n][xX×*]\s*(\d{1,3})\b/);
         if (qtyMatch) {
             qty = parseInt(qtyMatch[1], 10) || 1;
         }
 
+        // Sanity check: if qty is unreasonably high for total amount
+        if (qty > 10 && totalAmount > 0 && (totalAmount / qty) < 5) {
+            qty = 1;
+        }
+
         // 2. Extract Product Name: exclude prices, order IDs, dashes, and purely tracking-like tokens
-        const meaningfulLines = cellLines.filter(line => {
-            if (/^(THB|฿|\$|[xX×*]\s*\d+|--|-|\d+)$/i.test(line)) return false;
-            if (line.includes('THB') && line.includes('x')) return false;
-            if (/^2\d{5}[A-Z0-9]+/i.test(line)) return false; // Not order ID
-            if (/^\[?[A-Z0-9]{10,}\]?$/i.test(line)) return false; // Not tracking code
-            return line.length >= 2;
+        const cellLines = cleanCellText.split(/[\n\r]+/).map(l => l.trim()).filter(Boolean);
+        const meaningfulLines = cellLines.map(line => {
+            return line.replace(/\b(คัดลอก|Copy|copy|แก้ไข|ลบ|พิมพ์|ดูเพิ่มเติม|จัดการ)\b/g, '')
+                       .replace(/^--\s*/, '')
+                       .replace(/\s*--$/, '')
+                       .trim();
+        }).filter(line => {
+            if (!line || line.length < 2) return false;
+            if (/^(THB|฿|\$|[xX×*]\s*\d+|--|-|\d+|คัดลอก|copy)$/i.test(line)) return false;
+            if (line.includes('THB') && (line.includes('x') || line.includes('×'))) return false;
+            if (/2\d{5}[A-Z0-9]+/i.test(line)) return false; // Not Shopee order ID
+            if (/58\d{15,}/.test(line)) return false; // Not TikTok order ID
+            if (/112\d{13,}/.test(line)) return false; // Not Lazada order ID
+            if (/^\[?[A-Z0-9]{8,}\]?$/i.test(line)) return false; // Not tracking code
+            if (line === orderId || line.includes(orderId)) return false;
+            return true;
         });
 
         if (meaningfulLines.length > 0) {
-            // Prefer Thai line or the first descriptive line that isn't a short code
+            // Find best descriptive line (prefer Thai, or longest descriptive title)
             const thaiLine = meaningfulLines.find(l => /[\u0E00-\u0E7F]/.test(l));
-            const bestLine = thaiLine || meaningfulLines.find(l => l.length > 4 && !l.includes('THB')) || meaningfulLines[0];
+            const bestLine = thaiLine || meaningfulLines.find(l => l.length > 3 && !l.includes('THB')) || meaningfulLines[0];
             productName = bestLine.replace(/^--\s*/, '').replace(/\s*--$/, '').trim();
         }
 
-        // Also check if BigSeller has specific title elements or link
+        // Check if BigSeller has specific title elements or link
         const titleEl = productCell.querySelector('a, .goods-name, .product-name, [class*="title"], [class*="name"]');
-        if (titleEl && titleEl.innerText && titleEl.innerText.trim().length > 2) {
-            const rawTitle = titleEl.innerText.trim();
-            if (!rawTitle.includes('THB') && !/^2\d{5}/.test(rawTitle)) {
+        if (titleEl && titleEl.innerText) {
+            const rawTitle = titleEl.innerText.replace(/\b(คัดลอก|Copy|copy)\b/g, '').trim();
+            if (rawTitle.length > 2 && !rawTitle.includes('THB') && !/^2\d{5}/.test(rawTitle)) {
                 productName = rawTitle.replace(/^--\s*/, '').replace(/\s*--$/, '').trim();
             }
         }
