@@ -309,7 +309,6 @@ function parseOrderContainer(container) {
 
     // 7. Product Items Extraction
     // In BigSeller order tables, column 1 (index 1) is ALWAYS the Product Details column!
-    const cells = Array.from(container.querySelectorAll('td, .el-table__cell'));
     let productCell = null;
 
     const imgs = Array.from(container.querySelectorAll('img')).filter(im => {
@@ -607,11 +606,21 @@ async function sendOrdersToSupabase(orders) {
     }
 }
 
-// Run on page load
+// Run on page load and ensure button persists on SPA page changes
+detectAndSaveSession();
+injectBigSellerFloatButton();
+
 setTimeout(() => {
     detectAndSaveSession();
     injectBigSellerFloatButton();
-}, 1500);
+}, 1200);
+
+// SPA Navigation Guard: Ensure floating button is re-injected if page re-renders
+setInterval(() => {
+    if (!document.getElementById('sgyver-quick-sync-btn')) {
+        injectBigSellerFloatButton();
+    }
+}, 2000);
 
 // Auto-Sync Watcher: Automatically detects new orders every 30s and sends to S-Gyver
 let lastSyncSignature = '';
