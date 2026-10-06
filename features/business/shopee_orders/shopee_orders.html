@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S-Gyver Shopee Order & Shipping Studio – ระบบจัดการออเดอร์ & ใบปะหน้าพัสดุ</title>
+    <meta name="description" content="ระบบนำเข้าไฟล์ Excel คำสั่งซื้อจาก Shopee จัดการสต็อก และพิมพ์ใบปะหน้าพัสดุบาร์โค้ดความร้อน 100x150mm สำหรับ S-Gyver">
+
+    <!-- Bootstrap 5 CSS, Bootstrap Icons & Fonts -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500;600;700&family=Kanit:wght@300;400;500;600;700;800&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- External Libraries: SheetJS (Excel Parser) & JsBarcode -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+
+    <!-- Shared Modules & Supabase -->
+    <link rel="stylesheet" href="../../../assets/css/toast_shared.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../../assets/js/supabaseClient.js"></script>
+    <script src="../../../assets/js/toast_shared.js"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="shopee_orders.css">
+</head>
+<body>
+
+    <!-- Ambient Cyber Glows -->
+    <div class="bg-glow-container no-print">
+        <div class="bg-glow-1"></div>
+        <div class="bg-glow-2"></div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         TOP NAVIGATION BAR
+         ══════════════════════════════════════════════════════════════ -->
+    <header class="so-topbar no-print">
+        <div class="d-flex align-items-center gap-3">
+            <a href="../../../my_workspace.html" class="btn btn-sm btn-outline-secondary text-white border-0 me-1" title="กลับหน้ากระดานส่วนตัว">
+                <i class="bi bi-arrow-left fs-5"></i>
+            </a>
+            <div class="so-brand">
+                <div class="so-brand-icon">
+                    <i class="bi bi-shop-window"></i>
+                </div>
+                <div class="so-brand-text">
+                    <h1>OMNICHANNEL SHIPPING STUDIO (5 ร้านค้า)</h1>
+                    <span>รวมออเดอร์ Shopee (3 ร้าน) + TikTok (1 ร้าน) + Lazada (1 ร้าน) จาก BigSeller พิมพ์ใบปะหน้า 100x150 mm</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="so-topbar-actions">
+            <button class="btn-cyber btn-cyber-outline text-warning border-warning" onclick="loadShopeeDemoData()" title="ทดลองโหลดข้อมูลตัวอย่าง 5 ร้านค้าทันที">
+                <i class="bi bi-lightbulb-fill"></i> โหลดตัวอย่าง 5 ร้าน (Demo)
+            </button>
+            <button class="btn-cyber btn-cyber-outline text-danger border-danger" onclick="clearAllOrders()" title="ล้างข้อมูลออเดอร์ทั้งหมด">
+                <i class="bi bi-trash3"></i> ล้างรายการ
+            </button>
+            <button class="btn-cyber btn-cyber-primary" onclick="printSelectedShippingLabels()" id="btn-print-batch" title="พิมพ์ใบปะหน้าพัสดุของรายการที่เลือก">
+                <i class="bi bi-printer-fill"></i> พิมพ์ใบปะหน้า (<span id="selected-count-badge">0</span>)
+            </button>
+        </div>
+    </header>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         MAIN CONTENT CONTAINER
+         ══════════════════════════════════════════════════════════════ -->
+    <main class="so-container no-print">
+
+        <!-- 1. EXCEL DROPZONE & HELP GUIDE -->
+        <div class="so-dropzone-wrap mb-4">
+            <div class="so-dropzone" id="shopee-dropzone" onclick="document.getElementById('excel-file-input').click()">
+                <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" multiple style="display: none;" onchange="handleExcelFileUpload(event)">
+                <div class="dropzone-icon">
+                    <i class="bi bi-file-earmark-excel-fill text-success"></i>
+                </div>
+                <div class="dropzone-content">
+                    <h3>ลากไฟล์ Excel ทั้ง 2 บัญชีจาก BigSeller มาวางที่นี่พร้อมกันได้เลย (Multi-files)</h3>
+                    <p>รองรับไฟล์ Export จาก BigSeller (บัญชี 1 + บัญชี 2) หรือไฟล์ตรงจาก Shopee, TikTok Shop, Lazada (ระบบจะผสาน 5 ร้านให้อัตโนมัติ)</p>
+                </div>
+                <div class="dropzone-action">
+                    <span class="btn btn-sm btn-outline-info rounded-pill px-3">
+                        <i class="bi bi-cloud-arrow-up-fill me-1"></i> เลือกไฟล์ Excel
+                    </span>
+                </div>
+            </div>
+
+            <!-- Quick Step Instruction Pill -->
+            <div class="so-shopee-guide mt-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <i class="bi bi-info-circle-fill text-warning me-2"></i>
+                    <strong>วิธีใช้งาน:</strong> Export ไฟล์จาก BigSeller ทั้ง 2 บัญชี ➔ ลากไฟล์มาวางพร้อมกัน ระบบจะรวมร่างออเดอร์ของ <strong>Shopee 3 ร้าน + TikTok 1 ร้าน + Lazada 1 ร้าน</strong> ให้อัตโนมัติ
+                </div>
+                <div class="d-flex gap-2">
+                    <span class="badge bg-warning text-dark"><i class="bi bi-shop me-1"></i>Shopee (3 ร้าน)</span>
+                    <span class="badge bg-dark border border-secondary text-white"><i class="bi bi-tiktok me-1"></i>TikTok (1 ร้าน)</span>
+                    <span class="badge bg-primary text-white"><i class="bi bi-bag-heart-fill me-1"></i>Lazada (1 ร้าน)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. SUMMARY STAT CARDS -->
+        <div class="stats-cards-grid mb-4">
+            <div class="stat-card">
+                <div class="stat-icon orange"><i class="bi bi-receipt-cutoff"></i></div>
+                <div class="stat-info">
+                    <h4>คำสั่งซื้อรวม (5 ร้าน)</h4>
+                    <div class="stat-value" id="stat-orders-count">0 <small style="font-size: 0.85rem; font-weight: normal; color: #94a3b8;">ออเดอร์</small></div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon emerald"><i class="bi bi-boxes"></i></div>
+                <div class="stat-info">
+                    <h4>จำนวนชิ้นที่ต้องแพ็ก</h4>
+                    <div class="stat-value" id="stat-items-count">0 <small style="font-size: 0.85rem; font-weight: normal; color: #94a3b8;">ชิ้น</small></div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon cyan"><i class="bi bi-truck"></i></div>
+                <div class="stat-info">
+                    <h4>ขนส่ง (Carrier)</h4>
+                    <div class="stat-value" id="stat-carrier-summary" style="font-size: 1.1rem; padding-top: 4px;">—</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon primary"><i class="bi bi-cash-stack"></i></div>
+                <div class="stat-info">
+                    <h4>ยอดเงินรวมทั้งหมด</h4>
+                    <div class="stat-value" id="stat-total-amount">0.00 ฿</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. CONTROLS BAR: SEARCH, CARRIER FILTER, STORE FILTER, PRINT SETTING -->
+        <div class="so-controls-bar mb-3">
+            <div class="d-flex align-items-center gap-2 flex-grow-1 flex-wrap">
+                <div class="search-box">
+                    <i class="bi bi-search"></i>
+                    <input type="text" id="filter-search" class="form-control" placeholder="ค้นหาเลขคำสั่งซื้อ, Tracking, ชื่อลูกค้า, หรือชื่อสินค้า..." oninput="applyFilters()">
+                </div>
+                <select id="filter-platform" class="form-select w-auto" onchange="applyFilters()">
+                    <option value="">ทุกแพลตฟอร์ม / ทุกร้าน (5 ร้านค้า)</option>
+                </select>
+                <select id="filter-carrier" class="form-select w-auto" onchange="applyFilters()">
+                    <option value="">ทุกขนส่ง (All Carriers)</option>
+                </select>
+                <select id="filter-print-size" class="form-select w-auto" onchange="changePrintPaperSize(this.value)">
+                    <option value="thermal">กระดาษความร้อน 100x150 mm (4x6 นิ้ว)</option>
+                    <option value="a4">กระดาษ A4 (4 ดวงต่อแผ่น)</option>
+                </select>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-sm btn-outline-secondary text-white" onclick="toggleSelectAll()">
+                    <i class="bi bi-check-all me-1"></i>เลือกทั้งหมด
+                </button>
+            </div>
+        </div>
+
+        <!-- 4. ORDERS DATA TABLE -->
+        <div class="table-responsive so-table-wrap">
+            <table class="table-glass">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;" class="text-center">
+                            <input type="checkbox" id="th-check-all" onchange="handleHeaderCheckAll(this.checked)">
+                        </th>
+                        <th style="width: 140px;">ร้านค้า / แพลตฟอร์ม</th>
+                        <th style="width: 150px;">เลขคำสั่งซื้อ</th>
+                        <th style="width: 140px;">ขนส่ง & Tracking</th>
+                        <th style="width: 210px;">ผู้รับ & ที่อยู่จัดส่ง</th>
+                        <th>รายการสินค้าในกล่อง</th>
+                        <th style="width: 70px;" class="text-center">จำนวน</th>
+                        <th style="width: 100px;" class="text-end">ยอดรวม</th>
+                        <th style="width: 140px;" class="text-center">จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody id="orders-tbody">
+                    <tr>
+                        <td colspan="9" class="text-center py-5 text-secondary">
+                            <i class="bi bi-file-earmark-arrow-up fs-1 d-block mb-3 text-muted"></i>
+                            ยังไม่มีข้อมูลคำสั่งซื้อ กรุณาลากไฟล์ Excel จาก BigSeller (บัญชี 1 + 2) มาวาง หรือกดปุ่ม <strong>"โหลดตัวอย่าง 5 ร้าน (Demo)"</strong> ด้านบน
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+    </main>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         5. PRINTABLE SHIPPING LABELS CANVAS (ONLY VISIBLE ON PRINT)
+         ══════════════════════════════════════════════════════════════ -->
+    <div id="print-labels-container" class="print-only">
+        <!-- Rendered dynamically by shopee_orders.js when printing -->
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         6. PREVIEW SINGLE LABEL MODAL
+         ══════════════════════════════════════════════════════════════ -->
+    <div class="modal fade no-print" id="labelPreviewModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 480px;">
+            <div class="modal-content bg-dark text-white border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-eye-fill text-info me-2"></i>ตัวอย่างใบปะหน้าพัสดุ (100x150 mm)
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3 d-flex justify-content-center bg-darker" style="background: #060911;">
+                    <div id="modal-label-render-target"></div>
+                </div>
+                <div class="modal-footer border-secondary justify-content-between">
+                    <button type="button" class="btn btn-outline-secondary text-white" data-bs-dismiss="modal">ปิด</button>
+                    <button type="button" class="btn btn-success" onclick="printSingleLabelFromModal()">
+                        <i class="bi bi-printer-fill me-1"></i> สั่งพิมพ์ทันที
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shopee Orders Logic -->
+    <script src="shopee_orders.js"></script>
+</body>
+</html>

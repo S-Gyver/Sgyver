@@ -1,0 +1,970 @@
+/**
+ * S-GYVER OMNICHANNEL ORDER & SHIPPING STUDIO
+ * Parse Multi-Store Excel Orders from BigSeller (Shopee x 3, TikTok x 1, Lazada x 1)
+ * Print 100x150mm Thermal Barcode Shipping Labels & Sync with Quotation Studio
+ */
+
+const STATE = {
+    orders: [],
+    selectedOrderIds: new Set(),
+    activeCarrierFilter: '',
+    activePlatformFilter: '',
+    searchKeyword: '',
+    paperSize: 'thermal' // 'thermal' (100x150mm) | 'a4'
+};
+
+const SHOP_INFO = {
+    name: 'S-Gyver Robotic & Education Studio',
+    phone: '081-234-5678',
+    address: 'อาคารเอสไกเวอร์ เลขที่ 123/45 ถนนนวัตกรรม แขวงทุ่งมหาเมฆ เขตสาทร กรุงเทพฯ 10120'
+};
+
+// ── 1. INITIALIZATION ────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    setupDragAndDrop();
+    loadSavedOrders();
+    loadOrdersFromSupabase();
+    setupSupabaseRealtime();
+});
+
+function setupDragAndDrop() {
+    const dropzone = document.getElementById('shopee-dropzone');
+    if (!dropzone) return;
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropzone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.classList.add('dragover');
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropzone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.classList.remove('dragover');
+        }, false);
+    });
+
+    dropzone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        if (files && files.length > 0) {
+            parseMultipleExcelFiles(files);
+        }
+    }, false);
+}
+
+function handleExcelFileUpload(event) {
+    const files = event.target.files;
+    if (files && files.length > 0) {
+        parseMultipleExcelFiles(files);
+    }
+}
+
+// ── 2. MULTI-FILE EXCEL PARSING (BIGSELLER / SHOPEE / TIKTOK / LAZADA) ────────
+async function parseMultipleExcelFiles(fileList) {
+    const files = Array.from(fileList);
+    let combinedRows = [];
+
+    for (const file of files) {
+        try {
+            const rows = await readExcelFileAsync(file);
+            combinedRows = combinedRows.concat(rows);
+        } catch (err) {
+            console.error('Error reading file:', file.name, err);
+        }
+    }
+
+    if (combinedRows.length === 0) {
+        alert('ไม่พบข้อมูลคำสั่งซื้อในไฟล์ Excel กรุณาตรวจสอบไฟล์');
+        return;
+    }
+
+    processOmnichannelRows(combinedRows, files.length);
+}
+
+function readExcelFileAsync(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const rawRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+                resolve(rawRows);
+            } catch (err) {
+                reject(err);
+            }
+        };
+        reader.onerror = reject;
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+function processOmnichannelRows(rows, fileCount = 1) {
+    const ordersMap = new Map();
+
+    rows.forEach(row => {
+        // 1. Order ID Detection (BigSeller, Shopee, TikTok, Lazada)
+        const orderId = String(
+            row['Order ID'] || row['หมายเลขคำสั่งซื้อ'] || row['Order No.'] || 
+            row['Order No'] || row['Package No.'] || row['หมายเลขอ้างอิงคำสั่งซื้อ'] || 
+            row['Order Number'] || row['Order ID (Main)'] || ''
+        ).trim();
+        if (!orderId) return;
+
+        // 2. Platform & Store Name Detection (BigSeller columns or raw detection)
+        let platform = 'Shopee';
+        let shopName = 'Shopee ร้านค้า';
+
+        const rawPlatform = String(row['Platform'] || row['แพลตฟอร์ม'] || row['Channel'] || '').toLowerCase();
+        const rawStore = String(
+            row['Store Name'] || row['Store'] || row['ชื่อร้านค้า'] || 
+            row['Shop'] || row['Shop Name'] || row['Account'] || ''
+        ).trim();
+
+        if (rawPlatform.includes('tiktok') || rawStore.toLowerCase().includes('tiktok')) {
+            platform = 'TikTok';
+            shopName = rawStore || 'TikTok Shop';
+        } else if (rawPlatform.includes('lazada') || rawStore.toLowerCase().includes('lazada')) {
+            platform = 'Lazada';
+            shopName = rawStore || 'Lazada Store';
+        } else if (rawPlatform.includes('shopee') || rawStore.toLowerCase().includes('shopee')) {
+            platform = 'Shopee';
+            shopName = rawStore || 'Shopee Store';
+        } else if (rawStore) {
+            shopName = rawStore;
+        }
+
+        // 3. Customer & Address Details
+        const recipientName = String(
+            row['ชื่อผู้รับ'] || row['Recipient Name'] || row['Consignee'] || 
+            row['ชื่อผู้ซื้อ'] || row['Customer Name'] || 'ลูกค้า'
+        ).trim();
+
+        const phone = String(
+            row['หมายเลขโทรศัพท์'] || row['เบอร์โทรศัพท์'] || row['Phone Number'] || 
+            row['Telephone'] || row['Phone'] || row['Mobile'] || ''
+        ).trim();
+
+        const address = String(
+            row['ที่อยู่ในการจัดส่ง'] || row['Delivery Address'] || row['ที่อยู่ผู้รับ'] || 
+            row['Shipping Address'] || row['Address'] || ''
+        ).trim();
+
+        const province = String(row['จังหวัด'] || row['Province'] || '').trim();
+        const district = String(row['เขต/อำเภอ'] || row['District'] || row['City'] || '').trim();
+        const zipcode = String(row['รหัสไปรษณีย์'] || row['Postal Code'] || row['Zipcode'] || row['Zip'] || '').trim();
+
+        // 4. Logistics & Carrier
+        const carrier = String(
+            row['ช่องทางการจัดส่ง'] || row['ตัวเลือกการจัดส่ง'] || row['Shipping Option'] || 
+            row['Shipping Method'] || row['Logistics Company'] || row['Carrier'] || 'Standard Delivery'
+        ).trim();
+
+        const tracking = String(
+            row['หมายเลขติดตามพัสดุ'] || row['Tracking Number'] || row['Tracking No.'] || 
+            row['หมายเลขพัสดุ'] || row['Waybill Number'] || orderId
+        ).trim();
+
+        // 5. Line Item Details
+        const productName = String(
+            row['ชื่อสินค้า'] || row['Product Name'] || row['Item Name'] || 
+            row['Title'] || row['Product Title'] || 'สินค้า'
+        ).trim();
+
+        const variation = String(
+            row['ชื่อตัวเลือก'] || row['Variation Name'] || row['ตัวเลือก'] || 
+            row['Variation'] || row['Specification'] || ''
+        ).trim();
+
+        const sku = String(
+            row['เลขอ้างอิง SKU'] || row['SKU Reference No.'] || row['SKU'] || 
+            row['Seller SKU'] || ''
+        ).trim();
+
+        const price = parseFloat(row['ราคาขาย'] || row['Deal Price'] || row['ราคา'] || row['Item Price'] || row['Price'] || 0);
+        const qty = parseInt(row['จำนวน'] || row['Quantity'] || row['Qty'] || 1, 10);
+        const total = parseFloat(row['ราคารวม'] || row['Total Amount'] || row['Subtotal'] || (price * qty));
+
+        if (!ordersMap.has(orderId)) {
+            ordersMap.set(orderId, {
+                orderId: orderId,
+                platform: platform,
+                shopName: shopName,
+                recipientName: recipientName,
+                phone: phone,
+                address: address,
+                province: province,
+                district: district,
+                zipcode: zipcode || extractZipcode(address),
+                carrier: normalizeCarrierName(carrier),
+                tracking: tracking,
+                totalAmount: 0,
+                totalItemsCount: 0,
+                items: []
+            });
+        }
+
+        const order = ordersMap.get(orderId);
+        order.items.push({
+            name: productName,
+            variation: variation,
+            sku: sku,
+            price: price,
+            qty: qty,
+            total: total
+        });
+        order.totalAmount += (price * qty);
+        order.totalItemsCount += qty;
+    });
+
+    const parsedList = Array.from(ordersMap.values());
+    if (parsedList.length === 0) {
+        alert('ไม่สามารถประมวลผลคำสั่งซื้อได้ กรุณาตรวจสอบไฟล์');
+        return;
+    }
+
+    STATE.orders = parsedList;
+    STATE.selectedOrderIds = new Set(parsedList.map(o => o.orderId));
+    saveOrdersToLocalStorage();
+    renderOrdersTable();
+    updateStats();
+    populatePlatformFilter();
+    populateCarrierFilter();
+
+    if (typeof showToast === 'function') {
+        const msg = fileCount > 1 
+            ? `ผสานข้อมูลจาก ${fileCount} ไฟล์เรียบร้อย รวม ${parsedList.length} ออเดอร์` 
+            : `อ่านคำสั่งซื้อสำเร็จทั้งหมด ${parsedList.length} ออเดอร์`;
+        showToast('success', 'นำเข้าสำเร็จ!', msg, 3500);
+    }
+}
+
+function extractZipcode(addressText) {
+    if (!addressText) return '';
+    const match = addressText.match(/\b\d{5}\b/);
+    return match ? match[0] : '';
+}
+
+function normalizeCarrierName(carrierRaw) {
+    const lower = carrierRaw.toLowerCase();
+    if (lower.includes('shopee') || lower.includes('spx')) return 'Shopee Xpress';
+    if (lower.includes('flash')) return 'Flash Express';
+    if (lower.includes('kerry') || lower.includes('kex')) return 'Kerry Express';
+    if (lower.includes('j&t') || lower.includes('jnt')) return 'J&T Express';
+    if (lower.includes('ems') || lower.includes('ไปรษณีย์')) return 'EMS Thailand Post';
+    if (lower.includes('ninja')) return 'Ninja Van';
+    if (lower.includes('lex') || lower.includes('lazada')) return 'Lazada Express (LEX)';
+    return carrierRaw || 'Standard Delivery';
+}
+
+function getCarrierClass(carrierName) {
+    const lower = carrierName.toLowerCase();
+    if (lower.includes('shopee') || lower.includes('spx')) return 'spx';
+    if (lower.includes('flash')) return 'flash';
+    if (lower.includes('kerry')) return 'kerry';
+    if (lower.includes('j&t') || lower.includes('jnt')) return 'jnt';
+    if (lower.includes('ems')) return 'ems';
+    return 'default';
+}
+
+function getPlatformIcon(platform) {
+    switch (platform) {
+        case 'Shopee': return '<i class="bi bi-shop me-1"></i>';
+        case 'TikTok': return '<i class="bi bi-tiktok me-1"></i>';
+        case 'Lazada': return '<i class="bi bi-bag-heart-fill me-1"></i>';
+        default: return '<i class="bi bi-box-seam me-1"></i>';
+    }
+}
+
+// ── 3. REALISTIC 5-STORE DEMO DATA (3 SHOPEE + 1 TIKTOK + 1 LAZADA) ──────────
+function loadShopeeDemoData() {
+    const demoOrders = [
+        // Store 1: Shopee (S-Gyver Official)
+        {
+            orderId: '261005SPX-01A',
+            platform: 'Shopee',
+            shopName: 'Shopee ร้าน 1 (Official)',
+            recipientName: 'คุณสมชาย พัฒนกิจ',
+            phone: '089-456-7890',
+            address: '88/12 หมู่บ้านศุภาลัยการ์เด้น ซอยรามคำแหง 24 แขวงหัวหมาก เขตบางกะปิ กรุงเทพฯ',
+            province: 'กรุงเทพมหานคร',
+            district: 'บางกะปิ',
+            zipcode: '10240',
+            carrier: 'Shopee Xpress',
+            tracking: 'TH261005SPX01A',
+            totalAmount: 3200,
+            totalItemsCount: 3,
+            items: [
+                { name: 'หุ่นยนต์แขนกล Arm Robot 4-DOF DIY Kit', variation: 'ครบชุดพร้อมบอร์ด ESP32', sku: 'ROBOT-4DOF-ESP32', price: 2900, qty: 1, total: 2900 },
+                { name: 'สายไฟจัมเปอร์แพ็ค 40 เส้น', variation: 'ตัวผู้-ตัวเมีย (M-F)', sku: 'WIRE-MF-40P', price: 150, qty: 2, total: 300 }
+            ]
+        },
+        // Store 2: Shopee (Gyver STEM Toys)
+        {
+            orderId: '261005SPX-02B',
+            platform: 'Shopee',
+            shopName: 'Shopee ร้าน 2 (STEM Toys)',
+            recipientName: 'คุณวราภรณ์ สดใส',
+            phone: '086-554-3321',
+            address: '15/4 หมู่ 3 ต.บางกระดี่ อ.บางขุนเทียน กรุงเทพฯ',
+            province: 'กรุงเทพมหานคร',
+            district: 'บางขุนเทียน',
+            zipcode: '10150',
+            carrier: 'Shopee Xpress',
+            tracking: 'TH261005SPX02B',
+            totalAmount: 1780,
+            totalItemsCount: 2,
+            items: [
+                { name: 'บอร์ดควบคุม ESP32 NodeMCU Type-C', variation: 'WiFi + Bluetooth 38 Pins', sku: 'ESP32-TYPC-38P', price: 890, qty: 2, total: 1780 }
+            ]
+        },
+        // Store 3: Shopee (Gyver Robotics Hub)
+        {
+            orderId: '261005FLS-03C',
+            platform: 'Shopee',
+            shopName: 'Shopee ร้าน 3 (Robotics Hub)',
+            recipientName: 'อ.ธีรภัทร ชาญวิทยา',
+            phone: '081-998-1122',
+            address: 'โรงเรียนสาธิตวิทยาคม 456 ถนนมิตรภาพ ต.ในเมือง อ.เมืองขอนแก่น จ.ขอนแก่น',
+            province: 'ขอนแก่น',
+            district: 'เมืองขอนแก่น',
+            zipcode: '40000',
+            carrier: 'Flash Express',
+            tracking: 'TH40000FLSH882',
+            totalAmount: 5800,
+            totalItemsCount: 3,
+            items: [
+                { name: 'ฐาน X-STEM Racing Lab ป้ายไม้พร้อมรางแข่ง', variation: 'รุ่นมาตรฐาน 3 เมตร', sku: 'STEM-RACE-01', price: 2000, qty: 2, total: 4000 },
+                { name: 'ชุดเซนเซอร์จับเวลา Laser Gate', variation: 'จอแสดงผลดิจิทัล LED', sku: 'SENS-GATE-LED', price: 1800, qty: 1, total: 1800 }
+            ]
+        },
+        // Store 4: TikTok Shop (S-Gyver TikTok Live)
+        {
+            orderId: 'TK261005-04D',
+            platform: 'TikTok',
+            shopName: 'TikTok Shop (Live Store)',
+            recipientName: 'คุณกิตติศักดิ์ พลอยงาม',
+            phone: '098-765-4321',
+            address: 'อาคารเอมไพร์ทาวเวอร์ ชั้น 28 ถนนสาทรใต้ ยานนาวา สาทร กรุงเทพฯ',
+            province: 'กรุงเทพมหานคร',
+            district: 'สาทร',
+            zipcode: '10120',
+            carrier: 'J&T Express',
+            tracking: '820991823712',
+            totalAmount: 1590,
+            totalItemsCount: 1,
+            items: [
+                { name: 'ชุดการเรียนรู้หุ่นยนต์เดินตามเส้น Line Tracking Robot', variation: 'กล่องของขวัญ + แบตเตอรี่', sku: 'ROBOT-LINE-01', price: 1590, qty: 1, total: 1590 }
+            ]
+        },
+        // Store 5: Lazada (Gyver Lazada Mall)
+        {
+            orderId: 'LZ261005-05E',
+            platform: 'Lazada',
+            shopName: 'Lazada (Official Store)',
+            recipientName: 'คุณนิติ บุญสมบัติ',
+            phone: '095-123-4567',
+            address: 'คอนโดไอดีโอ สุขุมวิท 93 ห้อง 1204 ถนนสุขุมวิท แขวงบางจาก เขตพระโขนง กรุงเทพฯ',
+            province: 'กรุงเทพมหานคร',
+            district: 'พระโขนง',
+            zipcode: '10260',
+            carrier: 'Lazada Express (LEX)',
+            tracking: 'LEXTH009182736',
+            totalAmount: 4200,
+            totalItemsCount: 2,
+            items: [
+                { name: 'ฐาน X-Farm to Craft ป้ายไม้ SPIM สวยงาม', variation: 'ไม้สักแท้เคลือบกันน้ำ', sku: 'FARM-SPIM-WOOD', price: 2100, qty: 2, total: 4200 }
+            ]
+        }
+    ];
+
+    STATE.orders = demoOrders;
+    STATE.selectedOrderIds = new Set(demoOrders.map(o => o.orderId));
+    saveOrdersToLocalStorage();
+    renderOrdersTable();
+    updateStats();
+    populatePlatformFilter();
+    populateCarrierFilter();
+
+    if (typeof showToast === 'function') {
+        showToast('info', 'โหลดตัวอย่าง 5 ร้านค้าแล้ว', 'ครบทั้ง Shopee (3 ร้าน), TikTok (1 ร้าน) และ Lazada (1 ร้าน) พร้อมสั่งพิมพ์ได้เลย', 3000);
+    }
+}
+
+function clearAllOrders() {
+    if (STATE.orders.length === 0) return;
+    if (!confirm('ต้องการล้างรายการคำสั่งซื้อทั้งหมดใช่หรือไม่?')) return;
+
+    STATE.orders = [];
+    STATE.selectedOrderIds.clear();
+    saveOrdersToLocalStorage();
+    renderOrdersTable();
+    updateStats();
+    populatePlatformFilter();
+    populateCarrierFilter();
+
+    if (typeof showToast === 'function') {
+        showToast('info', 'ล้างข้อมูลแล้ว', 'พร้อมสำหรับนำเข้าไฟล์ใหม่', 2000);
+    }
+}
+
+// ── 4. RENDER ORDERS TABLE & FILTERS ─────────────────────────────────────────
+function renderOrdersTable() {
+    const tbody = document.getElementById('orders-tbody');
+    if (!tbody) return;
+
+    const filtered = getFilteredOrders();
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="9" class="text-center py-5 text-secondary">
+                    <i class="bi bi-inbox fs-1 d-block mb-2 text-muted"></i>
+                    ไม่พบคำสั่งซื้อที่ตรงกับเงื่อนไขการค้นหา
+                </td>
+            </tr>
+        `;
+        updateSelectedCountBadge();
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(o => {
+        const isChecked = STATE.selectedOrderIds.has(o.orderId);
+        const carrierClass = getCarrierClass(o.carrier);
+        const platformClass = (o.platform || 'shopee').toLowerCase();
+
+        return `
+            <tr>
+                <td class="text-center">
+                    <input type="checkbox" class="order-checkbox" value="${o.orderId}" ${isChecked ? 'checked' : ''} onchange="toggleOrderSelection('${o.orderId}', this.checked)">
+                </td>
+                <td>
+                    <span class="badge-platform ${platformClass} mb-1">
+                        ${getPlatformIcon(o.platform)} ${escapeHtml(o.shopName)}
+                    </span>
+                </td>
+                <td>
+                    <div class="font-mono fw-bold text-white">${o.orderId}</div>
+                    <small class="text-secondary">${o.items.length} รายการ</small>
+                </td>
+                <td>
+                    <span class="badge-carrier ${carrierClass} mb-1">${escapeHtml(o.carrier)}</span>
+                    <div class="font-mono text-cyan" style="font-size: 0.8rem;">${escapeHtml(o.tracking)}</div>
+                </td>
+                <td>
+                    <div class="fw-bold text-white">${escapeHtml(o.recipientName)}</div>
+                    <div class="font-mono text-secondary" style="font-size: 0.78rem;">${escapeHtml(o.phone)}</div>
+                    <small class="text-secondary d-block text-truncate" style="max-width: 210px;" title="${escapeHtml(o.address)}">
+                        ${escapeHtml(o.address)}
+                    </small>
+                </td>
+                <td>
+                    <div class="order-items-snippet">
+                        ${o.items.map(it => `
+                            <div class="order-item-line">
+                                <strong>${escapeHtml(it.name)}</strong>
+                                ${it.variation ? `<span class="order-item-variation">${escapeHtml(it.variation)}</span>` : ''}
+                                <span class="badge bg-secondary-subtle text-white-50 ms-1">x${it.qty}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </td>
+                <td class="text-center font-mono fw-bold text-warning">${o.totalItemsCount}</td>
+                <td class="text-end font-mono fw-bold text-emerald">${Number(o.totalAmount).toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿</td>
+                <td class="text-center">
+                    <div class="d-flex justify-content-center gap-1">
+                        <button class="btn btn-sm btn-outline-info" title="ดูตัวอย่างใบปะหน้า 100x150mm" onclick="previewSingleLabel('${o.orderId}')">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning" title="สั่งพิมพ์เฉพาะใบนี้" onclick="printSingleLabel('${o.orderId}')">
+                            <i class="bi bi-printer"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-success" title="สร้างใบเสร็จใน Quotation Studio" onclick="createReceiptFromOrder('${o.orderId}')">
+                            <i class="bi bi-receipt"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    updateSelectedCountBadge();
+}
+
+function getFilteredOrders() {
+    return STATE.orders.filter(o => {
+        // Platform / Store filter
+        if (STATE.activePlatformFilter) {
+            const filterVal = STATE.activePlatformFilter;
+            if (o.platform !== filterVal && o.shopName !== filterVal) {
+                return false;
+            }
+        }
+
+        // Carrier filter
+        if (STATE.activeCarrierFilter && o.carrier !== STATE.activeCarrierFilter) {
+            return false;
+        }
+
+        // Search keyword
+        if (STATE.searchKeyword) {
+            const kw = STATE.searchKeyword.toLowerCase();
+            const matchId = o.orderId.toLowerCase().includes(kw);
+            const matchTracking = o.tracking.toLowerCase().includes(kw);
+            const matchName = o.recipientName.toLowerCase().includes(kw);
+            const matchAddress = o.address.toLowerCase().includes(kw);
+            const matchShop = (o.shopName || '').toLowerCase().includes(kw);
+            const matchItem = o.items.some(it => it.name.toLowerCase().includes(kw) || (it.variation && it.variation.toLowerCase().includes(kw)));
+            if (!matchId && !matchTracking && !matchName && !matchAddress && !matchShop && !matchItem) {
+                return false;
+            }
+        }
+
+        return true;
+    });
+}
+
+function applyFilters() {
+    const searchInput = document.getElementById('filter-search');
+    const platformSelect = document.getElementById('filter-platform');
+    const carrierSelect = document.getElementById('filter-carrier');
+
+    STATE.searchKeyword = (searchInput?.value || '').trim();
+    STATE.activePlatformFilter = platformSelect?.value || '';
+    STATE.activeCarrierFilter = carrierSelect?.value || '';
+
+    renderOrdersTable();
+}
+
+function populatePlatformFilter() {
+    const select = document.getElementById('filter-platform');
+    if (!select) return;
+
+    const shops = [...new Set(STATE.orders.map(o => o.shopName))];
+    const platforms = [...new Set(STATE.orders.map(o => o.platform))];
+
+    let html = '<option value="">ทุกแพลตฟอร์ม / ทุกร้าน (5 ร้านค้า)</option>';
+    if (platforms.length > 1) {
+        html += '<optgroup label="แยกตามแพลตฟอร์ม">';
+        platforms.forEach(p => {
+            html += `<option value="${p}" ${STATE.activePlatformFilter === p ? 'selected' : ''}>${p}</option>`;
+        });
+        html += '</optgroup>';
+    }
+    if (shops.length > 0) {
+        html += '<optgroup label="แยกตามร้านค้า">';
+        shops.forEach(s => {
+            html += `<option value="${s}" ${STATE.activePlatformFilter === s ? 'selected' : ''}>${s}</option>`;
+        });
+        html += '</optgroup>';
+    }
+    select.innerHTML = html;
+}
+
+function populateCarrierFilter() {
+    const select = document.getElementById('filter-carrier');
+    if (!select) return;
+
+    const carriers = [...new Set(STATE.orders.map(o => o.carrier))];
+    select.innerHTML = '<option value="">ทุกขนส่ง (All Carriers)</option>' + carriers.map(c => `
+        <option value="${c}" ${STATE.activeCarrierFilter === c ? 'selected' : ''}>${c}</option>
+    `).join('');
+}
+
+function updateStats() {
+    const count = STATE.orders.length;
+    const totalItems = STATE.orders.reduce((sum, o) => sum + (o.totalItemsCount || 0), 0);
+    const totalAmount = STATE.orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+    const carriers = [...new Set(STATE.orders.map(o => o.carrier))];
+
+    setText('stat-orders-count', count);
+    setText('stat-items-count', totalItems);
+    setText('stat-total-amount', Number(totalAmount).toLocaleString('th-TH', { minimumFractionDigits: 2 }) + ' ฿');
+    setText('stat-carrier-summary', carriers.length > 0 ? carriers.join(', ') : '—');
+}
+
+// ── 5. SELECTION LOGIC ───────────────────────────────────────────────────────
+function toggleOrderSelection(orderId, checked) {
+    if (checked) {
+        STATE.selectedOrderIds.add(orderId);
+    } else {
+        STATE.selectedOrderIds.delete(orderId);
+    }
+    updateSelectedCountBadge();
+}
+
+function handleHeaderCheckAll(checked) {
+    const filtered = getFilteredOrders();
+    filtered.forEach(o => {
+        if (checked) {
+            STATE.selectedOrderIds.add(o.orderId);
+        } else {
+            STATE.selectedOrderIds.delete(o.orderId);
+        }
+    });
+    renderOrdersTable();
+}
+
+function toggleSelectAll() {
+    const allIds = STATE.orders.map(o => o.orderId);
+    if (STATE.selectedOrderIds.size === allIds.length) {
+        STATE.selectedOrderIds.clear();
+    } else {
+        STATE.selectedOrderIds = new Set(allIds);
+    }
+    renderOrdersTable();
+}
+
+function updateSelectedCountBadge() {
+    const badge = document.getElementById('selected-count-badge');
+    if (badge) badge.textContent = STATE.selectedOrderIds.size;
+
+    const thCheck = document.getElementById('th-check-all');
+    if (thCheck) {
+        const filtered = getFilteredOrders();
+        thCheck.checked = filtered.length > 0 && filtered.every(o => STATE.selectedOrderIds.has(o.orderId));
+    }
+}
+
+// ── 6. THERMAL 100x150 mm SHIPPING LABEL GENERATOR & PRINTING ───────────────
+function buildShippingLabelHtml(order) {
+    const barcodeId = `barcode-${order.orderId.replace(/[^a-zA-Z0-9]/g, '_')}`;
+
+    return `
+        <div class="thermal-shipping-label">
+            <!-- Header: Carrier Logo, Store Name & Order ID -->
+            <div class="label-header">
+                <div>
+                    <div class="label-carrier-name">${escapeHtml(order.carrier)}</div>
+                    <small style="font-size: 8pt; color: #333; font-weight: bold;">
+                        ${escapeHtml(order.shopName || order.platform || 'E-Commerce')}
+                    </small>
+                </div>
+                <div class="label-order-id-box">
+                    <div><strong>ORDER ID:</strong></div>
+                    <div>${escapeHtml(order.orderId)}</div>
+                </div>
+            </div>
+
+            <!-- Barcode & Tracking Number -->
+            <div class="label-barcode-section">
+                <svg id="${barcodeId}" class="label-barcode-svg"></svg>
+                <div class="label-tracking-code">${escapeHtml(order.tracking)}</div>
+            </div>
+
+            <!-- Recipient & Routing Box -->
+            <div class="label-recipient-section">
+                <div class="label-recipient-info">
+                    <div class="label-section-title">ผู้รับ (RECIPIENT):</div>
+                    <div class="label-recipient-name">${escapeHtml(order.recipientName)}</div>
+                    <div class="label-recipient-phone">โทร: ${escapeHtml(order.phone)}</div>
+                    <div class="label-recipient-addr">${escapeHtml(order.address)}</div>
+                </div>
+                <div class="label-zipcode-badge">
+                    ${escapeHtml(order.zipcode || '—')}
+                </div>
+            </div>
+
+            <!-- Sender Information -->
+            <div class="label-sender-section">
+                <div><strong>ผู้ส่ง (SENDER):</strong> ${escapeHtml(SHOP_INFO.name)} (${escapeHtml(SHOP_INFO.phone)})</div>
+                <div>${escapeHtml(SHOP_INFO.address)}</div>
+            </div>
+
+            <!-- Packing Checklist (Items in Parcel) -->
+            <div class="label-packing-section">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span style="font-weight: 700; font-size: 8pt;">รายการสินค้าในกล่อง (PACKING CHECKLIST)</span>
+                    <span style="font-size: 7.5pt; font-family: monospace;">รวม: ${order.totalItemsCount} ชิ้น</span>
+                </div>
+                <table class="label-packing-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 20px;">[✓]</th>
+                            <th>ชื่อสินค้า / รายละเอียด</th>
+                            <th style="width: 40px; text-align: center;">จำนวน</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${order.items.map((it, idx) => `
+                            <tr>
+                                <td style="text-align: center;">☐</td>
+                                <td>
+                                    <strong>${idx + 1}. ${escapeHtml(it.name)}</strong>
+                                    ${it.variation ? `<br><small style="color: #444;">ตัวเลือก: ${escapeHtml(it.variation)}</small>` : ''}
+                                </td>
+                                <td style="text-align: center; font-weight: bold; font-size: 9pt;">x${it.qty}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+}
+
+function renderBarcodesForContainer(containerElement) {
+    if (!containerElement || !window.JsBarcode) return;
+    const svgs = containerElement.querySelectorAll('svg[id^="barcode-"]');
+    svgs.forEach(svg => {
+        const orderIdClean = svg.id.replace('barcode-', '');
+        const order = STATE.orders.find(o => o.orderId.replace(/[^a-zA-Z0-9]/g, '_') === orderIdClean);
+        if (order && order.tracking) {
+            try {
+                JsBarcode(svg, order.tracking, {
+                    format: 'CODE128',
+                    width: 2,
+                    height: 55,
+                    displayValue: false,
+                    margin: 0
+                });
+            } catch (e) {
+                console.warn('Barcode render error for:', order.tracking, e);
+            }
+        }
+    });
+}
+
+// ── 7. PREVIEW & PRINT ACTIONS ───────────────────────────────────────────────
+let activeModalOrderId = null;
+
+function previewSingleLabel(orderId) {
+    const order = STATE.orders.find(o => o.orderId === orderId);
+    if (!order) return;
+
+    activeModalOrderId = orderId;
+    const target = document.getElementById('modal-label-render-target');
+    if (!target) return;
+
+    target.innerHTML = buildShippingLabelHtml(order);
+    renderBarcodesForContainer(target);
+
+    const modalEl = document.getElementById('labelPreviewModal');
+    if (modalEl && window.bootstrap) {
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+}
+
+function printSingleLabelFromModal() {
+    if (!activeModalOrderId) return;
+    printSingleLabel(activeModalOrderId);
+}
+
+function printSingleLabel(orderId) {
+    const order = STATE.orders.find(o => o.orderId === orderId);
+    if (!order) return;
+
+    const printContainer = document.getElementById('print-labels-container');
+    if (!printContainer) return;
+
+    printContainer.innerHTML = buildShippingLabelHtml(order);
+    renderBarcodesForContainer(printContainer);
+
+    setTimeout(() => {
+        window.print();
+    }, 200);
+}
+
+function printSelectedShippingLabels() {
+    if (STATE.selectedOrderIds.size === 0) {
+        alert('กรุณาติ๊กเลือกคำสั่งซื้อที่ต้องการพิมพ์ใบปะหน้าอย่างน้อย 1 รายการ');
+        return;
+    }
+
+    const selectedOrders = STATE.orders.filter(o => STATE.selectedOrderIds.has(o.orderId));
+    const printContainer = document.getElementById('print-labels-container');
+    if (!printContainer) return;
+
+    printContainer.innerHTML = selectedOrders.map(o => buildShippingLabelHtml(o)).join('');
+    renderBarcodesForContainer(printContainer);
+
+    setTimeout(() => {
+        window.print();
+    }, 250);
+}
+
+function changePrintPaperSize(size) {
+    STATE.paperSize = size;
+    if (typeof showToast === 'function') {
+        const text = size === 'thermal' ? 'กระดาษความร้อน 100x150 mm (4x6")' : 'กระดาษขนาด A4';
+        showToast('info', 'เปลี่ยนขนาดกระดาษแล้ว', text, 2000);
+    }
+}
+
+// ── 8. INTEGRATION WITH QUOTATION & RECEIPT STUDIO ──────────────────────────
+function createReceiptFromOrder(orderId) {
+    const order = STATE.orders.find(o => o.orderId === orderId);
+    if (!order) return;
+
+    const receiptData = {
+        docType: 'ใบเสร็จรับเงิน (Receipt)',
+        docNo: `RC-${order.orderId}`,
+        date: new Date().toISOString().split('T')[0],
+        status: 'APPROVED',
+        projectTitle: `คำสั่งซื้อ ${order.shopName || order.platform} เลขที่ ${order.orderId}`,
+        client: {
+            name: order.recipientName,
+            contactPerson: order.recipientName,
+            phone: order.phone,
+            address: order.address
+        },
+        items: order.items.map(it => ({
+            name: it.name,
+            desc: it.variation ? `ตัวเลือก: ${it.variation}` : '',
+            unit: 'ชิ้น',
+            qty: it.qty,
+            price: it.price
+        })),
+        notes: `คำสั่งซื้อผ่าน ${order.platform} (${order.shopName}) ขนส่ง: ${order.carrier} เลขพัสดุ: ${order.tracking}`
+    };
+
+    localStorage.setItem('sgyver_prefill_quotation', JSON.stringify(receiptData));
+
+    if (confirm(`ต้องการเปิด Quotation Studio เพื่อออกใบเสร็จรับเงินสำหรับคำสั่งซื้อ ${order.orderId} หรือไม่?`)) {
+        window.location.href = '../quotation/quotation.html?from_shopee=1';
+    }
+}
+
+// ── 9. STORAGE HELPERS ──────────────────────────────────────────────────────
+function saveOrdersToLocalStorage() {
+    try {
+        localStorage.setItem('sgyver_shopee_orders', JSON.stringify(STATE.orders));
+    } catch (e) {}
+}
+
+function loadSavedOrders() {
+    try {
+        const raw = localStorage.getItem('sgyver_shopee_orders');
+        if (raw) {
+            const list = JSON.parse(raw);
+            if (Array.isArray(list) && list.length > 0) {
+                STATE.orders = list;
+                STATE.selectedOrderIds = new Set(list.map(o => o.orderId));
+                renderOrdersTable();
+                updateStats();
+                populatePlatformFilter();
+                populateCarrierFilter();
+            }
+        }
+    } catch (e) {}
+}
+
+function setText(id, text) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+// ── 10. SUPABASE CLOUD SYNC & REALTIME (POWERED BY N8N) ─────────────────────
+async function loadOrdersFromSupabase() {
+    if (!window.supabaseClient) return;
+
+    try {
+        const { data, error } = await window.supabaseClient
+            .from('ecommerce_orders')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (!error && Array.isArray(data) && data.length > 0) {
+            const cloudOrders = data.map(row => ({
+                orderId: row.order_id,
+                platform: row.platform || 'Shopee',
+                shopName: row.shop_name || 'ร้านค้า',
+                recipientName: row.recipient_name,
+                phone: row.phone,
+                address: row.address,
+                province: row.province,
+                district: row.district,
+                zipcode: row.zipcode,
+                carrier: row.carrier || 'Standard Delivery',
+                tracking: row.tracking_number || row.order_id,
+                totalAmount: parseFloat(row.total_amount) || 0,
+                totalItemsCount: parseInt(row.total_items, 10) || 1,
+                items: Array.isArray(row.items) ? row.items : []
+            }));
+
+            // Merge with local orders
+            const map = new Map();
+            cloudOrders.forEach(o => map.set(o.orderId, o));
+            STATE.orders.forEach(o => {
+                if (!map.has(o.orderId)) map.set(o.orderId, o);
+            });
+
+            STATE.orders = Array.from(map.values());
+            STATE.selectedOrderIds = new Set(STATE.orders.map(o => o.orderId));
+            saveOrdersToLocalStorage();
+            renderOrdersTable();
+            updateStats();
+            populatePlatformFilter();
+            populateCarrierFilter();
+
+            console.log('[Supabase] Loaded orders from Cloud / n8n:', cloudOrders.length);
+        }
+    } catch (e) {
+        console.warn('[Supabase load exception]:', e);
+    }
+}
+
+function setupSupabaseRealtime() {
+    if (!window.supabaseClient) return;
+
+    try {
+        window.supabaseClient
+            .channel('ecommerce_orders_live')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ecommerce_orders' }, payload => {
+                console.log('[Supabase Realtime] New order received from n8n:', payload.new);
+                loadOrdersFromSupabase();
+                if (typeof showToast === 'function') {
+                    showToast('success', 'มีออเดอร์ใหม่เข้ามา!', `ออเดอร์ ${payload.new.order_id} จาก ${payload.new.shop_name} พร้อมพิมพ์แล้ว`, 4000);
+                }
+            })
+            .subscribe();
+    } catch (e) {
+        console.warn('[Supabase Realtime exception]:', e);
+    }
+}
+
+async function syncOrdersToSupabase(orders) {
+    if (!window.supabaseClient || !orders || orders.length === 0) return;
+
+    try {
+        const payload = orders.map(o => ({
+            order_id: o.orderId,
+            platform: o.platform,
+            shop_name: o.shopName,
+            recipient_name: o.recipientName,
+            phone: o.phone,
+            address: o.address,
+            province: o.province,
+            district: o.district,
+            zipcode: o.zipcode,
+            carrier: o.carrier,
+            tracking_number: o.tracking,
+            total_items: o.totalItemsCount,
+            total_amount: o.totalAmount,
+            items: o.items,
+            status: 'READY_TO_SHIP',
+            updated_at: new Date().toISOString()
+        }));
+
+        await window.supabaseClient.from('ecommerce_orders').upsert(payload, { onConflict: 'order_id' });
+    } catch (e) {
+        console.warn('[Supabase sync exception]:', e);
+    }
+}

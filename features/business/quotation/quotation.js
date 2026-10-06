@@ -337,6 +337,23 @@ document.addEventListener('DOMContentLoaded', () => {
         loadQuotationById(quoteId);
     }
 
+    // Check if coming from Shopee Orders with prefill data
+    if (urlParams.get('from_shopee')) {
+        try {
+            const rawPrefill = localStorage.getItem('sgyver_prefill_quotation');
+            if (rawPrefill) {
+                const prefillData = JSON.parse(rawPrefill);
+                Object.assign(STATE.quotation, prefillData);
+                populateFormFromState();
+                recalculateFinancials();
+                if (typeof showToast === 'function') {
+                    showToast('success', 'ดึงข้อมูลคำสั่งซื้อ Shopee แล้ว', `สร้างใบเสร็จสำหรับ ${prefillData.docNo} เรียบร้อย`, 2500);
+                }
+                localStorage.removeItem('sgyver_prefill_quotation');
+            }
+        } catch (e) {}
+    }
+
     // Auto-fit A4 preview to fit nicely inside the narrowed preview pane
     setTimeout(fitZoomToPreviewPane, 150);
     window.addEventListener('resize', fitZoomToPreviewPane);
@@ -865,9 +882,12 @@ async function saveQuotation() {
     const q = STATE.quotation;
     q.updatedAt = new Date().toISOString();
 
-    let saved = false;
+    let cloudSaved = false;
 
-    // 1. Try Supabase
+    // 1. Always save to LocalStorage first (instant & reliable)
+    saveToLocalStorage(q);
+
+    // 2. Try Supabase Cloud
     if (window.supabaseClient) {
         try {
             const payload = {
@@ -899,21 +919,28 @@ async function saveQuotation() {
                 .upsert([payload], { onConflict: 'doc_no' });
 
             if (!error) {
-                saved = true;
-                console.log('[Supabase] Saved successfully:', q.docNo);
+                cloudSaved = true;
+                console.log('[Supabase] Saved successfully to Cloud:', q.docNo);
+            } else {
+                console.warn('[Supabase Save Notice]:', error.message || error);
             }
         } catch (e) {
             console.warn('[Supabase save exception]:', e);
         }
     }
 
-    // 2. Always sync to LocalStorage
-    saveToLocalStorage(q);
-
-    if (typeof showToast === 'function') {
-        showToast('success', 'บันทึกสำเร็จ', `${q.docType} ${q.docNo} บันทึกเรียบร้อยแล้ว`, 2500);
+    if (cloudSaved) {
+        if (typeof showToast === 'function') {
+            showToast('success', 'บันทึกสำเร็จ (Cloud + ในเครื่อง)', `${q.docType} ${q.docNo} บันทึกออนไลน์และในเครื่องแล้ว`, 2500);
+        } else {
+            alert(`บันทึก ${q.docType} ${q.docNo} บน Cloud และในเครื่องเรียบร้อย`);
+        }
     } else {
-        alert(`บันทึก ${q.docType} ${q.docNo} เรียบร้อยแล้ว`);
+        if (typeof showToast === 'function') {
+            showToast('info', 'บันทึกในเครื่องแล้ว (LocalStorage)', `${q.docType} ${q.docNo} บันทึกในเครื่องเรียบร้อย (ยังไม่ได้สร้างตารางใน Cloud)`, 3000);
+        } else {
+            alert(`บันทึก ${q.docType} ${q.docNo} ในเครื่องเรียบร้อย (LocalStorage)`);
+        }
     }
 
     loadQuotationsFromStorage();
@@ -942,7 +969,14 @@ function getLocalStorageQuotations() {
 async function loadQuotationsFromStorage() {
     let list = [];
 
-    // Try Supabase first
+    // 1. Load LocalStorage first for instant rendering
+    const localList = getLocalStorageQuotations();
+    list = [...localList];
+    STATE.quotationsList = list;
+    renderQuotationsListTable();
+    updateDashboardStats();
+
+    // 2. Fetch and merge from Supabase if online and available
     if (window.supabaseClient) {
         try {
             const { data, error } = await window.supabaseClient
@@ -950,23 +984,23 @@ async function loadQuotationsFromStorage() {
                 .select('*')
                 .order('updated_at', { ascending: false });
 
-            if (!error && data && data.length > 0) {
-                list = data.map(row => ({
-                    docType: 'ใบเสร็จรับเงิน (Receipt)',
-                    templateStyle: 'terracotta',
+            if (!error && Array.isArray(data) && data.length > 0) {
+                const remoteList = data.map(row => ({
+                    docType: row.doc_type || 'ใบเสนอราคา (Quotation)',
+                    templateStyle: row.template_style || 'terracotta',
                     docNo: row.doc_no,
                     date: row.date,
                     validUntil: row.valid_until,
-                    status: row.status,
+                    status: row.status || 'DRAFT',
                     projectTitle: row.project_title,
                     client: row.client_data || { name: row.client_name },
-                    seller: row.seller_data,
+                    seller: row.seller_data || {},
                     items: row.items || [],
-                    subtotal: row.subtotal,
-                    discountAmount: row.discount_amount,
-                    vatAmount: row.vat_amount,
-                    withholdingTaxAmount: row.wht_amount,
-                    grandTotal: row.grand_total,
+                    subtotal: parseFloat(row.subtotal) || 0,
+                    discountAmount: parseFloat(row.discount_amount) || 0,
+                    vatAmount: parseFloat(row.vat_amount) || 0,
+                    withholdingTaxAmount: parseFloat(row.wht_amount) || 0,
+                    grandTotal: parseFloat(row.grand_total) || 0,
                     bahtText: row.baht_text,
                     paymentTerms: row.payment_terms,
                     bankAccount: row.bank_account,
@@ -975,19 +1009,26 @@ async function loadQuotationsFromStorage() {
                     clientSignName: row.client_sign_name,
                     updatedAt: row.updated_at
                 }));
+
+                // Merge remote & local by docNo
+                const map = new Map();
+                remoteList.forEach(item => map.set(item.docNo, item));
+                localList.forEach(item => {
+                    if (!map.has(item.docNo)) {
+                        map.set(item.docNo, item);
+                    }
+                });
+
+                STATE.quotationsList = Array.from(map.values());
+                renderQuotationsListTable();
+                updateDashboardStats();
+            } else if (error) {
+                console.warn('[Supabase load info]:', error.message || error);
             }
         } catch (e) {
-            console.warn('[Supabase load error]:', e);
+            console.warn('[Supabase load exception]:', e);
         }
     }
-
-    if (list.length === 0) {
-        list = getLocalStorageQuotations();
-    }
-
-    STATE.quotationsList = list;
-    renderQuotationsListTable();
-    updateDashboardStats();
 }
 
 function renderQuotationsListTable() {
@@ -1042,13 +1083,13 @@ function renderQuotationsListTable() {
 }
 
 function updateDashboardStats() {
-    const list = STATE.quotationsList;
+    const list = STATE.quotationsList || [];
     const totalCount = list.length;
     const approvedList = list.filter(q => q.status === 'APPROVED');
     const approvedCount = approvedList.length;
 
-    const totalOfferedValue = list.reduce((sum, q) => sum + (q.grandTotal || 0), 0);
-    const totalApprovedValue = approvedList.reduce((sum, q) => sum + (q.grandTotal || 0), 0);
+    const totalOfferedValue = list.reduce((sum, q) => sum + (parseFloat(q.grandTotal) || 0), 0);
+    const totalApprovedValue = approvedList.reduce((sum, q) => sum + (parseFloat(q.grandTotal) || 0), 0);
 
     setText('stat-total-count', totalCount);
     setText('stat-total-value', formatCurrencySuffix(totalOfferedValue));
@@ -1129,6 +1170,7 @@ function copyClientApprovalLink(docNo) {
 // ── 10. TABS & UI HELPERS ───────────────────────────────────────────────────
 function switchTab(tabName) {
     STATE.currentTab = tabName;
+    const editorLayout = document.getElementById('editor-layout');
     const editorPane = document.getElementById('editor-pane');
     const previewPane = document.getElementById('preview-pane');
     const listPane = document.getElementById('list-pane');
@@ -1137,15 +1179,17 @@ function switchTab(tabName) {
     const tabBtnList = document.getElementById('tab-btn-list');
 
     if (tabName === 'editor') {
+        if (editorLayout) editorLayout.style.display = 'flex';
         if (editorPane) editorPane.style.display = 'block';
         if (previewPane) previewPane.style.display = 'flex';
         if (listPane) listPane.style.display = 'none';
 
         if (tabBtnEditor) tabBtnEditor.classList.add('active');
         if (tabBtnList) tabBtnList.classList.remove('active');
+
+        setTimeout(fitZoomToPreviewPane, 50);
     } else {
-        if (editorPane) editorPane.style.display = 'none';
-        if (previewPane) previewPane.style.display = 'none';
+        if (editorLayout) editorLayout.style.display = 'none';
         if (listPane) listPane.style.display = 'block';
 
         if (tabBtnEditor) tabBtnEditor.classList.remove('active');

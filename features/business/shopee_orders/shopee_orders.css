@@ -1,0 +1,558 @@
+/* ══════════════════════════════════════════════════════════════
+   S-GYVER SHOPEE ORDER & SHIPPING STUDIO STYLES
+   ══════════════════════════════════════════════════════════════ */
+:root {
+    --bg-dark: #0b0f19;
+    --bg-card: rgba(19, 27, 46, 0.75);
+    --border-color: rgba(255, 255, 255, 0.09);
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --brand-primary: #3b82f6;
+    --brand-orange: #ee4d2d; /* Shopee Orange */
+    --brand-emerald: #10b981;
+    --brand-cyan: #06b6d4;
+    --brand-amber: #f59e0b;
+}
+
+body {
+    font-family: 'Kanit', sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-primary);
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+}
+
+/* Background Atmosphere Glows */
+.bg-glow-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+}
+.bg-glow-1 {
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(238, 77, 45, 0.08) 0%, transparent 70%);
+    top: -10%;
+    right: 5%;
+    filter: blur(80px);
+}
+.bg-glow-2 {
+    position: absolute;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 70%);
+    bottom: 5%;
+    left: 10%;
+    filter: blur(90px);
+}
+
+/* Top Navigation Bar */
+.so-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(11, 15, 25, 0.9);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border-color);
+    padding: 0.75rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+.so-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.so-brand-icon {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #ee4d2d, #ff6b4a);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(238, 77, 45, 0.35);
+}
+.so-brand-text h1 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin: 0;
+    color: #fff;
+}
+.so-brand-text span {
+    font-size: 0.76rem;
+    color: var(--text-secondary);
+    display: block;
+}
+
+.so-topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Cyber Buttons */
+.btn-cyber {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0.45rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    text-decoration: none;
+}
+.btn-cyber-primary {
+    background: linear-gradient(135deg, #ee4d2d, #dc2626);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(238, 77, 45, 0.35);
+}
+.btn-cyber-primary:hover {
+    color: #fff;
+    box-shadow: 0 6px 20px rgba(238, 77, 45, 0.5);
+    transform: translateY(-1px);
+}
+.btn-cyber-outline {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+.btn-cyber-outline:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-1px);
+}
+
+/* Main Container */
+.so-container {
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: 1.5rem;
+    position: relative;
+    z-index: 1;
+}
+
+/* 1. Dropzone */
+.so-dropzone {
+    border: 2px dashed rgba(238, 77, 45, 0.45);
+    background: rgba(238, 77, 45, 0.03);
+    border-radius: 14px;
+    padding: 2.2rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+.so-dropzone:hover, .so-dropzone.dragover {
+    border-color: #ee4d2d;
+    background: rgba(238, 77, 45, 0.08);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(238, 77, 45, 0.15);
+}
+.dropzone-icon i {
+    font-size: 3.2rem;
+}
+.dropzone-content h3 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 4px;
+}
+.dropzone-content p {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+.dropzone-action {
+    margin-left: auto;
+}
+.so-shopee-guide {
+    font-size: 0.82rem;
+    color: #cbd5e1;
+    background: rgba(255, 255, 255, 0.04);
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+/* 2. Stats Grid */
+.stats-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+.stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.15rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+}
+.stat-icon.orange  { background: rgba(238, 77, 45, 0.15); color: #ee4d2d; }
+.stat-icon.emerald { background: rgba(16, 185, 129, 0.15); color: var(--brand-emerald); }
+.stat-icon.cyan    { background: rgba(6, 182, 212, 0.15); color: var(--brand-cyan); }
+.stat-icon.primary { background: rgba(59, 130, 246, 0.15); color: var(--brand-primary); }
+
+.stat-info h4 {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    margin: 0 0 2px 0;
+    font-weight: 500;
+}
+.stat-info .stat-value {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #fff;
+    font-family: 'Fira Code', monospace;
+}
+
+/* 3. Controls Bar */
+.so-controls-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 10px 14px;
+}
+.search-box {
+    position: relative;
+    min-width: 320px;
+}
+.search-box i {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+}
+.search-box input {
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--border-color);
+    color: #fff;
+    border-radius: 8px;
+    padding-left: 36px;
+    font-size: 0.88rem;
+}
+.search-box input:focus {
+    background: rgba(0, 0, 0, 0.35);
+    border-color: var(--brand-orange);
+    color: #fff;
+    box-shadow: none;
+}
+.form-select {
+    background-color: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--border-color);
+    color: #fff;
+    font-size: 0.86rem;
+    border-radius: 8px;
+}
+.form-select:focus {
+    background-color: rgba(0, 0, 0, 0.35);
+    border-color: var(--brand-orange);
+    color: #fff;
+    box-shadow: none;
+}
+
+/* 4. Glass Table */
+.so-table-wrap {
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    overflow: hidden;
+}
+.table-glass {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+}
+.table-glass th {
+    background: rgba(255, 255, 255, 0.03);
+    padding: 12px 14px;
+    text-align: left;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+    border-bottom: 1px solid var(--border-color);
+}
+.table-glass td {
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    font-size: 0.86rem;
+    vertical-align: middle;
+}
+.table-glass tbody tr:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+/* Platform & Store Badges */
+.badge-platform {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.73rem;
+    font-weight: 700;
+}
+.badge-platform.shopee {
+    background: rgba(238, 77, 45, 0.15);
+    color: #ee4d2d;
+    border: 1px solid rgba(238, 77, 45, 0.35);
+}
+.badge-platform.tiktok {
+    background: rgba(254, 44, 85, 0.15);
+    color: #fe2c55;
+    border: 1px solid rgba(37, 244, 238, 0.35);
+}
+.badge-platform.lazada {
+    background: rgba(15, 20, 109, 0.35);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.4);
+}
+.badge-platform.other {
+    background: rgba(255, 255, 255, 0.1);
+    color: #cbd5e1;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Carrier Badges */
+.badge-carrier {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.74rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+.badge-carrier.spx     { background: rgba(238, 77, 45, 0.15); color: #ee4d2d; border: 1px solid rgba(238, 77, 45, 0.3); }
+.badge-carrier.flash   { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+.badge-carrier.kerry   { background: rgba(249, 115, 22, 0.15); color: #fb923c; border: 1px solid rgba(249, 115, 22, 0.3); }
+.badge-carrier.jnt     { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+.badge-carrier.ems     { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+.badge-carrier.default { background: rgba(148, 163, 184, 0.15); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.3); }
+
+/* Item List in Table Row */
+.order-items-snippet {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.order-item-line {
+    font-size: 0.82rem;
+    line-height: 1.35;
+    color: #e2e8f0;
+}
+.order-item-variation {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 1px 6px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-left: 4px;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   5. THERMAL SHIPPING LABEL (100 x 150 mm) EXACT DESIGN
+   ══════════════════════════════════════════════════════════════ */
+.thermal-shipping-label {
+    width: 100mm;
+    min-height: 150mm;
+    max-height: 150mm;
+    box-sizing: border-box;
+    background: #fff;
+    color: #000;
+    border: 1.5px solid #000;
+    padding: 4mm 5mm;
+    font-family: 'Sarabun', 'Kanit', sans-serif;
+    font-size: 11pt;
+    line-height: 1.3;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    margin: 0 auto 10mm auto;
+    page-break-after: always;
+    break-after: page;
+}
+
+.label-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #000;
+    padding-bottom: 2mm;
+    margin-bottom: 2mm;
+}
+.label-carrier-name {
+    font-size: 16pt;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    text-transform: uppercase;
+}
+.label-order-id-box {
+    text-align: right;
+    font-family: 'Fira Code', monospace;
+    font-size: 8.5pt;
+    line-height: 1.2;
+}
+
+/* Barcode Section */
+.label-barcode-section {
+    text-align: center;
+    padding: 2mm 0;
+    border-bottom: 2px solid #000;
+}
+.label-barcode-svg {
+    max-width: 88mm;
+    height: 22mm !important;
+}
+.label-tracking-code {
+    font-size: 13pt;
+    font-weight: 800;
+    font-family: 'Fira Code', monospace;
+    letter-spacing: 1.5px;
+    margin-top: 1mm;
+}
+
+/* Recipient & Routing */
+.label-recipient-section {
+    border-bottom: 2px solid #000;
+    padding: 3mm 0;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+}
+.label-recipient-info {
+    flex: 1;
+}
+.label-section-title {
+    font-size: 8pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #444;
+}
+.label-recipient-name {
+    font-size: 13pt;
+    font-weight: 800;
+    margin: 1mm 0;
+    line-height: 1.2;
+}
+.label-recipient-phone {
+    font-size: 11pt;
+    font-weight: 700;
+    font-family: 'Fira Code', monospace;
+}
+.label-recipient-addr {
+    font-size: 9.5pt;
+    line-height: 1.35;
+    margin-top: 1mm;
+}
+.label-zipcode-badge {
+    border: 2px solid #000;
+    font-size: 18pt;
+    font-weight: 900;
+    font-family: 'Fira Code', monospace;
+    padding: 4mm 6mm;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: fit-content;
+    text-align: center;
+}
+
+/* Sender & Service */
+.label-sender-section {
+    border-bottom: 1.5px dashed #000;
+    padding: 2mm 0;
+    font-size: 8pt;
+    line-height: 1.25;
+}
+
+/* Packing Checklist Items at Bottom */
+.label-packing-section {
+    padding-top: 2mm;
+    flex-grow: 1;
+}
+.label-packing-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8pt;
+}
+.label-packing-table th {
+    border-bottom: 1px solid #000;
+    font-weight: 700;
+    padding: 1mm;
+}
+.label-packing-table td {
+    padding: 1mm;
+    border-bottom: 0.5px dotted #999;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PRINT MEDIA RULES
+   ══════════════════════════════════════════════════════════════ */
+@media screen {
+    .print-only {
+        display: none !important;
+    }
+}
+
+@media print {
+    @page {
+        size: 100mm 150mm;
+        margin: 0;
+    }
+    html, body {
+        background: #fff !important;
+        color: #000 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100mm !important;
+    }
+    .no-print {
+        display: none !important;
+    }
+    .print-only {
+        display: block !important;
+    }
+    .thermal-shipping-label {
+        border: none !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+        width: 100mm !important;
+        height: 150mm !important;
+        page-break-after: always;
+        break-after: page;
+    }
+}

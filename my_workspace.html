@@ -811,6 +811,21 @@
                             <div class="launchpad-desc">ระบบออกใบเสนอราคา คำนวณ VAT พิมพ์ A4 และเซ็นออนไลน์</div>
                         </div>
                     </div>
+
+                    <div class="launchpad-app-item" draggable="true"
+                        ondragstart="onLaunchpadDragStart(event, 'app_shopee_orders')" onclick="launchTool('app_shopee_orders')"
+                        data-app-name="Shopee Orders นำเข้าออเดอร์ Shopee พิมพ์ใบปะหน้าพัสดุ ตัดสต็อก"
+                        title="Shopee Orders: นำเข้าไฟล์ Excel จาก Shopee พิมพ์ใบปะหน้า 100x150mm และตัดสต็อก (ลากไปวางที่ Dock หรือคลิกเปิด)">
+                        <button type="button" class="launchpad-pin-btn" onclick="togglePinTool(event, 'app_shopee_orders')"
+                            title="ปักหมุดที่ Dock"><i class="bi bi-pin-angle-fill"></i></button>
+                        <div class="launchpad-icon"
+                            style="background: linear-gradient(145deg, #ee4d2d, #ea580c, #c2410c);"><i
+                                class="bi bi-box-seam-fill"></i></div>
+                        <div class="launchpad-content">
+                            <div class="launchpad-title">Shopee Orders</div>
+                            <div class="launchpad-desc">นำเข้า Excel ออเดอร์ พิมพ์ใบปะหน้า 100x150mm ตัดสต็อก</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1796,6 +1811,7 @@
             'app_history': { id: 'app_history', title: 'ประวัติ', icon: 'bi bi-clock-history', colorClass: 'text-info', type: 'link', url: 'auth/history/history.html' },
             'app_profile': { id: 'app_profile', title: 'โปรไฟล์ครู', icon: 'bi bi-person-gear', colorClass: 'text-secondary', type: 'link', url: 'auth/profile/profile.html' },
             'app_quotation': { id: 'app_quotation', title: 'ใบเสนอราคา', icon: 'bi bi-receipt-cutoff', colorClass: 'text-primary', type: 'link', url: 'features/business/quotation/quotation.html' },
+            'app_shopee_orders': { id: 'app_shopee_orders', title: 'Shopee Orders', icon: 'bi bi-box-seam-fill', colorClass: 'text-warning', type: 'link', url: 'features/business/shopee_orders/shopee_orders.html' },
             'app_change_pw': { id: 'app_change_pw', title: 'เปลี่ยนรหัสผ่าน', icon: 'bi bi-shield-lock', colorClass: 'text-warning', type: 'link', url: 'auth/change_password/change_password.html' }
         };
 
