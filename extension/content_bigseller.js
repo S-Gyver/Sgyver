@@ -346,6 +346,33 @@ setTimeout(() => {
     injectBigSellerFloatButton();
 }, 1500);
 
+// Auto-Sync Watcher: Automatically detects new orders every 30s and sends to S-Gyver
+let lastSyncSignature = '';
+setInterval(async () => {
+    try {
+        const orders = extractOrdersFromDom();
+        if (orders.length > 0) {
+            const currentSignature = orders.map(o => o.order_id).sort().join(',');
+            if (currentSignature !== lastSyncSignature) {
+                console.log('🔄 [Auto-Watcher] Detected order change, auto-syncing to Supabase...', orders.length);
+                lastSyncSignature = currentSignature;
+                await sendOrdersToSupabase(orders);
+                chrome.storage.local.set({ lastExtractedOrders: orders });
+
+                const btnText = document.querySelector('#sgyver-quick-sync-btn span:last-child');
+                if (btnText) {
+                    btnText.textContent = `⚡ ซิงค์อัตโนมัติแล้ว (${orders.length})`;
+                    setTimeout(() => {
+                        if (btnText) btnText.textContent = '🚀 ส่งออเดอร์เข้า S-Gyver (1-Click)';
+                    }, 4000);
+                }
+            }
+        }
+    } catch (e) {
+        console.warn('Auto-Watcher exception:', e);
+    }
+}, 30000); // Check every 30 seconds
+
 // Listen to messages from background/S-Gyver
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'PING_BIGSELLER') {

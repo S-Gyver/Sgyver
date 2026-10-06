@@ -937,6 +937,38 @@ async function loadOrdersFromSupabase() {
     }
 }
 
+function playOrderNotificationSound() {
+    try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Note 1: E5 (659.25Hz)
+        const osc1 = audioCtx.createOscillator();
+        const gain1 = audioCtx.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(659.25, audioCtx.currentTime);
+        gain1.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain1.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+        osc1.connect(gain1);
+        gain1.connect(audioCtx.destination);
+        osc1.start();
+        osc1.stop(audioCtx.currentTime + 0.3);
+
+        // Note 2: B5 (987.77Hz)
+        setTimeout(() => {
+            const osc2 = audioCtx.createOscillator();
+            const gain2 = audioCtx.createGain();
+            osc2.type = 'sine';
+            osc2.frequency.setValueAtTime(987.77, audioCtx.currentTime);
+            gain2.gain.setValueAtTime(0.25, audioCtx.currentTime);
+            gain2.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+            osc2.connect(gain2);
+            gain2.connect(audioCtx.destination);
+            osc2.start();
+            osc2.stop(audioCtx.currentTime + 0.5);
+        }, 130);
+    } catch (e) {}
+}
+
 function setupSupabaseRealtime() {
     if (!window.supabaseClient) return;
 
@@ -944,10 +976,11 @@ function setupSupabaseRealtime() {
         window.supabaseClient
             .channel('ecommerce_orders_live')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ecommerce_orders' }, payload => {
-                console.log('[Supabase Realtime] New order received from n8n:', payload.new);
+                console.log('[Supabase Realtime] New order received:', payload.new);
+                playOrderNotificationSound();
                 loadOrdersFromSupabase();
                 if (typeof showToast === 'function') {
-                    showToast('success', 'มีออเดอร์ใหม่เข้ามา!', `ออเดอร์ ${payload.new.order_id} จาก ${payload.new.shop_name} พร้อมพิมพ์แล้ว`, 4000);
+                    showToast('success', '🔔 มีออเดอร์ใหม่เข้ามา!', `ออเดอร์ ${payload.new.order_id} (${payload.new.shop_name}) พร้อมพิมพ์แล้ว`, 4500);
                 }
             })
             .subscribe();
