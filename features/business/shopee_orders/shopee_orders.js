@@ -468,8 +468,8 @@ function renderOrdersTable() {
                     </div>
                 </td>
                 <td>
-                    <span class="badge-platform ${platformClass} mb-1">
-                        ${getPlatformIcon(o.platform)} ${escapeHtml(o.shopName)}
+                    <span class="badge-platform ${platformClass} mb-1" onclick="editOrderShopName('${escapeHtml(o.orderId)}')" title="คลิกเพื่อเปลี่ยน/แก้ไขชื่อร้านค้า" style="cursor: pointer;">
+                        ${getPlatformIcon(o.platform)} ${escapeHtml(o.shopName)} <i class="bi bi-pencil-fill ms-1" style="font-size: 0.65rem; opacity: 0.6;"></i>
                     </span>
                     <div class="mt-1 d-flex gap-1 flex-wrap">
                         <span class="badge-payment ${isCOD ? 'cod' : 'prepaid'}">
@@ -628,6 +628,41 @@ function markSelectedAsShipped() {
 
     if (typeof showToast === 'function') {
         showToast('success', 'เปลี่ยนสถานะเรียบร้อย', `ทำเครื่องหมาย "จัดส่งแล้ว" ${selected.length} ออเดอร์`, 3000);
+    }
+}
+
+function editOrderShopName(orderId) {
+    const o = STATE.orders.find(item => item.orderId === orderId);
+    if (!o) return;
+
+    const currentName = o.shopName || (o.platform + ' Store');
+    const newName = prompt(`แก้ไขชื่อร้านค้าสำหรับออเดอร์ ${orderId}:\n(ระบุชื่อร้านค้าจริงของคุณ เช่น whatever_glitters)`, currentName === 'Shopee Store' ? 'whatever_glitters' : currentName);
+    
+    if (newName && newName.trim() && newName.trim() !== currentName) {
+        const cleanName = newName.trim();
+        o.shopName = cleanName;
+
+        // Option to apply to all other orders that still have generic "Shopee Store"
+        if (currentName === 'Shopee Store' || currentName === 'Shopee ร้านค้า') {
+            const updateAll = confirm(`ต้องการเปลี่ยนชื่อร้านเป็น "${cleanName}" ให้กับทุกออเดอร์ที่เป็น Shopee Store ด้วยเลยหรือไม่?`);
+            if (updateAll) {
+                STATE.orders.forEach(item => {
+                    if (item.platform === 'Shopee' && (item.shopName === 'Shopee Store' || item.shopName === 'Shopee ร้านค้า' || !item.shopName)) {
+                        item.shopName = cleanName;
+                    }
+                });
+            }
+        }
+
+        saveOrdersToLocalStorage();
+        renderOrdersTable();
+        updateStats();
+        populatePlatformFilter();
+        syncOrdersToSupabase(STATE.orders);
+
+        if (typeof showToast === 'function') {
+            showToast('success', 'เปลี่ยนชื่อร้านแล้ว', `อัปเดตชื่อร้านเป็น "${cleanName}" เรียบร้อย`, 2500);
+        }
     }
 }
 
