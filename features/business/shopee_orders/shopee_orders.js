@@ -1785,7 +1785,13 @@ function handleAutoStatusUpdate(orderIds, status = 'READY_TO_SHIP', platformStat
     if (!Array.isArray(orderIds) || orderIds.length === 0) return;
     let changed = false;
     orderIds.forEach(id => {
-        const o = STATE.orders.find(item => item.orderId === id);
+        const cleanId = String(id || '').trim();
+        const o = STATE.orders.find(item => 
+            item.orderId === cleanId || 
+            item.tracking === cleanId || 
+            (item.orderId && cleanId && (item.orderId.includes(cleanId) || cleanId.includes(item.orderId))) ||
+            (item.tracking && cleanId && (item.tracking.includes(cleanId) || cleanId.includes(item.tracking)))
+        );
         if (o) {
             o.status = status;
             o.platformStatus = platformStatus || (status === 'READY_TO_SHIP' ? 'พร้อมส่ง (กดรับแล้ว)' : o.platformStatus);

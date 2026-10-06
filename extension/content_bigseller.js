@@ -694,12 +694,66 @@ setInterval(() => {
 // ── 6. REALTIME AUTO-SYNC WATCHER (WITHOUT NEEDING TO CLICK BUTTON) ─────────
 let lastSyncSignature = '';
 let isSyncing = false;
+const knownNewOrdersMap = new Map();
 
 async function runAutoSync(triggerSource = 'auto') {
     if (isSyncing) return;
     try {
         isSyncing = true;
         const orders = extractOrdersFromDom();
+
+        // 1. Detect if we are on the New Orders / To Pack tab
+        const activeMenuEl = document.querySelector('.el-menu-item.is-active, .menu-item.is-active, [class*="menu"].is-active, [class*="sidebar"] .is-active, [class*="nav"] .is-active, [class*="nav"] .active, .menu_active');
+        const activeMenuText = activeMenuEl ? (activeMenuEl.innerText || '').toLowerCase() : '';
+        const activeTabEl = document.querySelector('.el-tabs__item.is-active, .tab-pane.active, .ant-tabs-tab-active, [class*="tab"].is-active, [class*="tab"].active, [role="tab"][aria-selected="true"]');
+        const activeTabText = activeTabEl ? (activeTabEl.innerText || '').toLowerCase() : '';
+        const allButtonsText = Array.from(document.querySelectorAll('button, .el-button')).map(b => (b.innerText || '').trim()).join(' ');
+        const hasPackBtn = /\b(Pack|จัดสรรสต็อก|จัดสรร)\b/i.test(allButtonsText);
+        const currentUrl = (window.location.href || '').toLowerCase();
+
+        const isCurrentlyNewOrdersTab = activeMenuText.includes('new order') || activeMenuText.includes('คำสั่งซื้อใหม่') || 
+                                       activeTabText.includes('to pack') || activeTabText.includes('packing') ||
+                                       activeTabText.includes('คำสั่งซื้อใหม่') || activeTabText.includes('new order') || 
+                                       activeTabText.includes('neworder') || activeTabText.includes('ยังไม่ได้จัดสรร') || 
+                                       activeTabText.includes('รอรับ') || (hasPackBtn && !activeMenuText.includes('in process')) ||
+                                       currentUrl.includes('allocate') || currentUrl.includes('neworder') || currentUrl.includes('pack');
+
+        // 2. Auto-Detect: If an order was previously in New Orders, but has now disappeared from New Orders, IT WAS PACKED!
+        if (isCurrentlyNewOrdersTab && knownNewOrdersMap.size > 0) {
+            const currentIds = new Set((orders || []).map(o => o.order_id));
+            const packedIds = [];
+            for (const [id, o] of knownNewOrdersMap.entries()) {
+                if (!currentIds.has(id)) {
+                    packedIds.push(id);
+                }
+            }
+
+            if (packedIds.length > 0) {
+                console.log('⚡ [Auto-Detect Pack Action] Orders were packed & moved to In Process:', packedIds);
+                packedIds.forEach(id => knownNewOrdersMap.delete(id));
+                try {
+                    chrome.runtime.sendMessage({
+                        action: 'UPDATE_ORDER_STATUS',
+                        orderIds: packedIds,
+                        status: 'READY_TO_SHIP',
+                        platformStatus: 'กดรับออเดอร์แล้ว (พร้อมส่ง)'
+                    });
+                } catch (e) {}
+            }
+        }
+
+        // Record new orders if currently on New Orders tab
+        if (isCurrentlyNewOrdersTab && Array.isArray(orders)) {
+            orders.forEach(o => {
+                if (o.status === 'NEW') {
+                    knownNewOrdersMap.set(o.order_id, o);
+                }
+            });
+        } else if (!isCurrentlyNewOrdersTab) {
+            knownNewOrdersMap.clear();
+        }
+
+        // 3. Regular broadcast if signature changed
         if (Array.isArray(orders) && orders.length > 0) {
             const currentSignature = orders.map(o => `${o.order_id}:${o.status}:${o.total_amount}:${o.total_items}`).sort().join('|');
             if (currentSignature !== lastSyncSignature) {
