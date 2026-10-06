@@ -274,9 +274,19 @@ function parseOrderContainer(container) {
     else if (fullSearchText.includes('Kerry') || fullSearchText.includes('KEX')) carrier = 'KEX (Kerry)';
 
     // 5. Amount & Payment Method
-    const amountMatch = text.match(/THB\s*([0-9,]+(\.[0-9]+)?)/i);
-    const totalAmount = amountMatch ? parseFloat(amountMatch[1].replace(/,/g, '')) : 0;
-    const paymentMethod = text.includes('COD') ? 'COD' : 'Prepaid';
+    const cells = Array.from(container.querySelectorAll('td, .el-table__cell'));
+    let totalAmount = 0;
+    if (cells.length >= 3 && cells[2]) {
+        const c2Match = (cells[2].innerText || '').match(/THB\s*([0-9,]+(?:\.[0-9]+)?)/i);
+        if (c2Match) {
+            totalAmount = parseFloat(c2Match[1].replace(/,/g, ''));
+        }
+    }
+    if (!totalAmount) {
+        const amountMatch = text.match(/THB\s*([0-9,]+(?:\.[0-9]+)?)/i);
+        totalAmount = amountMatch ? parseFloat(amountMatch[1].replace(/,/g, '')) : 0;
+    }
+    const paymentMethod = (cells.length >= 3 && cells[2] ? cells[2].innerText : text).includes('COD') ? 'COD' : 'Prepaid';
 
     // 6. Recipient Name & Province
     let recipientName = 'ลูกค้า ' + platform;
@@ -329,32 +339,35 @@ function parseOrderContainer(container) {
     if (productCell) {
         // Find product images inside productCell
         const cellImgs = Array.from(productCell.querySelectorAll('img')).filter(im => {
-            const s = (im.getAttribute('src') || im.getAttribute('data-src') || '').toLowerCase();
+            const s = (im.getAttribute('src') || im.getAttribute('data-src') || im.getAttribute('data-original') || '').toLowerCase();
             return s && !s.includes('icon') && !s.includes('logo') && !s.includes('avatar') && !s.includes('svg');
         });
 
         let itemNodes = [];
 
-        // If genuinely multiple product images exist, anchor each item to its unique product image container
+        // If genuinely multiple product images exist, anchor each item to its unique product image container using LCA
         if (cellImgs.length > 1) {
-            itemNodes = cellImgs.map(img => {
-                // Find ancestor of this image that contains THB / price text
-                let curr = img.parentElement;
-                let best = null;
-                while (curr && curr !== productCell) {
-                    const txt = curr.innerText || '';
-                    if (txt.includes('THB') || txt.match(/[xX×*]\s*\d+/)) {
-                        best = curr;
-                        break;
-                    }
-                    curr = curr.parentElement;
+            let lca = productCell;
+            let checkNode = cellImgs[0].parentElement;
+            while (checkNode && checkNode !== productCell && productCell.contains(checkNode)) {
+                if (cellImgs.every(im => checkNode.contains(im))) {
+                    lca = checkNode;
+                    break;
                 }
-                return best || img.closest('.goods-item, .product-item, .goods-list-item, tr, li, .el-row') ||
-                       img.parentElement?.parentElement ||
-                       img.parentElement;
+                checkNode = checkNode.parentElement;
+            }
+
+            const seen = new Set();
+            cellImgs.forEach(img => {
+                let branch = img;
+                while (branch && branch.parentElement && branch.parentElement !== lca && lca.contains(branch.parentElement)) {
+                    branch = branch.parentElement;
+                }
+                if (branch && !seen.has(branch)) {
+                    seen.add(branch);
+                    itemNodes.push(branch);
+                }
             });
-            // Ensure unique DOM elements
-            itemNodes = Array.from(new Set(itemNodes));
         }
 
         // If only 1 product image or no separate items found: the ENTIRE productCell is 1 single product!
@@ -365,7 +378,7 @@ function parseOrderContainer(container) {
         itemNodes.forEach(itemEl => {
             // Thumbnail Image
             const itImg = itemEl.querySelector('img:not([src*="icon"]):not([src*="logo"]):not([src*="avatar"]):not([src*="svg"])');
-            const itemImgUrl = itImg ? (itImg.getAttribute('src') || itImg.getAttribute('data-src') || '') : defaultProductImg;
+            const itemImgUrl = itImg ? (itImg.getAttribute('src') || itImg.getAttribute('data-src') || itImg.getAttribute('data-original') || '') : defaultProductImg;
 
             // Clone and strip all copy buttons, icons, action links
             let cleanCellText = '';
@@ -421,16 +434,9 @@ function parseOrderContainer(container) {
 
             if (contentLines.length === 1) {
                 itemName = contentLines[0];
-            } else if (contentLines.length === 2) {
-                if (contentLines[0] === contentLines[1]) {
-                    itemName = contentLines[0];
-                } else {
-                    itemName = contentLines[0];
-                    itemVariation = contentLines[1];
-                }
-            } else if (contentLines.length >= 3) {
+            } else if (contentLines.length >= 2) {
                 itemName = contentLines[0];
-                itemVariation = contentLines.slice(1).join(' ');
+                itemVariation = contentLines[1];
             } else if (rawLines.length > 0) {
                 itemName = rawLines[0];
             }
@@ -486,6 +492,10 @@ function parseOrderContainer(container) {
     }
 
     const totalQty = extractedItems.reduce((acc, it) => acc + (it.qty || 1), 0);
+    const sumItems = extractedItems.reduce((acc, it) => acc + ((it.price || 0) * (it.qty || 1)), 0);
+    if (sumItems > 0 && (totalAmount === 0 || (extractedItems.length > 1 && totalAmount < sumItems))) {
+        totalAmount = sumItems;
+    }
 
     // 8. Determine Order Status (NEW | READY_TO_SHIP | SHIPPED)
     let orderStatus = 'READY_TO_SHIP';
