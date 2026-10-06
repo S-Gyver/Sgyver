@@ -260,11 +260,18 @@ function renderUserTable(users) {
             : `<span class="badge-role-user font-mono"><i class="bi bi-person-fill me-1"></i>USER</span>`;
 
         const level = u.level ?? 1;
-        const levelBadge = level >= 2
-            ? `<span class="badge-level badge-level-pro"><i class="bi bi-stars me-1"></i>Lv.${level} VIP</span>`
-            : (level === 0 
-                ? `<span class="badge-level text-subtle">Lv.0 Guest</span>`
-                : `<span class="badge-level"><i class="bi bi-check2 me-1"></i>Lv.1 Member</span>`);
+        let levelBadge = '';
+        if (level >= 4) {
+            levelBadge = `<span class="badge-level badge-level-lv4" style="background: rgba(236, 72, 153, 0.18); border: 1px solid rgba(236, 72, 153, 0.5); color: #f472b6;"><i class="bi bi-cart-check-fill me-1"></i>Lv.4 Commerce</span>`;
+        } else if (level === 3) {
+            levelBadge = `<span class="badge-level badge-level-lv3" style="background: rgba(59, 130, 246, 0.18); border: 1px solid rgba(59, 130, 246, 0.5); color: #60a5fa;"><i class="bi bi-briefcase-fill me-1"></i>Lv.3 Business</span>`;
+        } else if (level === 2) {
+            levelBadge = `<span class="badge-level badge-level-pro"><i class="bi bi-stars me-1"></i>Lv.2 VIP</span>`;
+        } else if (level === 0) {
+            levelBadge = `<span class="badge-level text-subtle">Lv.0 Guest</span>`;
+        } else {
+            levelBadge = `<span class="badge-level"><i class="bi bi-check2 me-1"></i>Lv.1 Member</span>`;
+        }
 
         const userNameText = u.username || u.nickname || (u.email ? u.email.split('@')[0] : 'User');
         const userEmailText = u.email || '-';
@@ -392,9 +399,26 @@ function openUserActionModal(userId) {
 
     const badgesWrap = document.getElementById('uact-status-badges');
     if (badgesWrap) {
+        const levelNames = {
+            0: 'Lv.0 Guest',
+            1: 'Lv.1 Standard',
+            2: 'Lv.2 VIP',
+            3: 'Lv.3 Business',
+            4: 'Lv.4 Commerce'
+        };
+        const levelLabel = levelNames[level] || `Lv.${level}`;
+        const levelColors = {
+            0: 'text-subtle border-secondary',
+            1: 'text-cyan border-cyan',
+            2: 'text-warning border-warning',
+            3: 'text-primary border-primary',
+            4: 'text-danger border-danger'
+        };
+        const levelColorClass = levelColors[level] || 'text-warning border-warning';
+
         badgesWrap.innerHTML = `
             ${isAdmin ? '<span class="badge bg-danger text-white font-mono"><i class="bi bi-shield-fill-check me-1"></i>ADMIN</span>' : '<span class="badge bg-info text-dark font-mono"><i class="bi bi-person-fill me-1"></i>USER</span>'}
-            <span class="badge bg-dark border border-secondary text-warning font-mono">Lv.${level}</span>
+            <span class="badge bg-dark border ${levelColorClass} font-mono">${levelLabel}</span>
         `;
     }
 
@@ -722,8 +746,10 @@ function renderAnalyticsCharts(users) {
     const roleCanvas = document.getElementById('chart-role-distribution');
     if (roleCanvas) {
         let adminCount = 0;
-        let vipCount = 0;
-        let memberCount = 0;
+        let lv4Count = 0;
+        let lv3Count = 0;
+        let lv2Count = 0;
+        let lv1Count = 0;
         let guestCount = 0;
 
         (users || []).forEach(u => {
@@ -731,8 +757,10 @@ function renderAnalyticsCharts(users) {
                 adminCount++;
             } else {
                 const lvl = u.level ?? 1;
-                if (lvl >= 2) vipCount++;
-                else if (lvl === 1) memberCount++;
+                if (lvl >= 4) lv4Count++;
+                else if (lvl === 3) lv3Count++;
+                else if (lvl === 2) lv2Count++;
+                else if (lvl === 1) lv1Count++;
                 else guestCount++;
             }
         });
@@ -744,14 +772,16 @@ function renderAnalyticsCharts(users) {
         roleChartInstance = new Chart(roleCanvas, {
             type: 'doughnut',
             data: {
-                labels: ['Admin', 'Lv.2 VIP', 'Lv.1 Member', 'Lv.0 Guest'],
+                labels: ['Admin', 'Lv.4 Commerce', 'Lv.3 Business', 'Lv.2 VIP', 'Lv.1 Member', 'Lv.0 Guest'],
                 datasets: [{
-                    data: [adminCount, vipCount, memberCount, guestCount],
+                    data: [adminCount, lv4Count, lv3Count, lv2Count, lv1Count, guestCount],
                     backgroundColor: [
                         '#f43f5e',
+                        '#ec4899',
+                        '#3b82f6',
                         '#f59e0b',
                         '#00f2fe',
-                        '#a855f7'
+                        '#64748b'
                     ],
                     borderColor: '#0b1120',
                     borderWidth: 3,

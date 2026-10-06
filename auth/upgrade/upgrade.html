@@ -14,11 +14,13 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="../../assets/css/index.css">
     <link rel="stylesheet" href="../sidebar_shared.css">
+    <link rel="stylesheet" href="../../assets/css/toast_shared.css">
     <link rel="stylesheet" href="upgrade.css">
 
     <!-- Supabase SDK & สคริปต์กลาง -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../../assets/js/supabaseClient.js"></script>
+    <script src="../../assets/js/toast_shared.js"></script>
     <script src="../logout.js"></script>
 </head>
 
@@ -87,105 +89,151 @@
             <!-- 📄 CONTENT AREA: อัปเกรดสิทธิ์ -->
             <div class="col-lg-9">
                 <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
-                    <h5 class="fw-bold text-dark border-bottom pb-3 mb-4">
-                        <i class="bi bi-rocket-takeoff text-warning me-2"></i>อัปเกรดระดับสิทธิ์การใช้งาน
+                    <h5 class="fw-bold text-dark border-bottom pb-3 mb-4 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <span><i class="bi bi-rocket-takeoff text-warning me-2"></i>อัปเกรดระดับสิทธิ์การใช้งาน (Membership Tiers)</span>
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill font-mono px-3 py-1 small" id="upgrade-current-tier-pill">กำลังตรวจสอบสิทธิ์...</span>
                     </h5>
 
-                    <div class="row g-3">
+                    <div class="row g-3" id="upgrade-tiers-container">
                         
                         <!-- 🟢 1. Lv.1 Standard Member -->
-                        <div class="col-md-4">
-                            <div class="card h-100 border-0 bg-light p-3 rounded-4 position-relative">
+                        <div class="col-md-6 col-xl-3">
+                            <div class="card h-100 border-0 bg-light p-3 rounded-4 position-relative" id="tier-card-1">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <span class="badge bg-success text-white px-2 py-1 rounded-pill small fw-bold">สิทธิ์ปัจจุบัน</span>
+                                    <span class="badge bg-success text-white px-2 py-1 rounded-pill small fw-bold tier-status-pill" id="tier-status-1">สิทธิ์เริ่มต้น</span>
                                     <span class="fw-bold text-muted fs-6">Lv.1</span>
                                 </div>
                                 <h6 class="fw-bold text-dark mb-1">Standard Member</h6>
-                                <p class="text-muted mb-3" style="font-size: 0.75rem;">สำหรับผู้ใช้งานทั่วไป / นักเรียน</p>
+                                <p class="text-muted mb-3" style="font-size: 0.75rem;">สำหรับผู้ใช้งานทั่วไป & นักเรียน</p>
                                 <hr class="my-2">
                                 <ul class="list-unstyled d-flex flex-column gap-2 small text-secondary mb-4 flex-grow-1">
                                     <li class="d-flex align-items-start gap-2">
                                         <i class="bi bi-check-circle-fill text-success fs-6 mt-n1"></i>
-                                        <span>เปิดให้ใช้ Gyver Education (ระบบห้องเรียนอัจฉริยะ) บางเมนู</span>
+                                        <span>ใช้งานเครื่องมือด่วน Quick Tools & นาฬิกา ได้ทั้งหมด</span>
                                     </li>
                                     <li class="d-flex align-items-start gap-2">
                                         <i class="bi bi-check-circle-fill text-success fs-6 mt-n1"></i>
-                                        <span>ใช้งาน Quick Tools ได้ทั้งหมด</span>
+                                        <span>สิทธิ์ห้องเรียน Gyver Education บางเมนู</span>
                                     </li>
                                     <li class="d-flex align-items-start gap-2">
                                         <i class="bi bi-check-circle-fill text-success fs-6 mt-n1"></i>
-                                        <span>เข้าร่วมหมุนวงล้อสุ่มคะแนนสด (Live)</span>
+                                        <span>เข้าร่วมกิจกรรมหมุนวงล้อสุ่มคะแนนสด (Live)</span>
+                                    </li>
+                                    <li class="d-flex align-items-start gap-2">
+                                        <i class="bi bi-check-circle-fill text-success fs-6 mt-n1"></i>
+                                        <span>กระดานไวท์บอร์ดส่วนตัว & วาดเขียน</span>
                                     </li>
                                 </ul>
-                                <button class="btn btn-outline-secondary btn-sm w-100 fw-bold rounded-3 mt-auto" disabled>
+                                <button class="btn btn-outline-secondary btn-sm w-100 fw-bold rounded-3 mt-auto tier-action-btn" id="tier-btn-1" disabled>
                                     เปิดใช้งานอยู่
                                 </button>
                             </div>
                         </div>
 
                         <!-- 🔵 2. Lv.2 Pro Member -->
-                        <div class="col-md-4">
-                            <div class="card h-100 border-info border-2 p-3 rounded-4 shadow-sm position-relative">
+                        <div class="col-md-6 col-xl-3">
+                            <div class="card h-100 border-info border-2 p-3 rounded-4 shadow-sm position-relative" id="tier-card-2">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1 rounded-pill small fw-bold">ขยับสิทธิ์ขึ้น</span>
+                                    <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1 rounded-pill small fw-bold tier-status-pill" id="tier-status-2">กิจกรรมสด</span>
                                     <span class="fw-bold text-info fs-6">Lv.2</span>
                                 </div>
                                 <h6 class="fw-bold text-dark mb-1">Pro Member</h6>
-                                <p class="text-muted mb-3" style="font-size: 0.75rem;">สำหรับผู้ใช้งานระดับโปร</p>
+                                <p class="text-muted mb-3" style="font-size: 0.75rem;">สำหรับครูผู้สอน & ห้องเรียนถ่ายทอดสด</p>
                                 <hr class="my-2">
                                 <ul class="list-unstyled d-flex flex-column gap-2 small text-secondary mb-4 flex-grow-1">
                                     <li class="d-flex align-items-start gap-2">
                                         <i class="bi bi-check-circle-fill text-info fs-6 mt-n1"></i>
-                                        <span>เปิดให้ใช้ Gyver Education (ระบบห้องเรียนอัจฉริยะ) มากขึ้น</span>
+                                        <span>สิทธิ์ฟังก์ชันทุกอย่างของ Lv.1</span>
                                     </li>
                                     <li class="d-flex align-items-start gap-2">
                                         <i class="bi bi-check-circle-fill text-info fs-6 mt-n1"></i>
-                                        <span>สิทธิ์ทุกอย่างของ Lv.1</span>
+                                        <span>ห้องเรียนสด Gyver Live Studio (ส่งหน้าจอ & โต้ตอบ)</span>
                                     </li>
                                     <li class="d-flex align-items-start gap-2">
                                         <i class="bi bi-check-circle-fill text-info fs-6 mt-n1"></i>
-                                        <span>เข้าถึงฟีเจอร์คำนวณและวิเคราะห์ข้อมูลเสริม</span>
+                                        <span>แข่งขันโค้ดสด Gyver Code Race</span>
+                                    </li>
+                                    <li class="d-flex align-items-start gap-2">
+                                        <i class="bi bi-check-circle-fill text-info fs-6 mt-n1"></i>
+                                        <span>ระบบแบบฟอร์มและการบ้าน Gyver Forms</span>
                                     </li>
                                 </ul>
-                                <button class="btn btn-info text-white btn-sm w-100 fw-bold rounded-3 mt-auto shadow-sm" onclick="alert('กรุณาติดต่อแอดมินเพื่อขอปรับสิทธิ์เป็น Lv.2 ครับ')">
+                                <button class="btn btn-info text-white btn-sm w-100 fw-bold rounded-3 mt-auto shadow-sm tier-action-btn" id="tier-btn-2" onclick="requestUpgrade(2)">
                                     <i class="bi bi-key-fill me-1"></i>ขออนุมัติสิทธิ์ Lv.2
                                 </button>
                             </div>
                         </div>
 
-                        <!-- 🟦 3. Lv.3 Teacher Administrator -->
-                        <div class="col-md-4">
-                            <div class="card h-100 border-primary border-2 p-3 rounded-4 shadow-sm position-relative overflow-hidden">
-                                <!-- Banner แนะนำสำหรับครู -->
-                                <div class="ribbon-teacher">แนะนำสำหรับครู</div>
+                        <!-- 🟦 3. Lv.3 Teacher & Business Studio -->
+                        <div class="col-md-6 col-xl-3">
+                            <div class="card h-100 border-primary border-2 p-3 rounded-4 shadow-sm position-relative overflow-hidden" id="tier-card-3">
+                                <!-- Banner แนะนำสำหรับครู/ธุรกิจ -->
+                                <div class="ribbon-teacher">แนะนำครู/ธุรกิจ</div>
                                 
                                 <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 rounded-pill small fw-bold">สิทธิ์สูงสุด</span>
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 rounded-pill small fw-bold tier-status-pill" id="tier-status-3">ธุรกิจ & จัดการ</span>
                                     <span class="fw-bold text-primary fs-6">Lv.3</span>
                                 </div>
-                                <h6 class="fw-bold text-dark mb-1">Teacher Administrator</h6>
-                                <p class="text-muted mb-3" style="font-size: 0.75rem;">จัดการห้องเรียนและสร้างชุดข้อมูลเอง</p>
+                                <h6 class="fw-bold text-dark mb-1">Business Studio</h6>
+                                <p class="text-muted mb-3" style="font-size: 0.75rem;">จัดการห้องเรียน & ระบบเอกสารการค้า</p>
                                 <hr class="my-2">
                                 <ul class="list-unstyled d-flex flex-column gap-2 small text-secondary mb-4 flex-grow-1">
                                     <li class="d-flex align-items-start gap-2">
                                         <i class="bi bi-check-circle-fill text-primary fs-6 mt-n1"></i>
-                                        <span>เปิดให้ใช้ Gyver Education (ระบบห้องเรียนอัจฉริยะ) ทั้งหมด</span>
+                                        <span>สิทธิ์ฟังก์ชันทุกอย่างของ Lv.1 และ Lv.2</span>
                                     </li>
                                     <li class="d-flex align-items-start gap-2">
                                         <i class="bi bi-check-circle-fill text-primary fs-6 mt-n1"></i>
-                                        <span>ปลดล็อกเข้าใช้งานฟังก์ชันทั้งหมดในระบบ</span>
+                                        <span>Quotation Studio: ระบบออกใบเสนอราคา พิมพ์ A4 & เซ็นออนไลน์</span>
                                     </li>
                                     <li class="d-flex align-items-start gap-2">
                                         <i class="bi bi-check-circle-fill text-primary fs-6 mt-n1"></i>
-                                        <span>สร้างห้องเรียน / จัดการรายชื่อนักเรียน</span>
+                                        <span>คำนวณ VAT 7% ภาษี ณ ที่จ่าย และส่วนลดอัตโนมัติ</span>
                                     </li>
                                     <li class="d-flex align-items-start gap-2">
                                         <i class="bi bi-check-circle-fill text-primary fs-6 mt-n1"></i>
-                                        <span>เข้าถึงระบบ Gyver Business Tools</span>
+                                        <span>สร้างห้องเรียน & จัดการรายชื่อนักเรียนแบบเต็มรูปแบบ</span>
                                     </li>
                                 </ul>
-                                <button class="btn btn-primary btn-sm w-100 fw-bold rounded-3 mt-auto shadow-sm" onclick="alert('กรุณาติดต่อแอดมินเพื่อขอปรับสิทธิ์เป็น Lv.3 ครูผู้สอนครับ')">
-                                    <i class="bi bi-key-fill me-1"></i>ยื่นคำขออัปเกรดเป็น Lv.3
+                                <button class="btn btn-primary btn-sm w-100 fw-bold rounded-3 mt-auto shadow-sm tier-action-btn" id="tier-btn-3" onclick="requestUpgrade(3)">
+                                    <i class="bi bi-key-fill me-1"></i>ขออนุมัติสิทธิ์ Lv.3
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 💖 4. Lv.4 E-Commerce VIP -->
+                        <div class="col-md-6 col-xl-3">
+                            <div class="card h-100 card-tier-lv4 p-3 rounded-4 shadow-sm position-relative overflow-hidden" id="tier-card-4">
+                                <!-- Banner แนะนำ E-Commerce -->
+                                <div class="ribbon-ecommerce">SUPER VIP</div>
+
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 rounded-pill small fw-bold tier-status-pill" id="tier-status-4">E-Commerce</span>
+                                    <span class="fw-bold text-danger fs-6">Lv.4</span>
+                                </div>
+                                <h6 class="fw-bold text-dark mb-1">E-Commerce VIP</h6>
+                                <p class="text-muted mb-3" style="font-size: 0.75rem;">จัดการร้านค้าออนไลน์ & ซิงก์คำสั่งซื้อ</p>
+                                <hr class="my-2">
+                                <ul class="list-unstyled d-flex flex-column gap-2 small text-secondary mb-4 flex-grow-1">
+                                    <li class="d-flex align-items-start gap-2">
+                                        <i class="bi bi-check-circle-fill text-danger fs-6 mt-n1"></i>
+                                        <span>ปลดล็อกเข้าใช้งานเครื่องมือทั้งหมดในระบบ (Lv.1 - Lv.4)</span>
+                                    </li>
+                                    <li class="d-flex align-items-start gap-2">
+                                        <i class="bi bi-check-circle-fill text-danger fs-6 mt-n1"></i>
+                                        <span>ระบบจัดการออเดอร์ Shopee Orders ตรวจสอบคำสั่งซื้อสด</span>
+                                    </li>
+                                    <li class="d-flex align-items-start gap-2">
+                                        <i class="bi bi-check-circle-fill text-danger fs-6 mt-n1"></i>
+                                        <span>ซิงก์ BigSeller & Shopee อัตโนมัติด้วย GitHub Actions</span>
+                                    </li>
+                                    <li class="d-flex align-items-start gap-2">
+                                        <i class="bi bi-check-circle-fill text-danger fs-6 mt-n1"></i>
+                                        <span>ตรวจสอบสถานะ จัดการสต็อก และพิมพ์ใบปะหน้าสินค้า</span>
+                                    </li>
+                                </ul>
+                                <button class="btn btn-ecommerce btn-sm w-100 fw-bold rounded-3 mt-auto shadow-sm tier-action-btn" id="tier-btn-4" onclick="requestUpgrade(4)">
+                                    <i class="bi bi-stars me-1"></i>ขออนุมัติสิทธิ์ Lv.4 (Commerce)
                                 </button>
                             </div>
                         </div>
