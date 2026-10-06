@@ -502,9 +502,6 @@ function renderOrdersTable() {
                                      height="44" 
                                      style="width: 44px !important; height: 44px !important; min-width: 44px !important; max-width: 44px !important; min-height: 44px !important; max-height: 44px !important; object-fit: cover !important; border-radius: 7px; display: block !important;" 
                                      onerror="this.parentElement.style.display='none'">
-                                <span style="position: absolute; bottom: 1px; right: 2px; font-size: 8px; color: #38bdf8; background: rgba(0,0,0,0.75); padding: 0 3px; border-radius: 3px; line-height: 1.1; pointer-events: none;">
-                                    <i class="bi bi-arrows-angle-expand"></i>
-                                </span>
                             </div>
                         ` : `
                             <div class="order-thumb-placeholder" style="width: 44px; height: 44px; min-width: 44px; border-radius: 8px;"><i class="bi bi-box-seam"></i></div>
