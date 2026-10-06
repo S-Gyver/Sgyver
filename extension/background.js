@@ -1,0 +1,85 @@
+/**
+ * S-Gyver Assistant Background Service Worker
+ * Coordinates between BigSeller, S-Gyver Web, and Supabase
+ */
+
+console.log('🌟 [S-Gyver Assistant] Background Worker Initialized');
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === 'PULL_ORDERS_FROM_BIGSELLER') {
+        handlePullOrders(sendResponse);
+        return true; // Keep message channel open for asynchronous response
+    }
+});
+
+async function handlePullOrders(sendResponse) {
+    try {
+        // 1. Search for any open BigSeller tabs
+        const tabs = await chrome.tabs.query({ url: '*://*.bigseller.com/*' });
+
+        if (tabs.length === 0) {
+            sendResponse({
+                success: false,
+                message: 'ไม่พบแท็บ BigSeller ที่เปิดอยู่ กรุณาเปิดเว็บ BigSeller ไว้ในเบราว์เซอร์ 1 แท็บ แล้วกดดึงออเดอร์อีกครั้งครับ'
+            });
+            return;
+        }
+
+        // 2. Query orders from the active BigSeller tab(s)
+        let combinedOrders = [];
+        for (const tab of tabs) {
+            try {
+                const response = await chrome.tabs.sendMessage(tab.id, { action: 'EXTRACT_BIGSELLER_ORDERS' });
+                if (response && Array.isArray(response.orders)) {
+                    combinedOrders = combinedOrders.concat(response.orders);
+                }
+            } catch (tabErr) {
+                console.warn('Error querying tab:', tab.id, tabErr);
+            }
+        }
+
+        if (combinedOrders.length === 0) {
+            sendResponse({
+                success: false,
+                message: 'ตรวจพบแท็บ BigSeller แต่ยังไม่พบรายการออเดอร์ในหน้าจอ กรุณาเปิดหน้า "รอจัดส่ง (To Ship)" หรือ "คำสั่งซื้อ" ใน BigSeller ครับ'
+            });
+            return;
+        }
+
+        // 3. Sync extracted orders to Supabase
+        await syncToSupabase(combinedOrders);
+
+        sendResponse({
+            success: true,
+            orders: combinedOrders,
+            message: `ดึงสำเร็จ ${combinedOrders.length} ออเดอร์จาก BigSeller และบันทึกลงระบบแล้ว!`
+        });
+    } catch (err) {
+        console.error('Pull orders exception:', err);
+        sendResponse({
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' + err.message
+        });
+    }
+}
+
+async function syncToSupabase(orders) {
+    const SUPABASE_URL = 'https://igiihteeeprpcxxlldkd.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnaWlodGVlZXBycGN4eGxsZGtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5ODkwNzksImV4cCI6MjEwMDU2NTA3OX0.fr8_ZAYKQ3D-JgEtAWGJnNvKjoUmYxs1T7tjzzsEltw';
+
+    try {
+        await fetch(`${SUPABASE_URL}/rest/v1/ecommerce_orders`, {
+            method: 'POST',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'resolution=merge-duplicates'
+            },
+            body: JSON.stringify(orders)
+        });
+        console.log('✅ [Background] Successfully synced orders to Supabase Cloud');
+    } catch (e) {
+        console.error('❌ [Background] Failed to sync to Supabase:', e);
+    }
+}

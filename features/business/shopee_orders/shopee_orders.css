@@ -126,16 +126,56 @@ body {
     color: #fff;
     box-shadow: 0 6px 20px rgba(238, 77, 45, 0.5);
     transform: translateY(-1px);
+.btn-cyber-1click {
+    background: linear-gradient(135deg, #6366f1, #06b6d4);
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.45);
+    position: relative;
+    overflow: hidden;
+    padding: 0.5rem 1.25rem;
+    font-size: 0.9rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
-.btn-cyber-outline {
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--text-primary);
-    border-color: rgba(255, 255, 255, 0.15);
+.btn-cyber-1click:hover {
+    color: #fff;
+    box-shadow: 0 6px 22px rgba(6, 182, 212, 0.65);
+    transform: translateY(-2px) scale(1.02);
 }
-.btn-cyber-outline:hover {
-    background: rgba(255, 255, 255, 0.1);
-    transform: translateY(-1px);
+.btn-cyber-1click::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -60%;
+    width: 40%;
+    height: 200%;
+    background: rgba(255, 255, 255, 0.25);
+    transform: rotate(30deg);
+    animation: shimmer-btn 3s infinite;
 }
+@keyframes shimmer-btn {
+    0% { left: -60%; }
+    40% { left: 160%; }
+    100% { left: 160%; }
+}
+
+.extension-status-bar {
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 12px;
+    padding: 0.75rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+    backdrop-filter: blur(8px);
+}
+.extension-status-bar.active {
+    border-color: rgba(34, 197, 94, 0.4);
+    background: rgba(34, 197, 94, 0.05);
+}
+
 
 /* Main Container */
 .so-container {

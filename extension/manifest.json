@@ -1,0 +1,48 @@
+{
+  "manifest_version": 3,
+  "name": "S-Gyver Omnichannel Order Assistant",
+  "version": "1.0.0",
+  "description": "ดึงออเดอร์ Shopee, TikTok, Lazada จาก BigSeller 2 บัญชีเข้าสู่ S-Gyver Studio ในคลิกเดียว",
+  "icons": {
+    "128": "icon.png"
+  },
+  "permissions": [
+    "cookies",
+    "storage",
+    "tabs",
+    "scripting"
+  ],
+  "host_permissions": [
+    "*://*.bigseller.com/*",
+    "https://s-gyver.github.io/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "file:///*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.bigseller.com/*"
+      ],
+      "js": ["content_bigseller.js"],
+      "run_at": "document_end"
+    },
+    {
+      "matches": [
+        "https://s-gyver.github.io/*",
+        "http://localhost/*",
+        "http://127.0.0.1/*",
+        "file:///*"
+      ],
+      "js": ["content_sgyver.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "action": {
+    "default_title": "S-Gyver Order Assistant",
+    "default_popup": "popup.html"
+  }
+}

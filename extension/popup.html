@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>S-Gyver Order Assistant</title>
+    <style>
+        body {
+            width: 320px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 16px;
+            background: #0f172a;
+            color: #f8fafc;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #1e293b;
+        }
+        .header h3 {
+            margin: 0;
+            font-size: 15px;
+            color: #38bdf8;
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: rgba(34, 197, 94, 0.15);
+            color: #4ade80;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #22c55e;
+            box-shadow: 0 0 8px #22c55e;
+        }
+        p {
+            font-size: 13px;
+            color: #94a3b8;
+            line-height: 1.5;
+            margin: 0 0 16px 0;
+        }
+        .btn-launch {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(135deg, #6366f1, #3b82f6);
+            color: white;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 13px;
+            box-sizing: border-box;
+            transition: opacity 0.2s;
+        }
+        .btn-launch:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <span style="font-size: 22px;">⚡</span>
+        <div>
+            <h3>S-Gyver Assistant</h3>
+            <div style="font-size: 11px; color: #64748b;">Omnichannel Sync v1.0</div>
+        </div>
+    </div>
+
+    <div class="status-badge">
+        <span class="status-dot"></span>
+        <span>ส่วนขยายพร้อมทำงาน</span>
+    </div>
+
+    <p>ช่วยดึงคำสั่งซื้อจาก Shopee (3 ร้าน), TikTok (1 ร้าน) และ Lazada (1 ร้าน) เข้าสู่ S-Gyver Studio ในคลิกเดียว</p>
+
+    <a href="https://s-gyver.github.io/Sgyver/features/business/shopee_orders/shopee_orders.html" target="_blank" class="btn-launch">
+        🚀 เปิด S-Gyver Shipping Studio
+    </a>
+</body>
+</html>

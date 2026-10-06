@@ -968,3 +968,161 @@ async function syncOrdersToSupabase(orders) {
         console.warn('[Supabase sync exception]:', e);
     }
 }
+
+// ── 11. CHROME EXTENSION 1-CLICK ASSISTANT INTEGRATION ────────────────────────
+let isExtensionInstalled = false;
+
+window.addEventListener('message', (event) => {
+    if (!event.data || typeof event.data !== 'object') return;
+
+    if (event.data.type === 'SGYVER_EXTENSION_STATUS' && event.data.installed) {
+        isExtensionInstalled = true;
+        updateExtensionStatusUI(true);
+    } else if (event.data.type === 'SGYVER_SYNC_RESULT') {
+        handleExtensionSyncResult(event.data);
+    }
+});
+
+// Periodic check on startup
+setTimeout(() => {
+    window.postMessage({ type: 'SGYVER_CHECK_EXTENSION' }, '*');
+    setTimeout(() => {
+        if (!isExtensionInstalled) {
+            updateExtensionStatusUI(false);
+        }
+    }, 1200);
+}, 500);
+
+function updateExtensionStatusUI(active) {
+    const dot = document.getElementById('ext-status-dot');
+    const text = document.getElementById('ext-status-text');
+    const bar = document.getElementById('ext-status-bar');
+    const btn = document.getElementById('btn-1click-sync');
+
+    if (active) {
+        if (dot) {
+            dot.style.background = '#22c55e';
+            dot.style.boxShadow = '0 0 10px #22c55e';
+        }
+        if (text) text.innerHTML = '<span class="text-success">🟢 ส่วนขยาย S-Gyver Assistant: เชื่อมต่อแล้ว</span> (พร้อมดึงออเดอร์ Shopee, TikTok, Lazada จาก BigSeller ใน 1 คลิก)';
+        if (bar) bar.classList.add('active');
+        if (btn) btn.classList.remove('opacity-75');
+    } else {
+        if (dot) {
+            dot.style.background = '#eab308';
+            dot.style.boxShadow = 'none';
+        }
+        if (text) text.innerHTML = '<span class="text-warning">⚡ ต้องการดึงออเดอร์อัตโนมัติในคลิกเดียวโดยไม่ต้องโหลดไฟล์?</span> ติดตั้งส่วนขยาย Chrome ใน 30 วินาที';
+        if (bar) bar.classList.remove('active');
+    }
+}
+
+function triggerExtensionSync() {
+    const btn = document.getElementById('btn-1click-sync');
+
+    if (!isExtensionInstalled) {
+        openExtensionInstallModal();
+        return;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> กำลังดึงออเดอร์จาก BigSeller...';
+    }
+
+    window.postMessage({ type: 'SGYVER_TRIGGER_PULL_ORDERS' }, '*');
+
+    // Timeout safety
+    setTimeout(() => {
+        if (btn && btn.disabled) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-lightning-charge-fill text-warning"></i> 🚀 ดึงออเดอร์ 5 ร้าน (1-Click)';
+        }
+    }, 10000);
+}
+
+function handleExtensionSyncResult(data) {
+    const btn = document.getElementById('btn-1click-sync');
+    if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-lightning-charge-fill text-warning"></i> 🚀 ดึงออเดอร์ 5 ร้าน (1-Click)';
+    }
+
+    if (data.success && Array.isArray(data.orders) && data.orders.length > 0) {
+        const mapped = data.orders.map(o => ({
+            orderId: o.order_id,
+            platform: o.platform,
+            shopName: o.shop_name,
+            recipientName: o.recipient_name,
+            phone: o.phone,
+            address: o.address,
+            province: o.province,
+            district: o.district,
+            zipcode: o.zipcode,
+            carrier: o.carrier,
+            tracking: o.tracking_number,
+            totalAmount: o.total_amount,
+            totalItemsCount: o.total_items,
+            items: o.items
+        }));
+
+        // Merge orders
+        const map = new Map();
+        STATE.orders.forEach(o => map.set(o.orderId, o));
+        mapped.forEach(o => map.set(o.orderId, o));
+
+        STATE.orders = Array.from(map.values());
+        STATE.selectedOrderIds = new Set(STATE.orders.map(o => o.orderId));
+        saveOrdersToLocalStorage();
+        renderOrdersTable();
+        updateStats();
+        populatePlatformFilter();
+        populateCarrierFilter();
+
+        alert(`🎉 ${data.message || `ดึงสำเร็จ ${mapped.length} ออเดอร์และบันทึกลงระบบแล้ว!`}`);
+    } else {
+        alert(data.message || '⚠️ ไม่สามารถดึงออเดอร์ได้ กรุณาตรวจสอบว่าเปิดหน้าเว็บ BigSeller ไว้ในเบราว์เซอร์หรือไม่');
+    }
+}
+
+function openExtensionInstallModal() {
+    let modal = document.getElementById('extension-guide-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'extension-guide-modal';
+        modal.innerHTML = `
+            <div style="position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;">
+                <div style="background:#0f172a; border:1px solid #334155; border-radius:16px; max-width:620px; width:100%; padding:24px; color:#f8fafc; box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                        <h4 style="margin:0; font-size:18px; color:#38bdf8; display:flex; align-items:center; gap:8px;">
+                            <span>🧩</span> วิธีติดตั้งส่วนขยาย S-Gyver Assistant (ทำครั้งเดียว 30 วินาที)
+                        </h4>
+                        <button onclick="document.getElementById('extension-guide-modal').remove()" style="background:transparent; border:none; color:#94a3b8; font-size:20px; cursor:pointer;">✕</button>
+                    </div>
+
+                    <p style="font-size:14px; color:#cbd5e1; line-height:1.6; margin-bottom:16px;">
+                        เมื่อติดตั้งส่วนขยายนี้แล้ว <strong>คนแพ็คของแค่เปิดหน้าเว็บ S-Gyver ไว้ แล้วกดปุ่ม "🚀 ดึงออเดอร์ 5 ร้าน" เพียงปุ่มเดียว</strong> ออเดอร์จาก BigSeller ทั้ง 2 บัญชี (Shopee 3 ร้าน, TikTok 1 ร้าน, Lazada 1 ร้าน) จะไหลเข้าหน้าจอพร้อมพิมพ์ทันที โดยไม่ต้องดาวน์โหลดไฟล์ Excel เลยครับ!
+                    </p>
+
+                    <div style="background:#1e293b; border-radius:12px; padding:16px; margin-bottom:20px; font-size:13px; line-height:1.7;">
+                        <div style="margin-bottom:8px;"><strong>1. เปิดหน้าส่วนขยายใน Chrome:</strong><br>
+                            พิมพ์ในช่อง URL ด้านบน: <code style="background:#0f172a; color:#38bdf8; padding:2px 8px; border-radius:4px;">chrome://extensions</code> แล้วกด Enter
+                        </div>
+                        <div style="margin-bottom:8px;"><strong>2. เปิด Developer mode:</strong><br>
+                            เปิดสวิตช์มุมขวาบน <strong>"Developer mode (โหมดนักพัฒนา)"</strong> ให้เป็นสีฟ้า
+                        </div>
+                        <div><strong>3. โหลดส่วนขยาย:</strong><br>
+                            กดปุ่ม <strong>"Load unpacked (โหลดส่วนขยายที่ยังไม่ได้แพ็กเกจ)"</strong> ที่มุมซ้ายบน ➔ เลือกโฟลเดอร์:<br>
+                            <code style="background:#0f172a; color:#4ade80; padding:4px 8px; border-radius:4px; display:inline-block; margin-top:4px;">c:\\Users\\student\\Web\\Sgyver\\extension</code>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; justify-content:flex-end; gap:10px;">
+                        <button onclick="document.getElementById('extension-guide-modal').remove()" class="btn btn-secondary px-4">ปิดหน้าต่าง</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+}

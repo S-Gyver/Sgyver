@@ -52,8 +52,11 @@
         </div>
 
         <div class="so-topbar-actions">
+            <button class="btn-cyber btn-cyber-1click" onclick="triggerExtensionSync()" id="btn-1click-sync" title="ดึงออเดอร์ Shopee, TikTok, Lazada จาก BigSeller ในคลิกเดียว">
+                <i class="bi bi-lightning-charge-fill text-warning"></i> 🚀 ดึงออเดอร์ 5 ร้าน (1-Click)
+            </button>
             <button class="btn-cyber btn-cyber-outline text-warning border-warning" onclick="loadShopeeDemoData()" title="ทดลองโหลดข้อมูลตัวอย่าง 5 ร้านค้าทันที">
-                <i class="bi bi-lightbulb-fill"></i> โหลดตัวอย่าง 5 ร้าน (Demo)
+                <i class="bi bi-lightbulb-fill"></i> โหลดตัวอย่าง 5 ร้าน
             </button>
             <button class="btn-cyber btn-cyber-outline text-danger border-danger" onclick="clearAllOrders()" title="ล้างข้อมูลออเดอร์ทั้งหมด">
                 <i class="bi bi-trash3"></i> ล้างรายการ
@@ -68,6 +71,19 @@
          MAIN CONTENT CONTAINER
          ══════════════════════════════════════════════════════════════ -->
     <main class="so-container no-print">
+
+        <!-- EXTENSION STATUS BAR -->
+        <div class="extension-status-bar" id="ext-status-bar">
+            <div class="d-flex align-items-center gap-2">
+                <span id="ext-status-dot" style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#94a3b8;"></span>
+                <span id="ext-status-text" class="small fw-semibold text-light">ตรวจหาส่วนขยาย S-Gyver Assistant...</span>
+            </div>
+            <div id="ext-action-wrap" class="d-flex align-items-center gap-2">
+                <button class="btn btn-sm btn-outline-info rounded-pill px-3 py-1" onclick="openExtensionInstallModal()">
+                    <i class="bi bi-puzzle-fill me-1"></i> วิธีติดตั้งส่วนขยาย 1 คลิก (30 วินาที)
+                </button>
+            </div>
+        </div>
 
         <!-- 1. EXCEL DROPZONE & HELP GUIDE -->
         <div class="so-dropzone-wrap mb-4">
