@@ -468,24 +468,20 @@ function clearAllOrders() {
 }
 
 // ── 4. RENDER ORDERS TABLE & FILTERS ─────────────────────────────────────────
-// Helper to sanitize product name and remove 'คัดลอก' / order ID leaks
+// Helper to sanitize product name dynamically without any hardcoding
 function getSanitizedItemName(item, order) {
     let n = (item.name || '').trim();
-    if (n === 'คัดลอก' || n.includes('คัดลอก')) {
-        if (order.orderId.includes('586436')) return 'Floral Set (ชุดเซ็ตผ้าลายดอก)';
-        if (order.orderId.includes('261006UR')) return 'หมวกปักเลื่อมแฟชั่น (Sequin Cap)';
+    // Strip out stray UI action words like 'คัดลอก' or 'Copy' and dashes
+    n = n.replace(/\b(คัดลอก|Copy|copy|แก้ไข|ลบ|พิมพ์)\b/g, '')
+         .replace(/^--\s*/, '')
+         .replace(/\s*--$/, '')
+         .trim();
+
+    // If blank or if an Order ID / tracking number leaked as the product name
+    if (!n || n === 'คัดลอก' || /^(2\d{5}[A-Z0-9]+|58\d{15,}|112\d{13,}|TH\d{10,}|LEX[A-Z0-9]+)$/i.test(n)) {
         return 'สินค้าตามคำสั่งซื้อ';
     }
-    if (n.includes('261004QJCP4') || n.includes('QJCP4')) {
-        return 'ชั้นไม้แขวนผนัง S012001';
-    }
-    if (n.includes('261005TD1C6') || n.includes('TD1C6')) {
-        return 'เสื้อปักเลื่อมคล้องคอ (Sequin Top)';
-    }
-    if (order.orderId.includes('261005R66') && (n === 'สินค้าตามคำสั่งซื้อ' || !n)) {
-        return 'ชั้นไม้วางของ 3 ชั้น (Wood Shelf)';
-    }
-    return n || 'สินค้าตามคำสั่งซื้อ';
+    return n;
 }
 
 function renderOrdersTable() {

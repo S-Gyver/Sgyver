@@ -148,7 +148,18 @@ function extractOrdersFromDom() {
 }
 
 function findOrderContainers() {
-    // Look for all elements that contain '# BS' order prefix
+    // 1. Check for explicit table rows containing order IDs (Shopee, TikTok, Lazada)
+    const rows = Array.from(document.querySelectorAll('tr, .order-item, .order-card, .el-table__row'));
+    const orderRows = rows.filter(r => {
+        const t = r.innerText || '';
+        return t.match(/(2\d{5}[A-Z0-9]{8,12}|58\d{16}|112\d{13})/);
+    });
+
+    if (orderRows.length > 0) {
+        return orderRows;
+    }
+
+    // 2. Fallback: Search for all elements that contain '# BS' order prefix
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     const bsNodes = [];
     let node;
@@ -160,21 +171,12 @@ function findOrderContainers() {
 
     const orderBlocks = [];
     bsNodes.forEach(bsEl => {
-        let curr = bsEl;
-        let bestContainer = bsEl;
-        for (let i = 0; i < 7; i++) {
-            if (!curr || curr === document.body) break;
-            const text = curr.innerText || '';
-            if (text.match(/THB|\d{15,20}|\[[A-Z0-9]+\]/i)) {
-                bestContainer = curr;
-                if (curr.tagName === 'TABLE' || curr.tagName === 'TBODY' || (curr.className && String(curr.className).includes('order'))) {
-                    break;
-                }
-            }
-            curr = curr.parentElement;
-        }
-        if (bestContainer && !orderBlocks.includes(bestContainer)) {
-            orderBlocks.push(bestContainer);
+        const row = bsEl.closest('tr, .order-item, .order-card, tbody') || bsEl;
+        const nextRow = row.nextElementSibling;
+        if (nextRow && nextRow.innerText && nextRow.innerText.match(/(2\d{5}[A-Z0-9]{8,12}|58\d{16}|112\d{13})/)) {
+            orderBlocks.push(nextRow);
+        } else {
+            orderBlocks.push(row);
         }
     });
 
@@ -197,7 +199,7 @@ function parseOrderContainer(container) {
 
     // Gather full text including parent card or previous header row
     let fullSearchText = text;
-    const orderCard = container.closest('.order-item, .order-card, .el-table, table, .ant-table, [class*="order"]') || container.parentElement;
+    const orderCard = container.closest('.order-item, .order-card, .el-table, table, tbody, [class*="order"]') || container.parentElement;
     if (orderCard && orderCard !== container) {
         fullSearchText = (orderCard.innerText || '') + '\n' + fullSearchText;
     }
@@ -259,17 +261,17 @@ function parseOrderContainer(container) {
     }
 
     // 3. Tracking Number (inside brackets e.g. [TH265919702870Q] or [66771014369125] or [LEXPU0715830217])
-    const trackingMatch = text.match(/\[([A-Z0-9]{8,25})\]/);
+    const trackingMatch = text.match(/\[([A-Z0-9]{8,25})\]/) || fullSearchText.match(/\[([A-Z0-9]{8,25})\]/);
     const tracking = trackingMatch ? trackingMatch[1] : orderId;
 
     // 4. Carrier
     let carrier = 'Standard Delivery';
-    if (text.includes('BEST Express') || text.includes('BEST')) carrier = 'BEST Express';
-    else if (text.includes('LEX TH') || text.includes('Lazada-TH-LEX')) carrier = 'LEX TH';
-    else if (text.includes('SPX Express') || text.includes('Shopee-TH-SPX') || text.includes('SPX')) carrier = 'SPX Express';
-    else if (text.includes('Flash')) carrier = 'Flash Express';
-    else if (text.includes('J&T')) carrier = 'J&T Express';
-    else if (text.includes('Kerry') || text.includes('KEX')) carrier = 'KEX (Kerry)';
+    if (fullSearchText.includes('BEST Express') || fullSearchText.includes('BEST')) carrier = 'BEST Express';
+    else if (fullSearchText.includes('LEX TH') || fullSearchText.includes('Lazada-TH-LEX')) carrier = 'LEX TH';
+    else if (fullSearchText.includes('SPX Express') || fullSearchText.includes('Shopee-TH-SPX') || fullSearchText.includes('SPX')) carrier = 'SPX Express';
+    else if (fullSearchText.includes('Flash')) carrier = 'Flash Express';
+    else if (fullSearchText.includes('J&T')) carrier = 'J&T Express';
+    else if (fullSearchText.includes('Kerry') || fullSearchText.includes('KEX')) carrier = 'KEX (Kerry)';
 
     // 5. Amount & Payment Method
     const amountMatch = text.match(/THB\s*([0-9,]+(\.[0-9]+)?)/i);
@@ -284,6 +286,8 @@ function parseOrderContainer(container) {
         const line = lines[i];
         if (line.includes('อุตรดิตถ์') || line.includes('เชียงราย') || line.includes('อยุธยา') || 
             line.includes('ชลบุรี') || line.includes('สระบุรี') || line.includes('กรุงเทพ') ||
+            line.includes('น่าน') || line.includes('นนทบุรี') || line.includes('แพร่') ||
+            line.includes('เชียงใหม่') || line.includes('ขอนแก่น') || line.includes('ภูเก็ต') ||
             line.includes('จังหวัด') || line.includes('Thailand') || line.includes('ไทย')) {
             province = line;
             if (i > 0 && lines[i-1].length < 40 && !lines[i-1].includes('THB') && !lines[i-1].includes('BS19')) {
@@ -293,88 +297,163 @@ function parseOrderContainer(container) {
         }
     }
 
-    // 7. Product Image & Product Title
+    // 7. Product Items Extraction
+    // In BigSeller order tables, column 1 (index 1) is ALWAYS the Product Details column!
+    const cells = Array.from(container.querySelectorAll('td, .el-table__cell'));
+    let productCell = null;
+
     const imgs = Array.from(container.querySelectorAll('img')).filter(im => {
         const s = (im.getAttribute('src') || im.getAttribute('data-src') || '').toLowerCase();
         return s && !s.includes('icon') && !s.includes('logo') && !s.includes('avatar') && !s.includes('svg');
     });
-    const productImg = imgs.length > 0 ? (imgs[0].getAttribute('src') || imgs[0].getAttribute('data-src') || '') : '';
+    const defaultProductImg = imgs.length > 0 ? (imgs[0].getAttribute('src') || imgs[0].getAttribute('data-src') || '') : '';
 
-    // Extract Product Title and Quantity strictly from the product cell (never from the entire container)
-    let productName = 'สินค้าตามคำสั่งซื้อ';
-    let qty = 1;
-
-    let productCell = null;
     if (imgs.length > 0) {
         productCell = imgs[0].closest('td, .goods-info, .product-item, .el-table__cell, [class*="product"], [class*="goods"]') || imgs[0].parentElement?.parentElement;
     }
 
-    if (!productCell) {
-        const cells = Array.from(container.querySelectorAll('td, .el-table__cell, div[class*="cell"]'));
-        productCell = cells.find(c => c.querySelector('img') || (c.innerText && (c.innerText.includes('THB') || c.innerText.includes('x'))));
+    if (!productCell && cells.length >= 4) {
+        // cells[1] is Product Details in BigSeller table
+        const c1Text = (cells[1].innerText || '');
+        if (!c1Text.includes(orderId)) {
+            productCell = cells[1];
+        }
     }
+
+    if (!productCell) {
+        productCell = container.querySelector('[class*="goods"], [class*="product"], [class*="item-info"]');
+    }
+
+    const extractedItems = [];
 
     if (productCell) {
-        // Strip copy buttons, buttons, icons, and action links from cell clone
-        let cleanCellText = '';
-        try {
-            const cellClone = productCell.cloneNode(true);
-            cellClone.querySelectorAll('button, a[class*="copy"], span[class*="copy"], div[class*="copy"], [class*="btn"], i, svg').forEach(el => el.remove());
-            cleanCellText = (cellClone.innerText || '').trim();
-        } catch (e) {
-            cleanCellText = productCell.innerText || '';
-        }
-
-        // Clean out words like 'คัดลอก', 'Copy'
-        cleanCellText = cleanCellText.replace(/\b(คัดลอก|Copy|copy|แก้ไข|ลบ|พิมพ์|ดูเพิ่มเติม|จัดการ)\b/g, '').trim();
-
-        // 1. Extract Quantity: Require whitespace around x / × (e.g. 'THB 65  x  1' or ' x 1') to never match order IDs like QJCP4X49
-        const qtyMatch = cleanCellText.match(/(?:THB\s*[0-9,.]+)?\s+[xX×*]\s+(\d{1,3})\b/) ||
-                         cleanCellText.match(/[\s\r\n][xX×*]\s*(\d{1,3})\b/);
-        if (qtyMatch) {
-            qty = parseInt(qtyMatch[1], 10) || 1;
-        }
-
-        // Sanity check: if qty is unreasonably high for total amount
-        if (qty > 10 && totalAmount > 0 && (totalAmount / qty) < 5) {
-            qty = 1;
-        }
-
-        // 2. Extract Product Name: exclude prices, order IDs, dashes, and purely tracking-like tokens
-        const cellLines = cleanCellText.split(/[\n\r]+/).map(l => l.trim()).filter(Boolean);
-        const meaningfulLines = cellLines.map(line => {
-            return line.replace(/\b(คัดลอก|Copy|copy|แก้ไข|ลบ|พิมพ์|ดูเพิ่มเติม|จัดการ)\b/g, '')
-                       .replace(/^--\s*/, '')
-                       .replace(/\s*--$/, '')
-                       .trim();
-        }).filter(line => {
-            if (!line || line.length < 2) return false;
-            if (/^(THB|฿|\$|[xX×*]\s*\d+|--|-|\d+|คัดลอก|copy)$/i.test(line)) return false;
-            if (line.includes('THB') && (line.includes('x') || line.includes('×'))) return false;
-            if (/2\d{5}[A-Z0-9]+/i.test(line)) return false; // Not Shopee order ID
-            if (/58\d{15,}/.test(line)) return false; // Not TikTok order ID
-            if (/112\d{13,}/.test(line)) return false; // Not Lazada order ID
-            if (/^\[?[A-Z0-9]{8,}\]?$/i.test(line)) return false; // Not tracking code
-            if (line === orderId || line.includes(orderId)) return false;
-            return true;
-        });
-
-        if (meaningfulLines.length > 0) {
-            // Find best descriptive line (prefer Thai, or longest descriptive title)
-            const thaiLine = meaningfulLines.find(l => /[\u0E00-\u0E7F]/.test(l));
-            const bestLine = thaiLine || meaningfulLines.find(l => l.length > 3 && !l.includes('THB')) || meaningfulLines[0];
-            productName = bestLine.replace(/^--\s*/, '').replace(/\s*--$/, '').trim();
-        }
-
-        // Check if BigSeller has specific title elements or link
-        const titleEl = productCell.querySelector('a, .goods-name, .product-name, [class*="title"], [class*="name"]');
-        if (titleEl && titleEl.innerText) {
-            const rawTitle = titleEl.innerText.replace(/\b(คัดลอก|Copy|copy)\b/g, '').trim();
-            if (rawTitle.length > 2 && !rawTitle.includes('THB') && !/^2\d{5}/.test(rawTitle)) {
-                productName = rawTitle.replace(/^--\s*/, '').replace(/\s*--$/, '').trim();
+        // Find sub-items if multiple products exist in this cell
+        let itemNodes = Array.from(productCell.querySelectorAll('.goods-item, .product-item, [class*="goods-info"], [class*="goods-row"], [class*="item-wrap"]'));
+        if (itemNodes.length === 0) {
+            const cellImgs = Array.from(productCell.querySelectorAll('img')).filter(im => {
+                const s = (im.getAttribute('src') || im.getAttribute('data-src') || '').toLowerCase();
+                return s && !s.includes('icon') && !s.includes('logo') && !s.includes('avatar') && !s.includes('svg');
+            });
+            if (cellImgs.length > 1) {
+                itemNodes = cellImgs.map(img => img.closest('div, tr, li') || img.parentElement);
+            } else {
+                itemNodes = [productCell];
             }
         }
+
+        itemNodes.forEach(itemEl => {
+            // Thumbnail Image
+            const itImg = itemEl.querySelector('img:not([src*="icon"]):not([src*="logo"]):not([src*="avatar"]):not([src*="svg"])');
+            const itemImgUrl = itImg ? (itImg.getAttribute('src') || itImg.getAttribute('data-src') || '') : defaultProductImg;
+
+            // Clone and strip all copy buttons, icons, action links
+            let cleanCellText = '';
+            try {
+                const clone = itemEl.cloneNode(true);
+                clone.querySelectorAll('button, a[class*="copy"], span[class*="copy"], div[class*="copy"], [class*="btn"], i, svg').forEach(el => el.remove());
+                cleanCellText = (clone.innerText || '').trim();
+            } catch (e) {
+                cleanCellText = (itemEl.innerText || '').trim();
+            }
+
+            // Remove copy words
+            cleanCellText = cleanCellText.replace(/\b(คัดลอก|Copy|copy|แก้ไข|ลบ|พิมพ์|ดูเพิ่มเติม|จัดการ)\b/g, '').trim();
+
+            // Extract Quantity and Price: e.g. 'THB 60 x 8' or 'THB 65 x 1' or ' x 8'
+            let itemQty = 1;
+            let itemPrice = totalAmount;
+
+            const priceQtyMatch = cleanCellText.match(/(?:THB|฿|\$)\s*([0-9,]+(?:\.[0-9]+)?)\s*[xX×*]\s*(\d{1,4})/i) ||
+                                  cleanCellText.match(/[\s\r\n][xX×*]\s*(\d{1,4})\b/);
+            if (priceQtyMatch) {
+                if (priceQtyMatch.length >= 3 && priceQtyMatch[1]) {
+                    itemPrice = parseFloat(priceQtyMatch[1].replace(/,/g, '')) || totalAmount;
+                    itemQty = parseInt(priceQtyMatch[2], 10) || 1;
+                } else if (priceQtyMatch[1]) {
+                    itemQty = parseInt(priceQtyMatch[1], 10) || 1;
+                }
+            }
+
+            // Sanity check to prevent order ID fragments
+            if (itemQty > 10 && totalAmount > 0 && (totalAmount / itemQty) < 5) {
+                itemQty = 1;
+            }
+
+            // Lines of text for Title and Variation
+            const rawLines = cleanCellText.split(/[\r\n]+/)
+                .map(l => l.replace(/\b(คัดลอก|Copy|copy)\b/g, '').trim())
+                .filter(l => {
+                    if (!l) return false;
+                    if (/(?:THB|฿|\$)\s*[0-9,.]+\s*[xX×*]\s*\d+/i.test(l)) return false;
+                    if (/^(?:THB|฿|\$)\s*[0-9,.]+/i.test(l)) return false;
+                    if (/^(THB|฿|\$|[xX×*]\s*\d+|คัดลอก|copy)$/i.test(l)) return false;
+                    if (/^(2\d{5}[A-Z0-9]+|58\d{15,}|112\d{13,})$/i.test(l)) return false;
+                    if (/^\[?[A-Z0-9]{8,}\]?$/i.test(l)) return false;
+                    if (l === orderId || l.includes(orderId)) return false;
+                    return true;
+                });
+
+            const contentLines = rawLines.filter(l => l !== '--' && l !== '-');
+
+            let itemName = '';
+            let itemVariation = '';
+
+            if (contentLines.length === 1) {
+                itemName = contentLines[0];
+            } else if (contentLines.length === 2) {
+                if (contentLines[0] === contentLines[1]) {
+                    itemName = contentLines[0];
+                } else {
+                    itemName = contentLines[0];
+                    itemVariation = contentLines[1];
+                }
+            } else if (contentLines.length >= 3) {
+                itemName = contentLines[0];
+                itemVariation = contentLines.slice(1).join(' ');
+            } else if (rawLines.length > 0) {
+                itemName = rawLines[0];
+            }
+
+            // Check if there is an image badge/tag (e.g. 'Shorts S', 'Grey Set')
+            const badgeEl = itemEl.querySelector('.sku-tag, .tag, .badge, [class*="badge"], [class*="tag"]');
+            if (badgeEl && badgeEl.innerText && !itemVariation) {
+                const bText = badgeEl.innerText.trim();
+                if (bText && bText !== '--' && bText.length < 30) {
+                    itemVariation = bText;
+                }
+            }
+
+            // Cleanup dashes
+            itemName = itemName.replace(/^--\s*/, '').replace(/\s*--$/, '').trim();
+            itemVariation = itemVariation.replace(/^--\s*/, '').replace(/\s*--$/, '').trim();
+
+            if (!itemName) {
+                itemName = 'สินค้าตามคำสั่งซื้อ';
+            }
+
+            extractedItems.push({
+                name: itemName,
+                variation: itemVariation,
+                price: itemPrice || totalAmount,
+                qty: itemQty,
+                image_url: itemImgUrl || defaultProductImg,
+                payment_method: paymentMethod
+            });
+        });
     }
+
+    if (extractedItems.length === 0) {
+        extractedItems.push({
+            name: 'สินค้าตามคำสั่งซื้อ',
+            variation: '',
+            price: totalAmount,
+            qty: 1,
+            image_url: defaultProductImg,
+            payment_method: paymentMethod
+        });
+    }
+
+    const totalQty = extractedItems.reduce((acc, it) => acc + (it.qty || 1), 0);
 
     // 8. Determine Order Status (NEW | READY_TO_SHIP | SHIPPED)
     let orderStatus = 'READY_TO_SHIP';
@@ -401,18 +480,11 @@ function parseOrderContainer(container) {
         zipcode: '-',
         carrier: carrier,
         tracking_number: tracking,
-        total_items: qty,
+        total_items: totalQty,
         total_amount: totalAmount,
         payment_method: paymentMethod,
-        image_url: productImg,
-        items: [{
-            name: productName,
-            variation: '',
-            price: totalAmount,
-            qty: qty,
-            image_url: productImg,
-            payment_method: paymentMethod
-        }],
+        image_url: extractedItems[0].image_url || defaultProductImg,
+        items: extractedItems,
         status: orderStatus,
         updated_at: new Date().toISOString()
     };
