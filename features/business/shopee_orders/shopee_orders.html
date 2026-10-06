@@ -23,7 +23,7 @@
     <script src="../../../assets/js/toast_shared.js"></script>
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="shopee_orders.css?v=20261006_20">
+    <link rel="stylesheet" href="shopee_orders.css?v=20261006_21">
 
     <style>
         /* High-Contrast Card Rows & Distinct Separation */
@@ -140,52 +140,7 @@
          ══════════════════════════════════════════════════════════════ -->
     <main class="so-container no-print">
 
-        <!-- EXTENSION STATUS BAR -->
-        <div class="extension-status-bar" id="ext-status-bar">
-            <div class="d-flex align-items-center gap-2">
-                <span id="ext-status-dot" style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#94a3b8;"></span>
-                <span id="ext-status-text" class="small fw-semibold text-light">ตรวจหาส่วนขยาย S-Gyver Assistant...</span>
-            </div>
-            <div id="ext-action-wrap" class="d-flex align-items-center gap-2">
-                <button class="btn btn-sm btn-outline-info rounded-pill px-3 py-1" onclick="openExtensionInstallModal()">
-                    <i class="bi bi-puzzle-fill me-1"></i> วิธีติดตั้งส่วนขยาย 1 คลิก (30 วินาที)
-                </button>
-            </div>
-        </div>
-
-        <!-- 1. EXCEL DROPZONE & HELP GUIDE -->
-        <div class="so-dropzone-wrap mb-4">
-            <div class="so-dropzone" id="shopee-dropzone" onclick="document.getElementById('excel-file-input').click()">
-                <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" multiple style="display: none;" onchange="handleExcelFileUpload(event)">
-                <div class="dropzone-icon">
-                    <i class="bi bi-file-earmark-excel-fill text-success"></i>
-                </div>
-                <div class="dropzone-content">
-                    <h3>ลากไฟล์ Excel ทั้ง 2 บัญชีจาก BigSeller มาวางที่นี่พร้อมกันได้เลย (Multi-files)</h3>
-                    <p>รองรับไฟล์ Export จาก BigSeller (บัญชี 1 + บัญชี 2) หรือไฟล์ตรงจาก Shopee, TikTok Shop, Lazada (ระบบจะผสาน 5 ร้านให้อัตโนมัติ)</p>
-                </div>
-                <div class="dropzone-action">
-                    <span class="btn btn-sm btn-outline-info rounded-pill px-3">
-                        <i class="bi bi-cloud-arrow-up-fill me-1"></i> เลือกไฟล์ Excel
-                    </span>
-                </div>
-            </div>
-
-            <!-- Quick Step Instruction Pill -->
-            <div class="so-shopee-guide mt-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <div>
-                    <i class="bi bi-info-circle-fill text-warning me-2"></i>
-                    <strong>วิธีใช้งาน:</strong> Export ไฟล์จาก BigSeller ทั้ง 2 บัญชี ➔ ลากไฟล์มาวางพร้อมกัน ระบบจะรวมร่างออเดอร์ของ <strong>Shopee 3 ร้าน + TikTok 1 ร้าน + Lazada 1 ร้าน</strong> ให้อัตโนมัติ
-                </div>
-                <div class="d-flex gap-2">
-                    <span class="badge bg-warning text-dark"><i class="bi bi-shop me-1"></i>Shopee (3 ร้าน)</span>
-                    <span class="badge bg-dark border border-secondary text-white"><i class="bi bi-tiktok me-1"></i>TikTok (1 ร้าน)</span>
-                    <span class="badge bg-primary text-white"><i class="bi bi-bag-heart-fill me-1"></i>Lazada (1 ร้าน)</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- 2. SUMMARY STAT CARDS -->
+        <!-- 1. SUMMARY STAT CARDS -->
         <div class="stats-cards-grid mb-4">
             <div class="stat-card">
                 <div class="stat-icon orange"><i class="bi bi-receipt-cutoff"></i></div>
@@ -352,6 +307,6 @@
     </div>
 
     <!-- Shopee Orders Logic -->
-    <script src="shopee_orders.js?v=20261006_20"></script>
+    <script src="shopee_orders.js?v=20261006_21"></script>
 </body>
 </html>
