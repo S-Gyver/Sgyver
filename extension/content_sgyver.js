@@ -39,3 +39,14 @@ window.addEventListener('message', (event) => {
         window.postMessage({ type: 'SGYVER_EXTENSION_STATUS', installed: true, version: '1.0.0' }, '*');
     }
 });
+
+// Check if any fresh orders were sent from BigSeller and forward them
+chrome.storage.local.get(['lastExtractedOrders'], (res) => {
+    if (res && Array.isArray(res.lastExtractedOrders) && res.lastExtractedOrders.length > 0) {
+        window.postMessage({
+            type: 'SGYVER_CACHED_ORDERS_AVAILABLE',
+            orders: res.lastExtractedOrders
+        }, '*');
+    }
+});
+

@@ -9,39 +9,44 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'PULL_ORDERS_FROM_BIGSELLER') {
         handlePullOrders(sendResponse);
         return true; // Keep message channel open for asynchronous response
+    } else if (request.action === 'SYNC_ORDERS_TO_SUPABASE') {
+        syncToSupabase(request.orders).then(() => {
+            sendResponse({ success: true });
+        }).catch(err => {
+            sendResponse({ success: false, error: err.message });
+        });
+        return true;
     }
 });
 
 async function handlePullOrders(sendResponse) {
     try {
-        // 1. Search for any open BigSeller tabs
+        // 1. Check if orders were recently extracted into Chrome Storage
+        const stored = await chrome.storage.local.get(['lastExtractedOrders']);
+        let combinedOrders = stored.lastExtractedOrders || [];
+
+        // 2. Search for any open BigSeller tabs to extract fresh orders
         const tabs = await chrome.tabs.query({ url: '*://*.bigseller.com/*' });
 
-        if (tabs.length === 0) {
-            sendResponse({
-                success: false,
-                message: 'ไม่พบแท็บ BigSeller ที่เปิดอยู่ กรุณาเปิดเว็บ BigSeller ไว้ในเบราว์เซอร์ 1 แท็บ แล้วกดดึงออเดอร์อีกครั้งครับ'
-            });
-            return;
-        }
-
-        // 2. Query orders from the active BigSeller tab(s)
-        let combinedOrders = [];
-        for (const tab of tabs) {
-            try {
-                const response = await chrome.tabs.sendMessage(tab.id, { action: 'EXTRACT_BIGSELLER_ORDERS' });
-                if (response && Array.isArray(response.orders)) {
-                    combinedOrders = combinedOrders.concat(response.orders);
+        if (tabs.length > 0) {
+            for (const tab of tabs) {
+                try {
+                    const response = await chrome.tabs.sendMessage(tab.id, { action: 'EXTRACT_BIGSELLER_ORDERS' });
+                    if (response && Array.isArray(response.orders) && response.orders.length > 0) {
+                        combinedOrders = response.orders;
+                        await chrome.storage.local.set({ lastExtractedOrders: combinedOrders });
+                        break;
+                    }
+                } catch (tabErr) {
+                    console.warn('Error querying tab:', tab.id, tabErr);
                 }
-            } catch (tabErr) {
-                console.warn('Error querying tab:', tab.id, tabErr);
             }
         }
 
         if (combinedOrders.length === 0) {
             sendResponse({
                 success: false,
-                message: 'ตรวจพบแท็บ BigSeller แต่ยังไม่พบรายการออเดอร์ในหน้าจอ กรุณาเปิดหน้า "รอจัดส่ง (To Ship)" หรือ "คำสั่งซื้อ" ใน BigSeller ครับ'
+                message: 'ไม่พบรายการออเดอร์ กรุณาเปิดหน้า "คำสั่งดำเนินการ" ใน BigSeller แล้วลองใหม่อีกครั้งครับ'
             });
             return;
         }

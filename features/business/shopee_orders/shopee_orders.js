@@ -980,6 +980,9 @@ window.addEventListener('message', (event) => {
         updateExtensionStatusUI(true);
     } else if (event.data.type === 'SGYVER_SYNC_RESULT') {
         handleExtensionSyncResult(event.data);
+    } else if (event.data.type === 'SGYVER_CACHED_ORDERS_AVAILABLE' && Array.isArray(event.data.orders)) {
+        console.log('📥 Received cached orders from Extension:', event.data.orders.length);
+        handleExtensionSyncResult({ success: true, orders: event.data.orders, message: `ซิงค์ ${event.data.orders.length} ออเดอร์จาก BigSeller เรียบร้อยแล้ว!` });
     }
 });
 
