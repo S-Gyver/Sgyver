@@ -8,6 +8,7 @@
 
     <!-- Bootstrap 5 CSS, Bootstrap Icons & Fonts -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500;600;700&family=Kanit:wght@300;400;500;600;700;800&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
@@ -258,30 +259,30 @@
                 </div>
             </div>
         </div>
+    </div>
+
     <!-- ══════════════════════════════════════════════════════════════
-         7. PRODUCT IMAGE PREVIEW POPUP MODAL
+         7. PRODUCT IMAGE PREVIEW POPUP MODAL (LIGHTBOX)
          ══════════════════════════════════════════════════════════════ -->
-    <div class="modal fade no-print" id="productImageModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" style="max-width: 520px;">
-            <div class="modal-content bg-dark text-white border-secondary shadow-lg" style="border-radius: 16px; overflow: hidden; background: #0f172a !important;">
-                <div class="modal-header border-secondary py-2 px-3" style="background: rgba(255, 255, 255, 0.03);">
-                    <div>
-                        <h6 class="modal-title fw-bold text-white mb-0" id="productImageModalTitle">
-                            <i class="bi bi-image text-info me-1"></i> รูปภาพสินค้า
-                        </h6>
-                        <small class="text-secondary font-mono" id="productImageModalSubtitle" style="font-size: 0.75rem;"></small>
-                    </div>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="image-lightbox-modal no-print" id="productImageModal" style="display: none;" onclick="if(event.target === this) closeProductImageModal()">
+        <div class="image-lightbox-dialog">
+            <div class="image-lightbox-header">
+                <div>
+                    <h6 class="modal-title fw-bold text-white mb-0" id="productImageModalTitle">
+                        <i class="bi bi-image text-cyan me-1"></i> รูปภาพสินค้า
+                    </h6>
+                    <small class="text-secondary font-mono" id="productImageModalSubtitle" style="font-size: 0.75rem;"></small>
                 </div>
-                <div class="modal-body p-3 d-flex justify-content-center align-items-center" style="background: #020617; min-height: 320px;">
-                    <img id="productImageModalImg" src="" alt="product large" class="img-fluid rounded" style="max-height: 440px; object-fit: contain; box-shadow: 0 10px 30px rgba(0,0,0,0.8);">
-                </div>
-                <div class="modal-footer border-secondary py-2 px-3 justify-content-between" style="background: rgba(255, 255, 255, 0.03);">
-                    <a id="productImageModalLink" href="#" target="_blank" class="btn btn-sm btn-outline-info text-info">
-                        <i class="bi bi-box-arrow-up-right me-1"></i> เปิดดูรูปต้นฉบับ
-                    </a>
-                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">ปิดหน้าต่าง</button>
-                </div>
+                <button type="button" class="btn-close-lightbox" onclick="closeProductImageModal()" aria-label="Close">✕</button>
+            </div>
+            <div class="image-lightbox-body">
+                <img id="productImageModalImg" src="" alt="product large">
+            </div>
+            <div class="image-lightbox-footer">
+                <a id="productImageModalLink" href="#" target="_blank" class="btn btn-sm btn-outline-info text-info">
+                    <i class="bi bi-box-arrow-up-right me-1"></i> เปิดดูรูปต้นฉบับ
+                </a>
+                <button type="button" class="btn btn-sm btn-secondary" onclick="closeProductImageModal()">ปิดหน้าต่าง</button>
             </div>
         </div>
     </div>

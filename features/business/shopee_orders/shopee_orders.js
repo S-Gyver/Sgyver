@@ -918,18 +918,33 @@ function showProductImageModal(encodedUrl, encodedTitle, encodedOrderId) {
     const titleEl = document.getElementById('productImageModalTitle');
     const subtitleEl = document.getElementById('productImageModalSubtitle');
     const linkEl = document.getElementById('productImageModalLink');
+    const modalEl = document.getElementById('productImageModal');
 
     if (imgEl) imgEl.src = imageUrl;
-    if (titleEl) titleEl.innerHTML = `<i class="bi bi-image text-info me-1"></i> ${escapeHtml(productName)}`;
+    if (titleEl) titleEl.innerHTML = `<i class="bi bi-image text-cyan me-1"></i> ${escapeHtml(productName)}`;
     if (subtitleEl) subtitleEl.textContent = orderId ? `เลขคำสั่งซื้อ: ${orderId}` : '';
     if (linkEl) linkEl.href = imageUrl;
 
-    const modalEl = document.getElementById('productImageModal');
-    if (modalEl && window.bootstrap) {
-        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-        modal.show();
+    if (modalEl) {
+        modalEl.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
     }
 }
+
+function closeProductImageModal() {
+    const modalEl = document.getElementById('productImageModal');
+    if (modalEl) {
+        modalEl.style.display = 'none';
+        document.body.style.overflow = '';
+    }
+}
+
+// Close lightbox on Escape key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeProductImageModal();
+    }
+});
 
 function printSingleLabel(orderId) {
     const order = STATE.orders.find(o => o.orderId === orderId);
