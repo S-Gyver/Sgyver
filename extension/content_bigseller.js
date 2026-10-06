@@ -665,19 +665,33 @@ setInterval(() => {
     }
 }, 2000);
 
-// Auto-Sync Watcher: Automatically detects new orders every 30s and sends to S-Gyver
+// ── 6. REALTIME AUTO-SYNC WATCHER (WITHOUT NEEDING TO CLICK BUTTON) ─────────
 let lastSyncSignature = '';
-setInterval(async () => {
-    try {
-        const orders = extractOrdersFromDom();
-        if (orders.length > 0) {
-            const currentSignature = orders.map(o => o.order_id).sort().join(',');
-            if (currentSignature !== lastSyncSignature) {
-                console.log('🔄 [Auto-Watcher] Detected order change, auto-syncing to Supabase...', orders.length);
-                lastSyncSignature = currentSignature;
-                await sendOrdersToSupabase(orders);
-                chrome.storage.local.set({ lastExtractedOrders: orders });
+let isSyncing = false;
 
+async function runAutoSync(triggerSource = 'auto') {
+    if (isSyncing) return;
+    try {
+        isSyncing = true;
+        const orders = extractOrdersFromDom();
+        if (Array.isArray(orders) && orders.length > 0) {
+            const currentSignature = orders.map(o => `${o.order_id}:${o.status}:${o.total_amount}:${o.total_items}`).sort().join('|');
+            if (currentSignature !== lastSyncSignature) {
+                lastSyncSignature = currentSignature;
+                console.log(`⚡ [Realtime Auto-Sync (${triggerSource})] Detected ${orders.length} orders in BigSeller! Broadcasting to S-Gyver Studio...`);
+
+                // 1. Save to Chrome local storage
+                await chrome.storage.local.set({ lastExtractedOrders: orders });
+
+                // 2. Broadcast immediately to any open S-Gyver Studio tabs
+                try {
+                    chrome.runtime.sendMessage({ action: 'AUTO_BROADCAST_ORDERS', orders: orders });
+                } catch (e) {}
+
+                // 3. Sync to Supabase in background
+                sendOrdersToSupabase(orders);
+
+                // 4. Update Float Button indicator
                 const btnText = document.querySelector('#sgyver-quick-sync-btn span:last-child');
                 if (btnText) {
                     btnText.textContent = `⚡ ซิงค์อัตโนมัติแล้ว (${orders.length})`;
@@ -688,9 +702,32 @@ setInterval(async () => {
             }
         }
     } catch (e) {
-        console.warn('Auto-Watcher exception:', e);
+        console.warn('Auto-Sync exception:', e);
+    } finally {
+        isSyncing = false;
     }
-}, 30000); // Check every 30 seconds
+}
+
+// 1. Immediate trigger on page load and SPA navigation
+setTimeout(() => runAutoSync('load_initial'), 1200);
+setTimeout(() => runAutoSync('load_delayed'), 3000);
+
+// 2. MutationObserver: Auto-sync immediately when BigSeller DOM updates (page change, filter, tab switch)
+let observerDebounce = null;
+const bigsellerObserver = new MutationObserver(() => {
+    if (observerDebounce) clearTimeout(observerDebounce);
+    observerDebounce = setTimeout(() => {
+        runAutoSync('dom_mutation');
+    }, 1200);
+});
+if (document.body) {
+    bigsellerObserver.observe(document.body, { childList: true, subtree: true });
+}
+
+// 3. Heartbeat check every 5 seconds
+setInterval(() => {
+    runAutoSync('heartbeat');
+}, 5000);
 
 // Listen to messages from background/S-Gyver
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {

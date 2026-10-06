@@ -9,6 +9,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'PULL_ORDERS_FROM_BIGSELLER') {
         handlePullOrders(sendResponse);
         return true; // Keep message channel open for asynchronous response
+    } else if (request.action === 'AUTO_BROADCAST_ORDERS') {
+        broadcastOrdersToSgyver(request.orders);
+        sendResponse({ success: true });
+        return true;
     } else if (request.action === 'SYNC_ORDERS_TO_SUPABASE') {
         syncToSupabase(request.orders).then(() => {
             sendResponse({ success: true });
@@ -18,6 +22,27 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true;
     }
 });
+
+async function broadcastOrdersToSgyver(orders) {
+    try {
+        if (!Array.isArray(orders) || orders.length === 0) return;
+        await chrome.storage.local.set({ lastExtractedOrders: orders });
+
+        // Query tabs that have S-Gyver Studio open
+        const tabs = await chrome.tabs.query({});
+        for (const tab of tabs) {
+            if (tab.url && (tab.url.includes('shopee_orders') || tab.url.includes('Sgyver') || tab.url.includes('s-gyver'))) {
+                try {
+                    chrome.tabs.sendMessage(tab.id, { action: 'AUTO_ORDER_UPDATE', orders: orders });
+                } catch (e) {
+                    // Ignore inactive tab errors
+                }
+            }
+        }
+    } catch (e) {
+        console.error('Error broadcasting orders:', e);
+    }
+}
 
 async function handlePullOrders(sendResponse) {
     try {

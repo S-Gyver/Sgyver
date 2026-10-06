@@ -40,13 +40,41 @@ window.addEventListener('message', (event) => {
     }
 });
 
-// Check if any fresh orders were sent from BigSeller and forward them
+// Check if any fresh orders were sent from BigSeller and forward them on load
 chrome.storage.local.get(['lastExtractedOrders'], (res) => {
     if (res && Array.isArray(res.lastExtractedOrders) && res.lastExtractedOrders.length > 0) {
         window.postMessage({
-            type: 'SGYVER_CACHED_ORDERS_AVAILABLE',
-            orders: res.lastExtractedOrders
+            type: 'SGYVER_AUTO_SYNC_ORDERS',
+            orders: res.lastExtractedOrders,
+            isInitial: true
         }, '*');
     }
 });
+
+// 3. Realtime Auto-Sync: Listen for storage updates when BigSeller extracts orders
+chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'local' && changes.lastExtractedOrders && changes.lastExtractedOrders.newValue) {
+        const orders = changes.lastExtractedOrders.newValue;
+        if (Array.isArray(orders) && orders.length > 0) {
+            console.log('⚡ [S-Gyver Assistant] Realtime auto-sync: broadcasting orders to page:', orders.length);
+            window.postMessage({
+                type: 'SGYVER_AUTO_SYNC_ORDERS',
+                orders: orders
+            }, '*');
+        }
+    }
+});
+
+// 4. Direct Push Listener from Background
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === 'AUTO_ORDER_UPDATE' && Array.isArray(request.orders)) {
+        console.log('⚡ [S-Gyver Assistant] Live push from BigSeller tab:', request.orders.length);
+        window.postMessage({
+            type: 'SGYVER_AUTO_SYNC_ORDERS',
+            orders: request.orders
+        }, '*');
+        sendResponse({ received: true });
+    }
+});
+
 

@@ -1637,9 +1637,12 @@ window.addEventListener('message', (event) => {
         updateExtensionStatusUI(true);
     } else if (event.data.type === 'SGYVER_SYNC_RESULT') {
         handleExtensionSyncResult(event.data);
+    } else if (event.data.type === 'SGYVER_AUTO_SYNC_ORDERS' && Array.isArray(event.data.orders)) {
+        console.log('⚡ Received auto-sync orders from BigSeller:', event.data.orders.length);
+        handleAutoOrderSync(event.data.orders, event.data.isInitial);
     } else if (event.data.type === 'SGYVER_CACHED_ORDERS_AVAILABLE' && Array.isArray(event.data.orders)) {
         console.log('📥 Received cached orders from Extension:', event.data.orders.length);
-        handleExtensionSyncResult({ success: true, orders: event.data.orders, message: `ซิงค์ ${event.data.orders.length} ออเดอร์จาก BigSeller เรียบร้อยแล้ว!` });
+        handleAutoOrderSync(event.data.orders, true);
     }
 });
 
@@ -1664,7 +1667,7 @@ function updateExtensionStatusUI(active) {
             dot.style.background = '#22c55e';
             dot.style.boxShadow = '0 0 10px #22c55e';
         }
-        if (text) text.innerHTML = '<span class="text-success">🟢 ส่วนขยาย S-Gyver Assistant: เชื่อมต่อแล้ว</span> (พร้อมดึงออเดอร์ Shopee, TikTok, Lazada จาก BigSeller ใน 1 คลิก)';
+        if (text) text.innerHTML = '<span class="text-success">🟢 ระบบซิงค์เรียลไทม์เชื่อมต่อแล้ว:</span> เมื่อมีออเดอร์ใน BigSeller จะดึงเข้าเว็บทันทีแบบไม่ต้องกดปุ่ม';
         if (bar) bar.classList.add('active');
         if (btn) btn.classList.remove('opacity-75');
     } else {
@@ -1672,7 +1675,7 @@ function updateExtensionStatusUI(active) {
             dot.style.background = '#eab308';
             dot.style.boxShadow = 'none';
         }
-        if (text) text.innerHTML = '<span class="text-warning">⚡ ต้องการดึงออเดอร์อัตโนมัติในคลิกเดียวโดยไม่ต้องโหลดไฟล์?</span> ติดตั้งส่วนขยาย Chrome ใน 30 วินาที';
+        if (text) text.innerHTML = '<span class="text-warning">⚡ ต้องการให้ดึงออเดอร์อัตโนมัติทันทีโดยไม่ต้องกดปุ่ม?</span> ติดตั้งส่วนขยาย Chrome ใน 30 วินาที';
         if (bar) bar.classList.remove('active');
     }
 }
@@ -1701,6 +1704,64 @@ function triggerExtensionSync() {
     }, 10000);
 }
 
+function applyIncomingOrders(incomingOrders, isManual = false, customMessage = '') {
+    if (!Array.isArray(incomingOrders) || incomingOrders.length === 0) return;
+
+    const mapped = incomingOrders.map(o => {
+        const hasRealTracking = o.tracking_number && o.tracking_number !== o.order_id && !o.tracking_number.startsWith('BS') && o.tracking_number !== '--';
+        const resolvedStatus = o.status || (hasRealTracking ? 'READY_TO_SHIP' : 'NEW');
+        const orderObj = {
+            orderId: o.order_id || o.orderId,
+            platform: o.platform || 'Shopee',
+            shopName: getResolvedShopName({ ...o, orderId: o.order_id || o.orderId, shopName: o.shop_name || o.shopName, totalAmount: o.total_amount || o.totalAmount, tracking: o.tracking_number || o.tracking, items: o.items }),
+            recipientName: o.recipient_name || o.recipientName,
+            buyerUsername: o.buyer_username || o.buyerUsername || '',
+            orderTime: o.order_time || o.orderTime || '',
+            platformStatus: o.platform_status || o.platformStatus || (resolvedStatus === 'NEW' ? 'รอรับออเดอร์' : 'Processed'),
+            status: resolvedStatus,
+            phone: o.phone || '',
+            address: o.address || '',
+            province: o.province || '',
+            district: o.district || '',
+            zipcode: o.zipcode || '',
+            carrier: o.carrier || 'Standard Delivery',
+            tracking: o.tracking_number || o.tracking || (o.order_id || o.orderId),
+            totalAmount: parseFloat(o.total_amount || o.totalAmount) || 0,
+            totalItemsCount: parseInt(o.total_items || o.totalItemsCount, 10) || (Array.isArray(o.items) ? o.items.length : 1),
+            paymentMethod: o.payment_method || o.paymentMethod || 'Prepaid',
+            imageUrl: o.image_url || o.imageUrl || (Array.isArray(o.items) && o.items[0] ? o.items[0].image_url : ''),
+            items: Array.isArray(o.items) ? o.items : []
+        };
+        normalizeOrderItems(orderObj);
+        return orderObj;
+    });
+
+    // Merge orders into STATE
+    const map = new Map();
+    STATE.orders.forEach(o => map.set(o.orderId, o));
+    mapped.forEach(o => map.set(o.orderId, o));
+
+    STATE.orders = Array.from(map.values());
+    STATE.selectedOrderIds = new Set(STATE.orders.map(o => o.orderId));
+    saveOrdersToLocalStorage();
+    renderOrdersTable();
+    updateStats();
+    populatePlatformFilter();
+    populateCarrierFilter();
+
+    if (isManual) {
+        if (typeof showToast === 'function') {
+            showToast('success', '🚀 ดึงสำเร็จ!', customMessage || `ดึงและบันทึก ${mapped.length} ออเดอร์จาก BigSeller เรียบร้อยแล้ว`, 3000);
+        } else {
+            alert(`🎉 ${customMessage || `ดึงสำเร็จ ${mapped.length} ออเดอร์จาก BigSeller และบันทึกลงระบบแล้ว!`}`);
+        }
+    } else {
+        if (typeof showToast === 'function') {
+            showToast('info', '⚡ ซิงค์ออเดอร์อัตโนมัติแล้ว', `ดึงข้อมูล ${mapped.length} ออเดอร์จาก BigSeller เข้าเว็บเรียบร้อยทันที`, 2500);
+        }
+    }
+}
+
 function handleExtensionSyncResult(data) {
     const btn = document.getElementById('btn-1click-sync');
     if (btn) {
@@ -1709,50 +1770,15 @@ function handleExtensionSyncResult(data) {
     }
 
     if (data.success && Array.isArray(data.orders) && data.orders.length > 0) {
-        const mapped = data.orders.map(o => {
-            const hasRealTracking = o.tracking_number && o.tracking_number !== o.order_id && !o.tracking_number.startsWith('BS') && o.tracking_number !== '--';
-            const resolvedStatus = o.status || (hasRealTracking ? 'READY_TO_SHIP' : 'NEW');
-            return {
-                orderId: o.order_id,
-                platform: o.platform,
-                shopName: getResolvedShopName({ ...o, orderId: o.order_id, shopName: o.shop_name, totalAmount: o.total_amount, tracking: o.tracking_number, items: o.items }),
-                recipientName: o.recipient_name,
-                buyerUsername: o.buyer_username || '',
-                orderTime: o.order_time || '',
-                platformStatus: o.platform_status || (resolvedStatus === 'NEW' ? 'รอรับออเดอร์' : 'Processed'),
-                status: resolvedStatus,
-                phone: o.phone,
-                address: o.address,
-                province: o.province,
-                district: o.district,
-                zipcode: o.zipcode,
-                carrier: o.carrier,
-                tracking: o.tracking_number,
-                totalAmount: o.total_amount,
-                totalItemsCount: o.total_items,
-                paymentMethod: o.payment_method || 'Prepaid',
-                imageUrl: o.image_url || (Array.isArray(o.items) && o.items[0] ? o.items[0].image_url : ''),
-                items: o.items
-            };
-        });
-
-        // Merge orders
-        const map = new Map();
-        STATE.orders.forEach(o => map.set(o.orderId, o));
-        mapped.forEach(o => map.set(o.orderId, o));
-
-        STATE.orders = Array.from(map.values());
-        STATE.selectedOrderIds = new Set(STATE.orders.map(o => o.orderId));
-        saveOrdersToLocalStorage();
-        renderOrdersTable();
-        updateStats();
-        populatePlatformFilter();
-        populateCarrierFilter();
-
-        alert(`🎉 ${data.message || `ดึงสำเร็จ ${mapped.length} ออเดอร์และบันทึกลงระบบแล้ว!`}`);
+        applyIncomingOrders(data.orders, true, data.message);
     } else {
         alert(data.message || '⚠️ ไม่สามารถดึงออเดอร์ได้ กรุณาตรวจสอบว่าเปิดหน้าเว็บ BigSeller ไว้ในเบราว์เซอร์หรือไม่');
     }
+}
+
+function handleAutoOrderSync(orders, isInitial = false) {
+    if (!Array.isArray(orders) || orders.length === 0) return;
+    applyIncomingOrders(orders, false);
 }
 
 function openExtensionInstallModal() {
