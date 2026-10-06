@@ -450,7 +450,7 @@ function renderOrdersTable() {
         return;
     }
 
-    tbody.innerHTML = filtered.map(o => {
+    tbody.innerHTML = filtered.map((o, idx) => {
         const isChecked = STATE.selectedOrderIds.has(o.orderId);
         const carrierClass = getCarrierClass(o.carrier);
         const platformClass = (o.platform || 'shopee').toLowerCase();
@@ -461,8 +461,11 @@ function renderOrdersTable() {
 
         return `
             <tr class="order-card-row platform-${platformClass} ${isChecked ? 'selected' : ''}">
-                <td class="text-center">
-                    <input type="checkbox" class="order-checkbox" value="${o.orderId}" ${isChecked ? 'checked' : ''} onchange="toggleOrderSelection('${o.orderId}', this.checked)">
+                <td class="text-center" style="width: 50px;">
+                    <div class="d-flex flex-column align-items-center gap-1">
+                        <span style="font-size: 0.72rem; font-family: monospace; font-weight: 700; color: #94a3b8; background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1);">#${idx + 1}</span>
+                        <input type="checkbox" class="order-checkbox" value="${o.orderId}" ${isChecked ? 'checked' : ''} onchange="toggleOrderSelection('${o.orderId}', this.checked)">
+                    </div>
                 </td>
                 <td>
                     <span class="badge-platform ${platformClass} mb-1">

@@ -23,7 +23,74 @@
     <script src="../../../assets/js/toast_shared.js"></script>
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="shopee_orders.css?v=20261006_6">
+    <link rel="stylesheet" href="shopee_orders.css?v=20261006_7">
+
+    <style>
+        /* High-Contrast Card Rows & Distinct Separation */
+        .so-table-wrap {
+            background: transparent !important;
+            border: none !important;
+            overflow-x: auto;
+            padding-bottom: 12px;
+        }
+        .table-glass {
+            width: 100%;
+            border-collapse: separate !important;
+            border-spacing: 0 14px !important; /* 14px distinct separation between every order! */
+            margin: 0;
+        }
+        .table-glass th {
+            background: rgba(15, 23, 42, 0.75) !important;
+            padding: 10px 14px !important;
+            color: #94a3b8 !important;
+            font-size: 0.78rem !important;
+            font-weight: 700 !important;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border: none !important;
+        }
+        .table-glass tbody tr {
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        /* Alternating Distinct Card Backgrounds */
+        .table-glass tbody tr:nth-child(odd) td {
+            background: #141c2e !important;
+        }
+        .table-glass tbody tr:nth-child(even) td {
+            background: #0d1424 !important;
+        }
+        .table-glass tbody tr:hover td {
+            background: #1c2740 !important;
+        }
+        .table-glass tbody tr.selected td {
+            background: #182848 !important;
+        }
+        .table-glass tbody td {
+            padding: 14px 14px !important;
+            border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
+            border-bottom: 2px solid rgba(0, 0, 0, 0.6) !important;
+            vertical-align: middle !important;
+        }
+        .table-glass tbody td:first-child {
+            border-left: 5px solid #ee4d2d !important;
+            border-top-left-radius: 12px !important;
+            border-bottom-left-radius: 12px !important;
+        }
+        .table-glass tbody tr.platform-tiktok td:first-child {
+            border-left: 5px solid #06b6d4 !important;
+        }
+        .table-glass tbody tr.platform-lazada td:first-child {
+            border-left: 5px solid #3b82f6 !important;
+        }
+        .table-glass tbody tr.platform-shopee td:first-child {
+            border-left: 5px solid #ee4d2d !important;
+        }
+        .table-glass tbody td:last-child {
+            border-right: 1px solid rgba(255, 255, 255, 0.12) !important;
+            border-top-right-radius: 12px !important;
+            border-bottom-right-radius: 12px !important;
+        }
+    </style>
 </head>
 <body>
 
