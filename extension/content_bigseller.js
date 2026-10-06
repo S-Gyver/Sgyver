@@ -390,26 +390,52 @@ function parseOrderContainer(container) {
             }
 
             // Remove copy words
-            cleanCellText = cleanCellText.replace(/\b(คัดลอก|Copy|copy|แก้ไข|ลบ|พิมพ์|ดูเพิ่มเติม|จัดการ)\b/g, '').trim();
+            cleanCellText = cleanCellText.replace(/(?:คัดลอก|Copy|copy|แก้ไข|ลบ|พิมพ์|ดูเพิ่มเติม|จัดการ)/gi, '').trim();
 
-            // Extract Quantity and Price: e.g. 'THB 60 x 8' or 'THB 65 x 1' or ' x 8'
+            // Extract Quantity and Price: e.g. 'THB 60 * 8' or 'THB 65 x 1' or '* 8'
             let itemQty = 1;
-            let itemPrice = totalAmount;
+            let itemPrice = 0;
 
-            const priceQtyMatch = cleanCellText.match(/(?:THB|฿|\$)\s*([0-9,]+(?:\.[0-9]+)?)\s*[xX×*]\s*(\d{1,4})/i) ||
-                                  cleanCellText.match(/[\s\r\n][xX×*]\s*(\d{1,4})\b/);
-            if (priceQtyMatch) {
-                if (priceQtyMatch.length >= 3 && priceQtyMatch[1]) {
-                    itemPrice = parseFloat(priceQtyMatch[1].replace(/,/g, '')) || totalAmount;
-                    itemQty = parseInt(priceQtyMatch[2], 10) || 1;
-                } else if (priceQtyMatch[1]) {
-                    itemQty = parseInt(priceQtyMatch[1], 10) || 1;
+            // Strategy 1: Check dedicated DOM elements for quantity if available
+            const qtyEl = itemEl.querySelector('.goods-num, .goods_num, .quantity, .qty, [class*="qty"], [class*="num"]');
+            if (qtyEl && qtyEl.innerText) {
+                const qm = qtyEl.innerText.match(/[*xX×]?\s*(\d{1,4})/);
+                if (qm && qm[1]) {
+                    itemQty = parseInt(qm[1], 10) || 1;
                 }
             }
 
-            // Sanity check to prevent order ID fragments
-            if (itemQty > 10 && totalAmount > 0 && (totalAmount / itemQty) < 5) {
-                itemQty = 1;
+            // Strategy 2: Combined Price & Qty regex e.g. THB 60 * 8 or 60 * 8
+            const priceQtyCombined = cleanCellText.match(/(?:THB|฿|\$)\s*([0-9,]+(?:\.[0-9]+)?)\s*[*xX×]\s*(\d{1,4})/i) ||
+                                     cleanCellText.match(/([0-9,]+(?:\.[0-9]+)?)\s*[*xX×]\s*(\d{1,4})/);
+            if (priceQtyCombined) {
+                itemPrice = parseFloat(priceQtyCombined[1].replace(/,/g, '')) || 0;
+                itemQty = parseInt(priceQtyCombined[2], 10) || 1;
+            } else {
+                // Separate Price extraction
+                const priceMatch = cleanCellText.match(/(?:THB|฿|\$)\s*([0-9,]+(?:\.[0-9]+)?)/i);
+                if (priceMatch) {
+                    itemPrice = parseFloat(priceMatch[1].replace(/,/g, '')) || 0;
+                }
+                // Separate Qty extraction
+                if (itemQty === 1) {
+                    const qtyMatch = cleanCellText.match(/(?:[*xX×]|\bqty\b|\bquantity\b|จำนวน[:\s]*|数量[:\s]*)\s*(\d{1,4})/i);
+                    if (qtyMatch) {
+                        itemQty = parseInt(qtyMatch[1], 10) || 1;
+                    }
+                }
+            }
+
+            // Strategy 3: Math reconciliation if single item and totalAmount is a multiple of itemPrice (e.g. 480 / 60 = 8)
+            if (itemQty === 1 && itemPrice > 0 && totalAmount >= itemPrice * 2) {
+                const calc = Math.round(totalAmount / itemPrice);
+                if (Math.abs((calc * itemPrice) - totalAmount) < 0.1) {
+                    itemQty = calc;
+                }
+            }
+
+            if (!itemPrice) {
+                itemPrice = (totalAmount && itemQty > 0) ? (totalAmount / itemQty) : totalAmount;
             }
 
             // Lines of text for Title and Variation
