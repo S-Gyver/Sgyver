@@ -73,6 +73,25 @@ async function syncToSupabase(orders) {
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnaWlodGVlZXBycGN4eGxsZGtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5ODkwNzksImV4cCI6MjEwMDU2NTA3OX0.fr8_ZAYKQ3D-JgEtAWGJnNvKjoUmYxs1T7tjzzsEltw';
 
     try {
+        const cleanPayload = orders.map(o => ({
+            order_id: o.order_id,
+            platform: o.platform,
+            shop_name: o.shop_name,
+            recipient_name: o.recipient_name,
+            phone: o.phone,
+            address: o.address,
+            province: o.province,
+            district: o.district,
+            zipcode: o.zipcode,
+            carrier: o.carrier,
+            tracking_number: o.tracking_number,
+            total_items: o.total_items,
+            total_amount: o.total_amount,
+            items: o.items,
+            status: o.status || 'READY_TO_SHIP',
+            updated_at: o.updated_at || new Date().toISOString()
+        }));
+
         await fetch(`${SUPABASE_URL}/rest/v1/ecommerce_orders`, {
             method: 'POST',
             headers: {
@@ -83,7 +102,7 @@ async function syncToSupabase(orders) {
                 'Content-Profile': 'public',
                 'Prefer': 'resolution=merge-duplicates'
             },
-            body: JSON.stringify(orders)
+            body: JSON.stringify(cleanPayload)
         });
         console.log('✅ [Background] Successfully synced orders to Supabase Cloud');
     } catch (e) {

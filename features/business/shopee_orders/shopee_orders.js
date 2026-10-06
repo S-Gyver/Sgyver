@@ -438,6 +438,9 @@ function renderOrdersTable() {
         const isChecked = STATE.selectedOrderIds.has(o.orderId);
         const carrierClass = getCarrierClass(o.carrier);
         const platformClass = (o.platform || 'shopee').toLowerCase();
+        const pMethod = o.paymentMethod || 'Prepaid';
+        const isCOD = pMethod === 'COD';
+        const imgUrl = o.imageUrl || (o.items && o.items[0] && o.items[0].image_url ? o.items[0].image_url : '');
 
         return `
             <tr>
@@ -448,6 +451,11 @@ function renderOrdersTable() {
                     <span class="badge-platform ${platformClass} mb-1">
                         ${getPlatformIcon(o.platform)} ${escapeHtml(o.shopName)}
                     </span>
+                    <div class="mt-1">
+                        <span class="badge-payment ${isCOD ? 'cod' : 'prepaid'}">
+                            ${isCOD ? '<i class="bi bi-cash me-1"></i>COD ปลายทาง' : '<i class="bi bi-credit-card-2-front me-1"></i>ชำระแล้ว (Prepaid)'}
+                        </span>
+                    </div>
                 </td>
                 <td>
                     <div class="font-mono fw-bold text-white">${o.orderId}</div>
@@ -459,20 +467,26 @@ function renderOrdersTable() {
                 </td>
                 <td>
                     <div class="fw-bold text-white">${escapeHtml(o.recipientName)}</div>
-                    <div class="font-mono text-secondary" style="font-size: 0.78rem;">${escapeHtml(o.phone)}</div>
-                    <small class="text-secondary d-block text-truncate" style="max-width: 210px;" title="${escapeHtml(o.address)}">
-                        ${escapeHtml(o.address)}
+                    <small class="text-secondary d-block text-truncate" style="max-width: 220px;" title="${escapeHtml(o.province || o.address)}">
+                        <i class="bi bi-geo-alt-fill text-danger me-1"></i>${escapeHtml(o.province || o.address)}
                     </small>
                 </td>
                 <td>
-                    <div class="order-items-snippet">
-                        ${o.items.map(it => `
-                            <div class="order-item-line">
-                                <strong>${escapeHtml(it.name)}</strong>
-                                ${it.variation ? `<span class="order-item-variation">${escapeHtml(it.variation)}</span>` : ''}
-                                <span class="badge bg-secondary-subtle text-white-50 ms-1">x${it.qty}</span>
-                            </div>
-                        `).join('')}
+                    <div class="d-flex align-items-center gap-3">
+                        ${imgUrl ? `
+                            <img src="${imgUrl}" class="order-thumb-img" alt="product" onerror="this.style.display='none'">
+                        ` : `
+                            <div class="order-thumb-placeholder"><i class="bi bi-box-seam"></i></div>
+                        `}
+                        <div class="order-items-snippet">
+                            ${o.items.map(it => `
+                                <div class="order-item-line">
+                                    <strong class="text-light">${escapeHtml(it.name)}</strong>
+                                    ${it.variation ? `<span class="order-item-variation">${escapeHtml(it.variation)}</span>` : ''}
+                                    <span class="badge bg-secondary-subtle text-warning ms-1">x${it.qty || 1}</span>
+                                </div>
+                            `).join('')}
+                        </div>
                     </div>
                 </td>
                 <td class="text-center font-mono fw-bold text-warning">${o.totalItemsCount}</td>
@@ -896,6 +910,8 @@ async function loadOrdersFromSupabase() {
                 tracking: row.tracking_number || row.order_id,
                 totalAmount: parseFloat(row.total_amount) || 0,
                 totalItemsCount: parseInt(row.total_items, 10) || 1,
+                paymentMethod: row.payment_method || 'Prepaid',
+                imageUrl: row.image_url || (Array.isArray(row.items) && row.items[0] ? row.items[0].image_url : ''),
                 items: Array.isArray(row.items) ? row.items : []
             }));
 
@@ -958,7 +974,11 @@ async function syncOrdersToSupabase(orders) {
             tracking_number: o.tracking,
             total_items: o.totalItemsCount,
             total_amount: o.totalAmount,
-            items: o.items,
+            items: (Array.isArray(o.items) && o.items.length > 0 ? o.items : [{ name: 'สินค้าตามคำสั่งซื้อ', qty: o.totalItemsCount || 1, price: o.totalAmount }]).map(it => ({
+                ...it,
+                image_url: it.image_url || o.imageUrl || '',
+                payment_method: it.payment_method || o.paymentMethod || 'Prepaid'
+            })),
             status: 'READY_TO_SHIP',
             updated_at: new Date().toISOString()
         }));
@@ -1066,6 +1086,8 @@ function handleExtensionSyncResult(data) {
             tracking: o.tracking_number,
             totalAmount: o.total_amount,
             totalItemsCount: o.total_items,
+            paymentMethod: o.payment_method || 'Prepaid',
+            imageUrl: o.image_url || (Array.isArray(o.items) && o.items[0] ? o.items[0].image_url : ''),
             items: o.items
         }));
 

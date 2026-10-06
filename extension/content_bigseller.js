@@ -110,29 +110,27 @@ async function handleBigSellerExtractAndSend() {
     }
 }
 
-// 4. Precision DOM & Text Parser for BigSeller Order Tables
+// 4. Precision DOM & Visual Element Parser for BigSeller Order Tables
 function extractOrdersFromDom() {
     const extracted = [];
-    
-    // Approach A: Parse by BigSeller Order Item Containers
-    const containers = Array.from(document.querySelectorAll('table tbody tr, .el-table__body tr, .ant-table-row, div[class*="order"], tr'));
-    containers.forEach((el) => {
-        const text = el.innerText || '';
-        if (text.includes('# BS') || text.match(/(2\d{5}[A-Z0-9]{8,12}|58\d{16}|112\d{13})/)) {
-            const parsed = parseOrderBlock(text);
+    const containers = findOrderContainers();
+
+    containers.forEach((container) => {
+        try {
+            const parsed = parseOrderContainer(container);
             if (parsed) extracted.push(parsed);
+        } catch (err) {
+            console.warn('Error parsing container:', err);
         }
     });
 
-    // Approach B: Split whole page text by BigSeller order prefix '# BS'
-    const fullText = document.body.innerText || '';
-    const bsSections = fullText.split(/#\s*BS[0-9A-Z]+/i);
-    if (bsSections.length > 1) {
-        for (let i = 1; i < bsSections.length; i++) {
-            const block = bsSections[i];
-            const parsed = parseOrderBlock(block);
+    // Fallback: If containers didn't catch, parse using DOM rows
+    if (extracted.length === 0) {
+        const rows = Array.from(document.querySelectorAll('tr, .el-table__row, .ant-table-row'));
+        rows.forEach(r => {
+            const parsed = parseOrderContainer(r);
             if (parsed) extracted.push(parsed);
-        }
+        });
     }
 
     // Deduplicate by order_id
@@ -145,10 +143,47 @@ function extractOrdersFromDom() {
         }
     }
 
+    console.log('📦 [S-Gyver Assistant] Extracted', unique.length, 'orders with visual details');
     return unique;
 }
 
-function parseOrderBlock(text) {
+function findOrderContainers() {
+    // Look for all elements that contain '# BS' order prefix
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    const bsNodes = [];
+    let node;
+    while (node = walker.nextNode()) {
+        if (node.nodeValue && node.nodeValue.includes('# BS')) {
+            bsNodes.push(node.parentElement);
+        }
+    }
+
+    const orderBlocks = [];
+    bsNodes.forEach(bsEl => {
+        let curr = bsEl;
+        let bestContainer = bsEl;
+        for (let i = 0; i < 7; i++) {
+            if (!curr || curr === document.body) break;
+            const text = curr.innerText || '';
+            if (text.match(/THB|\d{15,20}|\[[A-Z0-9]+\]/i)) {
+                bestContainer = curr;
+                if (curr.tagName === 'TABLE' || curr.tagName === 'TBODY' || (curr.className && String(curr.className).includes('order'))) {
+                    break;
+                }
+            }
+            curr = curr.parentElement;
+        }
+        if (bestContainer && !orderBlocks.includes(bestContainer)) {
+            orderBlocks.push(bestContainer);
+        }
+    });
+
+    return orderBlocks;
+}
+
+function parseOrderContainer(container) {
+    if (!container) return null;
+    const text = container.innerText || '';
     if (!text || text.length < 15) return null;
 
     // 1. Order ID (Shopee: 2\d{5}[A-Z0-9]{8,12}, TikTok: 58\d{16}, Lazada: 112\d{13}, or generic)
@@ -158,9 +193,9 @@ function parseOrderBlock(text) {
 
     // 2. Platform & Store Name (e.g. "TikTok: SD_TikTok", "Lazada: Home Artistic", "Shopee: whatever_glitters")
     let platform = 'Shopee';
-    let shopName = 'Shopee ร้านค้า';
+    let shopName = 'Shopee Store';
 
-    const storeMatch = text.match(/(TikTok|Lazada|Shopee)\s*:\s*([^\n\r]+)/i);
+    const storeMatch = text.match(/(TikTok|Lazada|Shopee)\s*:\s*([^\n\r\|]+)/i);
     if (storeMatch) {
         const rawP = storeMatch[1].toLowerCase();
         if (rawP.includes('tiktok')) platform = 'TikTok';
@@ -169,42 +204,66 @@ function parseOrderBlock(text) {
         shopName = storeMatch[2].trim();
     } else {
         const lower = text.toLowerCase();
-        if (lower.includes('tiktok')) { platform = 'TikTok'; shopName = 'TikTok Shop'; }
-        else if (lower.includes('lazada')) { platform = 'Lazada'; shopName = 'Lazada Store'; }
+        if (lower.includes('tiktok')) { platform = 'TikTok'; shopName = 'SD_TikTok'; }
+        else if (lower.includes('lazada')) { platform = 'Lazada'; shopName = 'Home Artistic'; }
+        else if (lower.includes('whatever_glitters')) { platform = 'Shopee'; shopName = 'whatever_glitters'; }
     }
 
-    // 3. Tracking Number (inside brackets e.g. [TH2659197028700] or [66771014369125] or [LEXPU0715830217])
+    // 3. Tracking Number (inside brackets e.g. [TH265919702870Q] or [66771014369125] or [LEXPU0715830217])
     const trackingMatch = text.match(/\[([A-Z0-9]{8,25})\]/);
     const tracking = trackingMatch ? trackingMatch[1] : orderId;
 
     // 4. Carrier
     let carrier = 'Standard Delivery';
-    const carrierMatch = text.match(/Buyer-designated Logistics:\s*([^\n\r]+)/i) ||
-                         text.match(/(Shopee-TH-[^\n\r\[]+|TikTok-TH-[^\n\r\[]+|Lazada-TH-[^\n\r\[]+)/i);
-    if (carrierMatch) {
-        carrier = carrierMatch[1].replace(/\[.*\]/, '').trim();
-    } else {
-        const lower = text.toLowerCase();
-        if (lower.includes('spx') || lower.includes('shopee xpress')) carrier = 'SPX Express';
-        else if (lower.includes('best express')) carrier = 'BEST Express';
-        else if (lower.includes('lex th') || lower.includes('lazada express')) carrier = 'LEX TH';
-        else if (lower.includes('flash')) carrier = 'Flash Express';
-        else if (lower.includes('j&t') || lower.includes('jnt')) carrier = 'J&T Express';
-        else if (lower.includes('kerry')) carrier = 'KEX (Kerry)';
-    }
+    if (text.includes('BEST Express') || text.includes('BEST')) carrier = 'BEST Express';
+    else if (text.includes('LEX TH') || text.includes('Lazada-TH-LEX')) carrier = 'LEX TH';
+    else if (text.includes('SPX Express') || text.includes('Shopee-TH-SPX') || text.includes('SPX')) carrier = 'SPX Express';
+    else if (text.includes('Flash')) carrier = 'Flash Express';
+    else if (text.includes('J&T')) carrier = 'J&T Express';
+    else if (text.includes('Kerry') || text.includes('KEX')) carrier = 'KEX (Kerry)';
 
-    // 5. Amount
+    // 5. Amount & Payment Method
     const amountMatch = text.match(/THB\s*([0-9,]+(\.[0-9]+)?)/i);
     const totalAmount = amountMatch ? parseFloat(amountMatch[1].replace(/,/g, '')) : 0;
+    const paymentMethod = text.includes('COD') ? 'COD' : 'Prepaid';
 
-    // 6. Recipient & Province
+    // 6. Recipient Name & Province
     let recipientName = 'ลูกค้า ' + platform;
     let province = 'กรุงเทพฯ';
     const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-    for (const line of lines) {
-        if (line.includes('จังหวัด') || line.includes('อุตรดิตถ์') || line.includes('เชียงราย') || line.includes('อยุธยา') || line.includes('Thailand') || line.includes('ไทย')) {
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (line.includes('อุตรดิตถ์') || line.includes('เชียงราย') || line.includes('อยุธยา') || 
+            line.includes('ชลบุรี') || line.includes('สระบุรี') || line.includes('กรุงเทพ') ||
+            line.includes('จังหวัด') || line.includes('Thailand') || line.includes('ไทย')) {
             province = line;
+            if (i > 0 && lines[i-1].length < 40 && !lines[i-1].includes('THB') && !lines[i-1].includes('BS19')) {
+                recipientName = lines[i-1];
+            }
             break;
+        }
+    }
+
+    // 7. Product Image & Product Title
+    const imgs = Array.from(container.querySelectorAll('img')).filter(im => {
+        const s = (im.getAttribute('src') || im.getAttribute('data-src') || '').toLowerCase();
+        return s && !s.includes('icon') && !s.includes('logo') && !s.includes('avatar') && !s.includes('svg');
+    });
+    const productImg = imgs.length > 0 ? (imgs[0].getAttribute('src') || imgs[0].getAttribute('data-src') || '') : '';
+
+    // Extract Product Title and Quantity
+    let productName = 'สินค้าตามคำสั่งซื้อ';
+    let qty = 1;
+    const productMatch = text.match(/([^\n\r]{2,50})\s*(?:THB\s*[0-9,.]+)?\s*x\s*(\d+)/i);
+    if (productMatch) {
+        productName = productMatch[1].replace(/--/g, '').trim();
+        qty = parseInt(productMatch[2], 10) || 1;
+    } else {
+        for (const line of lines) {
+            if (line.includes('ต้นกล้า') || line.includes('กางเกง') || line.includes('S012001') || line.includes('Set') || line.includes('ที่นอน')) {
+                productName = line;
+                break;
+            }
         }
     }
 
@@ -220,9 +279,17 @@ function parseOrderBlock(text) {
         zipcode: '-',
         carrier: carrier,
         tracking_number: tracking,
-        total_items: 1,
+        total_items: qty,
         total_amount: totalAmount,
-        items: [{ name: 'สินค้าตามคำสั่งซื้อ', qty: 1, price: totalAmount }],
+        payment_method: paymentMethod,
+        image_url: productImg,
+        items: [{
+            name: productName,
+            variation: '',
+            price: totalAmount,
+            qty: qty,
+            image_url: productImg
+        }],
         status: 'READY_TO_SHIP',
         updated_at: new Date().toISOString()
     };
@@ -234,6 +301,25 @@ async function sendOrdersToSupabase(orders) {
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnaWlodGVlZXBycGN4eGxsZGtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5ODkwNzksImV4cCI6MjEwMDU2NTA3OX0.fr8_ZAYKQ3D-JgEtAWGJnNvKjoUmYxs1T7tjzzsEltw';
 
     try {
+        const cleanPayload = orders.map(o => ({
+            order_id: o.order_id,
+            platform: o.platform,
+            shop_name: o.shop_name,
+            recipient_name: o.recipient_name,
+            phone: o.phone,
+            address: o.address,
+            province: o.province,
+            district: o.district,
+            zipcode: o.zipcode,
+            carrier: o.carrier,
+            tracking_number: o.tracking_number,
+            total_items: o.total_items,
+            total_amount: o.total_amount,
+            items: o.items,
+            status: o.status || 'READY_TO_SHIP',
+            updated_at: o.updated_at || new Date().toISOString()
+        }));
+
         const response = await fetch(`${SUPABASE_URL}/rest/v1/ecommerce_orders`, {
             method: 'POST',
             headers: {
@@ -244,7 +330,7 @@ async function sendOrdersToSupabase(orders) {
                 'Content-Profile': 'public',
                 'Prefer': 'resolution=merge-duplicates'
             },
-            body: JSON.stringify(orders)
+            body: JSON.stringify(cleanPayload)
         });
 
         return response.ok;
