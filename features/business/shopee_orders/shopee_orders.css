@@ -126,6 +126,16 @@ body {
     color: #fff;
     box-shadow: 0 6px 20px rgba(238, 77, 45, 0.5);
     transform: translateY(-1px);
+}
+.btn-cyber-outline {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+.btn-cyber-outline:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-1px);
+}
 .btn-cyber-1click {
     background: linear-gradient(135deg, #6366f1, #06b6d4);
     color: #fff;
