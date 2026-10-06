@@ -23,54 +23,120 @@
     <script src="../../../assets/js/toast_shared.js"></script>
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="shopee_orders.css?v=20261006_22">
+    <link rel="stylesheet" href="shopee_orders.css?v=20261006_23">
 
     <style>
-        /* High-Contrast Card Rows & Distinct Separation */
+        /* ══════════════════════════════════════════════════════════════
+           CLEAN WHITE LIGHT THEME (AS REQUESTED)
+           ══════════════════════════════════════════════════════════════ */
+        body {
+            background-color: #ffffff !important;
+            color: #1e293b !important;
+        }
+
+        /* ซ่อน Cyber Glow มืด */
+        .bg-glow-container {
+            display: none !important;
+        }
+
+        /* Topbar ในโหมดสว่าง */
+        .so-topbar {
+            background: rgba(255, 255, 255, 0.96) !important;
+            border-bottom: 1px solid #e2e8f0 !important;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05) !important;
+        }
+        .so-brand-text h1 {
+            color: #0f172a !important;
+        }
+        .so-brand-text span {
+            color: #64748b !important;
+        }
+        .btn-cyber-outline {
+            background: #ffffff !important;
+            color: #334155 !important;
+            border: 1px solid #cbd5e1 !important;
+        }
+        .btn-cyber-outline:hover {
+            background: #f1f5f9 !important;
+        }
+
+        /* Summary Stat Cards */
+        .stat-card {
+            background: #ffffff !important;
+            border: 1px solid #e2e8f0 !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+        }
+        .stat-info h4 {
+            color: #64748b !important;
+        }
+        .stat-info .stat-value {
+            color: #0f172a !important;
+        }
+
+        /* Order Status Category Tabs */
+        .so-status-tabs {
+            background: #ffffff !important;
+            border: 1px solid #e2e8f0 !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+        }
+        .status-tab {
+            color: #64748b !important;
+        }
+        .status-tab:hover {
+            color: #0f172a !important;
+            background: #f1f5f9 !important;
+        }
+        .status-tab.active {
+            color: #0284c7 !important;
+            background: #e0f2fe !important;
+            border-color: #bae6fd !important;
+            box-shadow: 0 2px 6px rgba(2, 132, 199, 0.12) !important;
+        }
+
+        /* Table Wrapper & Headers */
         .so-table-wrap {
             background: transparent !important;
             border: none !important;
             overflow-x: auto;
-            padding-bottom: 12px;
+            padding-bottom: 14px;
         }
         .table-glass {
             width: 100%;
             border-collapse: separate !important;
-            border-spacing: 0 14px !important; /* 14px distinct separation between every order! */
+            border-spacing: 0 12px !important; /* ระยะห่างระหว่างการ์ด 12px */
             margin: 0;
         }
         .table-glass th {
-            background: rgba(15, 23, 42, 0.75) !important;
-            padding: 10px 14px !important;
-            color: #94a3b8 !important;
+            background: #f1f5f9 !important;
+            padding: 11px 14px !important;
+            color: #475569 !important;
             font-size: 0.78rem !important;
             font-weight: 700 !important;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            border: none !important;
+            border-top: none !important;
+            border-bottom: 2px solid #e2e8f0 !important;
+            border-left: none !important;
+            border-right: none !important;
         }
         .table-glass tbody tr {
             transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
         .table-glass tbody td {
-            padding: 14px 14px !important;
+            padding: 13px 14px !important;
             vertical-align: middle !important;
+            color: #1e293b !important;
         }
 
         /* ══════════════════════════════════════════════════════════════
-           DISTINCT PLATFORM CARD BACKGROUNDS & THEMES
+           THEME การ์ดแยกตาม PLATFORM (ตามความต้องการของผู้ใช้)
            ══════════════════════════════════════════════════════════════ */
-        /* 1. SHOPEE THEME (Warm Deep Auburn / Orange Tint) */
+        /* 1. SHOPEE: กรอบสีส้ม ด้านในสีส้มอ่อน อ่อนมากกกก */
         .table-glass tbody tr.platform-shopee td {
-            background: linear-gradient(90deg, #241316 0%, #1a121e 50%, #131224 100%) !important;
-            border-top: 1px solid rgba(238, 77, 45, 0.28) !important;
-            border-bottom: 2px solid rgba(238, 77, 45, 0.45) !important;
-        }
-        .table-glass tbody tr.platform-shopee:hover td {
-            background: linear-gradient(90deg, #2e171b 0%, #221627 50%, #19162e 100%) !important;
-        }
-        .table-glass tbody tr.platform-shopee.selected td {
-            background: linear-gradient(90deg, #3b1c21 0%, #291a2e 50%, #1e1939 100%) !important;
+            background: #fff8f5 !important; /* สีส้มอ่อน อ่อนมากกกก */
+            border-top: 2px solid #ee4d2d !important;
+            border-bottom: 2px solid #ee4d2d !important;
+            box-shadow: 0 2px 6px rgba(238, 77, 45, 0.08);
         }
         .table-glass tbody tr.platform-shopee td:first-child {
             border-left: 6px solid #ee4d2d !important;
@@ -78,62 +144,73 @@
             border-bottom-left-radius: 12px !important;
         }
         .table-glass tbody tr.platform-shopee td:last-child {
-            border-right: 1px solid rgba(238, 77, 45, 0.28) !important;
+            border-right: 2px solid #ee4d2d !important;
             border-top-right-radius: 12px !important;
             border-bottom-right-radius: 12px !important;
         }
+        .table-glass tbody tr.platform-shopee:hover td {
+            background: #ffede6 !important;
+            box-shadow: 0 4px 14px rgba(238, 77, 45, 0.18) !important;
+        }
+        .table-glass tbody tr.platform-shopee.selected td {
+            background: #ffe3d9 !important;
+        }
 
-        /* 2. TIKTOK THEME (Cyber Dark Cyan / Teal Tint) */
+        /* 2. TIKTOK: กรอบสีดำ ด้านใน เทาอ่อน อ่อนมากกกกก */
         .table-glass tbody tr.platform-tiktok td {
-            background: linear-gradient(90deg, #09242d 0%, #0a1b26 50%, #091522 100%) !important;
-            border-top: 1px solid rgba(6, 182, 212, 0.3) !important;
-            border-bottom: 2px solid rgba(6, 182, 212, 0.48) !important;
-        }
-        .table-glass tbody tr.platform-tiktok:hover td {
-            background: linear-gradient(90deg, #0e303d 0%, #0e2434 50%, #0d1e30 100%) !important;
-        }
-        .table-glass tbody tr.platform-tiktok.selected td {
-            background: linear-gradient(90deg, #123d4e 0%, #122c41 50%, #10243d 100%) !important;
+            background: #f8fafc !important; /* สีเทาอ่อน อ่อนมากกกกก */
+            border-top: 2px solid #111827 !important;
+            border-bottom: 2px solid #111827 !important;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
         }
         .table-glass tbody tr.platform-tiktok td:first-child {
-            border-left: 6px solid #00f2fe !important;
+            border-left: 6px solid #000000 !important;
             border-top-left-radius: 12px !important;
             border-bottom-left-radius: 12px !important;
         }
         .table-glass tbody tr.platform-tiktok td:last-child {
-            border-right: 1px solid rgba(6, 182, 212, 0.3) !important;
+            border-right: 2px solid #111827 !important;
             border-top-right-radius: 12px !important;
             border-bottom-right-radius: 12px !important;
         }
+        .table-glass tbody tr.platform-tiktok:hover td {
+            background: #f1f5f9 !important;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14) !important;
+        }
+        .table-glass tbody tr.platform-tiktok.selected td {
+            background: #e2e8f0 !important;
+        }
 
-        /* 3. LAZADA THEME (Deep Royal Blue / Indigo Tint) */
+        /* 3. LAZADA: กรอบสีน้ำเงิน ด้านในสีนฟ้าอ่อน อ่อนมากกกกกกกก */
         .table-glass tbody tr.platform-lazada td {
-            background: linear-gradient(90deg, #111a3b 0%, #0f152d 50%, #0b1126 100%) !important;
-            border-top: 1px solid rgba(59, 130, 246, 0.3) !important;
-            border-bottom: 2px solid rgba(59, 130, 246, 0.48) !important;
-        }
-        .table-glass tbody tr.platform-lazada:hover td {
-            background: linear-gradient(90deg, #18234e 0%, #131c3c 50%, #0f1632 100%) !important;
-        }
-        .table-glass tbody tr.platform-lazada.selected td {
-            background: linear-gradient(90deg, #1f2d62 0%, #17234c 50%, #131c3f 100%) !important;
+            background: #f0f7ff !important; /* สีฟ้าอ่อน อ่อนมากกกกกกกก */
+            border-top: 2px solid #1d4ed8 !important;
+            border-bottom: 2px solid #1d4ed8 !important;
+            box-shadow: 0 2px 6px rgba(29, 78, 216, 0.08);
         }
         .table-glass tbody tr.platform-lazada td:first-child {
-            border-left: 6px solid #3b82f6 !important;
+            border-left: 6px solid #1e40af !important;
             border-top-left-radius: 12px !important;
             border-bottom-left-radius: 12px !important;
         }
         .table-glass tbody tr.platform-lazada td:last-child {
-            border-right: 1px solid rgba(59, 130, 246, 0.3) !important;
+            border-right: 2px solid #1d4ed8 !important;
             border-top-right-radius: 12px !important;
             border-bottom-right-radius: 12px !important;
         }
+        .table-glass tbody tr.platform-lazada:hover td {
+            background: #e0f0fe !important;
+            box-shadow: 0 4px 14px rgba(29, 78, 216, 0.18) !important;
+        }
+        .table-glass tbody tr.platform-lazada.selected td {
+            background: #d0e7fd !important;
+        }
 
-        /* Fallback for other rows */
+        /* Fallback for other platform */
         .table-glass tbody tr:not([class*="platform-"]) td {
-            background: #141c2e !important;
-            border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
-            border-bottom: 2px solid rgba(0, 0, 0, 0.6) !important;
+            background: #ffffff !important;
+            border-top: 1.5px solid #cbd5e1 !important;
+            border-bottom: 1.5px solid #cbd5e1 !important;
         }
         .table-glass tbody tr:not([class*="platform-"]) td:first-child {
             border-left: 6px solid #94a3b8 !important;
@@ -141,9 +218,68 @@
             border-bottom-left-radius: 12px !important;
         }
         .table-glass tbody tr:not([class*="platform-"]) td:last-child {
-            border-right: 1px solid rgba(255, 255, 255, 0.12) !important;
+            border-right: 1.5px solid #cbd5e1 !important;
             border-top-right-radius: 12px !important;
             border-bottom-right-radius: 12px !important;
+        }
+
+        /* ══════════════════════════════════════════════════════════════
+           CRISP CONTRAST FOR TEXT & ELEMENTS ON LIGHT CARDS
+           ══════════════════════════════════════════════════════════════ */
+        .table-glass tbody tr .text-white {
+            color: #0f172a !important; /* ปรับข้อความที่เคยเป็นสีขาวให้เป็นสีเข้ม คมชัด */
+        }
+        .table-glass tbody tr .text-secondary {
+            color: #475569 !important;
+        }
+        .table-glass tbody tr .bigseller-item-name {
+            color: #0f172a !important; /* ชื่อสินค้าเข้ม ชัดเจน */
+            font-weight: 700 !important;
+        }
+        .table-glass tbody tr .bigseller-item-variation {
+            color: #334155 !important; /* ตัวเลือกสินค้าสีเทาเข้ม */
+        }
+        .table-glass tbody tr .font-mono.text-cyan {
+            color: #0369a1 !important; /* ราคา THB / Tracking ฟ้าเข้มคมชัด */
+        }
+        .bigseller-item-thumb-wrap {
+            background: #ffffff !important;
+            border: 1px solid #cbd5e1 !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+        }
+        .bigseller-item-thumb-placeholder {
+            background: #f1f5f9 !important;
+            color: #64748b !important;
+        }
+        .table-glass tbody tr span[style*="font-family: monospace"] {
+            color: #334155 !important;
+            background: #e2e8f0 !important;
+            border-color: #cbd5e1 !important;
+        }
+        .table-glass tbody tr .badge[style*="background: rgba(234, 179, 8"] {
+            background: #fef08a !important;
+            color: #854d0e !important;
+            border-color: #eab308 !important;
+        }
+        .table-glass tbody tr .badge[style*="background: rgba(34, 197, 94"] {
+            background: #dcfce7 !important;
+            color: #15803d !important;
+            border-color: #86efac !important;
+        }
+        .badge-platform.shopee {
+            background: rgba(238, 77, 45, 0.12) !important;
+            color: #c2410c !important;
+            border: 1px solid rgba(238, 77, 45, 0.4) !important;
+        }
+        .badge-platform.tiktok {
+            background: rgba(0, 0, 0, 0.08) !important;
+            color: #000000 !important;
+            border: 1px solid rgba(0, 0, 0, 0.3) !important;
+        }
+        .badge-platform.lazada {
+            background: rgba(29, 78, 216, 0.12) !important;
+            color: #1d4ed8 !important;
+            border: 1px solid rgba(29, 78, 216, 0.35) !important;
         }
     </style>
 </head>
@@ -160,7 +296,7 @@
          ══════════════════════════════════════════════════════════════ -->
     <header class="so-topbar no-print">
         <div class="d-flex align-items-center gap-3">
-            <a href="../../../my_workspace.html" class="btn btn-sm btn-outline-secondary text-white border-0 me-1" title="กลับหน้ากระดานส่วนตัว">
+            <a href="../../../my_workspace.html" class="btn btn-sm btn-outline-secondary text-dark border-0 me-1" title="กลับหน้ากระดานส่วนตัว">
                 <i class="bi bi-arrow-left fs-5"></i>
             </a>
             <div class="so-brand">
@@ -362,6 +498,6 @@
     </div>
 
     <!-- Shopee Orders Logic -->
-    <script src="shopee_orders.js?v=20261006_22"></script>
+    <script src="shopee_orders.js?v=20261006_23"></script>
 </body>
 </html>

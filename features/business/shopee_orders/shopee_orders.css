@@ -329,6 +329,7 @@ body {
 }
 .form-select:focus {
     background-color: rgba(0, 0, 0, 0.35);
+}
 /* Order Status Tabs (Like BigSeller) */
 .so-status-tabs {
     background: rgba(15, 23, 42, 0.65);
