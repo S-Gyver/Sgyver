@@ -149,7 +149,30 @@
             </div>
         </div>
 
-        <!-- 3. CONTROLS BAR: SEARCH, CARRIER FILTER, STORE FILTER, PRINT SETTING -->
+        <!-- 3. ORDER STATUS CATEGORY TABS (LIKE BIGSELLER) -->
+        <div class="so-status-tabs mb-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <button class="status-tab active" id="tab-status-all" data-status="ALL" onclick="setStatusFilter('ALL', this)">
+                    <i class="bi bi-grid-fill me-1"></i> ทั้งหมด (<span id="count-tab-all">0</span>)
+                </button>
+                <button class="status-tab" id="tab-status-new" data-status="NEW" onclick="setStatusFilter('NEW', this)">
+                    <i class="bi bi-inbox-fill text-info me-1"></i> 📥 คำสั่งซื้อใหม่ (<span id="count-tab-new">0</span>)
+                </button>
+                <button class="status-tab" id="tab-status-ready" data-status="READY_TO_SHIP" onclick="setStatusFilter('READY_TO_SHIP', this)">
+                    <i class="bi bi-box-seam-fill text-warning me-1"></i> 📦 รอแพ็ค / พร้อมส่ง (<span id="count-tab-ready">0</span>)
+                </button>
+                <button class="status-tab" id="tab-status-shipped" data-status="SHIPPED" onclick="setStatusFilter('SHIPPED', this)">
+                    <i class="bi bi-truck text-success me-1"></i> 🚚 จัดส่งแล้ว (<span id="count-tab-shipped">0</span>)
+                </button>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-sm btn-outline-success border-success text-success" id="btn-batch-shipped" onclick="markSelectedAsShipped()" title="เปลี่ยนสถานะออเดอร์ที่เลือกเป็น 'จัดส่งแล้ว'">
+                    <i class="bi bi-check2-circle me-1"></i> ทำเครื่องหมายส่งแล้ว (<span id="selected-shipped-badge">0</span>)
+                </button>
+            </div>
+        </div>
+
+        <!-- 4. CONTROLS BAR: SEARCH, CARRIER FILTER, STORE FILTER, PRINT SETTING -->
         <div class="so-controls-bar mb-3">
             <div class="d-flex align-items-center gap-2 flex-grow-1 flex-wrap">
                 <div class="search-box">

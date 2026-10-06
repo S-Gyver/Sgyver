@@ -9,6 +9,7 @@ const STATE = {
     selectedOrderIds: new Set(),
     activeCarrierFilter: '',
     activePlatformFilter: '',
+    activeStatusFilter: 'ALL', // 'ALL' | 'NEW' | 'READY_TO_SHIP' | 'SHIPPED'
     searchKeyword: '',
     paperSize: 'thermal' // 'thermal' (100x150mm) | 'a4'
 };
@@ -285,7 +286,7 @@ function getPlatformIcon(platform) {
 // ── 3. REALISTIC 5-STORE DEMO DATA (3 SHOPEE + 1 TIKTOK + 1 LAZADA) ──────────
 function loadShopeeDemoData() {
     const demoOrders = [
-        // Store 1: Shopee (S-Gyver Official)
+        // Store 1: Shopee (S-Gyver Official) - NEW
         {
             orderId: '261005SPX-01A',
             platform: 'Shopee',
@@ -300,12 +301,15 @@ function loadShopeeDemoData() {
             tracking: 'TH261005SPX01A',
             totalAmount: 3200,
             totalItemsCount: 3,
+            paymentMethod: 'Prepaid',
+            status: 'NEW',
+            imageUrl: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=150&auto=format&fit=crop&q=60',
             items: [
-                { name: 'หุ่นยนต์แขนกล Arm Robot 4-DOF DIY Kit', variation: 'ครบชุดพร้อมบอร์ด ESP32', sku: 'ROBOT-4DOF-ESP32', price: 2900, qty: 1, total: 2900 },
+                { name: 'หุ่นยนต์แขนกล Arm Robot 4-DOF DIY Kit', variation: 'ครบชุดพร้อมบอร์ด ESP32', sku: 'ROBOT-4DOF-ESP32', price: 2900, qty: 1, total: 2900, image_url: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=150&auto=format&fit=crop&q=60' },
                 { name: 'สายไฟจัมเปอร์แพ็ค 40 เส้น', variation: 'ตัวผู้-ตัวเมีย (M-F)', sku: 'WIRE-MF-40P', price: 150, qty: 2, total: 300 }
             ]
         },
-        // Store 2: Shopee (Gyver STEM Toys)
+        // Store 2: Shopee (Gyver STEM Toys) - NEW
         {
             orderId: '261005SPX-02B',
             platform: 'Shopee',
@@ -320,11 +324,14 @@ function loadShopeeDemoData() {
             tracking: 'TH261005SPX02B',
             totalAmount: 1780,
             totalItemsCount: 2,
+            paymentMethod: 'COD',
+            status: 'NEW',
+            imageUrl: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=150&auto=format&fit=crop&q=60',
             items: [
-                { name: 'บอร์ดควบคุม ESP32 NodeMCU Type-C', variation: 'WiFi + Bluetooth 38 Pins', sku: 'ESP32-TYPC-38P', price: 890, qty: 2, total: 1780 }
+                { name: 'บอร์ดควบคุม ESP32 NodeMCU Type-C', variation: 'WiFi + Bluetooth 38 Pins', sku: 'ESP32-TYPC-38P', price: 890, qty: 2, total: 1780, image_url: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=150&auto=format&fit=crop&q=60' }
             ]
         },
-        // Store 3: Shopee (Gyver Robotics Hub)
+        // Store 3: Shopee (Gyver Robotics Hub) - READY_TO_SHIP
         {
             orderId: '261005FLS-03C',
             platform: 'Shopee',
@@ -339,12 +346,15 @@ function loadShopeeDemoData() {
             tracking: 'TH40000FLSH882',
             totalAmount: 5800,
             totalItemsCount: 3,
+            paymentMethod: 'Prepaid',
+            status: 'READY_TO_SHIP',
+            imageUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=150&auto=format&fit=crop&q=60',
             items: [
-                { name: 'ฐาน X-STEM Racing Lab ป้ายไม้พร้อมรางแข่ง', variation: 'รุ่นมาตรฐาน 3 เมตร', sku: 'STEM-RACE-01', price: 2000, qty: 2, total: 4000 },
+                { name: 'ฐาน X-STEM Racing Lab ป้ายไม้พร้อมรางแข่ง', variation: 'รุ่นมาตรฐาน 3 เมตร', sku: 'STEM-RACE-01', price: 2000, qty: 2, total: 4000, image_url: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=150&auto=format&fit=crop&q=60' },
                 { name: 'ชุดเซนเซอร์จับเวลา Laser Gate', variation: 'จอแสดงผลดิจิทัล LED', sku: 'SENS-GATE-LED', price: 1800, qty: 1, total: 1800 }
             ]
         },
-        // Store 4: TikTok Shop (S-Gyver TikTok Live)
+        // Store 4: TikTok Shop (S-Gyver TikTok Live) - READY_TO_SHIP
         {
             orderId: 'TK261005-04D',
             platform: 'TikTok',
@@ -359,11 +369,14 @@ function loadShopeeDemoData() {
             tracking: '820991823712',
             totalAmount: 1590,
             totalItemsCount: 1,
+            paymentMethod: 'COD',
+            status: 'READY_TO_SHIP',
+            imageUrl: 'https://images.unsplash.com/photo-1531746790731-6c087fecd65a?w=150&auto=format&fit=crop&q=60',
             items: [
-                { name: 'ชุดการเรียนรู้หุ่นยนต์เดินตามเส้น Line Tracking Robot', variation: 'กล่องของขวัญ + แบตเตอรี่', sku: 'ROBOT-LINE-01', price: 1590, qty: 1, total: 1590 }
+                { name: 'ชุดการเรียนรู้หุ่นยนต์เดินตามเส้น Line Tracking Robot', variation: 'กล่องของขวัญ + แบตเตอรี่', sku: 'ROBOT-LINE-01', price: 1590, qty: 1, total: 1590, image_url: 'https://images.unsplash.com/photo-1531746790731-6c087fecd65a?w=150&auto=format&fit=crop&q=60' }
             ]
         },
-        // Store 5: Lazada (Gyver Lazada Mall)
+        // Store 5: Lazada (Gyver Lazada Mall) - SHIPPED
         {
             orderId: 'LZ261005-05E',
             platform: 'Lazada',
@@ -378,8 +391,11 @@ function loadShopeeDemoData() {
             tracking: 'LEXTH009182736',
             totalAmount: 4200,
             totalItemsCount: 2,
+            paymentMethod: 'Prepaid',
+            status: 'SHIPPED',
+            imageUrl: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=150&auto=format&fit=crop&q=60',
             items: [
-                { name: 'ฐาน X-Farm to Craft ป้ายไม้ SPIM สวยงาม', variation: 'ไม้สักแท้เคลือบกันน้ำ', sku: 'FARM-SPIM-WOOD', price: 2100, qty: 2, total: 4200 }
+                { name: 'ฐาน X-Farm to Craft ป้ายไม้ SPIM สวยงาม', variation: 'ไม้สักแท้เคลือบกันน้ำ', sku: 'FARM-SPIM-WOOD', price: 2100, qty: 2, total: 4200, image_url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=150&auto=format&fit=crop&q=60' }
             ]
         }
     ];
@@ -441,6 +457,7 @@ function renderOrdersTable() {
         const pMethod = o.paymentMethod || 'Prepaid';
         const isCOD = pMethod === 'COD';
         const imgUrl = o.imageUrl || (o.items && o.items[0] && o.items[0].image_url ? o.items[0].image_url : '');
+        const orderStatus = o.status || 'READY_TO_SHIP';
 
         return `
             <tr>
@@ -451,9 +468,12 @@ function renderOrdersTable() {
                     <span class="badge-platform ${platformClass} mb-1">
                         ${getPlatformIcon(o.platform)} ${escapeHtml(o.shopName)}
                     </span>
-                    <div class="mt-1">
+                    <div class="mt-1 d-flex gap-1 flex-wrap">
                         <span class="badge-payment ${isCOD ? 'cod' : 'prepaid'}">
-                            ${isCOD ? '<i class="bi bi-cash me-1"></i>COD ปลายทาง' : '<i class="bi bi-credit-card-2-front me-1"></i>ชำระแล้ว (Prepaid)'}
+                            ${isCOD ? '<i class="bi bi-cash me-1"></i>COD ปลายทาง' : '<i class="bi bi-credit-card-2-front me-1"></i>ชำระแล้ว'}
+                        </span>
+                        <span class="badge-status ${orderStatus.toLowerCase()}">
+                            ${getStatusBadgeLabel(orderStatus)}
                         </span>
                     </div>
                 </td>
@@ -492,14 +512,29 @@ function renderOrdersTable() {
                 <td class="text-center font-mono fw-bold text-warning">${o.totalItemsCount}</td>
                 <td class="text-end font-mono fw-bold text-emerald">${Number(o.totalAmount).toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿</td>
                 <td class="text-center">
-                    <div class="d-flex justify-content-center gap-1">
-                        <button class="btn btn-sm btn-outline-info" title="ดูตัวอย่างใบปะหน้า 100x150mm" onclick="previewSingleLabel('${o.orderId}')">
-                            <i class="bi bi-eye"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline-warning" title="สั่งพิมพ์เฉพาะใบนี้" onclick="printSingleLabel('${o.orderId}')">
-                            <i class="bi bi-printer"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline-success" title="สร้างใบเสร็จใน Quotation Studio" onclick="createReceiptFromOrder('${o.orderId}')">
+                    <div class="d-flex justify-content-center gap-1 flex-wrap">
+                        ${orderStatus === 'NEW' ? `
+                            <button class="btn btn-sm btn-info text-dark fw-bold px-2 py-1" title="กดยืนยันรับออเดอร์" onclick="acceptOrder('${o.orderId}')">
+                                <i class="bi bi-check2-circle me-1"></i>รับออเดอร์
+                            </button>
+                        ` : `
+                            <button class="btn btn-sm btn-outline-info" title="ดูตัวอย่างใบปะหน้า 100x150mm" onclick="previewSingleLabel('${o.orderId}')">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-warning" title="สั่งพิมพ์เฉพาะใบนี้" onclick="printSingleLabel('${o.orderId}')">
+                                <i class="bi bi-printer"></i>
+                            </button>
+                            ${orderStatus === 'SHIPPED' ? `
+                                <span class="badge bg-success-subtle text-success border border-success-subtle py-1 px-2" style="font-size:0.75rem;">
+                                    <i class="bi bi-check-all me-1"></i>ส่งแล้ว
+                                </span>
+                            ` : `
+                                <button class="btn btn-sm btn-outline-success" title="ทำเครื่องหมายว่าส่งแล้ว" onclick="markSingleAsShipped('${o.orderId}')">
+                                    <i class="bi bi-truck"></i> ส่งแล้ว
+                                </button>
+                            `}
+                        `}
+                        <button class="btn btn-sm btn-outline-secondary" title="สร้างใบเสร็จใน Quotation Studio" onclick="createReceiptFromOrder('${o.orderId}')">
                             <i class="bi bi-receipt"></i>
                         </button>
                     </div>
@@ -509,10 +544,103 @@ function renderOrdersTable() {
     }).join('');
 
     updateSelectedCountBadge();
+    updateStatusTabCounts();
+}
+
+function getStatusBadgeLabel(status) {
+    switch (status) {
+        case 'NEW': return '<i class="bi bi-inbox-fill me-1"></i>คำสั่งซื้อใหม่';
+        case 'SHIPPED': return '<i class="bi bi-truck me-1"></i>จัดส่งแล้ว';
+        default: return '<i class="bi bi-box-seam-fill me-1"></i>รอแพ็ค / พร้อมส่ง';
+    }
+}
+
+function setStatusFilter(status, tabEl) {
+    STATE.activeStatusFilter = status;
+    document.querySelectorAll('.status-tab').forEach(t => t.classList.remove('active'));
+    if (tabEl) tabEl.classList.add('active');
+    renderOrdersTable();
+    updateStats();
+}
+
+function updateStatusTabCounts() {
+    const all = STATE.orders.length;
+    const newCount = STATE.orders.filter(o => o.status === 'NEW').length;
+    const readyCount = STATE.orders.filter(o => !o.status || o.status === 'READY_TO_SHIP').length;
+    const shippedCount = STATE.orders.filter(o => o.status === 'SHIPPED').length;
+
+    setText('count-tab-all', all);
+    setText('count-tab-new', newCount);
+    setText('count-tab-ready', readyCount);
+    setText('count-tab-shipped', shippedCount);
+    setText('selected-shipped-badge', STATE.selectedOrderIds.size);
+}
+
+function markSingleAsShipped(orderId) {
+    const o = STATE.orders.find(item => item.orderId === orderId);
+    if (!o) return;
+    o.status = 'SHIPPED';
+    saveOrdersToLocalStorage();
+    renderOrdersTable();
+    updateStats();
+    updateStatusTabCounts();
+    syncOrdersToSupabase([o]);
+    if (typeof showToast === 'function') {
+        showToast('success', 'เปลี่ยนสถานะแล้ว', `ออเดอร์ ${orderId} ย้ายไปที่ "จัดส่งแล้ว" เรียบร้อย`, 2500);
+    }
+}
+
+function markSelectedAsShipped() {
+    const selected = Array.from(STATE.selectedOrderIds);
+    if (selected.length === 0) {
+        alert('กรุณาติ๊กเลือกออเดอร์ที่ต้องการทำเครื่องหมายว่า "จัดส่งแล้ว"');
+        return;
+    }
+
+    if (!confirm(`ต้องการเปลี่ยนสถานะออเดอร์ที่เลือก ${selected.length} รายการเป็น "จัดส่งแล้ว" ใช่หรือไม่?`)) return;
+
+    STATE.orders.forEach(o => {
+        if (STATE.selectedOrderIds.has(o.orderId)) {
+            o.status = 'SHIPPED';
+        }
+    });
+
+    saveOrdersToLocalStorage();
+    renderOrdersTable();
+    updateStats();
+    updateStatusTabCounts();
+
+    const updated = STATE.orders.filter(o => STATE.selectedOrderIds.has(o.orderId));
+    syncOrdersToSupabase(updated);
+
+    if (typeof showToast === 'function') {
+        showToast('success', 'เปลี่ยนสถานะเรียบร้อย', `ทำเครื่องหมาย "จัดส่งแล้ว" ${selected.length} ออเดอร์`, 3000);
+    }
+}
+
+function acceptOrder(orderId) {
+    const o = STATE.orders.find(item => item.orderId === orderId);
+    if (!o) return;
+    o.status = 'READY_TO_SHIP';
+    saveOrdersToLocalStorage();
+    renderOrdersTable();
+    updateStats();
+    updateStatusTabCounts();
+    syncOrdersToSupabase([o]);
+    if (typeof showToast === 'function') {
+        showToast('success', 'รับออเดอร์สำเร็จ!', `ออเดอร์ ${orderId} พร้อมแพ็คและพิมพ์ใบปะหน้าแล้ว`, 3000);
+    }
 }
 
 function getFilteredOrders() {
     return STATE.orders.filter(o => {
+        // Status Category Filter (NEW | READY_TO_SHIP | SHIPPED)
+        if (STATE.activeStatusFilter && STATE.activeStatusFilter !== 'ALL') {
+            const oStatus = o.status || 'READY_TO_SHIP';
+            if (oStatus !== STATE.activeStatusFilter) {
+                return false;
+            }
+        }
         // Platform / Store filter
         if (STATE.activePlatformFilter) {
             const filterVal = STATE.activePlatformFilter;

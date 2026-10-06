@@ -327,9 +327,60 @@ body {
 }
 .form-select:focus {
     background-color: rgba(0, 0, 0, 0.35);
-    border-color: var(--brand-orange);
+/* Order Status Tabs (Like BigSeller) */
+.so-status-tabs {
+    background: rgba(15, 23, 42, 0.65);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 8px 12px;
+    backdrop-filter: blur(8px);
+}
+.status-tab {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+}
+.status-tab:hover {
     color: #fff;
-    box-shadow: none;
+    background: rgba(255, 255, 255, 0.05);
+}
+.status-tab.active {
+    color: #fff;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(6, 182, 212, 0.25));
+    border-color: rgba(6, 182, 212, 0.45);
+    box-shadow: 0 4px 12px rgba(6, 182, 212, 0.15);
+}
+.badge-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+.badge-status.new {
+    background: rgba(6, 182, 212, 0.15);
+    color: #38bdf8;
+    border: 1px solid rgba(6, 182, 212, 0.35);
+}
+.badge-status.ready {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.35);
+}
+.badge-status.shipped {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.35);
 }
 
 /* 4. Glass Table */

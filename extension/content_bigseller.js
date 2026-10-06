@@ -267,6 +267,19 @@ function parseOrderContainer(container) {
         }
     }
 
+    // 8. Determine Order Status (NEW | READY_TO_SHIP | SHIPPED)
+    let orderStatus = 'READY_TO_SHIP';
+    const currentUrl = (window.location.href || '').toLowerCase();
+    const rowText = text.toLowerCase();
+
+    if (currentUrl.includes('allocate') || currentUrl.includes('neworder') || rowText.includes('ยังไม่ได้จัดสรร') || rowText.includes('คำสั่งซื้อใหม่') || rowText.includes('รอรับออเดอร์')) {
+        orderStatus = 'NEW';
+    } else if (currentUrl.includes('shipped') || currentUrl.includes('history') || rowText.includes('จัดส่งแล้ว') || rowText.includes('ส่งแล้ว')) {
+        orderStatus = 'SHIPPED';
+    } else {
+        orderStatus = 'READY_TO_SHIP';
+    }
+
     return {
         order_id: orderId,
         platform: platform,
@@ -288,9 +301,10 @@ function parseOrderContainer(container) {
             variation: '',
             price: totalAmount,
             qty: qty,
-            image_url: productImg
+            image_url: productImg,
+            payment_method: paymentMethod
         }],
-        status: 'READY_TO_SHIP',
+        status: orderStatus,
         updated_at: new Date().toISOString()
     };
 }
