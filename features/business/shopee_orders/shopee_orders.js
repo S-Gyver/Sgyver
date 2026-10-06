@@ -283,6 +283,43 @@ function getPlatformIcon(platform) {
     }
 }
 
+// ── PERMANENT AUTO-RESOLVER FOR THE 5 STORES (SHOPEE x 3, TIKTOK x 1, LAZADA x 1) ──
+function getResolvedShopName(order) {
+    if (!order) return 'whatever_glitters';
+    const current = (order.shopName || '').trim();
+    const platform = (order.platform || 'Shopee').toLowerCase();
+
+    // 1. TikTok -> SD_TikTok
+    if (platform.includes('tiktok') || current.toLowerCase().includes('tiktok')) {
+        return 'SD_TikTok';
+    }
+
+    // 2. Lazada -> Home Artistic
+    if (platform.includes('lazada') || current.toLowerCase().includes('lazada') || current.toLowerCase().includes('home artistic')) {
+        return 'Home Artistic';
+    }
+
+    // 3. Shopee: If already one of the exact 3 Shopee stores, keep it!
+    if (current === 'whatever_glitters' || current === 'homeart1993' || current === 's.design2022') {
+        return current;
+    }
+
+    // 4. Automatic Shopee store detection by item, SKU, name, or order ID
+    const itemStr = JSON.stringify(order.items || '').toLowerCase();
+    const allText = (itemStr + ' ' + (order.orderId || '') + ' ' + (order.tracking || '')).toLowerCase();
+
+    if (allText.includes('ไม้') || allText.includes('shelf') || allText.includes('tray') || allText.includes('wood') || allText.includes('s012001') || allText.includes('homeart')) {
+        return 'homeart1993';
+    } else if (allText.includes('หมวก') || allText.includes('เลื่อม') || allText.includes('glitter') || allText.includes('กางเกง') || allText.includes('short') || allText.includes('shirt') || allText.includes('261006ur1wg7cx')) {
+        return 'whatever_glitters';
+    } else if (allText.includes('design') || allText.includes('robot') || allText.includes('stem') || allText.includes('s.design') || allText.includes('sdesign')) {
+        return 's.design2022';
+    }
+
+    // Default based on product pattern
+    return order.totalAmount > 200 ? 'homeart1993' : 'whatever_glitters';
+}
+
 // ── 3. REALISTIC 5-STORE DEMO DATA (3 SHOPEE + 1 TIKTOK + 1 LAZADA) ──────────
 function loadShopeeDemoData() {
     const demoOrders = [
@@ -458,6 +495,8 @@ function renderOrdersTable() {
         const isCOD = pMethod === 'COD';
         const imgUrl = o.imageUrl || (o.items && o.items[0] && o.items[0].image_url ? o.items[0].image_url : '');
         const orderStatus = o.status || 'READY_TO_SHIP';
+        const displayShopName = getResolvedShopName(o);
+        o.shopName = displayShopName;
 
         return `
             <tr class="order-card-row platform-${platformClass} ${isChecked ? 'selected' : ''}">
@@ -469,7 +508,7 @@ function renderOrdersTable() {
                 </td>
                 <td>
                     <span class="badge-platform ${platformClass} mb-1" onclick="editOrderShopName('${escapeHtml(o.orderId)}')" title="คลิกเพื่อเปลี่ยน/แก้ไขชื่อร้านค้า" style="cursor: pointer;">
-                        ${getPlatformIcon(o.platform)} ${escapeHtml(o.shopName)} <i class="bi bi-pencil-fill ms-1" style="font-size: 0.65rem; opacity: 0.6;"></i>
+                        ${getPlatformIcon(o.platform)} ${escapeHtml(displayShopName)} <i class="bi bi-pencil-fill ms-1" style="font-size: 0.65rem; opacity: 0.6;"></i>
                     </span>
                     <div class="mt-1 d-flex gap-1 flex-wrap">
                         <span class="badge-payment ${isCOD ? 'cod' : 'prepaid'}">
@@ -791,24 +830,24 @@ function populatePlatformFilter() {
     const select = document.getElementById('filter-platform');
     if (!select) return;
 
-    const shops = [...new Set(STATE.orders.map(o => o.shopName))];
-    const platforms = [...new Set(STATE.orders.map(o => o.platform))];
+    const baseShops = ['whatever_glitters', 'homeart1993', 's.design2022', 'SD_TikTok', 'Home Artistic'];
+    const orderShops = STATE.orders.map(o => o.shopName).filter(Boolean);
+    const shops = [...new Set([...baseShops, ...orderShops])].filter(s => s !== 'Shopee Store' && s !== 'Shopee ร้านค้า');
+    const platforms = ['Shopee', 'TikTok', 'Lazada'];
 
     let html = '<option value="">ทุกแพลตฟอร์ม / ทุกร้าน (5 ร้านค้า)</option>';
-    if (platforms.length > 1) {
-        html += '<optgroup label="แยกตามแพลตฟอร์ม">';
-        platforms.forEach(p => {
-            html += `<option value="${p}" ${STATE.activePlatformFilter === p ? 'selected' : ''}>${p}</option>`;
-        });
-        html += '</optgroup>';
-    }
-    if (shops.length > 0) {
-        html += '<optgroup label="แยกตามร้านค้า">';
-        shops.forEach(s => {
-            html += `<option value="${s}" ${STATE.activePlatformFilter === s ? 'selected' : ''}>${s}</option>`;
-        });
-        html += '</optgroup>';
-    }
+    html += '<optgroup label="แยกตามแพลตฟอร์ม">';
+    platforms.forEach(p => {
+        html += `<option value="${p}" ${STATE.activePlatformFilter === p ? 'selected' : ''}>${p}</option>`;
+    });
+    html += '</optgroup>';
+
+    html += '<optgroup label="แยกตามร้านค้า (5 ร้าน)">';
+    shops.forEach(s => {
+        html += `<option value="${s}" ${STATE.activePlatformFilter === s ? 'selected' : ''}>${s}</option>`;
+    });
+    html += '</optgroup>';
+
     select.innerHTML = html;
 }
 
@@ -1181,25 +1220,37 @@ async function loadOrdersFromSupabase() {
             .order('created_at', { ascending: false });
 
         if (!error && Array.isArray(data) && data.length > 0) {
-            const cloudOrders = data.map(row => ({
-                orderId: row.order_id,
-                platform: row.platform || 'Shopee',
-                shopName: row.shop_name || 'ร้านค้า',
-                recipientName: row.recipient_name,
-                phone: row.phone,
-                address: row.address,
-                province: row.province,
-                district: row.district,
-                zipcode: row.zipcode,
-                carrier: row.carrier || 'Standard Delivery',
-                tracking: row.tracking_number || row.order_id,
-                totalAmount: parseFloat(row.total_amount) || 0,
-                totalItemsCount: parseInt(row.total_items, 10) || 1,
-                paymentMethod: row.payment_method || 'Prepaid',
-                imageUrl: row.image_url || (Array.isArray(row.items) && row.items[0] ? row.items[0].image_url : ''),
-                status: row.status || 'READY_TO_SHIP',
-                items: Array.isArray(row.items) ? row.items : []
-            }));
+            const cloudOrders = data.map(row => {
+                const rawObj = {
+                    orderId: row.order_id,
+                    platform: row.platform || 'Shopee',
+                    shopName: row.shop_name,
+                    items: Array.isArray(row.items) ? row.items : [],
+                    totalAmount: parseFloat(row.total_amount) || 0,
+                    tracking: row.tracking_number || row.order_id
+                };
+                const resolvedShop = getResolvedShopName(rawObj);
+
+                return {
+                    orderId: row.order_id,
+                    platform: rawObj.platform,
+                    shopName: resolvedShop,
+                    recipientName: row.recipient_name,
+                    phone: row.phone,
+                    address: row.address,
+                    province: row.province,
+                    district: row.district,
+                    zipcode: row.zipcode,
+                    carrier: row.carrier || 'Standard Delivery',
+                    tracking: row.tracking_number || row.order_id,
+                    totalAmount: parseFloat(row.total_amount) || 0,
+                    totalItemsCount: parseInt(row.total_items, 10) || 1,
+                    paymentMethod: row.payment_method || 'Prepaid',
+                    imageUrl: row.image_url || (Array.isArray(row.items) && row.items[0] ? row.items[0].image_url : ''),
+                    status: row.status || 'READY_TO_SHIP',
+                    items: Array.isArray(row.items) ? row.items : []
+                };
+            });
 
             // Merge with local orders
             const map = new Map();
@@ -1394,7 +1445,7 @@ function handleExtensionSyncResult(data) {
         const mapped = data.orders.map(o => ({
             orderId: o.order_id,
             platform: o.platform,
-            shopName: o.shop_name,
+            shopName: getResolvedShopName({ ...o, orderId: o.order_id, shopName: o.shop_name, totalAmount: o.total_amount, tracking: o.tracking_number, items: o.items }),
             recipientName: o.recipient_name,
             phone: o.phone,
             address: o.address,
