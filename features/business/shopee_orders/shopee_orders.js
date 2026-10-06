@@ -1153,20 +1153,26 @@ function loadSavedOrders() {
         if (raw) {
             const list = JSON.parse(raw);
             if (Array.isArray(list) && list.length > 0) {
-                // Auto-upgrade generic Shopee Store names based on the 3 active Shopee stores
+                // Auto-clean bad extracted item names and bogus quantities
                 list.forEach(o => {
-                    if (o.platform === 'Shopee' && (!o.shopName || o.shopName === 'Shopee Store' || o.shopName === 'Shopee ร้านค้า')) {
-                        const itemStr = JSON.stringify(o.items || '').toLowerCase();
-                        if (itemStr.includes('ไม้') || itemStr.includes('shelf') || itemStr.includes('tray') || itemStr.includes('wood') || itemStr.includes('s012001') || itemStr.includes('homeart')) {
-                            o.shopName = 'homeart1993';
-                        } else if (itemStr.includes('หมวก') || itemStr.includes('เลื่อม') || itemStr.includes('glitter') || itemStr.includes('กางเกง') || itemStr.includes('short') || itemStr.includes('shirt')) {
-                            o.shopName = 'whatever_glitters';
-                        } else if (itemStr.includes('design') || itemStr.includes('s.design')) {
-                            o.shopName = 's.design2022';
-                        } else {
-                            // Default to homeart1993 if wood-like, else whatever_glitters
-                            o.shopName = o.totalAmount > 200 ? 'homeart1993' : 'whatever_glitters';
-                        }
+                    if (Array.isArray(o.items)) {
+                        o.items.forEach(it => {
+                            const n = (it.name || '').trim();
+                            if (n.startsWith('261005TD1C6') || n.includes('TD1C6')) {
+                                it.name = 'เสื้อปักเลื่อมคล้องคอ (Sequin Top)';
+                                it.qty = 1;
+                            } else if (n.toLowerCase().includes('v0kst') || n === 'v0kst' || (it.image_url && it.image_url.includes('Floral'))) {
+                                it.name = 'Floral Set (ชุดเซ็ตผ้าลายดอก)';
+                                it.qty = 1;
+                            } else if (/^2\d{5}/.test(n)) {
+                                it.name = 'สินค้าตามคำสั่งซื้อ';
+                                if (it.qty > 10) it.qty = 1;
+                            }
+                            if (it.qty > 20 && (o.totalAmount < 500 || (it.price && it.price < 500))) {
+                                it.qty = 1;
+                            }
+                        });
+                        o.totalItemsCount = o.items.reduce((sum, it) => sum + (it.qty || 1), 0);
                     }
                 });
 
