@@ -494,9 +494,18 @@ function renderOrdersTable() {
                 <td>
                     <div class="d-flex align-items-center gap-3">
                         ${imgUrl ? `
-                            <img src="${imgUrl}" class="order-thumb-img" alt="product" onerror="this.style.display='none'">
+                            <div class="order-thumb-wrap" onclick="showProductImageModal('${encodeURIComponent(imgUrl)}', '${encodeURIComponent(o.items[0]?.name || 'สินค้า')}', '${encodeURIComponent(o.orderId)}')" title="คลิกดูรูปใหญ่">
+                                <img src="${imgUrl}" 
+                                     class="order-thumb-img" 
+                                     alt="product" 
+                                     width="44" 
+                                     height="44" 
+                                     style="width: 44px !important; height: 44px !important; min-width: 44px !important; max-width: 44px !important; min-height: 44px !important; max-height: 44px !important; object-fit: cover !important; border-radius: 7px; display: block !important;" 
+                                     onerror="this.parentElement.style.display='none'">
+                                <div class="thumb-zoom-hint"><i class="bi bi-arrows-angle-expand"></i></div>
+                            </div>
                         ` : `
-                            <div class="order-thumb-placeholder"><i class="bi bi-box-seam"></i></div>
+                            <div class="order-thumb-placeholder" style="width: 44px; height: 44px; min-width: 44px; border-radius: 8px;"><i class="bi bi-box-seam"></i></div>
                         `}
                         <div class="order-items-snippet">
                             ${o.items.map(it => `
@@ -899,6 +908,29 @@ function printSingleLabelFromModal() {
     printSingleLabel(activeModalOrderId);
 }
 
+function showProductImageModal(encodedUrl, encodedTitle, encodedOrderId) {
+    const imageUrl = decodeURIComponent(encodedUrl || '');
+    const productName = decodeURIComponent(encodedTitle || 'รูปภาพสินค้า');
+    const orderId = decodeURIComponent(encodedOrderId || '');
+    if (!imageUrl) return;
+
+    const imgEl = document.getElementById('productImageModalImg');
+    const titleEl = document.getElementById('productImageModalTitle');
+    const subtitleEl = document.getElementById('productImageModalSubtitle');
+    const linkEl = document.getElementById('productImageModalLink');
+
+    if (imgEl) imgEl.src = imageUrl;
+    if (titleEl) titleEl.innerHTML = `<i class="bi bi-image text-info me-1"></i> ${escapeHtml(productName)}`;
+    if (subtitleEl) subtitleEl.textContent = orderId ? `เลขคำสั่งซื้อ: ${orderId}` : '';
+    if (linkEl) linkEl.href = imageUrl;
+
+    const modalEl = document.getElementById('productImageModal');
+    if (modalEl && window.bootstrap) {
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+    }
+}
+
 function printSingleLabel(orderId) {
     const order = STATE.orders.find(o => o.orderId === orderId);
     if (!order) return;
@@ -1140,7 +1172,7 @@ async function syncOrdersToSupabase(orders) {
                 image_url: it.image_url || o.imageUrl || '',
                 payment_method: it.payment_method || o.paymentMethod || 'Prepaid'
             })),
-            status: 'READY_TO_SHIP',
+            status: o.status || 'READY_TO_SHIP',
             updated_at: new Date().toISOString()
         }));
 

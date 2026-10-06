@@ -258,6 +258,32 @@
                 </div>
             </div>
         </div>
+    <!-- ══════════════════════════════════════════════════════════════
+         7. PRODUCT IMAGE PREVIEW POPUP MODAL
+         ══════════════════════════════════════════════════════════════ -->
+    <div class="modal fade no-print" id="productImageModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 520px;">
+            <div class="modal-content bg-dark text-white border-secondary shadow-lg" style="border-radius: 16px; overflow: hidden; background: #0f172a !important;">
+                <div class="modal-header border-secondary py-2 px-3" style="background: rgba(255, 255, 255, 0.03);">
+                    <div>
+                        <h6 class="modal-title fw-bold text-white mb-0" id="productImageModalTitle">
+                            <i class="bi bi-image text-info me-1"></i> รูปภาพสินค้า
+                        </h6>
+                        <small class="text-secondary font-mono" id="productImageModalSubtitle" style="font-size: 0.75rem;"></small>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3 d-flex justify-content-center align-items-center" style="background: #020617; min-height: 320px;">
+                    <img id="productImageModalImg" src="" alt="product large" class="img-fluid rounded" style="max-height: 440px; object-fit: contain; box-shadow: 0 10px 30px rgba(0,0,0,0.8);">
+                </div>
+                <div class="modal-footer border-secondary py-2 px-3 justify-content-between" style="background: rgba(255, 255, 255, 0.03);">
+                    <a id="productImageModalLink" href="#" target="_blank" class="btn btn-sm btn-outline-info text-info">
+                        <i class="bi bi-box-arrow-up-right me-1"></i> เปิดดูรูปต้นฉบับ
+                    </a>
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">ปิดหน้าต่าง</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Shopee Orders Logic -->
