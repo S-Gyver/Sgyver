@@ -927,7 +927,6 @@ function showProductImageModal(encodedUrl, encodedTitle, encodedOrderId) {
 
     if (modalEl) {
         modalEl.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
     }
 }
 
@@ -935,7 +934,6 @@ function closeProductImageModal() {
     const modalEl = document.getElementById('productImageModal');
     if (modalEl) {
         modalEl.style.display = 'none';
-        document.body.style.overflow = '';
     }
 }
 
@@ -1087,6 +1085,7 @@ async function loadOrdersFromSupabase() {
                 totalItemsCount: parseInt(row.total_items, 10) || 1,
                 paymentMethod: row.payment_method || 'Prepaid',
                 imageUrl: row.image_url || (Array.isArray(row.items) && row.items[0] ? row.items[0].image_url : ''),
+                status: row.status || 'READY_TO_SHIP',
                 items: Array.isArray(row.items) ? row.items : []
             }));
 
