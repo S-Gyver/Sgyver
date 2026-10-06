@@ -485,6 +485,16 @@ function getSanitizedItemName(item, order) {
     return n;
 }
 
+// Check if a variation is meaningful to show (exclude stray "1", "2", "--", or duplicate product name)
+function isMeaningfulVariation(v, name) {
+    if (!v) return false;
+    const s = String(v).trim();
+    if (!s || s === '--' || s === '-' || s === 'None' || s === 'null') return false;
+    if (/^\d+$/.test(s)) return false; // Hide if purely numbers like "1", "2"
+    if (name && s.toLowerCase() === String(name).trim().toLowerCase()) return false;
+    return true;
+}
+
 // Auto-heal / normalize multi-item orders
 function normalizeOrderItems(order) {
     if (!order) return;
@@ -495,28 +505,28 @@ function normalizeOrderItems(order) {
         order.items = [
             {
                 name: 'Setเด็กใฝ่เรียน',
-                variation: 'Setเด็กใฝ่เรียน',
+                variation: '',
                 price: 120,
                 qty: 1,
                 image_url: order.items[0]?.image_url || order.imageUrl || ''
             },
             {
                 name: 'Setเด็กผู้หญิง',
-                variation: 'Setเด็กผู้หญิง',
+                variation: '',
                 price: 120,
                 qty: 1,
                 image_url: order.items[0]?.image_url || order.imageUrl || ''
             },
             {
                 name: 'Setเด็กรักสัตว์#1',
-                variation: 'Setเด็กรักสัตว์#1',
+                variation: '',
                 price: 120,
                 qty: 1,
                 image_url: order.items[0]?.image_url || order.imageUrl || ''
             },
             {
-                name: 'Setเด็กรักธรรมชาติ',
-                variation: 'Setเด็กชอบดอกไม้',
+                name: 'Setเด็กชอบดอกไม้',
+                variation: '',
                 price: 120,
                 qty: 1,
                 image_url: order.items[0]?.image_url || order.imageUrl || ''
@@ -527,6 +537,13 @@ function normalizeOrderItems(order) {
         order.status = 'READY_TO_SHIP';
         return;
     }
+
+    // Clear meaningless variations across all items
+    order.items.forEach(it => {
+        if (!isMeaningfulVariation(it.variation, it.name)) {
+            it.variation = '';
+        }
+    });
 
     // Auto-detect and heal order status (NEW vs READY_TO_SHIP vs SHIPPED)
     const hasRealTracking = order.tracking && 
@@ -662,7 +679,7 @@ function renderOrdersTable() {
                                         <span class="bigseller-item-name" style="color: #a78bfa; font-weight: 600; font-size: 0.88rem;">
                                             ${escapeHtml(it.name)}
                                         </span>
-                                        ${(it.variation && it.variation !== '--') ? `
+                                        ${isMeaningfulVariation(it.variation, it.name) ? `
                                             <span class="bigseller-item-variation text-white" style="font-size: 0.82rem; font-weight: 500;">
                                                 ${escapeHtml(it.variation)}
                                             </span>
