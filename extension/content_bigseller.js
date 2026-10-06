@@ -327,18 +327,28 @@ function parseOrderContainer(container) {
     const extractedItems = [];
 
     if (productCell) {
-        // Find sub-items if multiple products exist in this cell
-        let itemNodes = Array.from(productCell.querySelectorAll('.goods-item, .product-item, [class*="goods-info"], [class*="goods-row"], [class*="item-wrap"]'));
-        if (itemNodes.length === 0) {
-            const cellImgs = Array.from(productCell.querySelectorAll('img')).filter(im => {
-                const s = (im.getAttribute('src') || im.getAttribute('data-src') || '').toLowerCase();
-                return s && !s.includes('icon') && !s.includes('logo') && !s.includes('avatar') && !s.includes('svg');
+        // Find product images inside productCell
+        const cellImgs = Array.from(productCell.querySelectorAll('img')).filter(im => {
+            const s = (im.getAttribute('src') || im.getAttribute('data-src') || '').toLowerCase();
+            return s && !s.includes('icon') && !s.includes('logo') && !s.includes('avatar') && !s.includes('svg');
+        });
+
+        let itemNodes = [];
+
+        // If genuinely multiple product images exist, anchor each item to its unique product image container
+        if (cellImgs.length > 1) {
+            itemNodes = cellImgs.map(img => {
+                return img.closest('.goods-item, .product-item, .goods-list-item, tr, li, .el-row') ||
+                       img.parentElement?.parentElement ||
+                       img.parentElement;
             });
-            if (cellImgs.length > 1) {
-                itemNodes = cellImgs.map(img => img.closest('div, tr, li') || img.parentElement);
-            } else {
-                itemNodes = [productCell];
-            }
+            // Ensure unique DOM elements
+            itemNodes = Array.from(new Set(itemNodes));
+        }
+
+        // If only 1 product image or no separate items found: the ENTIRE productCell is 1 single product!
+        if (itemNodes.length <= 1) {
+            itemNodes = [productCell];
         }
 
         itemNodes.forEach(itemEl => {
@@ -414,7 +424,18 @@ function parseOrderContainer(container) {
                 itemName = rawLines[0];
             }
 
-            // Check if there is an image badge/tag (e.g. 'Shorts S', 'Grey Set')
+            // Fallback: If itemName is still empty, look for title attribute or anchor tag
+            if (!itemName) {
+                const nameEl = itemEl.querySelector('a, .goods-name, .product-name, [class*="name"], [class*="title"]');
+                if (nameEl) {
+                    const candidate = (nameEl.getAttribute('title') || nameEl.innerText || '').replace(/\b(คัดลอก|Copy|copy)\b/g, '').trim();
+                    if (candidate && candidate.length > 2 && !candidate.includes('THB') && !candidate.includes(orderId)) {
+                        itemName = candidate;
+                    }
+                }
+            }
+
+            // Check if there is an image badge/tag (e.g. 'Shorts S', 'Grey Set', 'Floral Set')
             const badgeEl = itemEl.querySelector('.sku-tag, .tag, .badge, [class*="badge"], [class*="tag"]');
             if (badgeEl && badgeEl.innerText && !itemVariation) {
                 const bText = badgeEl.innerText.trim();
