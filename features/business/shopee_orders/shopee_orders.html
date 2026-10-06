@@ -23,7 +23,7 @@
     <script src="../../../assets/js/toast_shared.js"></script>
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="shopee_orders.css?v=20261006_21">
+    <link rel="stylesheet" href="shopee_orders.css?v=20261006_22">
 
     <style>
         /* High-Contrast Card Rows & Distinct Separation */
@@ -52,40 +52,95 @@
         .table-glass tbody tr {
             transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
-        /* Alternating Distinct Card Backgrounds */
-        .table-glass tbody tr:nth-child(odd) td {
-            background: #141c2e !important;
-        }
-        .table-glass tbody tr:nth-child(even) td {
-            background: #0d1424 !important;
-        }
-        .table-glass tbody tr:hover td {
-            background: #1c2740 !important;
-        }
-        .table-glass tbody tr.selected td {
-            background: #182848 !important;
-        }
         .table-glass tbody td {
             padding: 14px 14px !important;
-            border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
-            border-bottom: 2px solid rgba(0, 0, 0, 0.6) !important;
             vertical-align: middle !important;
         }
-        .table-glass tbody td:first-child {
-            border-left: 5px solid #ee4d2d !important;
+
+        /* ══════════════════════════════════════════════════════════════
+           DISTINCT PLATFORM CARD BACKGROUNDS & THEMES
+           ══════════════════════════════════════════════════════════════ */
+        /* 1. SHOPEE THEME (Warm Deep Auburn / Orange Tint) */
+        .table-glass tbody tr.platform-shopee td {
+            background: linear-gradient(90deg, #241316 0%, #1a121e 50%, #131224 100%) !important;
+            border-top: 1px solid rgba(238, 77, 45, 0.28) !important;
+            border-bottom: 2px solid rgba(238, 77, 45, 0.45) !important;
+        }
+        .table-glass tbody tr.platform-shopee:hover td {
+            background: linear-gradient(90deg, #2e171b 0%, #221627 50%, #19162e 100%) !important;
+        }
+        .table-glass tbody tr.platform-shopee.selected td {
+            background: linear-gradient(90deg, #3b1c21 0%, #291a2e 50%, #1e1939 100%) !important;
+        }
+        .table-glass tbody tr.platform-shopee td:first-child {
+            border-left: 6px solid #ee4d2d !important;
             border-top-left-radius: 12px !important;
             border-bottom-left-radius: 12px !important;
         }
+        .table-glass tbody tr.platform-shopee td:last-child {
+            border-right: 1px solid rgba(238, 77, 45, 0.28) !important;
+            border-top-right-radius: 12px !important;
+            border-bottom-right-radius: 12px !important;
+        }
+
+        /* 2. TIKTOK THEME (Cyber Dark Cyan / Teal Tint) */
+        .table-glass tbody tr.platform-tiktok td {
+            background: linear-gradient(90deg, #09242d 0%, #0a1b26 50%, #091522 100%) !important;
+            border-top: 1px solid rgba(6, 182, 212, 0.3) !important;
+            border-bottom: 2px solid rgba(6, 182, 212, 0.48) !important;
+        }
+        .table-glass tbody tr.platform-tiktok:hover td {
+            background: linear-gradient(90deg, #0e303d 0%, #0e2434 50%, #0d1e30 100%) !important;
+        }
+        .table-glass tbody tr.platform-tiktok.selected td {
+            background: linear-gradient(90deg, #123d4e 0%, #122c41 50%, #10243d 100%) !important;
+        }
         .table-glass tbody tr.platform-tiktok td:first-child {
-            border-left: 5px solid #06b6d4 !important;
+            border-left: 6px solid #00f2fe !important;
+            border-top-left-radius: 12px !important;
+            border-bottom-left-radius: 12px !important;
+        }
+        .table-glass tbody tr.platform-tiktok td:last-child {
+            border-right: 1px solid rgba(6, 182, 212, 0.3) !important;
+            border-top-right-radius: 12px !important;
+            border-bottom-right-radius: 12px !important;
+        }
+
+        /* 3. LAZADA THEME (Deep Royal Blue / Indigo Tint) */
+        .table-glass tbody tr.platform-lazada td {
+            background: linear-gradient(90deg, #111a3b 0%, #0f152d 50%, #0b1126 100%) !important;
+            border-top: 1px solid rgba(59, 130, 246, 0.3) !important;
+            border-bottom: 2px solid rgba(59, 130, 246, 0.48) !important;
+        }
+        .table-glass tbody tr.platform-lazada:hover td {
+            background: linear-gradient(90deg, #18234e 0%, #131c3c 50%, #0f1632 100%) !important;
+        }
+        .table-glass tbody tr.platform-lazada.selected td {
+            background: linear-gradient(90deg, #1f2d62 0%, #17234c 50%, #131c3f 100%) !important;
         }
         .table-glass tbody tr.platform-lazada td:first-child {
-            border-left: 5px solid #3b82f6 !important;
+            border-left: 6px solid #3b82f6 !important;
+            border-top-left-radius: 12px !important;
+            border-bottom-left-radius: 12px !important;
         }
-        .table-glass tbody tr.platform-shopee td:first-child {
-            border-left: 5px solid #ee4d2d !important;
+        .table-glass tbody tr.platform-lazada td:last-child {
+            border-right: 1px solid rgba(59, 130, 246, 0.3) !important;
+            border-top-right-radius: 12px !important;
+            border-bottom-right-radius: 12px !important;
         }
-        .table-glass tbody td:last-child {
+
+        /* Fallback for other rows */
+        .table-glass tbody tr:not([class*="platform-"]) td {
+            background: #141c2e !important;
+            border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
+            border-bottom: 2px solid rgba(0, 0, 0, 0.6) !important;
+        }
+        .table-glass tbody tr:not([class*="platform-"]) td:first-child {
+            border-left: 6px solid #94a3b8 !important;
+            border-top-left-radius: 12px !important;
+            border-bottom-left-radius: 12px !important;
+        }
+        .table-glass tbody tr:not([class*="platform-"]) td:last-child {
             border-right: 1px solid rgba(255, 255, 255, 0.12) !important;
             border-top-right-radius: 12px !important;
             border-bottom-right-radius: 12px !important;
@@ -307,6 +362,6 @@
     </div>
 
     <!-- Shopee Orders Logic -->
-    <script src="shopee_orders.js?v=20261006_21"></script>
+    <script src="shopee_orders.js?v=20261006_22"></script>
 </body>
 </html>
