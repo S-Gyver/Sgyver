@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>สรุปรายการสินค้าที่ขายได้ (Pick List) – S-Gyver Shipping Studio</title>
+    <meta name="description" content="ระบบสรุปยอดรวมสินค้าที่ขายได้ทุกออเดอร์สำหรับจัดเตรียมของ ตัดสต็อก และใบหยิบสินค้า S-Gyver">
+
+    <!-- Bootstrap 5 CSS, Bootstrap Icons & Fonts -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500;600;700&family=Kanit:wght@300;400;500;600;700;800&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Shared Modules & Toast -->
+    <link rel="stylesheet" href="../../../assets/css/toast_shared.css">
+    <script src="../../../assets/js/toast_shared.js"></script>
+
+    <style>
+        :root {
+            --bg-page: #f8fafc;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --brand-emerald: #10b981;
+            --brand-cyan: #06b6d4;
+            --brand-blue: #2563eb;
+            --brand-shopee: #ee4d2d;
+        }
+
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Topbar Header */
+        .picklist-header {
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            padding: 0.85rem 1.75rem;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+        }
+
+        .brand-icon-box {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            font-size: 1.35rem;
+            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+        }
+
+        /* Stat Cards */
+        .stat-card-custom {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .stat-card-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+        }
+        .stat-icon-wrapper {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+        .stat-icon-emerald { background: #ecfdf5; color: #059669; }
+        .stat-icon-blue { background: #eff6ff; color: #2563eb; }
+        .stat-icon-amber { background: #fffbeb; color: #d97706; }
+        .stat-icon-purple { background: #faf5ff; color: #7c3aed; }
+
+        .stat-label-text {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }
+        .stat-number-text {
+            font-size: 1.65rem;
+            font-weight: 800;
+            color: var(--text-main);
+            line-height: 1.2;
+        }
+
+        /* Filter Controls */
+        .filter-panel {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 1.15rem 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+        }
+
+        /* Items Table */
+        .table-custom-container {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        .picklist-table {
+            margin-bottom: 0;
+        }
+        .picklist-table thead th {
+            background: #f8fafc;
+            color: #475569;
+            font-weight: 700;
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 1rem 0.85rem;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        .picklist-table tbody td {
+            padding: 1rem 0.85rem;
+            vertical-align: middle;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .picklist-table tbody tr {
+            transition: background 0.15s ease;
+        }
+        .picklist-table tbody tr:hover {
+            background: #f8fafc;
+        }
+
+        /* Checked item state */
+        .row-picked {
+            background-color: #f0fdf4 !important;
+        }
+        .row-picked .item-main-title {
+            text-decoration: line-through;
+            color: #94a3b8 !important;
+        }
+        .row-picked .item-pick-badge {
+            background: #dcfce7 !important;
+            border-color: #86efac !important;
+            color: #166534 !important;
+        }
+
+        /* Big High-Visibility Qty Badge */
+        .qty-badge-highlight {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #047857;
+            background: #ecfdf5;
+            border: 2px solid #a7f3d0;
+            padding: 6px 14px;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 2px 6px rgba(16, 185, 129, 0.12);
+        }
+
+        .order-chip {
+            display: inline-block;
+            font-size: 0.74rem;
+            padding: 2px 7px;
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            color: #475569;
+            font-family: 'Fira Code', monospace;
+            margin: 2px;
+            text-decoration: none;
+            transition: all 0.15s ease;
+        }
+        .order-chip:hover {
+            background: #e2e8f0;
+            color: #1e293b;
+        }
+
+        /* Product image thumbnail */
+        .prod-thumb-box {
+            width: 52px;
+            height: 52px;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #ffffff;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+            transition: transform 0.15s ease;
+            flex-shrink: 0;
+        }
+        .prod-thumb-box:hover {
+            transform: scale(1.08);
+            border-color: #3b82f6;
+        }
+        .prod-thumb-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* Print styles */
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            body {
+                background: #fff !important;
+                color: #000 !important;
+            }
+            .table-custom-container {
+                border: none !important;
+                box-shadow: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         1. TOP NAVIGATION & CONTROLS
+         ══════════════════════════════════════════════════════════════ -->
+    <header class="picklist-header no-print">
+        <div class="container-fluid px-3 d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <a href="shopee_orders.html" class="btn btn-outline-secondary btn-sm px-3 rounded-pill fw-semibold shadow-sm" title="กลับไปหน้าจัดการคำสั่งซื้อ">
+                    <i class="bi bi-arrow-left me-1"></i> กลับหน้ารวมออเดอร์
+                </a>
+
+                <div class="d-flex align-items-center gap-3">
+                    <div class="brand-icon-box">
+                        <i class="bi bi-box-seam-fill"></i>
+                    </div>
+                    <div>
+                        <h1 class="h5 fw-bold mb-0 text-dark">สรุปสินค้าที่ขายได้ (Pick List / ใบหยิบสินค้า)</h1>
+                        <small class="text-muted">ระบบคำนวณและรวมยอดสินค้าทุกออเดอร์ สำหรับจัดเตรียมของ ตัดสต็อก และเช็คยอดจัดส่ง</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <button type="button" class="btn btn-sm btn-outline-secondary shadow-sm" onclick="copyPickListText()" title="คัดลอกสรุปรายการสินค้าสำหรับส่งใน LINE หรือแชททีมงาน">
+                    <i class="bi bi-clipboard-check me-1"></i> คัดลอกส่งไลน์
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-success shadow-sm" onclick="exportPickListCsv()" title="ดาวน์โหลดเป็นไฟล์ CSV/Excel (รองรับภาษาไทยสมบูรณ์)">
+                    <i class="bi bi-file-earmark-spreadsheet-fill me-1"></i> ส่งออก Excel
+                </button>
+                <button type="button" class="btn btn-sm btn-primary shadow-sm px-3 fw-bold" onclick="printPickList()" title="พิมพ์ใบสรุปรายการหยิบสินค้า (A4) พร้อมช่องเช็คของ">
+                    <i class="bi bi-printer-fill me-1"></i> พิมพ์ใบหยิบของ
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         2. MAIN CONTENT AREA
+         ══════════════════════════════════════════════════════════════ -->
+    <main class="container-fluid px-4 py-4 no-print">
+
+        <!-- STAT CARDS (4 TILES) -->
+        <div class="row g-3 mb-4">
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="stat-card-custom">
+                    <div class="stat-icon-wrapper stat-icon-blue">
+                        <i class="bi bi-tag-fill"></i>
+                    </div>
+                    <div>
+                        <div class="stat-label-text">รวมรายการสินค้า (SKUs)</div>
+                        <div class="stat-number-text"><span id="stat-total-skus">0</span> <small style="font-size: 0.95rem; font-weight: normal; color: var(--text-muted);">รายการ</small></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="stat-card-custom">
+                    <div class="stat-icon-wrapper stat-icon-emerald">
+                        <i class="bi bi-boxes"></i>
+                    </div>
+                    <div>
+                        <div class="stat-label-text">จำนวนชิ้นที่ต้องหยิบ</div>
+                        <div class="stat-number-text text-success"><span id="stat-total-qty">0</span> <small style="font-size: 0.95rem; font-weight: normal; color: var(--text-muted);">ชิ้น</small></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="stat-card-custom">
+                    <div class="stat-icon-wrapper stat-icon-amber">
+                        <i class="bi bi-cash-stack"></i>
+                    </div>
+                    <div>
+                        <div class="stat-label-text">มูลค่ายอดขายรวม</div>
+                        <div class="stat-number-text"><span id="stat-total-amount">0.00</span> <small style="font-size: 0.95rem; font-weight: normal; color: var(--text-muted);">฿</small></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="stat-card-custom">
+                    <div class="stat-icon-wrapper stat-icon-purple">
+                        <i class="bi bi-receipt-cutoff"></i>
+                    </div>
+                    <div>
+                        <div class="stat-label-text">คำสั่งซื้อที่เกี่ยวข้อง</div>
+                        <div class="stat-number-text"><span id="stat-total-orders">0</span> <small style="font-size: 0.95rem; font-weight: normal; color: var(--text-muted);">ออเดอร์</small></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FILTER & SEARCH PANEL -->
+        <div class="filter-panel mb-4">
+            <div class="row g-3 align-items-center justify-content-between">
+                <div class="col-12 col-lg-8 d-flex flex-wrap gap-2 align-items-center">
+                    <div style="min-width: 190px;">
+                        <label class="form-label small text-muted mb-1 fw-bold">กรองคำสั่งซื้อ</label>
+                        <select id="filter-scope" class="form-select form-select-sm" onchange="applyFiltersAndRender()">
+                            <option value="all">คำสั่งซื้อทั้งหมดในระบบ</option>
+                            <option value="ready" selected>เฉพาะรอแพ็ค / พร้อมส่ง (Ready)</option>
+                            <option value="new">เฉพาะคำสั่งซื้อใหม่ (New)</option>
+                            <option value="shipped">จัดส่งแล้ว (Shipped)</option>
+                        </select>
+                    </div>
+
+                    <div style="min-width: 170px;">
+                        <label class="form-label small text-muted mb-1 fw-bold">ช่องทางจำหน่าย</label>
+                        <select id="filter-platform" class="form-select form-select-sm" onchange="applyFiltersAndRender()">
+                            <option value="">ทุกแพลตฟอร์ม / ทุกร้าน</option>
+                            <option value="Shopee">Shopee เท่านั้น</option>
+                            <option value="TikTok">TikTok เท่านั้น</option>
+                            <option value="Lazada">Lazada เท่านั้น</option>
+                        </select>
+                    </div>
+
+                    <div class="flex-grow-1" style="min-width: 220px;">
+                        <label class="form-label small text-muted mb-1 fw-bold">ค้นหาด่วน</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+                            <input type="text" id="filter-search" class="form-control" placeholder="ค้นหาชื่อสินค้า, ตัวเลือก, SKU, ออเดอร์..." oninput="applyFiltersAndRender()">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-lg-4 d-flex justify-content-lg-end gap-2 align-items-end pt-lg-3 flex-wrap">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetAllCheckboxes()" title="ยกเลิกการติ๊กถูกทั้งหมด">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i> ล้างการติ๊กเช็คของ
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-warning" onclick="loadDemoDataIfEmpty()" title="โหลดข้อมูลตัวอย่าง 5 ร้านค้า">
+                        <i class="bi bi-lightbulb-fill me-1"></i> โหลดตัวอย่าง 5 ร้าน
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ITEMS TABLE CONTAINER -->
+        <div class="table-custom-container">
+            <div class="d-flex align-items-center justify-content-between p-3 border-bottom bg-white">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="fw-bold text-dark"><i class="bi bi-list-check text-primary me-1"></i> รายการสินค้าที่ต้องจัดเตรียม</span>
+                    <span class="badge bg-secondary-subtle text-secondary" id="table-row-count-badge">0 รายการ</span>
+                </div>
+                <div class="small text-muted">
+                    💡 คลิกช่อง <code>[✓]</code> หน้ารายการ เพื่อทำเครื่องหมายว่าหยิบของแล้ว
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle picklist-table mb-0" id="picklist-main-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 55px;" class="text-center">เช็ค</th>
+                            <th style="width: 55px;" class="text-center">#</th>
+                            <th style="width: 70px;" class="text-center">รูปสินค้า</th>
+                            <th style="min-width: 280px;">ชื่อสินค้า / ตัวเลือก / SKU</th>
+                            <th style="width: 130px;" class="text-center">ช่องทางขาย</th>
+                            <th style="width: 100px;" class="text-end">ราคา/ชิ้น</th>
+                            <th style="width: 130px;" class="text-center">จำนวนที่ขายได้</th>
+                            <th style="width: 120px;" class="text-end">ยอดเงินรวม</th>
+                            <th style="min-width: 180px;">หมายเลขคำสั่งซื้อ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="picklist-table-tbody">
+                        <!-- Populated by pick_list.js -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         3. PRODUCT IMAGE LIGHTBOX MODAL
+         ══════════════════════════════════════════════════════════════ -->
+    <div class="image-lightbox-modal no-print" id="productImageModal" 
+         style="display: none; position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 99999999; background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(8px); align-items: center; justify-content: center; padding: 24px; cursor: zoom-out;" 
+         onclick="closeImageLightbox()">
+        
+        <button type="button" onclick="closeImageLightbox()" aria-label="Close" 
+                style="position: fixed; top: 24px; right: 28px; z-index: 100000000; background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.4); color: #fff; font-size: 24px; cursor: pointer; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
+            ✕
+        </button>
+
+        <div style="position: relative; max-width: 90vw; max-height: 90vh; display: flex; align-items: center; justify-content: center;" onclick="event.stopPropagation()">
+            <img id="lightboxImg" src="" alt="product large" 
+                 style="width: min(85vw, 85vh); height: min(85vw, 85vh); max-width: 850px; max-height: 850px; object-fit: contain; border-radius: 14px; box-shadow: 0 25px 60px rgba(0, 0, 0, 0.95); background: #ffffff;">
+        </div>
+    </div>
+
+    <!-- Pick List Application Logic -->
+    <script src="pick_list.js?v=20261006_01"></script>
+</body>
+</html>

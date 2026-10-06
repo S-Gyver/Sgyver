@@ -347,18 +347,21 @@
                     <i class="bi bi-shop-window"></i>
                 </div>
                 <div class="so-brand-text">
-                    <h1>OMNICHANNEL SHIPPING STUDIO (5 ร้านค้า)</h1>
+                    <h1>OMNICHANNEL SHIPPING STUDIO</h1>
                 </div>
             </div>
         </div>
 
         <div class="so-topbar-actions">
             <button class="btn-cyber btn-cyber-1click" onclick="triggerExtensionSync()" id="btn-1click-sync" title="ดึงออเดอร์ Shopee, TikTok, Lazada จาก BigSeller ในคลิกเดียว">
-                <i class="bi bi-lightning-charge-fill text-warning"></i> 🚀 ดึงออเดอร์ 5 ร้าน (1-Click)
+                <i class="bi bi-lightning-charge-fill text-warning"></i> 🚀 ดึงออเดอร์ 5 ร้าน
             </button>
             <button class="btn-cyber btn-cyber-outline text-warning border-warning" onclick="loadShopeeDemoData()" title="ทดลองโหลดข้อมูลตัวอย่าง 5 ร้านค้าทันที">
                 <i class="bi bi-lightbulb-fill"></i> โหลดตัวอย่าง 5 ร้าน
             </button>
+            <a href="pick_list.html" class="btn-cyber btn-cyber-outline text-success border-success text-decoration-none" id="btn-open-picklist" title="ดูหน้าสรุปรายการสินค้าที่ขายได้ทั้งหมด / ใบหยิบสินค้า (Pick List)">
+                <i class="bi bi-box-seam-fill"></i> สรุปสินค้าที่ขายได้
+            </a>
             <button class="btn-cyber btn-cyber-outline text-danger border-danger" onclick="clearAllOrders()" title="ล้างข้อมูลออเดอร์ทั้งหมด">
                 <i class="bi bi-trash3"></i> ล้างรายการ
             </button>
@@ -382,10 +385,13 @@
                     <div class="stat-value" id="stat-orders-count">0 <small style="font-size: 0.85rem; font-weight: normal; color: #94a3b8;">ออเดอร์</small></div>
                 </div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card" onclick="window.location.href='pick_list.html'" style="cursor: pointer;" title="คลิกเพื่อไปหน้าสรุปรายการสินค้าที่ขายได้ทั้งหมด (Pick List)">
                 <div class="stat-icon emerald"><i class="bi bi-boxes"></i></div>
                 <div class="stat-info">
-                    <h4>จำนวนชิ้นที่ต้องแพ็ก</h4>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <h4>จำนวนชิ้นที่ต้องแพ็ก</h4>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 0.72rem; cursor: pointer;">เปิดหน้าสรุป <i class="bi bi-arrow-right-short"></i></span>
+                    </div>
                     <div class="stat-value" id="stat-items-count">0 <small style="font-size: 0.85rem; font-weight: normal; color: #94a3b8;">ชิ้น</small></div>
                 </div>
             </div>

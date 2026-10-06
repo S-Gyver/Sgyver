@@ -264,6 +264,15 @@ function parseOrderContainer(container) {
     const trackingMatch = text.match(/\[([A-Z0-9]{8,25})\]/) || fullSearchText.match(/\[([A-Z0-9]{8,25})\]/);
     const tracking = trackingMatch ? trackingMatch[1] : orderId;
 
+    // Smart platform auto-detection by Order ID format & Tracking prefix
+    if (orderId.match(/^5[78]\d{15,18}$/)) {
+        platform = 'TikTok';
+        if (shopName === 'Shopee Store' || !shopName) shopName = 'SD_TikTok';
+    } else if (orderId.match(/^112\d{12,15}$/) || tracking.startsWith('LEX')) {
+        platform = 'Lazada';
+        if (shopName === 'Shopee Store' || !shopName) shopName = 'Home Artistic';
+    }
+
     // 4. Carrier
     let carrier = 'Standard Delivery';
     if (fullSearchText.includes('BEST Express') || fullSearchText.includes('BEST')) carrier = 'BEST Express';

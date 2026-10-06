@@ -122,18 +122,19 @@ function processOmnichannelRows(rows, fileCount = 1) {
         let platform = 'Shopee';
         let shopName = 'Shopee ร้านค้า';
 
+        const rawOrderId = String(row['Order ID'] || row['หมายเลขคำสั่งซื้อ'] || row['Order No.'] || row['เลขที่คำสั่งซื้อ'] || '').trim();
         const rawPlatform = String(row['Platform'] || row['แพลตฟอร์ม'] || row['Channel'] || '').toLowerCase();
         const rawStore = String(
             row['Store Name'] || row['Store'] || row['ชื่อร้านค้า'] || 
             row['Shop'] || row['Shop Name'] || row['Account'] || ''
         ).trim();
 
-        if (rawPlatform.includes('tiktok') || rawStore.toLowerCase().includes('tiktok')) {
+        if (rawPlatform.includes('tiktok') || rawStore.toLowerCase().includes('tiktok') || rawOrderId.match(/^5[78]\d{15,18}$/)) {
             platform = 'TikTok';
-            shopName = rawStore || 'TikTok Shop';
-        } else if (rawPlatform.includes('lazada') || rawStore.toLowerCase().includes('lazada')) {
+            shopName = rawStore || 'SD_TikTok';
+        } else if (rawPlatform.includes('lazada') || rawStore.toLowerCase().includes('lazada') || rawOrderId.match(/^112\d{12,15}$/) || String(row['Tracking Number'] || row['หมายเลขพัสดุ'] || '').startsWith('LEX')) {
             platform = 'Lazada';
-            shopName = rawStore || 'Lazada Store';
+            shopName = rawStore || 'Home Artistic';
         } else if (rawPlatform.includes('shopee') || rawStore.toLowerCase().includes('shopee')) {
             platform = 'Shopee';
             shopName = rawStore || 'Shopee Store';
@@ -1699,7 +1700,7 @@ function triggerExtensionSync() {
     setTimeout(() => {
         if (btn && btn.disabled) {
             btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-lightning-charge-fill text-warning"></i> 🚀 ดึงออเดอร์ 5 ร้าน (1-Click)';
+            btn.innerHTML = '<i class="bi bi-lightning-charge-fill text-warning"></i> 🚀 ดึงออเดอร์ 5 ร้าน';
         }
     }, 10000);
 }
@@ -1766,7 +1767,7 @@ function handleExtensionSyncResult(data) {
     const btn = document.getElementById('btn-1click-sync');
     if (btn) {
         btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-lightning-charge-fill text-warning"></i> 🚀 ดึงออเดอร์ 5 ร้าน (1-Click)';
+        btn.innerHTML = '<i class="bi bi-lightning-charge-fill text-warning"></i> 🚀 ดึงออเดอร์ 5 ร้าน';
     }
 
     if (data.success && Array.isArray(data.orders) && data.orders.length > 0) {
@@ -1877,7 +1878,439 @@ function openOrderImagePreview(orderId) {
     }
 }
 
+// ── 12. PRODUCT SUMMARY & PICK LIST (ใบหยิบสินค้า / สรุปสินค้าที่ขายได้) ───────────
+
+function openPickListModal() {
+    window.location.href = 'pick_list.html';
+}
+
+function getAggregatedItems(options = {}) {
+    const scope = options.scope || 'all';
+    const platform = options.platform || '';
+    const search = (options.search || '').trim().toLowerCase();
+
+    let targetOrders = STATE.orders;
+
+    if (scope === 'selected' && STATE.selectedOrderIds.size > 0) {
+        targetOrders = STATE.orders.filter(o => STATE.selectedOrderIds.has(o.orderId));
+    } else if (scope === 'ready') {
+        targetOrders = STATE.orders.filter(o => o.status === 'READY_TO_SHIP');
+    }
+
+    if (platform) {
+        targetOrders = targetOrders.filter(o => o.platform === platform || (o.shopName && o.shopName.includes(platform)));
+    }
+
+    const itemMap = new Map();
+
+    targetOrders.forEach(order => {
+        let items = order.items;
+        if (!Array.isArray(items) || items.length === 0) {
+            items = [{
+                name: order.productName || `สินค้าคำสั่งซื้อ #${order.orderId}`,
+                variation: '',
+                sku: '',
+                qty: order.totalItemsCount || 1,
+                price: order.totalAmount || 0,
+                image_url: order.imageUrl || ''
+            }];
+        }
+
+        items.forEach(it => {
+            const name = (it.name || 'ไม่ระบุชื่อสินค้า').trim();
+            const variation = (it.variation || '').trim();
+            const sku = (it.sku || '').trim();
+            const key = `${name}__${variation}__${sku}`;
+            const qty = parseInt(it.qty, 10) || 1;
+            const price = parseFloat(it.price) || 0;
+            const img = it.image_url || it.imageUrl || order.imageUrl || '';
+            const platformName = order.platform || 'Shopee';
+
+            if (itemMap.has(key)) {
+                const existing = itemMap.get(key);
+                existing.totalQty += qty;
+                existing.totalAmount += (price * qty);
+                if (!existing.orderIds.includes(order.orderId)) {
+                    existing.orderIds.push(order.orderId);
+                }
+                existing.platforms.add(platformName);
+                if (!existing.img && img) existing.img = img;
+            } else {
+                itemMap.set(key, {
+                    key,
+                    name,
+                    variation,
+                    sku,
+                    img,
+                    unitPrice: price,
+                    totalQty: qty,
+                    totalAmount: price * qty,
+                    orderIds: [order.orderId],
+                    platforms: new Set([platformName])
+                });
+            }
+        });
+    });
+
+    let list = Array.from(itemMap.values());
+
+    if (search) {
+        list = list.filter(item => 
+            item.name.toLowerCase().includes(search) ||
+            item.variation.toLowerCase().includes(search) ||
+            item.sku.toLowerCase().includes(search) ||
+            item.orderIds.some(id => id.toLowerCase().includes(search))
+        );
+    }
+
+    list.sort((a, b) => b.totalQty - a.totalQty || b.totalAmount - a.totalAmount);
+    return list;
+}
+
+function renderPickListTable() {
+    const scopeEl = document.getElementById('picklist-filter-scope');
+    const platformEl = document.getElementById('picklist-filter-platform');
+    const searchEl = document.getElementById('picklist-search-input');
+    const tbody = document.getElementById('picklist-table-body');
+
+    const scope = scopeEl ? scopeEl.value : 'all';
+    const platform = platformEl ? platformEl.value : '';
+    const search = searchEl ? searchEl.value : '';
+
+    const items = getAggregatedItems({ scope, platform, search });
+
+    // Update Top Stat Badges
+    const totalSkus = items.length;
+    const totalQty = items.reduce((sum, it) => sum + it.totalQty, 0);
+    const totalAmount = items.reduce((sum, it) => sum + it.totalAmount, 0);
+
+    const elSkus = document.getElementById('picklist-stat-skus');
+    const elQty = document.getElementById('picklist-stat-qty');
+    const elAmt = document.getElementById('picklist-stat-amount');
+
+    if (elSkus) elSkus.textContent = totalSkus.toLocaleString();
+    if (elQty) elQty.textContent = totalQty.toLocaleString();
+    if (elAmt) elAmt.textContent = totalAmount.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    if (!tbody) return;
+
+    if (items.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="9" class="text-center py-5 text-muted">
+                    <div style="font-size: 3rem; margin-bottom: 10px;">📦</div>
+                    <h6 class="fw-bold">ยังไม่พบรายการสินค้า</h6>
+                    <p class="small mb-0">ลองเลือกตัวกรองอื่น หรือกดปุ่ม <strong>"โหลดตัวอย่าง 5 ร้าน"</strong> ด้านบนเพื่อทดสอบระบบได้ครับ</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = items.map((it, idx) => {
+        const platformBadges = Array.from(it.platforms).map(p => {
+            const badgeClass = p.toLowerCase() === 'shopee' ? 'bg-danger-subtle text-danger border border-danger-subtle' :
+                               p.toLowerCase() === 'tiktok' ? 'bg-dark text-white' :
+                               p.toLowerCase() === 'lazada' ? 'bg-primary-subtle text-primary border border-primary-subtle' : 'bg-secondary text-white';
+            return `<span class="badge ${badgeClass} px-2 py-1" style="font-size: 0.72rem;">${p}</span>`;
+        }).join(' ');
+
+        const imgHtml = it.img ? `
+            <div onclick="openProductImageModal('${escapeHtml(it.img)}')" style="width: 44px; height: 44px; border-radius: 8px; overflow: hidden; cursor: pointer; border: 1px solid #e2e8f0; display: inline-flex; align-items: center; justify-content: center; background: #fff;" title="คลิกดูรูปใหญ่">
+                <img src="${escapeHtml(it.img)}" alt="" style="width: 100%; height: 100%; object-fit: contain;">
+            </div>
+        ` : `
+            <div style="width: 44px; height: 44px; border-radius: 8px; background: #f1f5f9; border: 1px solid #e2e8f0; display: inline-flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 1.25rem;">
+                📦
+            </div>
+        `;
+
+        const orderChips = it.orderIds.slice(0, 3).map(id => `<span class="picklist-order-chip">${escapeHtml(id)}</span>`).join('');
+        const moreOrders = it.orderIds.length > 3 ? `<span class="badge bg-light text-muted border" title="${it.orderIds.join(', ')}">+${it.orderIds.length - 3}</span>` : '';
+
+        return `
+            <tr id="picklist-row-${idx}">
+                <td class="text-center">
+                    <input type="checkbox" class="form-check-input" style="cursor: pointer; width: 18px; height: 18px;" onchange="togglePickItemRow(this, 'picklist-row-${idx}')">
+                </td>
+                <td class="text-center text-muted fw-bold">${idx + 1}</td>
+                <td class="text-center">${imgHtml}</td>
+                <td>
+                    <div class="picklist-item-title fw-bold text-dark" style="line-height: 1.4;">${escapeHtml(it.name)}</div>
+                    ${it.variation ? `<div class="small text-primary mt-1"><i class="bi bi-tag-fill me-1"></i>ตัวเลือก: <strong>${escapeHtml(it.variation)}</strong></div>` : ''}
+                    ${it.sku ? `<div class="small text-muted font-monospace"><i class="bi bi-upc-scan me-1"></i>SKU: ${escapeHtml(it.sku)}</div>` : ''}
+                </td>
+                <td class="text-center">${platformBadges}</td>
+                <td class="text-end text-muted font-monospace">${it.unitPrice > 0 ? it.unitPrice.toLocaleString('th-TH', { minimumFractionDigits: 2 }) + ' ฿' : '—'}</td>
+                <td class="text-center">
+                    <div class="picklist-qty-badge">
+                        <i class="bi bi-box-seam me-1"></i>
+                        <span>${it.totalQty}</span>
+                        <small style="font-size: 0.72rem; font-weight: normal;">ชิ้น</small>
+                    </div>
+                </td>
+                <td class="text-end fw-bold text-dark font-monospace">${it.totalAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿</td>
+                <td>
+                    <div style="max-width: 170px;">
+                        ${orderChips} ${moreOrders}
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function togglePickItemRow(checkbox, rowId) {
+    const row = document.getElementById(rowId);
+    if (!row) return;
+    if (checkbox.checked) {
+        row.classList.add('picklist-row-checked');
+    } else {
+        row.classList.remove('picklist-row-checked');
+    }
+}
+
+function printPickList() {
+    const scopeEl = document.getElementById('picklist-filter-scope');
+    const platformEl = document.getElementById('picklist-filter-platform');
+    const searchEl = document.getElementById('picklist-search-input');
+
+    const scope = scopeEl ? scopeEl.value : 'all';
+    const platform = platformEl ? platformEl.value : '';
+    const search = searchEl ? searchEl.value : '';
+
+    const items = getAggregatedItems({ scope, platform, search });
+
+    if (items.length === 0) {
+        alert('ไม่พบรายการสินค้าที่จะพิมพ์');
+        return;
+    }
+
+    const totalQty = items.reduce((sum, it) => sum + it.totalQty, 0);
+    const totalAmount = items.reduce((sum, it) => sum + it.totalAmount, 0);
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+    const rowsHtml = items.map((it, idx) => `
+        <tr>
+            <td style="text-align: center; width: 35px; border: 1px solid #000; padding: 6px;"><span style="display:inline-block; width:16px; height:16px; border:1.5px solid #000;"></span></td>
+            <td style="text-align: center; width: 35px; border: 1px solid #000; padding: 6px;">${idx + 1}</td>
+            <td style="border: 1px solid #000; padding: 6px;">
+                <div style="font-weight: bold; font-size: 13px;">${escapeHtml(it.name)}</div>
+                ${it.variation ? `<div style="font-size: 11px; color: #333;">ตัวเลือก: <strong>${escapeHtml(it.variation)}</strong></div>` : ''}
+                ${it.sku ? `<div style="font-size: 10px; color: #555;">SKU: ${escapeHtml(it.sku)}</div>` : ''}
+            </td>
+            <td style="text-align: center; border: 1px solid #000; padding: 6px; font-size: 11px;">${Array.from(it.platforms).join(', ')}</td>
+            <td style="text-align: center; width: 80px; border: 1px solid #000; padding: 6px; font-size: 16px; font-weight: bold; background: #f3f4f6;">
+                ${it.totalQty} ชิ้น
+            </td>
+            <td style="text-align: right; width: 80px; border: 1px solid #000; padding: 6px; font-size: 12px;">${it.totalAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿</td>
+            <td style="border: 1px solid #000; padding: 6px; font-size: 10px; max-width: 140px; word-break: break-all;">${it.orderIds.join(', ')}</td>
+        </tr>
+    `).join('');
+
+    const printWin = window.open('', '_blank', 'width=950,height=800');
+    if (!printWin) {
+        alert('กรุณาอนุญาตให้เบราว์เซอร์เปิด Pop-up เพื่อพิมพ์เอกสารครับ');
+        return;
+    }
+
+    printWin.document.write(`
+        <!DOCTYPE html>
+        <html lang="th">
+        <head>
+            <meta charset="UTF-8">
+            <title>ใบสรุปรายการหยิบสินค้า (Order Picking List)</title>
+            <style>
+                @page { size: A4 portrait; margin: 12mm; }
+                body { font-family: 'Sarabun', 'Segoe UI', Tahoma, sans-serif; color: #000; background: #fff; margin: 0; padding: 10px; }
+                .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 12px; }
+                .title { font-size: 18px; font-weight: bold; margin: 0; }
+                .meta { font-size: 12px; color: #333; margin-top: 4px; }
+                .stats-box { display: flex; gap: 15px; margin-bottom: 14px; font-size: 13px; }
+                .stats-pill { background: #f3f4f6; border: 1px solid #000; padding: 6px 14px; border-radius: 4px; font-weight: bold; }
+                table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+                th { background: #e5e7eb; border: 1px solid #000; padding: 8px 6px; font-size: 12px; text-align: center; }
+                .footer { display: flex; justify-content: space-between; margin-top: 30px; font-size: 12px; }
+                .sign-box { border-top: 1px dotted #000; width: 200px; text-align: center; padding-top: 6px; margin-top: 40px; }
+                @media print {
+                    .no-print { display: none !important; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="no-print" style="margin-bottom: 15px; text-align: right;">
+                <button onclick="window.print()" style="padding: 8px 20px; font-size: 14px; background: #0284c7; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">🖨️ สั่งพิมพ์เอกสาร (Print)</button>
+                <button onclick="window.close()" style="padding: 8px 15px; font-size: 14px; background: #e2e8f0; color: #333; border: none; border-radius: 6px; cursor: pointer; margin-left: 8px;">ปิด</button>
+            </div>
+            <div class="header">
+                <div>
+                    <h1 class="title">📦 ใบสรุปรายการหยิบสินค้า (Order Picking List)</h1>
+                    <div class="meta">ระบบ S-Gyver Shipping Studio | วันที่พิมพ์: ${dateStr}</div>
+                </div>
+                <div style="text-align: right; font-size: 12px;">
+                    <div><strong>สถานะ:</strong> ${scope === 'ready' ? 'เฉพาะคำสั่งซื้อรอแพ็ค' : scope === 'selected' ? 'เฉพาะคำสั่งซื้อที่เลือก' : 'ทุกคำสั่งซื้อ'}</div>
+                    ${platform ? `<div><strong>ช่องทาง:</strong> ${platform}</div>` : ''}
+                </div>
+            </div>
+
+            <div class="stats-box">
+                <div class="stats-pill">🏷️ รวม: ${items.length} รายการ (SKUs)</div>
+                <div class="stats-pill" style="background: #ecfdf5; border-color: #059669; color: #047857;">📦 จำนวนชิ้นทั้งหมด: ${totalQty} ชิ้น</div>
+                <div class="stats-pill">💰 มูลค่ารวม: ${totalAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท</div>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 35px;">เช็ค</th>
+                        <th style="width: 35px;">#</th>
+                        <th style="text-align: left;">ชื่อสินค้า / ตัวเลือก / SKU</th>
+                        <th style="width: 80px;">ช่องทาง</th>
+                        <th style="width: 85px;">จำนวนที่หยิบ</th>
+                        <th style="width: 85px;">รวมเงิน</th>
+                        <th>ออเดอร์ที่สั่ง</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml}
+                </tbody>
+            </table>
+
+            <div class="footer">
+                <div class="sign-box">
+                    ผู้จัดสินค้า (Picker)<br>วันที่: ..../..../........
+                </div>
+                <div class="sign-box">
+                    ผู้ตรวจเช็ค & แพ็ค (Packer)<br>วันที่: ..../..../........
+                </div>
+            </div>
+
+            <script>
+                window.onload = function() {
+                    setTimeout(function() { window.print(); }, 300);
+                };
+            </script>
+        </body>
+        </html>
+    `);
+    printWin.document.close();
+}
+
+function copyPickListText() {
+    const scopeEl = document.getElementById('picklist-filter-scope');
+    const platformEl = document.getElementById('picklist-filter-platform');
+    const searchEl = document.getElementById('picklist-search-input');
+
+    const scope = scopeEl ? scopeEl.value : 'all';
+    const platform = platformEl ? platformEl.value : '';
+    const search = searchEl ? searchEl.value : '';
+
+    const items = getAggregatedItems({ scope, platform, search });
+
+    if (items.length === 0) {
+        alert('ไม่มีรายการสินค้าที่จะคัดลอก');
+        return;
+    }
+
+    const totalQty = items.reduce((sum, it) => sum + it.totalQty, 0);
+    const totalAmount = items.reduce((sum, it) => sum + it.totalAmount, 0);
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('th-TH') + ' ' + now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+
+    let lines = [
+        `📦 สรุปสินค้าที่ขายได้ (Pick List) - S-Gyver`,
+        `📅 วันที่: ${dateStr}`,
+        `═════════════════════════`
+    ];
+
+    items.forEach((it, idx) => {
+        const variationPart = it.variation ? ` (${it.variation})` : '';
+        lines.push(`${idx + 1}. [x${it.totalQty} ชิ้น] ${it.name}${variationPart}`);
+    });
+
+    lines.push(`═════════════════════════`);
+    lines.push(`📊 รวมทั้งหมด: ${totalQty} ชิ้น (${items.length} รายการ)`);
+    lines.push(`💰 ยอดขายรวม: ${totalAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`);
+
+    const fullText = lines.join('\n');
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(fullText).then(() => {
+            if (typeof showToast === 'function') {
+                showToast('success', '📋 คัดลอกสำเร็จ!', `คัดลอกรายการสรุปสินค้า ${items.length} รายการเรียบร้อยแล้ว พร้อมส่งใน LINE ได้ทันที`, 3000);
+            } else {
+                alert('📋 คัดลอกรายการสรุปสินค้าลงคลิปบอร์ดเรียบร้อยแล้ว!');
+            }
+        }).catch(() => {
+            prompt('คัดลอกข้อความด้านล่างนี้ได้เลยครับ:', fullText);
+        });
+    } else {
+        prompt('คัดลอกข้อความด้านล่างนี้ได้เลยครับ:', fullText);
+    }
+}
+
+function exportPickListCsv() {
+    const scopeEl = document.getElementById('picklist-filter-scope');
+    const platformEl = document.getElementById('picklist-filter-platform');
+    const searchEl = document.getElementById('picklist-search-input');
+
+    const scope = scopeEl ? scopeEl.value : 'all';
+    const platform = platformEl ? platformEl.value : '';
+    const search = searchEl ? searchEl.value : '';
+
+    const items = getAggregatedItems({ scope, platform, search });
+
+    if (items.length === 0) {
+        alert('ไม่มีรายการสินค้าที่จะส่งออก');
+        return;
+    }
+
+    let csvContent = '\uFEFF'; // UTF-8 BOM
+    csvContent += 'ลำดับ,ชื่อสินค้า,ตัวเลือก,SKU,ราคาต่อชิ้น(บาท),จำนวนที่ขายได้(ชิ้น),ยอดเงินรวม(บาท),ช่องทางจำหน่าย,หมายเลขคำสั่งซื้อ\n';
+
+    items.forEach((it, idx) => {
+        const clean = str => `"${String(str || '').replace(/"/g, '""')}"`;
+        const platforms = Array.from(it.platforms).join('; ');
+        const orders = it.orderIds.join('; ');
+
+        csvContent += [
+            idx + 1,
+            clean(it.name),
+            clean(it.variation),
+            clean(it.sku),
+            it.unitPrice,
+            it.totalQty,
+            it.totalAmount,
+            clean(platforms),
+            clean(orders)
+        ].join(',') + '\n';
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const nowStr = new Date().toISOString().split('T')[0];
+    link.href = url;
+    link.setAttribute('download', `SGYVER_PickList_${nowStr}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    if (typeof showToast === 'function') {
+        showToast('success', '📥 ดาวน์โหลดสำเร็จ', `ส่งออกไฟล์ Excel/CSV สรุปรายการสินค้าเรียบร้อยแล้ว`, 2500);
+    }
+}
+
 window.openProductImageModal = openProductImageModal;
 window.closeProductImageModal = closeProductImageModal;
 window.openOrderImagePreview = openOrderImagePreview;
+
+window.openPickListModal = openPickListModal;
+window.renderPickListTable = renderPickListTable;
+window.togglePickItemRow = togglePickItemRow;
+window.printPickList = printPickList;
+window.copyPickListText = copyPickListText;
+window.exportPickListCsv = exportPickListCsv;
 

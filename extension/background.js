@@ -92,17 +92,27 @@ async function handlePullOrders(sendResponse) {
         const tabs = await chrome.tabs.query({ url: '*://*.bigseller.com/*' });
 
         if (tabs.length > 0) {
+            const allExtracted = [];
+            const seenIds = new Set();
             for (const tab of tabs) {
                 try {
                     const response = await chrome.tabs.sendMessage(tab.id, { action: 'EXTRACT_BIGSELLER_ORDERS' });
                     if (response && Array.isArray(response.orders) && response.orders.length > 0) {
-                        combinedOrders = response.orders;
-                        await chrome.storage.local.set({ lastExtractedOrders: combinedOrders });
-                        break;
+                        response.orders.forEach(o => {
+                            const id = o.order_id || o.orderId;
+                            if (id && !seenIds.has(id)) {
+                                seenIds.add(id);
+                                allExtracted.push(o);
+                            }
+                        });
                     }
                 } catch (tabErr) {
                     console.warn('Error querying tab:', tab.id, tabErr);
                 }
+            }
+            if (allExtracted.length > 0) {
+                combinedOrders = allExtracted;
+                await chrome.storage.local.set({ lastExtractedOrders: combinedOrders });
             }
         }
 
