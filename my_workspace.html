@@ -1219,9 +1219,41 @@
             return window.supabaseClient || window._supabase;
         }
 
-        let isUserLoggedIn = false;
+        // ⚡ Synchronous immediate hydration from localStorage cache to prevent false-positive guest locks
+        let cachedLevel = 0;
+        let cachedIsLoggedIn = false;
+        try {
+            const rawLv = localStorage.getItem('gyver_user_level');
+            const hasSbToken = Object.keys(localStorage).some(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+            const hasAdmin = !!(sessionStorage.getItem('gyver_admin_session') || localStorage.getItem('gyver_admin_session'));
+            if (hasAdmin) {
+                cachedLevel = 4;
+                cachedIsLoggedIn = true;
+            } else if (rawLv !== null && parseInt(rawLv, 10) > 0) {
+                cachedLevel = parseInt(rawLv, 10);
+                cachedIsLoggedIn = true;
+            } else if (hasSbToken) {
+                cachedLevel = 1;
+                cachedIsLoggedIn = true;
+            }
+        } catch (_) { }
+
+        let isUserLoggedIn = cachedIsLoggedIn;
         let currentWorkspaceUser = null;
-        let currentUserLevel = 0; // 0: Guest, 1: Member Lv.1, 2+: VIP / Admin
+        let currentUserLevel = cachedLevel; // 0: Guest, 1: Member Lv.1, 2+: VIP / Admin
+
+        // Apply initial body classes immediately before DOM finishes rendering
+        if (currentUserLevel >= 4) {
+            document.body.classList.add('is-lv4');
+        } else if (currentUserLevel === 3) {
+            document.body.classList.add('is-lv3');
+        } else if (currentUserLevel === 2) {
+            document.body.classList.add('is-lv2');
+        } else if (currentUserLevel === 1) {
+            document.body.classList.add('is-lv1');
+        } else {
+            document.body.classList.add('is-guest');
+        }
 
         // 🔒 Tools permitted for Guest / Non-members (Lv.0):
         // 1. เครื่องมือด่วน (Quick Tools): app_wheel, name, dice, group, app_guess
@@ -1276,6 +1308,26 @@
         }
 
         window.checkToolAccess = function (toolId, toolTitle, silent = false) {
+            // 🛡️ Fail-safe: If currentUserLevel is 0 but user is actually logged in or cached in storage, auto-restore Level 1+ immediately!
+            if (currentUserLevel === 0) {
+                if (isUserLoggedIn || currentWorkspaceUser) {
+                    currentUserLevel = 1;
+                } else {
+                    try {
+                        const cachedLv = parseInt(localStorage.getItem('gyver_user_level') || '0', 10);
+                        const hasSbToken = Object.keys(localStorage).some(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+                        const hasAdmin = !!(sessionStorage.getItem('gyver_admin_session') || localStorage.getItem('gyver_admin_session'));
+                        if (hasAdmin) {
+                            currentUserLevel = 4;
+                            isUserLoggedIn = true;
+                        } else if (hasSbToken || cachedLv > 0) {
+                            currentUserLevel = Math.max(1, cachedLv);
+                            isUserLoggedIn = true;
+                        }
+                    } catch (_) { }
+                }
+            }
+
             const reqLv = getToolRequiredLevel(toolId);
             if (currentUserLevel >= reqLv) return true;
 
@@ -1291,6 +1343,9 @@
         };
 
         function showMemberLockModal(toolTitle) {
+            // Don't show lock modal if user is actually logged in
+            if (isUserLoggedIn && currentUserLevel >= 1) return;
+
             const modalEl = document.getElementById('memberLockModal');
             if (!modalEl) return;
             const titleEl = document.getElementById('memberLockModalTitle');
@@ -1337,27 +1392,38 @@
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
-            await checkAuthStateWorkspace();
+            window.authCheckPromise = checkAuthStateWorkspace();
+            await window.authCheckPromise;
             initAuthForms();
             checkAutoJoinFromUrl();
         });
 
         async function checkAuthStateWorkspace() {
-            if (!getClient()) {
-                isUserLoggedIn = false;
-                currentUserLevel = 0;
-                document.body.classList.remove('is-lv1', 'is-lv2', 'is-lv3', 'is-lv4');
-                document.body.classList.add('is-guest');
+            const client = getClient();
+            if (!client) {
+                if (!isUserLoggedIn) {
+                    isUserLoggedIn = false;
+                    currentUserLevel = 0;
+                    document.body.classList.remove('is-lv1', 'is-lv2', 'is-lv3', 'is-lv4');
+                    document.body.classList.add('is-guest');
+                }
                 return;
             }
             try {
-                const { data: { session } } = await getClient().auth.getSession();
+                const { data: { session } } = await client.auth.getSession();
                 const loginBtn = document.getElementById('auth-login-btn');
                 const userZone = document.getElementById('user-profile-zone');
+                const navBadge = document.getElementById('nav-user-badge');
 
                 if (session && session.user) {
                     isUserLoggedIn = true;
                     currentWorkspaceUser = session.user;
+
+                    // ⚡ Baseline: สมาชิกที่ล็อกอินแล้วได้รับสิทธิ์อย่างน้อย Lv.1 ทันที โดยไม่ต้องรอ query profiles
+                    let userLevel = Math.max(1, currentUserLevel || 1);
+                    currentUserLevel = userLevel;
+                    try { localStorage.setItem('gyver_user_level', userLevel); } catch (_) { }
+
                     if (loginBtn) loginBtn.classList.add('d-none');
                     if (userZone) {
                         userZone.classList.remove('d-none');
@@ -1370,19 +1436,30 @@
                     const navAvatar = document.getElementById('nav-user-avatar');
                     if (navName) navName.innerText = displayName;
                     if (navAvatar) navAvatar.src = avatarUrl;
+                    if (navBadge) navBadge.innerText = 'Lv.' + userLevel;
 
-                    // 🔒 ตรวจสอบสิทธิ์ระดับผู้ใช้งาน (Level) & Admin
+                    document.body.classList.remove('is-guest', 'is-lv1', 'is-lv2', 'is-lv3', 'is-lv4');
+                    document.body.classList.add('is-lv' + Math.min(4, Math.max(1, userLevel)));
+
+                    // 🛡️ ปิด memberLockModal ทันทีหากถูกเปิดค้างไว้ก่อนหน้านี้
+                    const lockModalEl = document.getElementById('memberLockModal');
+                    if (lockModalEl) {
+                        const bsModal = bootstrap.Modal.getInstance(lockModalEl);
+                        if (bsModal) bsModal.hide();
+                    }
+
+                    // 🔒 ตรวจสอบสิทธิ์ระดับผู้ใช้งาน (Level) & Admin จาก profiles
                     let isUserAdmin = false;
-                    let userLevel = 1; // สมาชิกที่ลงทะเบียนค่าเริ่มต้นเป็น Lv.1
                     try {
-                        const { data: prof } = await getClient()
+                        const { data: prof, error: profErr } = await client
                             .from('profiles')
                             .select('*')
                             .eq('id', session.user.id)
                             .maybeSingle();
-                        if (prof) {
+
+                        if (prof && !profErr) {
                             if (prof.level !== undefined && prof.level !== null) {
-                                userLevel = Number(prof.level) || 1;
+                                userLevel = Math.max(1, Number(prof.level) || 1);
                             }
                             if (prof.role === 'admin' || (prof.username && prof.username.toLowerCase() === 'admin')) {
                                 isUserAdmin = true;
@@ -1391,7 +1468,9 @@
                                 isUserAdmin = false;
                             }
                         }
-                    } catch (e) { }
+                    } catch (e) {
+                        console.warn('[Workspace] Profile fetch error:', e);
+                    }
 
                     if (!isUserAdmin && session.user.user_metadata?.username && session.user.user_metadata.username.toLowerCase() === 'admin') {
                         isUserAdmin = true;
@@ -1399,6 +1478,8 @@
                     }
 
                     currentUserLevel = userLevel;
+                    try { localStorage.setItem('gyver_user_level', userLevel); } catch (_) { }
+
                     document.body.classList.remove('is-guest', 'is-lv1', 'is-lv2', 'is-lv3', 'is-lv4');
                     if (currentUserLevel >= 4) {
                         document.body.classList.add('is-lv4');
@@ -1409,6 +1490,7 @@
                     } else {
                         document.body.classList.add('is-lv1');
                     }
+                    if (navBadge) navBadge.innerText = 'Lv.' + currentUserLevel;
 
                     const adminMenu = document.getElementById('menu-admin-dashboard');
                     if (isUserAdmin) {
@@ -1439,6 +1521,7 @@
                     isUserLoggedIn = false;
                     currentWorkspaceUser = null;
                     currentUserLevel = 0;
+                    try { localStorage.removeItem('gyver_user_level'); } catch (_) { }
                     document.body.classList.remove('is-lv1', 'is-lv2', 'is-lv3', 'is-lv4');
                     document.body.classList.add('is-guest');
                     if (loginBtn) loginBtn.classList.remove('d-none');
@@ -1461,17 +1544,40 @@
                     }
                 }
 
-                // Listen for Auth changes in realtime
-                getClient().auth.onAuthStateChange((event, newSession) => {
-                    if (newSession && newSession.user && window.GyverWorkspaceCloudSync) {
-                        window.GyverWorkspaceCloudSync.init(newSession.user.id);
-                    }
-                });
+                // Listen for Auth changes in realtime (setup only once)
+                if (!window._hasWorkspaceAuthListener && client.auth) {
+                    window._hasWorkspaceAuthListener = true;
+                    client.auth.onAuthStateChange(async (event, newSession) => {
+                        if (newSession && newSession.user) {
+                            if (window.GyverWorkspaceCloudSync) {
+                                window.GyverWorkspaceCloudSync.init(newSession.user.id);
+                            }
+                            if (!isUserLoggedIn || currentUserLevel === 0) {
+                                await checkAuthStateWorkspace();
+                            }
+                        } else if (event === 'SIGNED_OUT') {
+                            isUserLoggedIn = false;
+                            currentWorkspaceUser = null;
+                            currentUserLevel = 0;
+                            try { localStorage.removeItem('gyver_user_level'); } catch (_) { }
+                            document.body.classList.remove('is-lv1', 'is-lv2', 'is-lv3', 'is-lv4');
+                            document.body.classList.add('is-guest');
+                            if (loginBtn) loginBtn.classList.remove('d-none');
+                            if (userZone) {
+                                userZone.classList.add('d-none');
+                                userZone.classList.remove('d-flex');
+                            }
+                            if (typeof renderDock === 'function') renderDock();
+                        }
+                    });
+                }
             } catch (e) {
-                isUserLoggedIn = false;
-                currentUserLevel = 0;
-                document.body.classList.remove('is-lv1', 'is-lv2', 'is-lv3', 'is-lv4');
-                document.body.classList.add('is-guest');
+                console.warn('[Workspace] Auth check error:', e);
+                if (!isUserLoggedIn && !currentWorkspaceUser) {
+                    currentUserLevel = 0;
+                    document.body.classList.remove('is-lv1', 'is-lv2', 'is-lv3', 'is-lv4');
+                    document.body.classList.add('is-guest');
+                }
             }
 
             // Refresh dock to reflect lock icons
@@ -2628,7 +2734,7 @@
         }
 
         // Initialize Launchpad mode & Dock on load
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             const savedMode = localStorage.getItem('gyver_drawer_mode');
             if (savedMode === 'list') {
                 setDrawerMode('list');
@@ -2705,6 +2811,11 @@
             }
 
             if (initialApp) {
+                // Ensure auth verification has settled before checking access permissions
+                if (window.authCheckPromise) {
+                    try { await window.authCheckPromise; } catch (_) { }
+                }
+
                 if (initialApp === 'live_studio' || initialApp === 'app_live_studio') {
                     let activeRoom = null;
                     try {

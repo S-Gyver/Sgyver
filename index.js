@@ -122,6 +122,8 @@ function updateUIForLoggedIn() {
     const userLevel = currentUserProfile?.level ?? 1;
     const avatarUrl = currentUserProfile?.avatar_url || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
 
+    try { localStorage.setItem('gyver_user_level', userLevel); } catch (_) { }
+
     const navName = document.getElementById('nav-user-name');
     const navAvatar = document.getElementById('nav-user-avatar');
     const navBadge = document.getElementById('nav-user-badge');
@@ -157,6 +159,7 @@ function updateUIForLoggedIn() {
  * 🔴 Update UI for Logged-Out User
  */
 function updateUIForLoggedOut() {
+    try { localStorage.removeItem('gyver_user_level'); } catch (_) { }
     const loginBtn = document.getElementById('auth-login-btn');
     const userZone = document.getElementById('user-profile-zone');
     const heroCtaZone = document.getElementById('hero-cta-zone');
