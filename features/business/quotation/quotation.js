@@ -89,7 +89,7 @@ function getBlankQuotationState() {
         // Terms & Signatures
         paymentTerms: '',
         bankAccount: '',
-        deliveryDays: 14,
+        deliveryDays: 0,
         notes: '',
         sellerSignName: '',
         sellerSignDate: today,
@@ -170,7 +170,7 @@ const DEMO_QUOTATION_DATA = {
     withholdingTaxRate: 0,
     paymentTerms: '• ชำระเงินครบถ้วนเมื่อส่งมอบงานเรียบร้อย',
     bankAccount: 'ธนาคารกสิกรไทย (KBANK)\nเลขที่บัญชี: 123-4-56789-0\nชื่อบัญชี: ศรัศนันท์ ตราชู',
-    deliveryDays: 14,
+    deliveryDays: 0,
     notes: 'ส่งมอบงานพร้อมติดตั้งเรียบร้อย',
     sellerSignName: 'ศรัศนันท์ ตราชู',
     sellerSignDate: '2569-08-22'
@@ -407,7 +407,7 @@ function populateFormFromState() {
     // Terms
     setVal('form-payment-terms', q.paymentTerms || '');
     setVal('form-bank-account', q.bankAccount || '');
-    setVal('form-delivery-days', q.deliveryDays || 14);
+    setVal('form-delivery-days', q.deliveryDays || 0);
     setVal('form-notes', q.notes || '');
     setVal('form-seller-sign-name', q.sellerSignName || '');
     setVal('form-seller-sign-date', q.sellerSignDate || '');
@@ -647,7 +647,7 @@ function syncFromFormToState() {
     // Terms
     q.paymentTerms = getVal('form-payment-terms');
     q.bankAccount = getVal('form-bank-account');
-    q.deliveryDays = parseInt(getVal('form-delivery-days'), 10) || 14;
+    q.deliveryDays = parseInt(getVal('form-delivery-days'), 10) || 0;
     q.notes = getVal('form-notes');
     q.sellerSignName = getVal('form-seller-sign-name');
     q.sellerSignDate = getVal('form-seller-sign-date');
