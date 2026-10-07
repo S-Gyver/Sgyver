@@ -16,6 +16,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../../../assets/js/supabaseClient.js"></script>
     <script src="../../../assets/js/toast_shared.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
     <!-- Quotation CSS -->
     <link rel="stylesheet" href="quotation.css">
@@ -651,8 +652,8 @@
                         <i class="bi bi-line"></i>
                     </div>
                     <div>
-                        <h5 class="line-modal-title mb-0">แชร์เอกสารเข้า LINE</h5>
-                        <small class="text-secondary" id="line-modal-subtitle">ส่งใบเสนอราคาให้ลูกค้าทาง LINE ได้ทันที</small>
+                        <h5 class="line-modal-title mb-0">ส่งเอกสารเข้า LINE</h5>
+                        <small class="text-secondary" id="line-modal-subtitle">เลือกรูปแบบที่ต้องการส่งให้ลูกค้าทาง LINE</small>
                     </div>
                 </div>
                 <button type="button" class="btn-close-cyber" onclick="closeLineModal()" title="ปิดหน้าต่าง">
@@ -660,63 +661,172 @@
                 </button>
             </div>
 
+            <!-- Format Selector Segmented Tabs -->
+            <div class="line-format-tabs mb-3">
+                <button type="button" class="line-format-tab active" id="tab-format-image" onclick="switchLineShareFormat('image')">
+                    <i class="bi bi-image-fill"></i> ส่งเป็นภาพ (Image)
+                </button>
+                <button type="button" class="line-format-tab" id="tab-format-link" onclick="switchLineShareFormat('link')">
+                    <i class="bi bi-link-45deg"></i> ส่งเป็นลิ้งก์ (Link)
+                </button>
+                <button type="button" class="line-format-tab" id="tab-format-pdf" onclick="switchLineShareFormat('pdf')">
+                    <i class="bi bi-file-earmark-pdf-fill"></i> ส่งเป็น PDF
+                </button>
+            </div>
+
             <!-- Modal Body -->
             <div class="line-modal-body">
-                <!-- Preview Text Area -->
-                <div class="mb-3">
+
+                <!-- ══════════════════════════════════════════════════
+                     PANEL 1: SEND AS IMAGE (รูปภาพ PNG)
+                     ══════════════════════════════════════════════════ -->
+                <div class="line-format-panel" id="panel-format-image">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-secondary small">
+                            <i class="bi bi-stars text-warning me-1"></i> เหมาะที่สุดใน LINE ลูกค้าเห็นรูปใบเสนอราคาทันที
+                        </span>
+                        <span class="badge bg-success-subtle text-success small font-mono" id="line-img-docno">QT-XXXX</span>
+                    </div>
+
+                    <!-- Image Preview Area -->
+                    <div class="line-image-preview-wrapper mb-3" id="line-image-preview-box">
+                        <div class="text-center py-4" id="line-image-loading">
+                            <div class="spinner-border text-success spinner-border-sm mb-2" role="status"></div>
+                            <div class="small text-muted">กำลังสร้างภาพตัวอย่างความละเอียดสูง...</div>
+                        </div>
+                        <img id="line-rendered-image" src="" alt="ภาพใบเสนอราคา" class="line-image-preview-img" style="display: none;">
+                    </div>
+
+                    <!-- Primary Image Action: Copy Image to Clipboard -->
+                    <button type="button" class="btn-line-action btn-line-copy w-100 mb-2" id="btn-copy-image" onclick="copyQuotationImageToClipboard()">
+                        <i class="bi bi-clipboard2-check-fill fs-5" id="btn-copy-image-icon"></i>
+                        <span id="btn-copy-image-text">คัดลอกรูปภาพ (กดแล้วนำไปวาง Ctrl+V ในแชท LINE ได้ทันที)</span>
+                    </button>
+
+                    <!-- Sub Actions for Image -->
+                    <div class="line-options-grid">
+                        <button type="button" class="btn-line-option" onclick="downloadQuotationImage()" title="บันทึกไฟล์รูปภาพ PNG ลงเครื่อง">
+                            <i class="bi bi-download fs-4 text-emerald"></i>
+                            <div>
+                                <strong>ดาวน์โหลด PNG</strong>
+                                <small class="text-muted d-block">เซฟรูปลงเครื่อง</small>
+                            </div>
+                        </button>
+                        <button type="button" class="btn-line-option" onclick="openLineDesktopApp()" title="เปิดโปรแกรม LINE PC เพื่อเตรียมวางรูป">
+                            <i class="bi bi-laptop fs-4 text-info"></i>
+                            <div>
+                                <strong>เปิด LINE PC</strong>
+                                <small class="text-muted d-block">สลับไปแชท LINE</small>
+                            </div>
+                        </button>
+                        <button type="button" class="btn-line-option" onclick="shareQuotationImageMobile()" title="แชร์ไฟล์รูปภาพด้วยระบบของเครื่อง">
+                            <i class="bi bi-share-fill fs-4 text-warning"></i>
+                            <div>
+                                <strong>แชร์ภาพ (มือถือ)</strong>
+                                <small class="text-muted d-block">ส่งเข้าแอป LINE</small>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ══════════════════════════════════════════════════
+                     PANEL 2: SEND AS LINK (ลิ้งก์และข้อความสรุป)
+                     ══════════════════════════════════════════════════ -->
+                <div class="line-format-panel" id="panel-format-link" style="display: none;">
                     <div class="d-flex justify-content-between align-items-center mb-1">
                         <label class="form-label text-secondary small mb-0">
-                            <i class="bi bi-chat-text-fill text-success me-1"></i> ข้อความสรุปสำหรับส่งใน LINE:
+                            <i class="bi bi-chat-text-fill text-success me-1"></i> ข้อความสรุปและลิ้งก์ดูเอกสารออนไลน์:
                         </label>
                         <span class="badge bg-success-subtle text-success small font-mono" id="line-modal-docno">QT-XXXX</span>
                     </div>
-                    <div class="position-relative">
-                        <textarea class="line-preview-textarea" id="line-share-text-preview" rows="8" readonly></textarea>
+                    <div class="position-relative mb-3">
+                        <textarea class="line-preview-textarea" id="line-share-text-preview" rows="7" readonly></textarea>
+                    </div>
+
+                    <!-- Primary Action: Copy Link Message -->
+                    <button type="button" class="btn-line-action btn-line-copy w-100 mb-2" id="btn-copy-line-message" onclick="copyLineMessageAndNotify()">
+                        <i class="bi bi-clipboard-check-fill fs-5" id="btn-copy-icon"></i>
+                        <span id="btn-copy-text">คัดลอกข้อความ & ลิ้งก์ (วางใน LINE ได้ทันที)</span>
+                    </button>
+
+                    <!-- Sub Actions for Link -->
+                    <div class="line-options-grid">
+                        <button type="button" class="btn-line-option" onclick="openLineDesktopApp()" title="เปิดโปรแกรม LINE สำหรับคอมพิวเตอร์">
+                            <i class="bi bi-laptop fs-4 text-info"></i>
+                            <div>
+                                <strong>เปิด LINE PC</strong>
+                                <small class="text-muted d-block">เปิดโปรแกรมในคอมฯ</small>
+                            </div>
+                        </button>
+                        <button type="button" class="btn-line-option" onclick="toggleLineQrCode()" title="แสดง QR Code สำหรับสแกนด้วยมือถือ">
+                            <i class="bi bi-qr-code fs-4 text-emerald"></i>
+                            <div>
+                                <strong>QR Code</strong>
+                                <small class="text-muted d-block">สแกนเปิดมือถือ</small>
+                            </div>
+                        </button>
+                        <button type="button" class="btn-line-option" onclick="openLineWebShare()" title="เปิดแชร์ผ่าน LINE Web">
+                            <i class="bi bi-globe2 fs-4 text-warning"></i>
+                            <div>
+                                <strong>แชร์ LINE Web</strong>
+                                <small class="text-muted d-block">ส่งผ่านเว็บ</small>
+                            </div>
+                        </button>
+                    </div>
+
+                    <!-- Collapsible QR Code Box -->
+                    <div class="line-qr-box mt-3 text-center" id="line-qr-box" style="display: none;">
+                        <div class="small text-secondary mb-2">📱 สแกน QR Code เพื่อเปิดดูเอกสารหรือแชร์ส่งต่อในมือถือ</div>
+                        <img id="line-qr-image" src="" alt="QR Code" class="rounded shadow border border-secondary" style="width: 150px; height: 150px; background: #fff; padding: 6px;">
                     </div>
                 </div>
 
-                <!-- Primary Action: Big Copy Button -->
-                <button type="button" class="btn-line-action btn-line-copy w-100 mb-3" id="btn-copy-line-message" onclick="copyLineMessageAndNotify()">
-                    <i class="bi bi-clipboard-check-fill fs-5" id="btn-copy-icon"></i>
-                    <span id="btn-copy-text">คัดลอกข้อความ & ลิงก์ทั้งหมด (วางใน LINE ได้ทันที)</span>
-                </button>
+                <!-- ══════════════════════════════════════════════════
+                     PANEL 3: SEND AS PDF (เอกสาร PDF ทางการ)
+                     ══════════════════════════════════════════════════ -->
+                <div class="line-format-panel" id="panel-format-pdf" style="display: none;">
+                    <div class="line-pdf-card mb-3">
+                        <div class="line-pdf-icon">
+                            <i class="bi bi-file-earmark-pdf-fill"></i>
+                        </div>
+                        <h6 class="text-white fw-bold mb-1" id="line-pdf-doc-title">ใบเสนอราคา (PDF Document)</h6>
+                        <div class="small text-muted mb-2" id="line-pdf-doc-meta">เลขที่: QT-XXXX | ยอดสุทธิ: 0.00 บาท</div>
+                        <p class="small text-secondary mb-0" style="line-height: 1.5;">
+                            บันทึกเป็นไฟล์ PDF มาตรฐาน จากนั้นสามารถลากไฟล์ (Drag & Drop) ใส่ในแชท LINE หรือกดปุ่มแนบไฟล์ใน LINE ส่งให้ลูกค้าได้ทันที
+                        </p>
+                    </div>
 
-                <!-- Additional Share Options Grid -->
-                <div class="line-options-grid">
-                    <button type="button" class="btn-line-option" onclick="openLineDesktopApp()" title="เปิดโปรแกรม LINE สำหรับคอมพิวเตอร์">
-                        <i class="bi bi-laptop fs-4 text-info"></i>
-                        <div>
-                            <strong>เปิด LINE PC</strong>
-                            <small class="text-muted d-block">เปิดโปรแกรมในคอมฯ</small>
-                        </div>
+                    <!-- Primary PDF Action -->
+                    <button type="button" class="btn-line-action btn-line-copy w-100 mb-2" style="background: linear-gradient(135deg, #ef4444, #dc2626); border-color: rgba(239, 68, 68, 0.5);" onclick="exportAndPrintPdf()">
+                        <i class="bi bi-printer-fill fs-5"></i>
+                        <span>บันทึกเป็น PDF (Print / Save PDF)</span>
                     </button>
-                    <button type="button" class="btn-line-option" onclick="openLineWebShare()" title="เปิดแชร์ผ่าน LINE Web">
-                        <i class="bi bi-globe2 fs-4 text-warning"></i>
-                        <div>
-                            <strong>แชร์ LINE Web</strong>
-                            <small class="text-muted d-block">ส่งผ่านเว็บ</small>
-                        </div>
-                    </button>
-                    <button type="button" class="btn-line-option" onclick="toggleLineQrCode()" title="แสดง QR Code สำหรับสแกนด้วยมือถือ">
-                        <i class="bi bi-qr-code fs-4 text-emerald"></i>
-                        <div>
-                            <strong>QR Code</strong>
-                            <small class="text-muted d-block">สแกนเปิดมือถือ</small>
-                        </div>
-                    </button>
+
+                    <!-- Sub Action for PDF -->
+                    <div class="line-options-grid" style="grid-template-columns: repeat(2, 1fr);">
+                        <button type="button" class="btn-line-option" onclick="openLineDesktopApp()" title="เปิด LINE เพื่อเตรียมลากไฟล์ PDF ใส่">
+                            <i class="bi bi-laptop fs-4 text-info"></i>
+                            <div>
+                                <strong>เปิด LINE PC</strong>
+                                <small class="text-muted d-block">เปิดโปรแกรมเพื่อแนบไฟล์</small>
+                            </div>
+                        </button>
+                        <button type="button" class="btn-line-option" onclick="copyClientApprovalLink()" title="คัดลอกลิ้งก์สำรอง">
+                            <i class="bi bi-link-45deg fs-4 text-emerald"></i>
+                            <div>
+                                <strong>คัดลอกลิ้งก์สำรอง</strong>
+                                <small class="text-muted d-block">ส่งควบคู่กับ PDF</small>
+                            </div>
+                        </button>
+                    </div>
                 </div>
 
-                <!-- Collapsible QR Code Box -->
-                <div class="line-qr-box mt-3 text-center" id="line-qr-box" style="display: none;">
-                    <div class="small text-secondary mb-2">📱 สแกน QR Code เพื่อเปิดดูเอกสารหรือแชร์ส่งต่อในมือถือ</div>
-                    <img id="line-qr-image" src="" alt="QR Code" class="rounded shadow border border-secondary" style="width: 160px; height: 160px; background: #fff; padding: 6px;">
-                </div>
             </div>
 
             <!-- Modal Footer -->
             <div class="line-modal-footer">
-                <small class="text-muted">
-                    💡 <strong>คำแนะนำ:</strong> กดปุ่มคัดลอกแล้วนำไปกด <code>Ctrl + V</code> วางในแชท LINE ได้ทันที
+                <small class="text-muted" id="line-modal-tip">
+                    💡 <strong>เคล็ดลับ:</strong> เลือก <strong>"ส่งเป็นภาพ"</strong> แล้วกดคัดลอก จากนั้นกด <code>Ctrl + V</code> ในแชท LINE ได้ทันที
                 </small>
                 <button type="button" class="btn-cyber btn-cyber-outline btn-sm px-3" onclick="closeLineModal()">
                     ปิด

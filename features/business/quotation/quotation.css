@@ -1439,4 +1439,84 @@ input[type="number"],
     margin-top: 16px;
 }
 
+/* Format Selector Tabs */
+.line-format-tabs {
+    display: flex;
+    background: rgba(255, 255, 255, 0.04);
+    padding: 4px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    gap: 4px;
+}
+.line-format-tab {
+    flex: 1;
+    padding: 8px 10px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: 'Kanit', sans-serif;
+    font-size: 0.86rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+.line-format-tab:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.05);
+}
+.line-format-tab.active {
+    background: linear-gradient(135deg, #06C755, #00A300);
+    color: #fff;
+    font-weight: 600;
+    box-shadow: 0 3px 12px rgba(6, 199, 85, 0.35);
+}
+
+/* Image Preview Box */
+.line-image-preview-wrapper {
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px dashed rgba(6, 199, 85, 0.35);
+    border-radius: 12px;
+    padding: 12px;
+    text-align: center;
+    min-height: 180px;
+    max-height: 230px;
+    overflow-y: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+.line-image-preview-img {
+    max-width: 100%;
+    max-height: 200px;
+    object-fit: contain;
+    border-radius: 6px;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.6);
+    background: #fff;
+    transition: transform 0.2s;
+}
+.line-image-preview-img:hover {
+    transform: scale(1.02);
+}
+
+/* PDF Option Card */
+.line-pdf-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-radius: 12px;
+    padding: 18px;
+    text-align: center;
+}
+.line-pdf-icon {
+    font-size: 2.8rem;
+    color: #ef4444;
+    margin-bottom: 6px;
+}
+
 

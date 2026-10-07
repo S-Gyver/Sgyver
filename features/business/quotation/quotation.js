@@ -706,6 +706,10 @@ function recalculateFinancials() {
 }
 
 function updateLiveA4Sheet() {
+    // Reset image cache to ensure fresh render on changes
+    cachedQuotationImageBlob = null;
+    cachedQuotationImageDataUrl = null;
+
     const q = STATE.quotation;
     const a4Sheet = document.getElementById('a4-sheet');
     const isTerracotta = (q.templateStyle !== 'classic');
@@ -1188,13 +1192,16 @@ function getQuotationClientUrl(docNo) {
 let activeLineShareData = {
     message: '',
     link: '',
-    docNo: ''
+    docNo: '',
+    format: 'image'
 };
 
+let cachedQuotationImageBlob = null;
+let cachedQuotationImageDataUrl = null;
+let isRenderingImage = false;
+
 /**
- * 📲 แชร์ใบเสนอราคาเข้า LINE
- * - บน Mobile: เปิดแอป LINE โดยตรง
- * - บน PC: เปิดหน้าต่างแชร์แบบพรีเมียม (คัดลอกข้อความอัตโนมัติ ไม่ติด 404)
+ * 📲 แชร์ใบเสนอราคาเข้า LINE พร้อมตัวเลือก: รูปภาพ / ลิ้งก์ / PDF
  */
 function sendToLine(docNo) {
     let q = null;
@@ -1217,6 +1224,10 @@ function sendToLine(docNo) {
         }
         return;
     }
+
+    // เคลียร์แคชรูปภาพเพื่อให้ได้ข้อมูลล่าสุด
+    cachedQuotationImageBlob = null;
+    cachedQuotationImageDataUrl = null;
 
     const clientLink = getQuotationClientUrl(q.docNo);
     const docType = q.docType || 'ใบเสนอราคา (Quotation)';
@@ -1242,24 +1253,11 @@ function sendToLine(docNo) {
     activeLineShareData = {
         message: msg,
         link: clientLink,
-        docNo: q.docNo
+        docNo: q.docNo,
+        format: activeLineShareData.format || 'image'
     };
 
-    // อัตโนมัติ: คัดลอกข้อความทั้งหมดลง Clipboard ทันที (เพื่อให้พร้อมแปะ)
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(msg).catch(() => {});
-    }
-
-    // ตรวจสอบว่าเปิดจากสมาร์ตโฟน/แท็บเล็ตหรือไม่
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    if (isMobile) {
-        // บนมือถือใช้ LINE URL Scheme ได้โดยตรง
-        const mobileLineUrl = `https://line.me/R/share?text=${encodeURIComponent(msg)}`;
-        window.open(mobileLineUrl, '_blank');
-        return;
-    }
-
-    // บน Desktop PC: เปิดหน้าต่างแชร์สวยงามทันที (ป้องกัน 404 ของเว็บเบราว์เซอร์ PC)
+    // เปิดหน้าต่าง Modal ให้เลือกว่าจะส่งเป็น ภาพ / ลิ้งก์ / PDF
     openLineShareModal(q, msg, clientLink);
 }
 
@@ -1267,12 +1265,22 @@ function openLineShareModal(q, message, clientLink) {
     const modal = document.getElementById('line-share-modal');
     const textarea = document.getElementById('line-share-text-preview');
     const badgeDocNo = document.getElementById('line-modal-docno');
+    const imgBadgeDocNo = document.getElementById('line-img-docno');
     const qrImg = document.getElementById('line-qr-image');
     const qrBox = document.getElementById('line-qr-box');
+    const pdfTitle = document.getElementById('line-pdf-doc-title');
+    const pdfMeta = document.getElementById('line-pdf-doc-meta');
 
     if (badgeDocNo) badgeDocNo.textContent = q.docNo;
+    if (imgBadgeDocNo) imgBadgeDocNo.textContent = q.docNo;
     if (textarea) textarea.value = message;
     if (qrBox) qrBox.style.display = 'none';
+
+    if (pdfTitle) pdfTitle.textContent = `${q.docType || 'ใบเสนอราคา'} (PDF Document)`;
+    if (pdfMeta) {
+        const clientName = (q.client && q.client.name) ? q.client.name : 'ลูกค้า';
+        pdfMeta.textContent = `เลขที่: ${q.docNo} | เรียน: ${clientName} | ยอดสุทธิ: ${formatCurrency(q.grandTotal)} บาท`;
+    }
 
     // เตรียมรูป QR Code
     if (qrImg) {
@@ -1280,14 +1288,253 @@ function openLineShareModal(q, message, clientLink) {
     }
 
     resetCopyButtonState();
+    resetCopyImageButtonState();
 
     if (modal) {
         modal.classList.add('active');
     }
 
-    if (typeof showToast === 'function') {
-        showToast('success', 'คัดลอกข้อความแล้ว!', 'คัดลอกข้อความสรุป & ลิงก์แล้ว นำไปวาง (Ctrl+V) ในแชท LINE ได้ทันที', 3000);
+    // แสดงแท็บที่เลือก (เริ่มต้นด้วยภาพ)
+    switchLineShareFormat(activeLineShareData.format || 'image');
+}
+
+/**
+ * สลับแท็บรูปแบบ: 'image' | 'link' | 'pdf'
+ */
+function switchLineShareFormat(format) {
+    activeLineShareData.format = format;
+
+    // Tabs
+    const tabs = {
+        image: document.getElementById('tab-format-image'),
+        link: document.getElementById('tab-format-link'),
+        pdf: document.getElementById('tab-format-pdf')
+    };
+    Object.keys(tabs).forEach(k => {
+        if (tabs[k]) {
+            if (k === format) tabs[k].classList.add('active');
+            else tabs[k].classList.remove('active');
+        }
+    });
+
+    // Panels
+    const panels = {
+        image: document.getElementById('panel-format-image'),
+        link: document.getElementById('panel-format-link'),
+        pdf: document.getElementById('panel-format-pdf')
+    };
+    Object.keys(panels).forEach(k => {
+        if (panels[k]) {
+            panels[k].style.display = (k === format) ? 'block' : 'none';
+        }
+    });
+
+    // Subtitle & Tips
+    const subTitle = document.getElementById('line-modal-subtitle');
+    const tip = document.getElementById('line-modal-tip');
+
+    if (format === 'image') {
+        if (subTitle) subTitle.textContent = 'ส่งใบเสนอราคาเป็นรูปภาพ (PNG) ให้ลูกค้าเปิดดูได้ทันที';
+        if (tip) tip.innerHTML = '💡 <strong>เคล็ดลับ:</strong> กดปุ่ม <strong>"คัดลอกรูปภาพ"</strong> แล้วกด <code>Ctrl + V</code> วางส่งในห้องแชท LINE ได้ทันที';
+        // Auto-render image
+        ensureQuotationImageReady();
+    } else if (format === 'link') {
+        if (subTitle) subTitle.textContent = 'ส่งข้อความสรุป & ลิ้งก์สำหรับเปิดดูและเซ็นอนุมัติออนไลน์';
+        if (tip) tip.innerHTML = '💡 <strong>เคล็ดลับ:</strong> กดปุ่ม <strong>"คัดลอกข้อความ & ลิ้งก์"</strong> แล้วกด <code>Ctrl + V</code> วางในแชท LINE ได้ทันที';
+    } else if (format === 'pdf') {
+        if (subTitle) subTitle.textContent = 'บันทึกเอกสาร PDF มาตรฐาน เพื่อส่งแนบไฟล์ใน LINE';
+        if (tip) tip.innerHTML = '💡 <strong>เคล็ดลับ:</strong> บันทึกเป็น PDF แล้วลากไฟล์ (Drag & Drop) ใส่ในแชท LINE ส่งให้ลูกค้าได้ทันที';
     }
+}
+
+/**
+ * 🖼️ สร้างภาพจากใบเสนอราคา A4 Sheet ด้วย html2canvas
+ */
+async function ensureQuotationImageReady(forceRefresh = false) {
+    if (!forceRefresh && cachedQuotationImageBlob && cachedQuotationImageDataUrl) {
+        showRenderedImageInPreview(cachedQuotationImageDataUrl);
+        return { blob: cachedQuotationImageBlob, dataUrl: cachedQuotationImageDataUrl };
+    }
+
+    if (isRenderingImage) return null;
+    isRenderingImage = true;
+
+    const loadingEl = document.getElementById('line-image-loading');
+    const imgEl = document.getElementById('line-rendered-image');
+    if (loadingEl) loadingEl.style.display = 'block';
+    if (imgEl) imgEl.style.display = 'none';
+
+    const sheet = document.getElementById('a4-sheet');
+    const wrapper = document.getElementById('a4-wrapper');
+    if (!sheet) {
+        isRenderingImage = false;
+        return null;
+    }
+
+    // เก็บค่า transform scale เดิมไว้ แล้วรีเซ็ตชั่วคราวเพื่อให้ภาพคมชัด 100%
+    const oldTransform = wrapper ? wrapper.style.transform : '';
+    if (wrapper) wrapper.style.transform = 'none';
+
+    try {
+        if (typeof html2canvas !== 'function') {
+            console.warn('html2canvas is not loaded yet');
+            isRenderingImage = false;
+            if (wrapper) wrapper.style.transform = oldTransform;
+            return null;
+        }
+
+        const canvas = await html2canvas(sheet, {
+            scale: 2, // ความละเอียดสูงระดับ 2x Retina คมชัดสมบูรณ์แบบ
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff'
+        });
+
+        if (wrapper) wrapper.style.transform = oldTransform;
+
+        cachedQuotationImageDataUrl = canvas.toDataURL('image/png');
+        return new Promise(resolve => {
+            canvas.toBlob(blob => {
+                cachedQuotationImageBlob = blob;
+                isRenderingImage = false;
+                showRenderedImageInPreview(cachedQuotationImageDataUrl);
+                resolve({ blob, dataUrl: cachedQuotationImageDataUrl });
+            }, 'image/png');
+        });
+    } catch (err) {
+        if (wrapper) wrapper.style.transform = oldTransform;
+        isRenderingImage = false;
+        console.error('Render quotation image error:', err);
+        if (loadingEl) {
+            loadingEl.innerHTML = '<div class="text-danger small">ไม่สามารถสร้างภาพตัวอย่างได้</div>';
+        }
+        return null;
+    }
+}
+
+function showRenderedImageInPreview(dataUrl) {
+    const loadingEl = document.getElementById('line-image-loading');
+    const imgEl = document.getElementById('line-rendered-image');
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (imgEl) {
+        imgEl.src = dataUrl;
+        imgEl.style.display = 'block';
+    }
+}
+
+/**
+ * 📋 คัดลอกรูปภาพลงคลิปบอร์ด (พร้อมแปะใน LINE PC ได้ทันที)
+ */
+async function copyQuotationImageToClipboard() {
+    let result = await ensureQuotationImageReady();
+    if (!result || !result.blob) {
+        result = { blob: cachedQuotationImageBlob, dataUrl: cachedQuotationImageDataUrl };
+    }
+
+    if (!result || !result.blob) {
+        alert('กำลังประมวลผลรูปภาพ กรุณารอสักครู่แล้วลองใหม่อีกครั้ง');
+        return;
+    }
+
+    try {
+        if (navigator.clipboard && window.ClipboardItem) {
+            await navigator.clipboard.write([
+                new ClipboardItem({ 'image/png': result.blob })
+            ]);
+            setCopyImageButtonSuccess();
+        } else {
+            downloadQuotationImage();
+            if (typeof showToast === 'function') {
+                showToast('info', 'ดาวน์โหลดรูปภาพแล้ว', 'เบราว์เซอร์ไม่รองรับการก็อปปี้ภาพลงคลิปบอร์ดโดยตรง จึงดาวน์โหลดไฟล์ภาพให้แทน', 3500);
+            }
+        }
+    } catch (err) {
+        console.warn('Clipboard write image failed, fallback to download:', err);
+        downloadQuotationImage();
+        if (typeof showToast === 'function') {
+            showToast('info', 'ดาวน์โหลดรูปภาพแล้ว', 'ระบบดาวน์โหลดไฟล์ภาพ PNG ไว้ให้แล้ว สามารถลากไฟล์ใส่ในแชท LINE ได้ทันที', 3500);
+        }
+    }
+}
+
+function setCopyImageButtonSuccess() {
+    const btn = document.getElementById('btn-copy-image');
+    const icon = document.getElementById('btn-copy-image-icon');
+    const text = document.getElementById('btn-copy-image-text');
+
+    if (btn) btn.classList.add('copied');
+    if (icon) icon.className = 'bi bi-check-circle-fill fs-5 text-white';
+    if (text) text.textContent = '✅ คัดลอกรูปภาพแล้ว! กด Ctrl + V วางในแชท LINE ได้ทันที';
+
+    if (typeof showToast === 'function') {
+        showToast('success', 'คัดลอกรูปภาพแล้ว!', 'รูปภาพใบเสนอราคาอยู่ในคลิปบอร์ดแล้ว นำไปกด Ctrl+V ในแชท LINE ได้เลย', 3000);
+    }
+
+    setTimeout(resetCopyImageButtonState, 4000);
+}
+
+function resetCopyImageButtonState() {
+    const btn = document.getElementById('btn-copy-image');
+    const icon = document.getElementById('btn-copy-image-icon');
+    const text = document.getElementById('btn-copy-image-text');
+
+    if (btn) btn.classList.remove('copied');
+    if (icon) icon.className = 'bi bi-clipboard2-check-fill fs-5';
+    if (text) text.textContent = 'คัดลอกรูปภาพ (กดแล้วนำไปวาง Ctrl+V ในแชท LINE ได้ทันที)';
+}
+
+function downloadQuotationImage() {
+    if (!cachedQuotationImageDataUrl) {
+        ensureQuotationImageReady().then(res => {
+            if (res && res.dataUrl) downloadQuotationImage();
+        });
+        return;
+    }
+    const q = STATE.quotation;
+    const docNo = (q && q.docNo) ? q.docNo : 'quotation';
+    const a = document.createElement('a');
+    a.href = cachedQuotationImageDataUrl;
+    a.download = `${docNo}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    if (typeof showToast === 'function') {
+        showToast('success', 'ดาวน์โหลดรูปภาพแล้ว', `บันทึกไฟล์ ${docNo}.png เรียบร้อย`, 2500);
+    }
+}
+
+async function shareQuotationImageMobile() {
+    let result = await ensureQuotationImageReady();
+    if (!result || !result.blob) {
+        result = { blob: cachedQuotationImageBlob };
+    }
+    if (!result || !result.blob) return;
+
+    const q = STATE.quotation;
+    const docNo = (q && q.docNo) ? q.docNo : 'quotation';
+    const file = new File([result.blob], `${docNo}.png`, { type: 'image/png' });
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+            await navigator.share({
+                title: `${q.docType || 'ใบเสนอราคา'} ${docNo}`,
+                text: `${q.docType || 'ใบเสนอราคา'} เลขที่ ${docNo}`,
+                files: [file]
+            });
+        } catch (e) {
+            console.log('User cancelled share');
+        }
+    } else {
+        downloadQuotationImage();
+    }
+}
+
+function exportAndPrintPdf() {
+    closeLineModal();
+    setTimeout(() => {
+        printQuotation();
+    }, 200);
 }
 
 function closeLineModal() {
@@ -1347,14 +1594,13 @@ function resetCopyButtonState() {
 
     if (btn) btn.classList.remove('copied');
     if (icon) icon.className = 'bi bi-clipboard-check-fill fs-5';
-    if (text) text.textContent = 'คัดลอกข้อความ & ลิงก์ทั้งหมด (วางใน LINE ได้ทันที)';
+    if (text) text.textContent = 'คัดลอกข้อความ & ลิงก์ (วางใน LINE ได้ทันที)';
 }
 
 function openLineDesktopApp() {
-    // พยายามเรียกโปรแกรม LINE สำหรับ Windows PC ผ่าน URI Protocol
     window.location.href = 'line://';
     if (typeof showToast === 'function') {
-        showToast('info', 'กำลังสลับไปที่ LINE PC', 'ข้อความถูกคัดลอกไว้แล้ว เพียงกด Ctrl + V ในห้องแชทของลูกค้า', 4000);
+        showToast('info', 'กำลังสลับไปที่ LINE PC', 'เปิดโปรแกรม LINE แล้ว เพียงกด Ctrl + V ในห้องแชทของลูกค้า', 4000);
     }
 }
 
@@ -1363,7 +1609,7 @@ function openLineWebShare() {
     if (link && (link.startsWith('http://') || link.startsWith('https://'))) {
         window.open(`https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(link)}`, '_blank');
     } else {
-        alert('การแชร์ผ่าน LINE Web โดยตรง จำเป็นต้องรันเว็บบนโฮสต์จริง (http:// หรือ https://)\n\nบนเครื่องคอมพิวเตอร์ของคุณ แนะนำให้กดปุ่ม "คัดลอกข้อความ" แล้วนำไปวางในแชท LINE PC ได้เลยครับ!');
+        alert('การแชร์ผ่าน LINE Web โดยตรง จำเป็นต้องรันเว็บบนโฮสต์จริง (http:// หรือ https://)\n\nบนเครื่องคอมพิวเตอร์ของคุณ แนะนำให้กดปุ่ม "คัดลอกข้อความ" หรือ "คัดลอกรูปภาพ" แล้วนำไปวางในแชท LINE PC ได้เลยครับ!');
     }
 }
 
