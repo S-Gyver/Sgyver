@@ -1171,8 +1171,30 @@ function copyClientApprovalLink(docNo) {
 }
 
 /**
- * 📲 ส่งข้อความสรุปใบเสนอราคา + ลิงก์เข้าแอป LINE ทันที
- * รองรับทั้งเปิดบนมือถือ (เด้งแอป LINE) และ PC (เด้ง LINE PC / LINE Web)
+ * 🔗 สร้างลิงก์หน้าดูเอกสารสำหรับลูกค้าที่รองรับทั้ง Live Server และ Local File
+ */
+function getQuotationClientUrl(docNo) {
+    const origin = window.location.origin;
+    if (origin && origin !== 'null' && origin !== 'file://') {
+        const currentPath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+        return `${origin}${currentPath}/quotation_client.html?id=${encodeURIComponent(docNo)}`;
+    }
+    // Fallback สำหรับ local path / file://
+    const currentFull = window.location.href.split('?')[0].split('#')[0];
+    const basePath = currentFull.substring(0, currentFull.lastIndexOf('/'));
+    return `${basePath}/quotation_client.html?id=${encodeURIComponent(docNo)}`;
+}
+
+let activeLineShareData = {
+    message: '',
+    link: '',
+    docNo: ''
+};
+
+/**
+ * 📲 แชร์ใบเสนอราคาเข้า LINE
+ * - บน Mobile: เปิดแอป LINE โดยตรง
+ * - บน PC: เปิดหน้าต่างแชร์แบบพรีเมียม (คัดลอกข้อความอัตโนมัติ ไม่ติด 404)
  */
 function sendToLine(docNo) {
     let q = null;
@@ -1196,10 +1218,7 @@ function sendToLine(docNo) {
         return;
     }
 
-    const currentOrigin = window.location.origin;
-    const currentPath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
-    const link = `${currentOrigin}${currentPath}/quotation_client.html?id=${encodeURIComponent(q.docNo)}`;
-
+    const clientLink = getQuotationClientUrl(q.docNo);
     const docType = q.docType || 'ใบเสนอราคา (Quotation)';
     const clientName = (q.client && q.client.name) ? q.client.name.trim() : 'ลูกค้า';
     const projectTitle = q.projectTitle ? q.projectTitle.trim() : '';
@@ -1218,22 +1237,141 @@ function sendToLine(docNo) {
         msg += `📅 ใช้ได้ถึง: ${formatDateThai(q.validUntil)}\n`;
     }
     msg += `━━━━━━━━━━━━━━━━━\n`;
-    msg += `👉 ดูเอกสารฉบับเต็มและเซ็นอนุมัติออนไลน์ได้ที่:\n${link}`;
+    msg += `👉 ดูเอกสารฉบับเต็มและเซ็นอนุมัติออนไลน์ได้ที่:\n${clientLink}`;
 
-    // สำรอง: คัดลอกลิงก์เก็บลง Clipboard
+    activeLineShareData = {
+        message: msg,
+        link: clientLink,
+        docNo: q.docNo
+    };
+
+    // อัตโนมัติ: คัดลอกข้อความทั้งหมดลง Clipboard ทันที (เพื่อให้พร้อมแปะ)
     if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(link).catch(() => {});
+        navigator.clipboard.writeText(msg).catch(() => {});
     }
 
-    // LINE Share URL Scheme
-    const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(msg)}`;
+    // ตรวจสอบว่าเปิดจากสมาร์ตโฟน/แท็บเล็ตหรือไม่
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isMobile) {
+        // บนมือถือใช้ LINE URL Scheme ได้โดยตรง
+        const mobileLineUrl = `https://line.me/R/share?text=${encodeURIComponent(msg)}`;
+        window.open(mobileLineUrl, '_blank');
+        return;
+    }
+
+    // บน Desktop PC: เปิดหน้าต่างแชร์สวยงามทันที (ป้องกัน 404 ของเว็บเบราว์เซอร์ PC)
+    openLineShareModal(q, msg, clientLink);
+}
+
+function openLineShareModal(q, message, clientLink) {
+    const modal = document.getElementById('line-share-modal');
+    const textarea = document.getElementById('line-share-text-preview');
+    const badgeDocNo = document.getElementById('line-modal-docno');
+    const qrImg = document.getElementById('line-qr-image');
+    const qrBox = document.getElementById('line-qr-box');
+
+    if (badgeDocNo) badgeDocNo.textContent = q.docNo;
+    if (textarea) textarea.value = message;
+    if (qrBox) qrBox.style.display = 'none';
+
+    // เตรียมรูป QR Code
+    if (qrImg) {
+        qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(clientLink)}`;
+    }
+
+    resetCopyButtonState();
+
+    if (modal) {
+        modal.classList.add('active');
+    }
 
     if (typeof showToast === 'function') {
-        showToast('success', 'เปิด LINE เรียบร้อย', 'เตรียมข้อความสรุปยอดและลิงก์ส่งให้ลูกค้าแล้ว', 3000);
+        showToast('success', 'คัดลอกข้อความแล้ว!', 'คัดลอกข้อความสรุป & ลิงก์แล้ว นำไปวาง (Ctrl+V) ในแชท LINE ได้ทันที', 3000);
+    }
+}
+
+function closeLineModal() {
+    const modal = document.getElementById('line-share-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+function closeLineModalOnBackdrop(e) {
+    if (e.target && e.target.id === 'line-share-modal') {
+        closeLineModal();
+    }
+}
+
+function copyLineMessageAndNotify() {
+    const textarea = document.getElementById('line-share-text-preview');
+    const textToCopy = textarea ? textarea.value : activeLineShareData.message;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            setCopyButtonSuccess();
+        }).catch(() => {
+            fallbackCopy(textarea);
+        });
+    } else {
+        fallbackCopy(textarea);
+    }
+}
+
+function fallbackCopy(textarea) {
+    if (textarea) {
+        textarea.select();
+        document.execCommand('copy');
+        setCopyButtonSuccess();
+    }
+}
+
+function setCopyButtonSuccess() {
+    const btn = document.getElementById('btn-copy-line-message');
+    const icon = document.getElementById('btn-copy-icon');
+    const text = document.getElementById('btn-copy-text');
+
+    if (btn) btn.classList.add('copied');
+    if (icon) icon.className = 'bi bi-check-circle-fill fs-5 text-white';
+    if (text) text.textContent = '✅ คัดลอกสำเร็จแล้ว! วาง (Ctrl + V) ในแชท LINE ได้ทันที';
+
+    if (typeof showToast === 'function') {
+        showToast('success', 'คัดลอกสำเร็จ!', 'ข้อความสรุปและลิงก์อยู่ในคลิปบอร์ดแล้ว วางใน LINE ได้เลย', 2500);
     }
 
-    // เปิด LINE ในแท็บใหม่ หรือเรียกแอป LINE ขึ้นมา
-    window.open(lineUrl, '_blank');
+    setTimeout(resetCopyButtonState, 3500);
+}
+
+function resetCopyButtonState() {
+    const btn = document.getElementById('btn-copy-line-message');
+    const icon = document.getElementById('btn-copy-icon');
+    const text = document.getElementById('btn-copy-text');
+
+    if (btn) btn.classList.remove('copied');
+    if (icon) icon.className = 'bi bi-clipboard-check-fill fs-5';
+    if (text) text.textContent = 'คัดลอกข้อความ & ลิงก์ทั้งหมด (วางใน LINE ได้ทันที)';
+}
+
+function openLineDesktopApp() {
+    // พยายามเรียกโปรแกรม LINE สำหรับ Windows PC ผ่าน URI Protocol
+    window.location.href = 'line://';
+    if (typeof showToast === 'function') {
+        showToast('info', 'กำลังสลับไปที่ LINE PC', 'ข้อความถูกคัดลอกไว้แล้ว เพียงกด Ctrl + V ในห้องแชทของลูกค้า', 4000);
+    }
+}
+
+function openLineWebShare() {
+    const link = activeLineShareData.link;
+    if (link && (link.startsWith('http://') || link.startsWith('https://'))) {
+        window.open(`https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(link)}`, '_blank');
+    } else {
+        alert('การแชร์ผ่าน LINE Web โดยตรง จำเป็นต้องรันเว็บบนโฮสต์จริง (http:// หรือ https://)\n\nบนเครื่องคอมพิวเตอร์ของคุณ แนะนำให้กดปุ่ม "คัดลอกข้อความ" แล้วนำไปวางในแชท LINE PC ได้เลยครับ!');
+    }
+}
+
+function toggleLineQrCode() {
+    const qrBox = document.getElementById('line-qr-box');
+    if (qrBox) {
+        qrBox.style.display = qrBox.style.display === 'none' ? 'block' : 'none';
+    }
 }
 
 // ── 10. TABS & UI HELPERS ───────────────────────────────────────────────────

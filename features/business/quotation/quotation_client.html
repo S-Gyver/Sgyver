@@ -662,8 +662,24 @@
             msg += `━━━━━━━━━━━━━━━━━\n`;
             msg += `👉 ดูเอกสารและเซ็นอนุมัติออนไลน์ได้ที่:\n${link}`;
 
-            const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(msg)}`;
-            window.open(lineUrl, '_blank');
+            // คัดลอกข้อความสรุป & ลิงก์ลงคลิปบอร์ดทันที
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(msg).then(() => {
+                    if (typeof showToast === 'function') {
+                        showToast('success', 'คัดลอกข้อความแล้ว', 'คัดลอกข้อความสรุปและลิงก์แล้ว นำไปวาง (Ctrl+V) ในแชท LINE ได้ทันที', 3500);
+                    } else {
+                        alert('คัดลอกข้อความและลิงก์แล้ว สามารถนำไปวาง (Ctrl+V) ในแชท LINE ได้ทันที');
+                    }
+                }).catch(() => {});
+            }
+
+            const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+            if (isMobile) {
+                window.open(`https://line.me/R/share?text=${encodeURIComponent(msg)}`, '_blank');
+            } else {
+                // บน PC เปิด LINE PC application
+                window.location.href = 'line://';
+            }
         }
 
         // Helpers
