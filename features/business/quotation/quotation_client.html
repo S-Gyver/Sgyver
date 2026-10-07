@@ -84,6 +84,9 @@
             <button type="button" class="btn btn-outline-light btn-sm px-3" onclick="window.print()">
                 <i class="bi bi-printer me-1"></i> พิมพ์ / บันทึก PDF
             </button>
+            <button type="button" class="btn btn-sm px-3 text-white fw-bold" style="background:#06C755;border-color:#06C755;" onclick="shareToLine()" title="แชร์เอกสารเข้า LINE">
+                <i class="bi bi-line me-1"></i> แชร์เข้า LINE
+            </button>
             <button type="button" class="btn btn-success btn-sm px-3 fw-bold" id="btn-open-sign-modal" onclick="openSignatureModal()">
                 <i class="bi bi-pen-fill me-1"></i> เซ็นอนุมัติใบเสนอราคานี้
             </button>
@@ -638,6 +641,29 @@
             } else {
                 alert('อนุมัติใบเสนอราคาเรียบร้อยแล้ว ขอบคุณที่ไว้วางใจ S-Gyver');
             }
+        }
+
+        function shareToLine() {
+            if (!currentQuote) return;
+            const q = currentQuote;
+            const docType = q.docType || 'ใบเสนอราคา (Quotation)';
+            const clientName = (q.client && q.client.name) ? q.client.name.trim() : 'ลูกค้า';
+            const projectTitle = q.projectTitle ? q.projectTitle.trim() : '';
+            const grandTotal = formatCurrency(q.grandTotal || 0);
+            const link = window.location.href;
+
+            let msg = `📄 ${docType}\n`;
+            msg += `━━━━━━━━━━━━━━━━━\n`;
+            msg += `📌 เลขที่: ${q.docNo}\n`;
+            msg += `🏢 เรียน: ${clientName}\n`;
+            if (projectTitle) msg += `🏷️ โครงการ: ${projectTitle}\n`;
+            msg += `💰 ยอดรวมสุทธิ: ${grandTotal} บาท\n`;
+            if (q.validUntil) msg += `📅 ใช้ได้ถึง: ${formatDateThai(q.validUntil)}\n`;
+            msg += `━━━━━━━━━━━━━━━━━\n`;
+            msg += `👉 ดูเอกสารและเซ็นอนุมัติออนไลน์ได้ที่:\n${link}`;
+
+            const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(msg)}`;
+            window.open(lineUrl, '_blank');
         }
 
         // Helpers

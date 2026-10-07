@@ -1070,6 +1070,9 @@ function renderQuotationsListTable() {
                     <button class="btn btn-sm btn-outline-light" title="พิมพ์/PDF" onclick="printQuotationDirectly('${q.docNo}')">
                         <i class="bi bi-printer-fill"></i>
                     </button>
+                    <button class="btn btn-sm btn-outline-success text-success" title="ส่งเข้า LINE" onclick="sendToLine('${q.docNo}')" style="border-color: #06C755; color: #06C755 !important;">
+                        <i class="bi bi-line"></i>
+                    </button>
                     <button class="btn btn-sm btn-outline-primary" title="คัดลอกลิงก์ให้ลูกค้า" onclick="copyClientApprovalLink('${q.docNo}')">
                         <i class="bi bi-link-45deg"></i>
                     </button>
@@ -1165,6 +1168,72 @@ function copyClientApprovalLink(docNo) {
     } else {
         prompt('คัดลอกลิงก์สำหรับส่งให้ลูกค้า:', link);
     }
+}
+
+/**
+ * 📲 ส่งข้อความสรุปใบเสนอราคา + ลิงก์เข้าแอป LINE ทันที
+ * รองรับทั้งเปิดบนมือถือ (เด้งแอป LINE) และ PC (เด้ง LINE PC / LINE Web)
+ */
+function sendToLine(docNo) {
+    let q = null;
+    if (docNo) {
+        q = (STATE.quotationsList || []).find(item => item.docNo === docNo);
+    }
+    
+    // หากไม่ได้ระบุ หรือหาไม่เจอในลิสต์ ให้ใช้เอกสารปัจจุบันในหน้า Editor
+    if (!q) {
+        recalculateFinancials();
+        saveToLocalStorage(STATE.quotation);
+        q = STATE.quotation;
+    }
+
+    if (!q || !q.docNo) {
+        if (typeof showToast === 'function') {
+            showToast('warning', 'ไม่พบข้อมูลเอกสาร', 'กรุณาสร้างหรือเลือกเอกสารก่อนส่งเข้า LINE', 3000);
+        } else {
+            alert('ไม่พบข้อมูลเอกสาร กรุณาสร้างหรือเลือกเอกสารก่อนส่งเข้า LINE');
+        }
+        return;
+    }
+
+    const currentOrigin = window.location.origin;
+    const currentPath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+    const link = `${currentOrigin}${currentPath}/quotation_client.html?id=${encodeURIComponent(q.docNo)}`;
+
+    const docType = q.docType || 'ใบเสนอราคา (Quotation)';
+    const clientName = (q.client && q.client.name) ? q.client.name.trim() : 'ลูกค้า';
+    const projectTitle = q.projectTitle ? q.projectTitle.trim() : '';
+    const grandTotal = formatCurrency(q.grandTotal || 0);
+
+    // ประกอบข้อความสรุปสำหรับส่งทาง LINE
+    let msg = `📄 แจ้งเอกสาร: ${docType}\n`;
+    msg += `━━━━━━━━━━━━━━━━━\n`;
+    msg += `📌 เลขที่: ${q.docNo}\n`;
+    msg += `🏢 เรียน: ${clientName}\n`;
+    if (projectTitle) {
+        msg += `🏷️ โครงการ: ${projectTitle}\n`;
+    }
+    msg += `💰 ยอดรวมสุทธิ: ${grandTotal} บาท\n`;
+    if (q.validUntil) {
+        msg += `📅 ใช้ได้ถึง: ${formatDateThai(q.validUntil)}\n`;
+    }
+    msg += `━━━━━━━━━━━━━━━━━\n`;
+    msg += `👉 ดูเอกสารฉบับเต็มและเซ็นอนุมัติออนไลน์ได้ที่:\n${link}`;
+
+    // สำรอง: คัดลอกลิงก์เก็บลง Clipboard
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(link).catch(() => {});
+    }
+
+    // LINE Share URL Scheme
+    const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(msg)}`;
+
+    if (typeof showToast === 'function') {
+        showToast('success', 'เปิด LINE เรียบร้อย', 'เตรียมข้อความสรุปยอดและลิงก์ส่งให้ลูกค้าแล้ว', 3000);
+    }
+
+    // เปิด LINE ในแท็บใหม่ หรือเรียกแอป LINE ขึ้นมา
+    window.open(lineUrl, '_blank');
 }
 
 // ── 10. TABS & UI HELPERS ───────────────────────────────────────────────────

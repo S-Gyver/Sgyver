@@ -203,6 +203,18 @@ body {
     color: #fff;
     box-shadow: 0 6px 18px rgba(16, 185, 129, 0.45);
 }
+.btn-cyber-line {
+    background: linear-gradient(135deg, #06C755, #00B900);
+    color: #fff;
+    border-color: rgba(6, 199, 85, 0.4);
+    box-shadow: 0 4px 12px rgba(6, 199, 85, 0.35);
+}
+.btn-cyber-line:hover {
+    background: linear-gradient(135deg, #05b34c, #009e00);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(6, 199, 85, 0.55);
+    color: #fff;
+}
 
 /* ══════════════════════════════════════════════════════════════
    MAIN LAYOUT (SPLIT VIEW)
