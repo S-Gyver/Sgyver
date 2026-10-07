@@ -133,13 +133,71 @@
                     </div>
                 </div>
                 <div class="qt-form-row">
+                    <!-- วันที่ออกเอกสาร -->
                     <div class="qt-form-group">
-                        <label class="qt-form-label" for="form-doc-date">วันที่ออกเอกสาร</label>
-                        <input type="date" class="qt-form-input" id="form-doc-date" onchange="recalculateFinancials()">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="qt-form-label mb-0" for="form-doc-date">
+                                วันที่ออกเอกสาร <span class="text-secondary fw-normal small">(วัน/เดือน/ปี)</span>
+                            </label>
+                            <div class="d-flex align-items-center gap-1">
+                                <button type="button" class="btn btn-sm btn-outline-info py-0 px-2" style="font-size: 0.72rem;" onclick="setDocDateToday()">
+                                    <i class="bi bi-calendar-event me-1"></i>วันนี้
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary text-white py-0 px-2" style="font-size: 0.72rem;" onclick="toggleThaiDatePicker('doc')" title="สลับโหมดเลือกวัน/เดือน/ปี ภาษาไทย">
+                                    <i class="bi bi-sliders me-1"></i>เลือกแบบไทย
+                                </button>
+                            </div>
+                        </div>
+                        <input type="date" class="qt-form-input" id="form-doc-date" onchange="onNativeDateInputChanged('doc')">
+
+                        <!-- Thai Segmented Dropdown Selector (Day / Month / Year BE) -->
+                        <div class="d-none mt-1 p-2 rounded align-items-center gap-1" id="thai-date-picker-doc" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);">
+                            <span class="small text-muted me-1" style="font-size: 0.75rem;">ระบุแบบไทย:</span>
+                            <select class="qt-form-select py-1 px-1 text-center" style="width: 65px; font-size: 0.8rem;" id="thai-day-doc" onchange="onThaiPickerChanged('doc')"></select>
+                            <select class="qt-form-select py-1 px-1" style="flex: 1; min-width: 110px; font-size: 0.8rem;" id="thai-month-doc" onchange="onThaiPickerChanged('doc')"></select>
+                            <select class="qt-form-select py-1 px-1 text-center" style="width: 85px; font-size: 0.8rem;" id="thai-year-doc" onchange="onThaiPickerChanged('doc')"></select>
+                        </div>
+
+                        <!-- Live Thai Date Preview & Clarification -->
+                        <div class="mt-1 p-1 px-2 rounded d-flex align-items-center justify-content-between" style="background: rgba(14, 165, 233, 0.08); border: 1px solid rgba(14, 165, 233, 0.2); font-size: 0.78rem;">
+                            <span class="text-info">
+                                <i class="bi bi-calendar-check-fill me-1"></i>ตรงกับ: <strong id="doc-date-th-text" class="text-white">—</strong>
+                            </span>
+                            <span class="badge bg-secondary text-white" style="font-size: 0.65rem;" title="ในเอกสารจะพิมพ์เป็น วัน/เดือน/ปี พ.ศ.">พิมพ์: วว/ดด/ปปปป</span>
+                        </div>
                     </div>
+
+                    <!-- กำหนดยืนราคาถึงวันที่ -->
                     <div class="qt-form-group">
-                        <label class="qt-form-label" for="form-doc-valid">กำหนดยืนราคาถึงวันที่ (ถ้ามี)</label>
-                        <input type="date" class="qt-form-input" id="form-doc-valid" onchange="recalculateFinancials()">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="qt-form-label mb-0" for="form-doc-valid">
+                                กำหนดยืนราคาถึงวันที่ <span class="text-secondary fw-normal small">(ถ้ามี)</span>
+                            </label>
+                            <div class="d-flex align-items-center gap-1">
+                                <button type="button" class="btn btn-sm btn-outline-info py-0 px-1" style="font-size: 0.72rem;" onclick="addValidDays(15)">+15 วัน</button>
+                                <button type="button" class="btn btn-sm btn-outline-info py-0 px-1" style="font-size: 0.72rem;" onclick="addValidDays(30)">+30 วัน</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary text-white py-0 px-1" style="font-size: 0.72rem;" onclick="toggleThaiDatePicker('valid')" title="สลับโหมดเลือกวัน/เดือน/ปี ภาษาไทย">
+                                    <i class="bi bi-sliders"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <input type="date" class="qt-form-input" id="form-doc-valid" onchange="onNativeDateInputChanged('valid')">
+
+                        <!-- Thai Segmented Dropdown Selector for Valid Until -->
+                        <div class="d-none mt-1 p-2 rounded align-items-center gap-1" id="thai-date-picker-valid" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);">
+                            <span class="small text-muted me-1" style="font-size: 0.75rem;">ระบุแบบไทย:</span>
+                            <select class="qt-form-select py-1 px-1 text-center" style="width: 65px; font-size: 0.8rem;" id="thai-day-valid" onchange="onThaiPickerChanged('valid')"></select>
+                            <select class="qt-form-select py-1 px-1" style="flex: 1; min-width: 110px; font-size: 0.8rem;" id="thai-month-valid" onchange="onThaiPickerChanged('valid')"></select>
+                            <select class="qt-form-select py-1 px-1 text-center" style="width: 85px; font-size: 0.8rem;" id="thai-year-valid" onchange="onThaiPickerChanged('valid')"></select>
+                        </div>
+
+                        <!-- Live Thai Date Preview for Valid Until -->
+                        <div class="mt-1 p-1 px-2 rounded d-flex align-items-center justify-content-between" style="background: rgba(14, 165, 233, 0.08); border: 1px solid rgba(14, 165, 233, 0.2); font-size: 0.78rem;">
+                            <span class="text-info">
+                                <i class="bi bi-clock-history me-1"></i>ตรงกับ: <strong id="doc-valid-th-text" class="text-white">—</strong>
+                            </span>
+                            <button type="button" class="btn btn-link text-muted p-0 text-decoration-none" style="font-size: 0.68rem;" onclick="clearValidDate()">ล้าง</button>
+                        </div>
                     </div>
                 </div>
                 <div class="qt-form-group mb-0">
@@ -150,9 +208,20 @@
 
             <!-- Card 2: Client Info -->
             <div class="qt-card">
-                <div class="qt-card-header">
+                <div class="qt-card-header flex-wrap gap-2">
                     <div class="qt-card-title">
                         <i class="bi bi-building"></i> ข้อมูลลูกค้า / ผู้รับใบเสนอราคา
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <select class="qt-profile-select" id="select-saved-client" onchange="applySelectedClient(this.value)" title="เลือกลูกค้าที่เคยบันทึกไว้">
+                            <option value="">-- เลือกลูกค้าเดิมที่บันทึกไว้ --</option>
+                        </select>
+                        <button type="button" class="btn btn-sm btn-outline-success py-1 px-2" onclick="saveCurrentClientProfile()" title="บันทึกข้อมูลลูกค้านี้ไว้ใช้ครั้งต่อไป">
+                            <i class="bi bi-bookmark-plus-fill me-1"></i> จำลูกค้านี้
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary text-white py-1 px-2" onclick="openProfileManagerModal('client')" title="จัดการรายชื่อลูกค้าที่บันทึกไว้">
+                            <i class="bi bi-gear-fill"></i>
+                        </button>
                     </div>
                 </div>
                 <div class="qt-form-row">
@@ -294,9 +363,22 @@
             </div>
 
             <!-- Card 6: Seller Info (Collapsible) -->
-            <details class="qt-card">
-                <summary class="qt-card-title" style="cursor: pointer;">
-                    <i class="bi bi-gear-fill"></i> ข้อมูลผู้ขาย / ผู้ออกเอกสาร (คลิกเพื่อแก้ไข)
+            <details class="qt-card" id="seller-info-details" open>
+                <summary class="qt-card-header flex-wrap gap-2" style="cursor: pointer; list-style: none;">
+                    <div class="qt-card-title">
+                        <i class="bi bi-gear-fill"></i> ข้อมูลผู้ขาย / ผู้ออกเอกสาร (คลิกย่อ/ขยาย)
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-wrap" onclick="event.stopPropagation()">
+                        <select class="qt-profile-select" id="select-saved-seller" onchange="applySelectedSeller(this.value)" title="เลือกผู้ออกเอกสารที่เคยบันทึกไว้">
+                            <option value="">-- เลือกผู้ออกเอกสารเดิม --</option>
+                        </select>
+                        <button type="button" class="btn btn-sm btn-outline-success py-1 px-2" onclick="saveCurrentSellerProfile()" title="บันทึกข้อมูลผู้ขายนี้ไว้ใช้ครั้งต่อไป">
+                            <i class="bi bi-bookmark-plus-fill me-1"></i> จำผู้ขายนี้
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary text-white py-1 px-2" onclick="openProfileManagerModal('seller')" title="จัดการรายชื่อผู้ขายที่บันทึกไว้">
+                            <i class="bi bi-gear-fill"></i>
+                        </button>
+                    </div>
                 </summary>
                 <div class="pt-3">
                     <div class="qt-form-row">
@@ -356,8 +438,7 @@
             <div class="a4-wrapper" id="a4-wrapper">
                 <div class="a4-sheet theme-terracotta" id="a4-sheet">
 
-                    <!-- Watermark -->
-                    <div class="a4-watermark" id="a4-watermark">RECEIPT</div>
+                    <!-- Watermark removed as per user request -->
 
                     <!-- ══════════════════════════════════════════════════════════
                          TEMPLATE A: TERRACOTTA PHOTO RECEIPT (MATCHING IMAGE)
@@ -426,34 +507,34 @@
                         <table class="receipt-totals-table">
                             <tbody>
                                 <tr>
-                                    <td class="text-end fw-bold" style="border-right: 1.5px solid var(--tc-border); padding-right: 24px; color: var(--tc-primary-dark);">
+                                    <td class="text-end fw-bold" style="width: 50%; border-right: 1.5px solid var(--tc-border); padding-right: 24px; color: var(--tc-primary-dark);">
                                         จำนวนเงินรวมทั้งสิ้น
                                     </td>
-                                    <td style="width: 110px;" class="text-center font-mono fw-bold" id="tc-subtotal">
+                                    <td style="width: 50%;" class="text-center font-mono fw-bold" id="tc-subtotal">
                                         0.-
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td style="width: 50%; text-align: center; font-weight: 700; color: var(--tc-primary-dark); border-right: 1.5px solid var(--tc-border);">
+                                    <td class="text-end fw-bold" style="width: 50%; border-right: 1.5px solid var(--tc-border); padding-right: 24px; color: var(--tc-primary-dark);">
                                         จำนวนเงินรวมทั้งสิ้น
                                     </td>
-                                    <td class="bg-peach-highlight" id="tc-baht-text" style="color: var(--tc-primary-dark); font-weight: 700; font-size: 0.85rem;">
+                                    <td style="width: 50%;" class="bg-peach-highlight text-center" id="tc-baht-text" style="color: var(--tc-primary-dark); font-weight: 700; font-size: 0.85rem;">
                                         ศูนย์บาทถ้วน
                                     </td>
                                 </tr>
                                 <tr id="tc-wht-row">
-                                    <td class="text-end fw-bold" style="border-right: 1.5px solid var(--tc-border); padding-right: 24px; color: var(--tc-primary-dark);">
+                                    <td class="text-end fw-bold" style="width: 50%; border-right: 1.5px solid var(--tc-border); padding-right: 24px; color: var(--tc-primary-dark);">
                                         ภาษีถูกหัก ณ ที่จ่าย <span id="tc-wht-rate"></span>
                                     </td>
-                                    <td class="text-center font-mono" id="tc-wht-amount" style="width: 110px;">
+                                    <td style="width: 50%;" class="text-center font-mono" id="tc-wht-amount">
                                         
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td class="text-end fw-bold" style="border-right: 1.5px solid var(--tc-border); padding-right: 24px; color: var(--tc-primary-dark); font-size: 0.95rem;">
+                                    <td class="text-end fw-bold" style="width: 50%; border-right: 1.5px solid var(--tc-border); padding-right: 24px; color: var(--tc-primary-dark); font-size: 0.95rem;">
                                         จำนวนเงินที่ต้องชำระ
                                     </td>
-                                    <td class="text-center font-mono fw-bold" style="color: var(--tc-primary-dark); font-size: 0.95rem; width: 110px;" id="tc-grand-total">
+                                    <td style="width: 50%; color: var(--tc-primary-dark); font-size: 0.95rem;" class="text-center font-mono fw-bold" id="tc-grand-total">
                                         0.-
                                     </td>
                                 </tr>
@@ -830,6 +911,123 @@
                 </small>
                 <button type="button" class="btn-cyber btn-cyber-outline btn-sm px-3" onclick="closeLineModal()">
                     ปิด
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         SAVED PROFILES MANAGER MODAL
+         ══════════════════════════════════════════════════════════════ -->
+    <div class="line-modal-backdrop" id="profile-manager-modal" onclick="closeProfileManagerOnBackdrop(event)">
+        <div class="line-modal-card" style="max-width: 580px;">
+            <div class="line-modal-header">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="line-modal-icon" style="background: linear-gradient(135deg, #4361ee, #3a0ca3);">
+                        <i class="bi bi-people-fill"></i>
+                    </div>
+                    <div>
+                        <h5 class="line-modal-title mb-0" id="profile-manager-title">จัดการรายชื่อที่บันทึกไว้</h5>
+                        <small class="text-secondary" id="profile-manager-subtitle">ดูหรือลบรายชื่อเดิมที่บันทึกไว้ในระบบ</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close-cyber" onclick="closeProfileManagerModal()" title="ปิด">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="line-modal-body">
+                <div class="profile-manager-list" id="profile-manager-list">
+                    <!-- Populated dynamically via JS -->
+                </div>
+            </div>
+            <div class="line-modal-footer">
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearAllProfilesOfType()" id="btn-clear-all-profiles">
+                    <i class="bi bi-trash3 me-1"></i> ลบทั้งหมด
+                </button>
+                <button type="button" class="btn-cyber btn-cyber-outline btn-sm px-3" onclick="closeProfileManagerModal()">
+                    ปิด
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         EDIT SAVED PROFILE MODAL
+         ══════════════════════════════════════════════════════════════ -->
+    <div class="line-modal-backdrop" id="profile-editor-modal" onclick="closeProfileEditorOnBackdrop(event)">
+        <div class="line-modal-card" style="max-width: 560px;">
+            <div class="line-modal-header">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="line-modal-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                        <i class="bi bi-pencil-square"></i>
+                    </div>
+                    <div>
+                        <h5 class="line-modal-title mb-0" id="profile-editor-title">แก้ไขข้อมูลที่บันทึกไว้</h5>
+                        <small class="text-secondary" id="profile-editor-subtitle">แก้ไขรายละเอียดเพื่อนำไปใช้งานอัตโนมัติ</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close-cyber" onclick="closeProfileEditorModal()" title="ปิด">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="line-modal-body" style="max-height: 70vh; overflow-y: auto;">
+                <input type="hidden" id="edit-profile-id">
+
+                <div class="qt-form-group mb-2">
+                    <label class="qt-form-label" id="lbl-edit-name">ชื่อบริษัท / ร้านค้า / ชื่อบุคคล <span class="text-danger">*</span></label>
+                    <input type="text" class="qt-form-input fw-bold" id="edit-profile-name" placeholder="ระบุชื่อ">
+                </div>
+
+                <div class="qt-form-group mb-2" id="group-edit-contact">
+                    <label class="qt-form-label">ผู้ติดต่อ / แผนก</label>
+                    <input type="text" class="qt-form-input" id="edit-profile-contact" placeholder="เช่น ดร. สมเกียรติ (ฝ่ายวิชาการ)">
+                </div>
+
+                <div class="qt-form-row mb-2">
+                    <div class="qt-form-group mb-0">
+                        <label class="qt-form-label">เลขประจำตัวผู้เสียภาษี</label>
+                        <input type="text" class="qt-form-input font-mono" id="edit-profile-tax" placeholder="เลข 13 หลัก">
+                    </div>
+                    <div class="qt-form-group mb-0">
+                        <label class="qt-form-label">สาขา</label>
+                        <input type="text" class="qt-form-input" id="edit-profile-branch" placeholder="เช่น สำนักงานใหญ่">
+                    </div>
+                </div>
+
+                <div class="qt-form-row mb-2">
+                    <div class="qt-form-group mb-0">
+                        <label class="qt-form-label">เบอร์โทรศัพท์</label>
+                        <input type="text" class="qt-form-input" id="edit-profile-phone" placeholder="02-xxx-xxxx, 08x-xxx-xxxx">
+                    </div>
+                    <div class="qt-form-group mb-0">
+                        <label class="qt-form-label">อีเมล</label>
+                        <input type="email" class="qt-form-input" id="edit-profile-email" placeholder="example@domain.com">
+                    </div>
+                </div>
+
+                <div class="qt-form-group mb-2">
+                    <label class="qt-form-label">ที่อยู่</label>
+                    <textarea class="qt-form-textarea" id="edit-profile-address" rows="2" placeholder="เลขที่ ถนน แขวง/ตำบล เขต/อำเภอ จังหวัด รหัสไปรษณีย์"></textarea>
+                </div>
+
+                <!-- Seller-specific fields -->
+                <div id="group-edit-seller-fields" class="d-none">
+                    <div class="qt-form-group mb-2">
+                        <label class="qt-form-label">ข้อมูลบัญชีธนาคารสำหรับโอนเงิน</label>
+                        <textarea class="qt-form-textarea" id="edit-profile-bank" rows="2" placeholder="เช่น ธนาคารกสิกรไทย เลขที่บัญชี: xxx ชื่อบัญชี: xxx"></textarea>
+                    </div>
+                    <div class="qt-form-group mb-2">
+                        <label class="qt-form-label">ชื่อผู้มีอำนาจลงนาม</label>
+                        <input type="text" class="qt-form-input" id="edit-profile-sign" placeholder="ชื่อ-นามสกุล ผู้ลงนาม">
+                    </div>
+                </div>
+            </div>
+            <div class="line-modal-footer">
+                <button type="button" class="btn btn-sm btn-outline-secondary text-white" onclick="closeProfileEditorModal()">
+                    ยกเลิก
+                </button>
+                <button type="button" class="btn btn-sm btn-warning px-3 fw-bold" onclick="saveEditedProfile()">
+                    <i class="bi bi-check2-circle me-1"></i> บันทึกการแก้ไข
                 </button>
             </div>
         </div>

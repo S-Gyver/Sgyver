@@ -494,24 +494,9 @@ input[type="number"],
     box-sizing: border-box;
 }
 
-/* A4 Status Watermark */
+/* A4 Status Watermark (Hidden as per user request) */
 .a4-watermark {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) rotate(-30deg);
-    font-family: 'Kanit', sans-serif;
-    font-size: 5rem;
-    font-weight: 800;
-    color: rgba(239, 68, 68, 0.06);
-    pointer-events: none;
-    letter-spacing: 12px;
-    user-select: none;
-    text-transform: uppercase;
-    white-space: nowrap;
-}
-.a4-watermark.approved {
-    color: rgba(16, 185, 129, 0.08);
+    display: none !important;
 }
 
 /* A4 Header Section */
@@ -1027,11 +1012,27 @@ input[type="number"],
     background: var(--tc-light);
 }
 
+.receipt-item-idx {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--tc-primary);
+    line-height: 1.35;
+    margin: 0;
+    padding: 0;
+}
+.receipt-item-val {
+    font-size: 0.88rem;
+    line-height: 1.35;
+    margin: 0;
+    padding: 0;
+}
 .item-title-terracotta {
     color: var(--tc-primary);
     font-weight: 700;
     font-size: 0.88rem;
-    margin-bottom: 6px;
+    line-height: 1.35;
+    margin: 0 0 6px 0;
+    padding: 0;
     white-space: pre-line;
     word-break: break-word;
 }
@@ -1517,6 +1518,74 @@ input[type="number"],
     font-size: 2.8rem;
     color: #ef4444;
     margin-bottom: 6px;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SAVED PROFILES SELECTOR & MANAGER
+   ══════════════════════════════════════════════════════════════ */
+.qt-profile-select {
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid rgba(67, 97, 238, 0.45);
+    border-radius: 6px;
+    color: #38bdf8;
+    font-family: 'Kanit', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 500;
+    padding: 3px 8px;
+    outline: none;
+    cursor: pointer;
+    max-width: 210px;
+    transition: all 0.2s ease;
+}
+.qt-profile-select:hover {
+    border-color: #38bdf8;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+}
+.qt-profile-select:focus {
+    border-color: #38bdf8;
+}
+
+.profile-manager-list {
+    max-height: 330px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-right: 4px;
+}
+.profile-manager-item {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    transition: all 0.2s;
+}
+.profile-manager-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.18);
+}
+.profile-manager-item-info {
+    flex: 1;
+    min-width: 0;
+}
+.profile-manager-item-name {
+    font-weight: 600;
+    color: #f8fafc;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.profile-manager-item-sub {
+    font-size: 0.77rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 

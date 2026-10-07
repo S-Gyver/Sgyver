@@ -105,8 +105,8 @@ const DEMO_QUOTATION_DATA = {
     docType: 'ใบเสร็จรับเงิน (Receipt)',
     templateStyle: 'terracotta',
     docNo: 'RC-256908-001',
-    date: '2569-08-22',
-    validUntil: '2569-09-22',
+    date: '2026-08-22',
+    validUntil: '2026-09-22',
     status: 'APPROVED',
     projectTitle: 'Backdrop Discovery',
     seller: {
@@ -173,7 +173,7 @@ const DEMO_QUOTATION_DATA = {
     deliveryDays: 0,
     notes: 'ส่งมอบงานพร้อมติดตั้งเรียบร้อย',
     sellerSignName: 'ศรัศนันท์ ตราชู',
-    sellerSignDate: '2569-08-22'
+    sellerSignDate: '2026-08-22'
 };
 
 const STATE = {
@@ -325,10 +325,12 @@ function thaiBahtText(number) {
 // ── 4. INITIALIZATION ────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     initDefaultDocumentNo();
+    initThaiDatePickers();
     renderCatalogPills();
     populateFormFromState();
     recalculateFinancials();
     loadQuotationsFromStorage();
+    initSavedProfiles();
 
     // Check if URL has query ?id=...
     const urlParams = new URLSearchParams(window.location.search);
@@ -732,11 +734,16 @@ function updateLiveA4Sheet() {
         renderClassicA4View(q);
     }
 
-    // Watermark
+    // Watermark removed as per user request
     const watermark = document.getElementById('a4-watermark');
     if (watermark) {
-        watermark.textContent = q.status;
-        watermark.className = `a4-watermark ${q.status.toLowerCase()}`;
+        watermark.textContent = '';
+        watermark.style.display = 'none';
+    }
+
+    // Update Thai date helper badges under form inputs
+    if (typeof updateDateHelperBadges === 'function') {
+        updateDateHelperBadges();
     }
 }
 
@@ -776,13 +783,11 @@ function renderTerracottaA4View(q) {
 
             return `
                 <tr>
-                    <td class="text-center" style="width: 48px; font-weight: 600; color: var(--tc-primary);">
-                        ${idx + 1}.
+                    <td class="text-center" style="width: 48px;">
+                        <div class="receipt-item-idx">${idx + 1}.</div>
                     </td>
                     <td>
-                        <div class="item-title-terracotta" style="${isNameEmpty ? 'color: #94a3b8; font-style: italic;' : ''}">
-                            ${escapeHtml(item.name || '— (ระบุชื่อรายการสินค้า / บริการ) —')}
-                        </div>
+                        <div class="item-title-terracotta" style="${isNameEmpty ? 'color: #94a3b8; font-style: italic;' : ''}">${escapeHtml(item.name ? item.name.trim() : '— (ระบุชื่อรายการสินค้า / บริการ) —')}</div>
                         ${hasVisual ? `
                             <div class="item-visual-block">
                                 ${item.img ? `<img src="${item.img}" class="item-thumbnail-img" alt="${escapeHtml(item.name || 'item')}">` : ''}
@@ -790,14 +795,14 @@ function renderTerracottaA4View(q) {
                             </div>
                         ` : ''}
                     </td>
-                    <td class="text-center font-mono" style="width: 75px; font-size: 0.95rem;">
-                        ${item.qty || 1}
+                    <td class="text-center font-mono" style="width: 75px;">
+                        <div class="receipt-item-val">${item.qty || 1}</div>
                     </td>
-                    <td class="text-center font-mono" style="width: 100px; font-size: 0.95rem;">
-                        ${formatCurrencySuffix(item.price)}
+                    <td class="text-center font-mono" style="width: 100px;">
+                        <div class="receipt-item-val">${formatCurrencySuffix(item.price)}</div>
                     </td>
-                    <td class="text-center font-mono fw-bold" style="width: 110px; font-size: 0.95rem;">
-                        ${formatCurrencySuffix(lineTotal)}
+                    <td class="text-center font-mono fw-bold" style="width: 110px;">
+                        <div class="receipt-item-val fw-bold">${formatCurrencySuffix(lineTotal)}</div>
                     </td>
                 </tr>
             `;
@@ -887,6 +892,11 @@ async function saveQuotation() {
     q.updatedAt = new Date().toISOString();
 
     let cloudSaved = false;
+
+    // Auto-save client and seller profiles
+    if (typeof autoSaveProfilesFromCurrentQuotation === 'function') {
+        autoSaveProfilesFromCurrentQuotation();
+    }
 
     // 1. Always save to LocalStorage first (instant & reliable)
     saveToLocalStorage(q);
@@ -979,6 +989,9 @@ async function loadQuotationsFromStorage() {
     STATE.quotationsList = list;
     renderQuotationsListTable();
     updateDashboardStats();
+    if (typeof autoHarvestProfilesFromQuotations === 'function') {
+        autoHarvestProfilesFromQuotations();
+    }
 
     // 2. Fetch and merge from Supabase if online and available
     if (window.supabaseClient) {
@@ -1026,6 +1039,9 @@ async function loadQuotationsFromStorage() {
                 STATE.quotationsList = Array.from(map.values());
                 renderQuotationsListTable();
                 updateDashboardStats();
+                if (typeof autoHarvestProfilesFromQuotations === 'function') {
+                    autoHarvestProfilesFromQuotations();
+                }
             } else if (error) {
                 console.warn('[Supabase load info]:', error.message || error);
             }
@@ -1689,35 +1705,236 @@ function formatCurrencySuffix(amount) {
     return Number(amount).toLocaleString('th-TH') + '.-';
 }
 
-function formatDateThai(isoDateStr) {
-    if (!isoDateStr) return '—';
-    try {
-        const parts = isoDateStr.split('-');
+function parseDateParts(dateStr) {
+    if (!dateStr) return null;
+    let s = String(dateStr).trim();
+    if (!s) return null;
+
+    let y = 0, m = 0, d = 0;
+    if (s.includes('-')) {
+        const parts = s.split('-');
         if (parts.length === 3) {
-            const y = parseInt(parts[0], 10) > 2500 ? parseInt(parts[0], 10) : parseInt(parts[0], 10) + 543;
-            const m = parseInt(parts[1], 10);
-            const d = parseInt(parts[2], 10);
-            const thMonths = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
-            return `${d} ${thMonths[m]} ${y}`;
+            y = parseInt(parts[0], 10);
+            m = parseInt(parts[1], 10);
+            d = parseInt(parts[2], 10);
         }
-    } catch(e) {}
-    return isoDateStr;
+    } else if (s.includes('/')) {
+        const parts = s.split('/');
+        if (parts.length === 3) {
+            let p1 = parseInt(parts[0], 10);
+            let p2 = parseInt(parts[1], 10);
+            let p3 = parseInt(parts[2], 10);
+            if (p1 > 1000) {
+                y = p1; m = p2; d = p3;
+            } else {
+                d = p1; m = p2; y = p3;
+            }
+        }
+    }
+
+    if (!y || !m || !d || isNaN(y) || isNaN(m) || isNaN(d)) return null;
+
+    const yearBE = y > 2400 ? y : y + 543;
+    const yearCE = y > 2400 ? y - 543 : y;
+    return { yearBE, yearCE, month: m, day: d };
+}
+
+function formatDateThai(isoDateStr) {
+    const p = parseDateParts(isoDateStr);
+    if (!p) return '—';
+    const thMonths = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+    return `${p.day} ${thMonths[p.month] || ''} ${p.yearBE}`;
 }
 
 // Format as DD/MM/YYYY matching user's image (e.g. 22/08/2569)
 function formatDateCustom(isoDateStr) {
-    if (!isoDateStr) return '—';
-    try {
-        const parts = isoDateStr.split('-');
-        if (parts.length === 3) {
-            let y = parseInt(parts[0], 10);
-            if (y < 2500) y += 543;
-            const m = String(parts[1]).padStart(2, '0');
-            const d = String(parts[2]).padStart(2, '0');
-            return `${d}/${m}/${y}`;
+    const p = parseDateParts(isoDateStr);
+    if (!p) return '—';
+    const m = String(p.month).padStart(2, '0');
+    const d = String(p.day).padStart(2, '0');
+    return `${d}/${m}/${p.yearBE}`;
+}
+
+// Format with Full Thai month and (DD/MM/YYYY BE) for live preview badge
+function formatThaiDateDisplay(isoDateStr) {
+    const p = parseDateParts(isoDateStr);
+    if (!p) return '—';
+    const thMonthsFull = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+    const dStr = String(p.day).padStart(2, '0');
+    const mStr = String(p.month).padStart(2, '0');
+    return `${p.day} ${thMonthsFull[p.month] || ''} ${p.yearBE} (${dStr}/${mStr}/${p.yearBE})`;
+}
+
+const THAI_MONTH_NAMES = [
+    { num: 1, name: 'มกราคม (01)' },
+    { num: 2, name: 'กุมภาพันธ์ (02)' },
+    { num: 3, name: 'มีนาคม (03)' },
+    { num: 4, name: 'เมษายน (04)' },
+    { num: 5, name: 'พฤษภาคม (05)' },
+    { num: 6, name: 'มิถุนายน (06)' },
+    { num: 7, name: 'กรกฎาคม (07)' },
+    { num: 8, name: 'สิงหาคม (08)' },
+    { num: 9, name: 'กันยายน (09)' },
+    { num: 10, name: 'ตุลาคม (10)' },
+    { num: 11, name: 'พฤศจิกายน (11)' },
+    { num: 12, name: 'ธันวาคม (12)' }
+];
+
+function initThaiDatePickers() {
+    ['doc', 'valid'].forEach(target => {
+        const dayEl = document.getElementById(`thai-day-${target}`);
+        const monthEl = document.getElementById(`thai-month-${target}`);
+        const yearEl = document.getElementById(`thai-year-${target}`);
+        if (!dayEl || !monthEl || !yearEl) return;
+
+        // Days 1..31
+        let dayOptions = '<option value="">วัน</option>';
+        for (let i = 1; i <= 31; i++) {
+            dayOptions += `<option value="${i}">${i}</option>`;
         }
-    } catch(e) {}
-    return isoDateStr;
+        dayEl.innerHTML = dayOptions;
+
+        // Months 1..12
+        let monthOptions = '<option value="">เดือน</option>';
+        THAI_MONTH_NAMES.forEach(m => {
+            monthOptions += `<option value="${m.num}">${m.name}</option>`;
+        });
+        monthEl.innerHTML = monthOptions;
+
+        // Years BE (current year - 2 to + 5)
+        const currentYearBE = new Date().getFullYear() + 543;
+        let yearOptions = '<option value="">ปี พ.ศ.</option>';
+        for (let y = currentYearBE - 2; y <= currentYearBE + 5; y++) {
+            yearOptions += `<option value="${y}">${y}</option>`;
+        }
+        yearEl.innerHTML = yearOptions;
+    });
+}
+
+function toggleThaiDatePicker(target) {
+    const el = document.getElementById(`thai-date-picker-${target}`);
+    if (!el) return;
+    if (el.classList.contains('d-none')) {
+        el.classList.remove('d-none');
+        el.classList.add('d-flex');
+        const currentDate = (target === 'doc') ? STATE.quotation.date : STATE.quotation.validUntil;
+        syncThaiDatePickerDropdowns(target, currentDate);
+    } else {
+        el.classList.add('d-none');
+        el.classList.remove('d-flex');
+    }
+}
+
+function syncThaiDatePickerDropdowns(target, isoDateStr) {
+    const dayEl = document.getElementById(`thai-day-${target}`);
+    const monthEl = document.getElementById(`thai-month-${target}`);
+    const yearEl = document.getElementById(`thai-year-${target}`);
+    if (!dayEl || !monthEl || !yearEl) return;
+
+    const p = parseDateParts(isoDateStr);
+    if (p) {
+        dayEl.value = String(p.day);
+        monthEl.value = String(p.month);
+        yearEl.value = String(p.yearBE);
+    } else {
+        dayEl.value = '';
+        monthEl.value = '';
+        yearEl.value = '';
+    }
+}
+
+function onThaiPickerChanged(target) {
+    const dayEl = document.getElementById(`thai-day-${target}`);
+    const monthEl = document.getElementById(`thai-month-${target}`);
+    const yearEl = document.getElementById(`thai-year-${target}`);
+    if (!dayEl || !monthEl || !yearEl) return;
+
+    const day = parseInt(dayEl.value, 10);
+    const month = parseInt(monthEl.value, 10);
+    const yearBE = parseInt(yearEl.value, 10);
+
+    if (!day || !month || !yearBE) return;
+
+    const yearCE = yearBE - 543;
+    const isoStr = `${yearCE}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+    const inputId = (target === 'doc') ? 'form-doc-date' : 'form-doc-valid';
+    setVal(inputId, isoStr);
+
+    if (target === 'doc') {
+        STATE.quotation.date = isoStr;
+    } else {
+        STATE.quotation.validUntil = isoStr;
+    }
+
+    recalculateFinancials();
+}
+
+function onNativeDateInputChanged(target) {
+    const inputId = (target === 'doc') ? 'form-doc-date' : 'form-doc-valid';
+    const val = getVal(inputId);
+    if (target === 'doc') {
+        STATE.quotation.date = val;
+    } else {
+        STATE.quotation.validUntil = val;
+    }
+    recalculateFinancials();
+}
+
+function setDocDateToday() {
+    const todayIso = getTodayIsoDate();
+    setVal('form-doc-date', todayIso);
+    STATE.quotation.date = todayIso;
+    recalculateFinancials();
+    if (typeof showToast === 'function') {
+        showToast('info', 'ตั้งวันที่วันนี้แล้ว', formatThaiDateDisplay(todayIso), 2000);
+    }
+}
+
+function addValidDays(days) {
+    const baseDateStr = getVal('form-doc-date') || getTodayIsoDate();
+    const p = parseDateParts(baseDateStr);
+    let baseDate = new Date();
+    if (p) {
+        baseDate = new Date(p.yearCE, p.month - 1, p.day);
+    }
+    baseDate.setDate(baseDate.getDate() + days);
+
+    const y = baseDate.getFullYear();
+    const m = String(baseDate.getMonth() + 1).padStart(2, '0');
+    const d = String(baseDate.getDate()).padStart(2, '0');
+    const validIso = `${y}-${m}-${d}`;
+
+    setVal('form-doc-valid', validIso);
+    STATE.quotation.validUntil = validIso;
+    recalculateFinancials();
+
+    if (typeof showToast === 'function') {
+        showToast('info', `กำหนดยืนราคา +${days} วัน`, formatThaiDateDisplay(validIso), 2000);
+    }
+}
+
+function clearValidDate() {
+    setVal('form-doc-valid', '');
+    STATE.quotation.validUntil = '';
+    recalculateFinancials();
+}
+
+function updateDateHelperBadges() {
+    const q = STATE.quotation;
+
+    const docDateBadge = document.getElementById('doc-date-th-text');
+    if (docDateBadge) {
+        docDateBadge.textContent = q.date ? formatThaiDateDisplay(q.date) : 'ไม่ได้ระบุ';
+    }
+
+    const validDateBadge = document.getElementById('doc-valid-th-text');
+    if (validDateBadge) {
+        validDateBadge.textContent = q.validUntil ? formatThaiDateDisplay(q.validUntil) : 'ไม่ได้ระบุ (ไม่จำกัด)';
+    }
+
+    syncThaiDatePickerDropdowns('doc', q.date);
+    syncThaiDatePickerDropdowns('valid', q.validUntil);
 }
 
 function getStatusLabel(status) {
@@ -1738,4 +1955,603 @@ function escapeHtml(text) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+}
+
+// ── 12. SAVED PROFILES (CLIENTS & SELLERS) ──────────────────────────────────
+const DEFAULT_SAVED_CLIENTS = [
+    {
+        id: 'cli_pim_satit',
+        name: 'โรงเรียนสาธิตสถาบันการจัดการปัญญาภิวัฒน์ (สำนักงานใหญ่)',
+        contactPerson: 'ฝ่ายจัดซื้อและพัฒนาสื่อ',
+        taxId: '0994001476136',
+        branch: 'สำนักงานใหญ่',
+        phone: '02-855-0000',
+        email: 'spim@pim.ac.th',
+        address: '45/23 ม.2 ถ.แจ้งวัฒนะ ต.บางตลาด อ.ปากเกร็ด จ.นนทบุรี 11120'
+    }
+];
+
+const DEFAULT_SAVED_SELLERS = [
+    {
+        id: 'sel_achi_default',
+        name: 'อชิษ์ อัศวโภคินทร์',
+        taxId: '',
+        branch: 'สำนักงานใหญ่',
+        phone: '091-928-1756',
+        email: 's.gyver36@gmail.com',
+        address: '222/56 ม.4 มบ.ลัดดาวิลล์1 ถ.บ้านกล้วย-ไทรน้อย ต.พิมลราช อ.บางบัวทอง จ.นนทบุรี 11110',
+        bankAccount: 'ธนาคารกสิกรไทย (KBANK)\nเลขที่บัญชี: 123-4-56789-0\nชื่อบัญชี: อชิษ์ อัศวโภคินทร์',
+        sellerSignName: 'อชิษ์ อัศวโภคินทร์'
+    },
+    {
+        id: 'sel_sarasanun_demo',
+        name: 'ศรัศนันท์ ตราชู',
+        taxId: '',
+        branch: 'สำนักงานใหญ่',
+        phone: '085-849-8956',
+        email: 's.gyver36@gmail.com',
+        address: '222/56 ม.4 มบ.ลัดดาวิลล์1 ถ.บ้านกล้วย-ไทรน้อย ต.พิมลราช อ.บางบัวทอง จ.นนทบุรี 11110',
+        bankAccount: 'ธนาคารกสิกรไทย (KBANK)\nเลขที่บัญชี: 123-4-56789-0\nชื่อบัญชี: ศรัศนันท์ ตราชู',
+        sellerSignName: 'ศรัศนันท์ ตราชู'
+    }
+];
+
+function getSavedClients() {
+    try {
+        const raw = localStorage.getItem('sgyver_saved_clients');
+        if (raw) {
+            const list = JSON.parse(raw);
+            if (Array.isArray(list) && list.length > 0) return list;
+        }
+    } catch (e) {}
+    localStorage.setItem('sgyver_saved_clients', JSON.stringify(DEFAULT_SAVED_CLIENTS));
+    return [...DEFAULT_SAVED_CLIENTS];
+}
+
+function saveClientsToStorage(list) {
+    try {
+        localStorage.setItem('sgyver_saved_clients', JSON.stringify(list));
+    } catch (e) {}
+}
+
+function getSavedSellers() {
+    try {
+        const raw = localStorage.getItem('sgyver_saved_sellers');
+        if (raw) {
+            const list = JSON.parse(raw);
+            if (Array.isArray(list) && list.length > 0) return list;
+        }
+    } catch (e) {}
+    localStorage.setItem('sgyver_saved_sellers', JSON.stringify(DEFAULT_SAVED_SELLERS));
+    return [...DEFAULT_SAVED_SELLERS];
+}
+
+function saveSellersToStorage(list) {
+    try {
+        localStorage.setItem('sgyver_saved_sellers', JSON.stringify(list));
+    } catch (e) {}
+}
+
+function initSavedProfiles() {
+    renderSavedClientSelect();
+    renderSavedSellerSelect();
+}
+
+function renderSavedClientSelect(selectedId = '') {
+    const select = document.getElementById('select-saved-client');
+    if (!select) return;
+
+    const clients = getSavedClients();
+    select.innerHTML = `
+        <option value="">-- เลือกลูกค้าเดิม (${clients.length}) --</option>
+        ${clients.map(c => `
+            <option value="${c.id}" ${c.id === selectedId ? 'selected' : ''}>
+                ${escapeHtml(c.name)}
+            </option>
+        `).join('')}
+    `;
+}
+
+function renderSavedSellerSelect(selectedId = '') {
+    const select = document.getElementById('select-saved-seller');
+    if (!select) return;
+
+    const sellers = getSavedSellers();
+    select.innerHTML = `
+        <option value="">-- เลือกผู้ออกเอกสารเดิม (${sellers.length}) --</option>
+        ${sellers.map(s => `
+            <option value="${s.id}" ${s.id === selectedId ? 'selected' : ''}>
+                ${escapeHtml(s.name)}
+            </option>
+        `).join('')}
+    `;
+}
+
+function applySelectedClient(clientId) {
+    if (!clientId) return;
+    const clients = getSavedClients();
+    const client = clients.find(c => c.id === clientId);
+    if (!client) return;
+
+    setVal('form-client-name', client.name || '');
+    setVal('form-client-person', client.contactPerson || '');
+    setVal('form-client-tax', client.taxId || '');
+    setVal('form-client-branch', client.branch || 'สำนักงานใหญ่');
+    setVal('form-client-phone', client.phone || '');
+    setVal('form-client-email', client.email || '');
+    setVal('form-client-address', client.address || '');
+
+    recalculateFinancials();
+
+    if (typeof showToast === 'function') {
+        showToast('success', 'โหลดข้อมูลลูกค้าแล้ว', `ดึงข้อมูลของ "${client.name}" ใส่ฟอร์มเรียบร้อย`, 2500);
+    }
+}
+
+function applySelectedSeller(sellerId) {
+    if (!sellerId) return;
+    const sellers = getSavedSellers();
+    const seller = sellers.find(s => s.id === sellerId);
+    if (!seller) return;
+
+    setVal('form-seller-name', seller.name || '');
+    setVal('form-seller-tax', seller.taxId || '');
+    setVal('form-seller-phone', seller.phone || '');
+    setVal('form-seller-email', seller.email || '');
+    setVal('form-seller-address', seller.address || '');
+    if (seller.bankAccount) setVal('form-bank-account', seller.bankAccount);
+    if (seller.sellerSignName) setVal('form-seller-sign-name', seller.sellerSignName);
+
+    recalculateFinancials();
+
+    if (typeof showToast === 'function') {
+        showToast('success', 'โหลดข้อมูลผู้ขายแล้ว', `ดึงข้อมูลของ "${seller.name}" ใส่ฟอร์มเรียบร้อย`, 2500);
+    }
+}
+
+function saveCurrentClientProfile() {
+    const name = getVal('form-client-name');
+    if (!name) {
+        if (typeof showToast === 'function') {
+            showToast('warning', 'กรุณาระบุชื่อลูกค้า', 'โปรดกรอกชื่อบริษัท/ลูกค้ารายนี้ในฟอร์มก่อนกดบันทึก', 3000);
+        } else {
+            alert('กรุณากรอกชื่อลูกค้าก่อนกดบันทึก');
+        }
+        return;
+    }
+
+    const clientData = {
+        name: name,
+        contactPerson: getVal('form-client-person'),
+        taxId: getVal('form-client-tax'),
+        branch: getVal('form-client-branch') || 'สำนักงานใหญ่',
+        phone: getVal('form-client-phone'),
+        email: getVal('form-client-email'),
+        address: getVal('form-client-address'),
+        updatedAt: new Date().toISOString()
+    };
+
+    let clients = getSavedClients();
+    const existingIndex = clients.findIndex(c => c.name.trim().toLowerCase() === name.trim().toLowerCase());
+
+    let targetId = '';
+    if (existingIndex >= 0) {
+        targetId = clients[existingIndex].id;
+        clientData.id = targetId;
+        clients[existingIndex] = clientData;
+    } else {
+        targetId = 'cli_' + Date.now();
+        clientData.id = targetId;
+        clients.unshift(clientData);
+    }
+
+    saveClientsToStorage(clients);
+    renderSavedClientSelect(targetId);
+
+    if (typeof showToast === 'function') {
+        showToast('success', 'บันทึกลูกค้าสำเร็จ', `บันทึกข้อมูลของ "${name}" ไว้ในรายการแล้ว`, 3000);
+    }
+}
+
+function saveCurrentSellerProfile() {
+    const name = getVal('form-seller-name');
+    if (!name) {
+        if (typeof showToast === 'function') {
+            showToast('warning', 'กรุณาระบุชื่อผู้ขาย', 'โปรดกรอกชื่อร้านค้า/ผู้เสนอราคาในฟอร์มก่อนกดบันทึก', 3000);
+        } else {
+            alert('กรุณากรอกชื่อผู้ขายก่อนกดบันทึก');
+        }
+        return;
+    }
+
+    const sellerData = {
+        name: name,
+        taxId: getVal('form-seller-tax'),
+        branch: getVal('form-seller-branch') || 'สำนักงานใหญ่',
+        phone: getVal('form-seller-phone'),
+        email: getVal('form-seller-email'),
+        address: getVal('form-seller-address'),
+        bankAccount: getVal('form-bank-account'),
+        sellerSignName: getVal('form-seller-sign-name'),
+        updatedAt: new Date().toISOString()
+    };
+
+    let sellers = getSavedSellers();
+    const existingIndex = sellers.findIndex(s => s.name.trim().toLowerCase() === name.trim().toLowerCase());
+
+    let targetId = '';
+    if (existingIndex >= 0) {
+        targetId = sellers[existingIndex].id;
+        sellerData.id = targetId;
+        sellers[existingIndex] = sellerData;
+    } else {
+        targetId = 'sel_' + Date.now();
+        sellerData.id = targetId;
+        sellers.unshift(sellerData);
+    }
+
+    saveSellersToStorage(sellers);
+    renderSavedSellerSelect(targetId);
+
+    if (typeof showToast === 'function') {
+        showToast('success', 'บันทึกผู้ขายสำเร็จ', `บันทึกข้อมูลของ "${name}" ไว้ในรายการแล้ว`, 3000);
+    }
+}
+
+function autoSaveProfilesFromCurrentQuotation() {
+    const clientName = getVal('form-client-name');
+    if (clientName) {
+        let clients = getSavedClients();
+        const existingIndex = clients.findIndex(c => c.name.trim().toLowerCase() === clientName.trim().toLowerCase());
+        const clientData = {
+            name: clientName,
+            contactPerson: getVal('form-client-person'),
+            taxId: getVal('form-client-tax'),
+            branch: getVal('form-client-branch') || 'สำนักงานใหญ่',
+            phone: getVal('form-client-phone'),
+            email: getVal('form-client-email'),
+            address: getVal('form-client-address'),
+            updatedAt: new Date().toISOString()
+        };
+        if (existingIndex >= 0) {
+            clientData.id = clients[existingIndex].id;
+            clients[existingIndex] = clientData;
+        } else {
+            clientData.id = 'cli_' + Date.now();
+            clients.unshift(clientData);
+        }
+        saveClientsToStorage(clients);
+        renderSavedClientSelect(clientData.id);
+    }
+
+    const sellerName = getVal('form-seller-name');
+    if (sellerName) {
+        let sellers = getSavedSellers();
+        const existingIndex = sellers.findIndex(s => s.name.trim().toLowerCase() === sellerName.trim().toLowerCase());
+        const sellerData = {
+            name: sellerName,
+            taxId: getVal('form-seller-tax'),
+            branch: getVal('form-seller-branch') || 'สำนักงานใหญ่',
+            phone: getVal('form-seller-phone'),
+            email: getVal('form-seller-email'),
+            address: getVal('form-seller-address'),
+            bankAccount: getVal('form-bank-account'),
+            sellerSignName: getVal('form-seller-sign-name'),
+            updatedAt: new Date().toISOString()
+        };
+        if (existingIndex >= 0) {
+            sellerData.id = sellers[existingIndex].id;
+            sellers[existingIndex] = sellerData;
+        } else {
+            sellerData.id = 'sel_' + Date.now();
+            sellers.unshift(sellerData);
+        }
+        saveSellersToStorage(sellers);
+        renderSavedSellerSelect(sellerData.id);
+    }
+}
+
+function autoHarvestProfilesFromQuotations() {
+    const list = STATE.quotationsList || [];
+    if (!Array.isArray(list) || list.length === 0) return;
+
+    let clients = getSavedClients();
+    let sellers = getSavedSellers();
+    let clientChanged = false;
+    let sellerChanged = false;
+
+    list.forEach(q => {
+        // Harvest Client
+        if (q.client && q.client.name && q.client.name.trim()) {
+            const cName = q.client.name.trim();
+            const exists = clients.some(c => c.name.trim().toLowerCase() === cName.toLowerCase());
+            if (!exists) {
+                clients.push({
+                    id: 'cli_' + Math.floor(Math.random() * 1000000),
+                    name: cName,
+                    contactPerson: q.client.contactPerson || '',
+                    taxId: q.client.taxId || '',
+                    branch: q.client.branch || 'สำนักงานใหญ่',
+                    phone: q.client.phone || '',
+                    email: q.client.email || '',
+                    address: q.client.address || '',
+                    updatedAt: q.updatedAt || new Date().toISOString()
+                });
+                clientChanged = true;
+            }
+        }
+
+        // Harvest Seller
+        if (q.seller && q.seller.name && q.seller.name.trim()) {
+            const sName = q.seller.name.trim();
+            const exists = sellers.some(s => s.name.trim().toLowerCase() === sName.toLowerCase());
+            if (!exists) {
+                sellers.push({
+                    id: 'sel_' + Math.floor(Math.random() * 1000000),
+                    name: sName,
+                    taxId: q.seller.taxId || '',
+                    branch: q.seller.branch || 'สำนักงานใหญ่',
+                    phone: q.seller.phone || '',
+                    email: q.seller.email || '',
+                    address: q.seller.address || '',
+                    bankAccount: q.bankAccount || '',
+                    sellerSignName: q.sellerSignName || '',
+                    updatedAt: q.updatedAt || new Date().toISOString()
+                });
+                sellerChanged = true;
+            }
+        }
+    });
+
+    if (clientChanged) {
+        saveClientsToStorage(clients);
+        renderSavedClientSelect();
+    }
+    if (sellerChanged) {
+        saveSellersToStorage(sellers);
+        renderSavedSellerSelect();
+    }
+}
+
+// ── Profile Manager Modal Logic ──
+let activeProfileManagerType = 'client'; // 'client' | 'seller'
+
+function openProfileManagerModal(type = 'client') {
+    activeProfileManagerType = type;
+    const modal = document.getElementById('profile-manager-modal');
+    const title = document.getElementById('profile-manager-title');
+    const subtitle = document.getElementById('profile-manager-subtitle');
+    const clearBtn = document.getElementById('btn-clear-all-profiles');
+
+    if (type === 'client') {
+        if (title) title.textContent = 'จัดการรายชื่อลูกค้าที่บันทึกไว้';
+        if (subtitle) subtitle.textContent = 'รายชื่อลูกค้าที่ระบบจำไว้สำหรับเลือกใช้งานด่วน';
+        if (clearBtn) clearBtn.innerHTML = '<i class="bi bi-trash3 me-1"></i> ลบลูกค้าทั้งหมด';
+    } else {
+        if (title) title.textContent = 'จัดการรายชื่อผู้ออกเอกสาร (ผู้ขาย)';
+        if (subtitle) subtitle.textContent = 'รายชื่อร้านค้า/ผู้ขายที่ระบบจำไว้สำหรับเลือกใช้งานด่วน';
+        if (clearBtn) clearBtn.innerHTML = '<i class="bi bi-trash3 me-1"></i> ลบผู้ขายทั้งหมด';
+    }
+
+    renderProfileManagerList();
+
+    if (modal) modal.classList.add('active');
+}
+
+function closeProfileManagerModal() {
+    const modal = document.getElementById('profile-manager-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+function closeProfileManagerOnBackdrop(e) {
+    if (e.target && e.target.id === 'profile-manager-modal') {
+        closeProfileManagerModal();
+    }
+}
+
+function renderProfileManagerList() {
+    const container = document.getElementById('profile-manager-list');
+    if (!container) return;
+
+    const isClient = (activeProfileManagerType === 'client');
+    const list = isClient ? getSavedClients() : getSavedSellers();
+
+    if (list.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-4 text-secondary">
+                <i class="bi bi-inbox fs-2 mb-2 d-block"></i>
+                ยังไม่มีข้อมูล${isClient ? 'ลูกค้า' : 'ผู้ขาย'}ที่บันทึกไว้
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = list.map(item => `
+        <div class="profile-manager-item">
+            <div class="profile-manager-item-info">
+                <div class="profile-manager-item-name">${escapeHtml(item.name)}</div>
+                <div class="profile-manager-item-sub">
+                    ${item.phone ? `📞 ${escapeHtml(item.phone)}` : ''}
+                    ${item.taxId ? ` • ภาษี: ${escapeHtml(item.taxId)}` : ''}
+                    ${item.address ? ` • 📍 ${escapeHtml(item.address.substring(0, 45))}...` : ''}
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-1">
+                <button type="button" class="btn btn-sm btn-outline-info py-1 px-2" title="เลือกใช้นี้ทันที" onclick="selectProfileAndClose('${item.id}')">
+                    <i class="bi bi-check-lg"></i> เลือก
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-warning py-1 px-2" title="แก้ไขข้อมูลนี้" onclick="openProfileEditorModal('${item.id}')">
+                    <i class="bi bi-pencil-square"></i> แก้ไข
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger py-1 px-2" title="ลบรายการนี้" onclick="deleteSavedProfile('${item.id}')">
+                    <i class="bi bi-trash3"></i>
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function selectProfileAndClose(id) {
+    if (activeProfileManagerType === 'client') {
+        applySelectedClient(id);
+        const sel = document.getElementById('select-saved-client');
+        if (sel) sel.value = id;
+    } else {
+        applySelectedSeller(id);
+        const sel = document.getElementById('select-saved-seller');
+        if (sel) sel.value = id;
+    }
+    closeProfileManagerModal();
+}
+
+function openProfileEditorModal(id) {
+    const isClient = (activeProfileManagerType === 'client');
+    const list = isClient ? getSavedClients() : getSavedSellers();
+    const item = list.find(x => x.id === id);
+    if (!item) return;
+
+    const modal = document.getElementById('profile-editor-modal');
+    const title = document.getElementById('profile-editor-title');
+    const subtitle = document.getElementById('profile-editor-subtitle');
+    const contactGroup = document.getElementById('group-edit-contact');
+    const sellerGroup = document.getElementById('group-edit-seller-fields');
+    const nameLabel = document.getElementById('lbl-edit-name');
+
+    if (isClient) {
+        if (title) title.textContent = 'แก้ไขข้อมูลลูกค้า';
+        if (subtitle) subtitle.textContent = 'แก้ไขข้อมูลของลูกค้าที่บันทึกไว้ในระบบ';
+        if (nameLabel) nameLabel.innerHTML = 'ชื่อบริษัท / โรงเรียน / ลูกค้า <span class="text-danger">*</span>';
+        if (contactGroup) contactGroup.classList.remove('d-none');
+        if (sellerGroup) sellerGroup.classList.add('d-none');
+    } else {
+        if (title) title.textContent = 'แก้ไขข้อมูลผู้ออกเอกสาร (ผู้ขาย)';
+        if (subtitle) subtitle.textContent = 'แก้ไขข้อมูลร้านค้า/บริษัทผู้ออกเอกสาร';
+        if (nameLabel) nameLabel.innerHTML = 'ชื่อร้านค้า / บริษัท / ผู้ออกเอกสาร <span class="text-danger">*</span>';
+        if (contactGroup) contactGroup.classList.add('d-none');
+        if (sellerGroup) sellerGroup.classList.remove('d-none');
+    }
+
+    setVal('edit-profile-id', item.id);
+    setVal('edit-profile-name', item.name || '');
+    setVal('edit-profile-contact', item.contactPerson || '');
+    setVal('edit-profile-tax', item.taxId || '');
+    setVal('edit-profile-branch', item.branch || 'สำนักงานใหญ่');
+    setVal('edit-profile-phone', item.phone || '');
+    setVal('edit-profile-email', item.email || '');
+    setVal('edit-profile-address', item.address || '');
+    setVal('edit-profile-bank', item.bankAccount || '');
+    setVal('edit-profile-sign', item.sellerSignName || '');
+
+    if (modal) modal.classList.add('active');
+}
+
+function closeProfileEditorModal() {
+    const modal = document.getElementById('profile-editor-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+function closeProfileEditorOnBackdrop(e) {
+    if (e.target && e.target.id === 'profile-editor-modal') {
+        closeProfileEditorModal();
+    }
+}
+
+function saveEditedProfile() {
+    const id = getVal('edit-profile-id');
+    const name = getVal('edit-profile-name').trim();
+    if (!name) {
+        if (typeof showToast === 'function') {
+            showToast('warning', 'กรุณาระบุชื่อ', 'โปรดระบุชื่อบริษัท/ร้านค้าก่อนบันทึก', 2500);
+        } else {
+            alert('กรุณาระบุชื่อก่อนบันทึก');
+        }
+        return;
+    }
+
+    const isClient = (activeProfileManagerType === 'client');
+    if (isClient) {
+        let clients = getSavedClients();
+        const idx = clients.findIndex(c => c.id === id);
+        if (idx >= 0) {
+            clients[idx].name = name;
+            clients[idx].contactPerson = getVal('edit-profile-contact');
+            clients[idx].taxId = getVal('edit-profile-tax');
+            clients[idx].branch = getVal('edit-profile-branch') || 'สำนักงานใหญ่';
+            clients[idx].phone = getVal('edit-profile-phone');
+            clients[idx].email = getVal('edit-profile-email');
+            clients[idx].address = getVal('edit-profile-address');
+            clients[idx].updatedAt = new Date().toISOString();
+            saveClientsToStorage(clients);
+            renderSavedClientSelect(id);
+
+            // If this client is currently selected in form, refresh it
+            const currentSelected = document.getElementById('select-saved-client');
+            if (currentSelected && currentSelected.value === id) {
+                applySelectedClient(id);
+            }
+        }
+    } else {
+        let sellers = getSavedSellers();
+        const idx = sellers.findIndex(s => s.id === id);
+        if (idx >= 0) {
+            sellers[idx].name = name;
+            sellers[idx].taxId = getVal('edit-profile-tax');
+            sellers[idx].branch = getVal('edit-profile-branch') || 'สำนักงานใหญ่';
+            sellers[idx].phone = getVal('edit-profile-phone');
+            sellers[idx].email = getVal('edit-profile-email');
+            sellers[idx].address = getVal('edit-profile-address');
+            sellers[idx].bankAccount = getVal('edit-profile-bank');
+            sellers[idx].sellerSignName = getVal('edit-profile-sign');
+            sellers[idx].updatedAt = new Date().toISOString();
+            saveSellersToStorage(sellers);
+            renderSavedSellerSelect(id);
+
+            // If this seller is currently selected in form, refresh it
+            const currentSelected = document.getElementById('select-saved-seller');
+            if (currentSelected && currentSelected.value === id) {
+                applySelectedSeller(id);
+            }
+        }
+    }
+
+    renderProfileManagerList();
+    closeProfileEditorModal();
+
+    if (typeof showToast === 'function') {
+        showToast('success', 'บันทึกการแก้ไขแล้ว', `อัปเดตข้อมูลของ "${name}" เรียบร้อย`, 2500);
+    }
+}
+
+function deleteSavedProfile(id) {
+    if (activeProfileManagerType === 'client') {
+        let clients = getSavedClients().filter(c => c.id !== id);
+        saveClientsToStorage(clients);
+        renderSavedClientSelect();
+    } else {
+        let sellers = getSavedSellers().filter(s => s.id !== id);
+        saveSellersToStorage(sellers);
+        renderSavedSellerSelect();
+    }
+    renderProfileManagerList();
+    if (typeof showToast === 'function') {
+        showToast('info', 'ลบรายการแล้ว', 'ลบรายชื่อออกจากระบบเรียบร้อย', 2000);
+    }
+}
+
+function clearAllProfilesOfType() {
+    const isClient = (activeProfileManagerType === 'client');
+    const label = isClient ? 'ลูกค้า' : 'ผู้ขาย';
+    if (!confirm(`คุณต้องการลบรายชื่อ${label}ที่บันทึกไว้ทั้งหมดใช่หรือไม่?`)) return;
+
+    if (isClient) {
+        saveClientsToStorage([]);
+        renderSavedClientSelect();
+    } else {
+        saveSellersToStorage([]);
+        renderSavedSellerSelect();
+    }
+    renderProfileManagerList();
+    if (typeof showToast === 'function') {
+        showToast('info', 'ลบทั้งหมดแล้ว', `ลบรายการ${label}ทั้งหมดเรียบร้อย`, 2000);
+    }
 }

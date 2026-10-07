@@ -98,8 +98,7 @@
         <div class="a4-wrapper">
             <div class="a4-sheet theme-terracotta" id="a4-sheet">
 
-                <!-- Watermark -->
-                <div class="a4-watermark" id="a4-watermark">RECEIPT</div>
+                <!-- Watermark removed as per user request -->
 
                 <!-- Abstract Organic Watermark Shapes -->
                 <div class="receipt-shape-top"></div>
@@ -164,34 +163,34 @@
                 <table class="receipt-totals-table">
                     <tbody>
                         <tr>
-                            <td class="text-end fw-bold" style="border-right: 1.5px solid var(--tc-border); padding-right: 24px; color: var(--tc-primary-dark);">
+                            <td class="text-end fw-bold" style="width: 50%; border-right: 1.5px solid var(--tc-border); padding-right: 24px; color: var(--tc-primary-dark);">
                                 จำนวนเงินรวมทั้งสิ้น
                             </td>
-                            <td style="width: 110px;" class="text-center font-mono fw-bold" id="tc-subtotal">
+                            <td style="width: 50%;" class="text-center font-mono fw-bold" id="tc-subtotal">
                                 0.-
                             </td>
                         </tr>
                         <tr>
-                            <td style="width: 50%; text-align: center; font-weight: 700; color: var(--tc-primary-dark); border-right: 1.5px solid var(--tc-border);">
+                            <td class="text-end fw-bold" style="width: 50%; border-right: 1.5px solid var(--tc-border); padding-right: 24px; color: var(--tc-primary-dark);">
                                 จำนวนเงินรวมทั้งสิ้น
                             </td>
-                            <td class="bg-peach-highlight" id="tc-baht-text" style="color: var(--tc-primary-dark); font-weight: 700; font-size: 0.85rem;">
+                            <td style="width: 50%;" class="bg-peach-highlight text-center" id="tc-baht-text" style="color: var(--tc-primary-dark); font-weight: 700; font-size: 0.85rem;">
                                 ศูนย์บาทถ้วน
                             </td>
                         </tr>
                         <tr id="tc-wht-row">
-                            <td class="text-end fw-bold" style="border-right: 1.5px solid var(--tc-border); padding-right: 24px; color: var(--tc-primary-dark);">
+                            <td class="text-end fw-bold" style="width: 50%; border-right: 1.5px solid var(--tc-border); padding-right: 24px; color: var(--tc-primary-dark);">
                                 ภาษีถูกหัก ณ ที่จ่าย <span id="tc-wht-rate"></span>
                             </td>
-                            <td class="text-center font-mono" id="tc-wht-amount" style="width: 110px;">
+                            <td style="width: 50%;" class="text-center font-mono" id="tc-wht-amount">
                                 
                             </td>
                         </tr>
                         <tr>
-                            <td class="text-end fw-bold" style="border-right: 1.5px solid var(--tc-border); padding-right: 24px; color: var(--tc-primary-dark); font-size: 0.95rem;">
+                            <td class="text-end fw-bold" style="width: 50%; border-right: 1.5px solid var(--tc-border); padding-right: 24px; color: var(--tc-primary-dark); font-size: 0.95rem;">
                                 จำนวนเงินที่ต้องชำระ
                             </td>
-                            <td class="text-center font-mono fw-bold" style="color: var(--tc-primary-dark); font-size: 0.95rem; width: 110px;" id="tc-grand-total">
+                            <td style="width: 50%; color: var(--tc-primary-dark); font-size: 0.95rem;" class="text-center font-mono fw-bold" id="tc-grand-total">
                                 0.-
                             </td>
                         </tr>
@@ -414,24 +413,24 @@
 
                     return `
                         <tr>
-                            <td class="text-center" style="width: 48px; font-weight: 600; color: var(--tc-primary);">
-                                ${idx + 1}.
+                            <td class="text-center" style="width: 48px;">
+                                <div class="receipt-item-idx">${idx + 1}.</div>
                             </td>
                             <td>
-                                <div class="item-title-terracotta">${escapeHtml(item.name || '—')}</div>
+                                <div class="item-title-terracotta">${escapeHtml(item.name ? item.name.trim() : '—')}</div>
                                 <div class="item-visual-block">
                                     ${item.img ? `<img src="${item.img}" class="item-thumbnail-img" alt="${escapeHtml(item.name)}">` : ''}
                                     ${specsHtml ? `<div class="item-specs-list">${specsHtml}</div>` : ''}
                                 </div>
                             </td>
-                            <td class="text-center font-mono" style="width: 75px; font-size: 0.95rem;">
-                                ${item.qty}
+                            <td class="text-center font-mono" style="width: 75px;">
+                                <div class="receipt-item-val">${item.qty}</div>
                             </td>
-                            <td class="text-center font-mono" style="width: 100px; font-size: 0.95rem;">
-                                ${formatCurrencySuffix(item.price)}
+                            <td class="text-center font-mono" style="width: 100px;">
+                                <div class="receipt-item-val">${formatCurrencySuffix(item.price)}</div>
                             </td>
-                            <td class="text-center font-mono fw-bold" style="width: 110px; font-size: 0.95rem;">
-                                ${formatCurrencySuffix(lineTotal)}
+                            <td class="text-center font-mono fw-bold" style="width: 110px;">
+                                <div class="receipt-item-val fw-bold">${formatCurrencySuffix(lineTotal)}</div>
                             </td>
                         </tr>
                     `;
@@ -482,11 +481,11 @@
                 setText('a4-client-sign-date', formatDateThai(q.clientSignDate));
             }
 
-            // Watermark
+            // Watermark removed as per user request
             const watermark = document.getElementById('a4-watermark');
             if (watermark) {
-                watermark.textContent = q.status;
-                watermark.className = `a4-watermark ${q.status.toLowerCase()}`;
+                watermark.textContent = '';
+                watermark.style.display = 'none';
             }
         }
 
@@ -695,33 +694,53 @@
             if (isNaN(amount) || amount === null) return '0.-';
             return Number(amount).toLocaleString('th-TH') + '.-';
         }
-        function formatDateThai(isoDateStr) {
-            if (!isoDateStr) return '—';
-            try {
-                const parts = isoDateStr.split('-');
+        function parseDateParts(dateStr) {
+            if (!dateStr) return null;
+            let s = String(dateStr).trim();
+            if (!s) return null;
+
+            let y = 0, m = 0, d = 0;
+            if (s.includes('-')) {
+                const parts = s.split('-');
                 if (parts.length === 3) {
-                    const y = parseInt(parts[0], 10) > 2500 ? parseInt(parts[0], 10) : parseInt(parts[0], 10) + 543;
-                    const m = parseInt(parts[1], 10);
-                    const d = parseInt(parts[2], 10);
-                    const thMonths = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
-                    return `${d} ${thMonths[m]} ${y}`;
+                    y = parseInt(parts[0], 10);
+                    m = parseInt(parts[1], 10);
+                    d = parseInt(parts[2], 10);
                 }
-            } catch(e) {}
-            return isoDateStr;
+            } else if (s.includes('/')) {
+                const parts = s.split('/');
+                if (parts.length === 3) {
+                    let p1 = parseInt(parts[0], 10);
+                    let p2 = parseInt(parts[1], 10);
+                    let p3 = parseInt(parts[2], 10);
+                    if (p1 > 1000) {
+                        y = p1; m = p2; d = p3;
+                    } else {
+                        d = p1; m = p2; y = p3;
+                    }
+                }
+            }
+
+            if (!y || !m || !d || isNaN(y) || isNaN(m) || isNaN(d)) return null;
+
+            const yearBE = y > 2400 ? y : y + 543;
+            const yearCE = y > 2400 ? y - 543 : y;
+            return { yearBE, yearCE, month: m, day: d };
         }
+
+        function formatDateThai(isoDateStr) {
+            const p = parseDateParts(isoDateStr);
+            if (!p) return '—';
+            const thMonths = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+            return `${p.day} ${thMonths[p.month] || ''} ${p.yearBE}`;
+        }
+
         function formatDateCustom(isoDateStr) {
-            if (!isoDateStr) return '—';
-            try {
-                const parts = isoDateStr.split('-');
-                if (parts.length === 3) {
-                    let y = parseInt(parts[0], 10);
-                    if (y < 2500) y += 543;
-                    const m = String(parts[1]).padStart(2, '0');
-                    const d = String(parts[2]).padStart(2, '0');
-                    return `${d}/${m}/${y}`;
-                }
-            } catch(e) {}
-            return isoDateStr;
+            const p = parseDateParts(isoDateStr);
+            if (!p) return '—';
+            const m = String(p.month).padStart(2, '0');
+            const d = String(p.day).padStart(2, '0');
+            return `${d}/${m}/${p.yearBE}`;
         }
         function getStatusLabel(status) {
             switch (status) {
