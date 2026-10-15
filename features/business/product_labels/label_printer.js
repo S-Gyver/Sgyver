@@ -1277,14 +1277,16 @@ function printLabelsViaIsolatedIframe(stickersHtmlList) {
                     color: #000000 !important;
                     box-sizing: border-box !important;
                     page-break-inside: avoid !important;
-                    page-break-after: always !important;
-                    break-after: page !important;
                     margin: 0 auto !important;
                     overflow: visible !important;
                     display: flex !important;
                     flex-direction: column !important;
                     justify-content: flex-start !important;
                     border: none !important;
+                }
+                .print-page-sticker:not(:last-child) {
+                    page-break-after: always !important;
+                    break-after: page !important;
                 }
                 .size-50x30 {
                     width: 50mm !important;
@@ -1531,11 +1533,15 @@ function printLabelsViaIsolatedIframe(stickersHtmlList) {
                 <div class="print-page-sticker ${stickerClass}">
                     ${html}
                     ${tearFeedMm > 0 ? `
-                        <div class="tear-feed-spacer" style="height: ${tearFeedMm}mm !important; min-height: ${tearFeedMm}mm !important;">
-                            <div class="tear-feed-blank" style="height: ${isPrintCutGuide ? Math.max(1, tearFeedMm - 4) : tearFeedMm}mm !important;">&nbsp;</div>
+                        <div class="tear-feed-spacer" style="height: ${tearFeedMm}mm !important; min-height: ${tearFeedMm}mm !important; display: flex !important; flex-direction: column !important; justify-content: space-between !important; box-sizing: border-box !important;">
+                            <div class="tear-feed-blank" style="height: ${isPrintCutGuide ? Math.max(1, tearFeedMm - 4) : Math.max(1, tearFeedMm - 1)}mm !important;">&nbsp;</div>
                             ${isPrintCutGuide ? `
                                 <div class="tear-cut-guide">- - - ✂ รอยฉีก (TEAR HERE) ✂ - - -</div>
-                            ` : ''}
+                            ` : `
+                                <div class="tear-feed-anchor" style="height: 1px !important; width: 100% !important; display: flex !important; justify-content: flex-end !important; line-height: 1px !important; font-size: 1px !important; overflow: hidden !important;">
+                                    <span style="display: inline-block !important; width: 3px !important; height: 1px !important; background-color: #000000 !important;"></span>
+                                </div>
+                            `}
                         </div>
                     ` : ''}
                 </div>
