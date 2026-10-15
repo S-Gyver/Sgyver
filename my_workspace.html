@@ -842,6 +842,36 @@
                             <div class="launchpad-desc">นำเข้า Excel ออเดอร์ พิมพ์ใบปะหน้า 100x150mm ตัดสต็อก (VIP Lv.4)</div>
                         </div>
                     </div>
+                    <div class="launchpad-app-item" data-required-level="4" draggable="true"
+                        ondragstart="onLaunchpadDragStart(event, 'app_product_labels')" onclick="launchTool('app_product_labels')"
+                        data-app-name="พิมพ์ฉลากเสื้อผ้า Product Label Printer บาร์โค้ด QR Code สแกนด่วน สติกเกอร์ความร้อน PeriPage 57mm"
+                        title="พิมพ์ฉลากเสื้อผ้า: บันทึกข้อมูล สแกนด่วน Auto-Print สติกเกอร์ความร้อน PeriPage 57mm (VIP Lv.4)">
+                        <button type="button" class="launchpad-pin-btn" onclick="togglePinTool(event, 'app_product_labels')"
+                            title="ปักหมุดที่ Dock"><i class="bi bi-pin-angle-fill"></i></button>
+                        <span class="launchpad-lock-pill pill-vip pill-lv4"><i class="bi bi-star-fill"></i> VIP Lv.4</span>
+                        <div class="launchpad-icon"
+                            style="background: linear-gradient(145deg, #0ea5e9, #2563eb, #1d4ed8);"><i
+                                class="bi bi-upc-scan"></i></div>
+                        <div class="launchpad-content">
+                            <div class="launchpad-title">พิมพ์ฉลากเสื้อผ้า</div>
+                            <div class="launchpad-desc">ระบบพิมพ์บาร์โค้ด สแกนด่วน พิมพ์สติกเกอร์ความร้อน PeriPage 57mm (VIP Lv.4)</div>
+                        </div>
+                    </div>
+                    <div class="launchpad-app-item" data-required-level="4" draggable="true"
+                        ondragstart="onLaunchpadDragStart(event, 'app_garment_inventory')" onclick="launchTool('app_garment_inventory')"
+                        data-app-name="คลังสินค้าเสื้อผ้า Garment Inventory จัดการสต็อก รับเข้า ตัดจ่าย ตรวจนับสต็อก ชั้นวาง"
+                        title="คลังสินค้าเสื้อผ้า: ระบบจัดการสต็อก รับเข้า-เบิกออก ตรวจนับสต็อก รายงานสินค้าใกล้หมด (VIP Lv.4)">
+                        <button type="button" class="launchpad-pin-btn" onclick="togglePinTool(event, 'app_garment_inventory')"
+                            title="ปักหมุดที่ Dock"><i class="bi bi-pin-angle-fill"></i></button>
+                        <span class="launchpad-lock-pill pill-vip pill-lv4"><i class="bi bi-star-fill"></i> VIP Lv.4</span>
+                        <div class="launchpad-icon"
+                            style="background: linear-gradient(145deg, #10b981, #059669, #047857);"><i
+                                class="bi bi-boxes"></i></div>
+                        <div class="launchpad-content">
+                            <div class="launchpad-title">คลังสินค้าเสื้อผ้า</div>
+                            <div class="launchpad-desc">ระบบจัดการสต็อก รับเข้า-ตัดจ่าย รายงานสินค้าใกล้หมด (VIP Lv.4)</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1273,7 +1303,9 @@
 
         // ⭐ Tools restricted to VIP Lv.4+ (E-Commerce & Orders):
         const VIP_LV4_TOOLS = new Set([
-            'app_shopee_orders'
+            'app_shopee_orders',
+            'app_product_labels',
+            'app_garment_inventory'
         ]);
 
         // ⭐ Tools restricted to VIP Lv.3+ (Teacher Admin / Business):
@@ -2051,6 +2083,8 @@
             'app_profile': { id: 'app_profile', title: 'โปรไฟล์ครู', icon: 'bi bi-person-gear', colorClass: 'text-secondary', type: 'link', url: 'auth/profile/profile.html' },
             'app_quotation': { id: 'app_quotation', title: 'ใบเสนอราคา', icon: 'bi bi-receipt-cutoff', colorClass: 'text-primary', type: 'link', url: 'features/business/quotation/quotation.html' },
             'app_shopee_orders': { id: 'app_shopee_orders', title: 'Shopee Orders', icon: 'bi bi-box-seam-fill', colorClass: 'text-warning', type: 'link', url: 'features/business/shopee_orders/shopee_orders.html' },
+            'app_product_labels': { id: 'app_product_labels', title: 'พิมพ์ฉลากเสื้อผ้า', icon: 'bi bi-upc-scan', colorClass: 'text-info', type: 'link', url: 'features/business/product_labels/label_printer.html' },
+            'app_garment_inventory': { id: 'app_garment_inventory', title: 'คลังสินค้าเสื้อผ้า', icon: 'bi bi-boxes', colorClass: 'text-success', type: 'link', url: 'features/business/garment_inventory/inventory.html' },
             'app_change_pw': { id: 'app_change_pw', title: 'เปลี่ยนรหัสผ่าน', icon: 'bi bi-shield-lock', colorClass: 'text-warning', type: 'link', url: 'auth/change_password/change_password.html' }
         };
 

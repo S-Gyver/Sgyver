@@ -1,0 +1,466 @@
+/* ==============================================================================
+   🏷️ S-Gyver Garment Product Label Studio - CSS Style & Thermal Print Engine
+   ============================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Kanit:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+    --label-width: 50mm;
+    --label-height: 30mm;
+    --primary-blue: #2563eb;
+    --primary-indigo: #4f46e5;
+    --surface-dark: #0f172a;
+    --surface-card: #ffffff;
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    --border-color: #e2e8f0;
+}
+
+body {
+    font-family: 'Prompt', 'Kanit', 'Sarabun', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: #f8fafc;
+    color: var(--text-primary);
+    min-height: 100vh;
+}
+
+/* Glassmorphism & Modern Card Shadows */
+.glass-panel {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.03);
+}
+
+.scanner-card {
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    box-shadow: 0 10px 25px -5px rgba(30, 27, 75, 0.3);
+}
+
+.scanner-input {
+    font-family: 'Fira Code', monospace;
+    font-size: 1.35rem;
+    letter-spacing: 0.08em;
+    background: rgba(15, 23, 42, 0.85);
+    border: 2px solid #6366f1;
+    color: #38bdf8;
+    box-shadow: 0 0 15px rgba(99, 102, 241, 0.35);
+    transition: all 0.2s ease;
+}
+
+.scanner-input:focus {
+    outline: none;
+    border-color: #38bdf8;
+    box-shadow: 0 0 22px rgba(56, 189, 248, 0.55);
+    background: rgba(15, 23, 42, 0.95);
+}
+
+/* Scanner Pulse Indicator */
+@keyframes pulse-ring {
+    0% { transform: scale(0.95); opacity: 0.8; }
+    50% { transform: scale(1.08); opacity: 0.3; }
+    100% { transform: scale(0.95); opacity: 0.8; }
+}
+
+.scan-pulse {
+    animation: pulse-ring 2.2s infinite ease-in-out;
+}
+
+/* Sticker Preview Styling on Screen */
+.preview-stage-container {
+    background: radial-gradient(circle at center, #f1f5f9 0%, #e2e8f0 100%);
+    border: 2px dashed #cbd5e1;
+    border-radius: 16px;
+    padding: 24px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 260px;
+    position: relative;
+}
+
+/* Physical Label Box */
+.thermal-label-sticker {
+    background: #ffffff;
+    box-sizing: border-box;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08);
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    overflow: hidden;
+    color: #000000;
+    font-family: 'Prompt', 'Kanit', 'Sarabun', sans-serif;
+    position: relative;
+    user-select: none;
+    transition: width 0.25s ease, height 0.25s ease;
+}
+
+/* 50mm x 30mm Dimensions */
+.size-50x30 {
+    width: 50mm;
+    height: 30mm;
+    padding: 1.8mm 2.2mm 1.5mm 2.2mm;
+    font-size: 8.5pt;
+    line-height: 1.15;
+}
+
+/* 70mm x 50mm Dimensions */
+.size-70x50 {
+    width: 70mm;
+    height: 50mm;
+    padding: 2.8mm 3.2mm 2.5mm 3.2mm;
+    font-size: 11pt;
+    line-height: 1.25;
+}
+
+/* Elements inside thermal sticker */
+.sticker-field-lbl {
+    font-size: 5.5pt;
+    font-weight: 600;
+    color: #111827;
+    margin-right: 2px;
+    letter-spacing: -0.01em;
+    display: inline;
+}
+
+.sticker-line-item {
+    display: flex;
+    align-items: baseline;
+    min-width: 0;
+}
+
+.sticker-title-wrap {
+    margin-top: 1px;
+    line-height: 1.15;
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
+}
+
+.sticker-title-wrap .sticker-field-lbl {
+    font-size: 6.8pt;
+    font-weight: 700;
+    color: #000000;
+    white-space: nowrap;
+}
+
+.sticker-distributor {
+    font-size: 5.5pt;
+    font-weight: 600;
+    color: #111827;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.size-70x50 .sticker-distributor {
+    font-size: 7.5pt;
+}
+
+.sticker-price-badge {
+    font-family: 'Kanit', sans-serif;
+    font-weight: 700;
+    font-size: 7.5pt;
+    background: #000;
+    color: #fff;
+    padding: 0.5px 3.5px;
+    border-radius: 2px;
+    white-space: nowrap;
+}
+
+.size-70x50 .sticker-price-badge {
+    font-size: 10.5pt;
+    padding: 1px 6px;
+}
+
+.sticker-title {
+    font-weight: 700;
+    color: #000;
+    font-size: 7.5pt;
+    line-height: 1.15;
+    margin-top: 1px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
+}
+
+.size-70x50 .sticker-title {
+    font-size: 10pt;
+    line-height: 1.2;
+    -webkit-line-clamp: 2;
+}
+
+.sticker-variant {
+    font-size: 6.5pt;
+    font-weight: 600;
+    color: #1f2937;
+    margin-top: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.size-70x50 .sticker-variant {
+    font-size: 9pt;
+}
+
+.sticker-barcode-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1px;
+    overflow: hidden;
+}
+
+.sticker-barcode-wrapper svg,
+.sticker-barcode-wrapper canvas,
+.sticker-barcode-wrapper img {
+    max-width: 100% !important;
+    display: block;
+    margin: 0 auto;
+}
+
+.size-50x30 .sticker-barcode-wrapper svg {
+    height: 10.5mm !important;
+}
+
+.size-70x50 .sticker-barcode-wrapper svg {
+    height: 18mm !important;
+}
+
+.sticker-care {
+    font-size: 5pt;
+    color: #374151;
+    line-height: 1.15;
+    margin-top: 1px;
+    border-top: 0.5px dashed #9ca3af;
+    padding-top: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.size-70x50 .sticker-care {
+    font-size: 7pt;
+    line-height: 1.25;
+    padding-top: 2px;
+}
+
+/* Care icons line */
+.care-symbol-row {
+    display: flex;
+    gap: 3px;
+    font-size: 6pt;
+    color: #111;
+    margin-top: 1px;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* PeriPage A6 / 57mm Thermal Roll Paper (Standard Thai Garment Label) */
+.size-57roll {
+    width: 57mm;
+    max-width: 57mm;
+    min-height: 48mm;
+    height: auto;
+    padding: 2.5mm 5.5mm 4mm 5.5mm; /* ระยะปลอดภัย 5.5mm ซ้าย-ขวา ป้องกันตัวอักษรตกขอบหัวพิมพ์ PeriPage (หัวพิมพ์จริง 48mm) */
+    font-size: 6.2pt;
+    line-height: 1.28;
+    font-family: 'Kanit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #000000;
+    background: #ffffff;
+    box-sizing: border-box;
+}
+
+.size-57roll .sticker-line-brand {
+    font-size: 7.8pt;
+    line-height: 1.25;
+    margin-bottom: 2.5px;
+    padding-bottom: 1px;
+}
+
+.size-57roll .sticker-line-brand .sticker-tag-lbl {
+    font-size: 8.2pt;
+    font-weight: 800;
+}
+
+.size-57roll .sticker-val-brand {
+    font-size: 8.4pt;
+    font-weight: 800;
+}
+
+.size-57roll .sticker-tag-lbl {
+    font-weight: 700;
+    color: #000000;
+    margin-right: 2px;
+    display: inline;
+}
+
+.size-57roll .sticker-val {
+    color: #000000;
+    font-weight: 500;
+    display: inline;
+}
+
+.size-57roll .sticker-line {
+    margin-bottom: 1.8px;
+    line-height: 1.25;
+}
+
+.size-57roll .sticker-line-care {
+    margin-bottom: 2px;
+    line-height: 1.22;
+    font-size: 5.6pt;
+    text-align: justify;
+}
+
+.size-57roll .sticker-line-distributor {
+    margin-bottom: 1.8px;
+    line-height: 1.22;
+    font-size: 5.9pt;
+}
+
+.size-57roll .sticker-val-address {
+    font-size: 5.2pt;
+    line-height: 1.18;
+    padding-left: 2px;
+    margin-top: 1px;
+}
+
+.size-57roll .sticker-line-price {
+    margin-top: 1.8px;
+    margin-bottom: 2.5px;
+    font-size: 6.8pt;
+}
+
+.size-57roll .sticker-barcode-section {
+    border-top: 0.5px dashed #000000;
+    padding-top: 1.5px;
+    margin-top: 2px;
+}
+
+.size-57roll .sticker-barcode-wrapper svg {
+    height: 9mm !important;
+    max-width: 44mm !important;
+}
+
+/* Tear-off feed margin (เว้นระยะตัดฉลาก 1.0 ซม. ไม่ให้ติดฟันปลาฉีกกระดาษ) */
+.tear-feed-spacer {
+    height: 10mm !important;
+    min-height: 10mm !important;
+    width: 100% !important;
+    display: block !important;
+    clear: both !important;
+    line-height: 5mm !important;
+}
+
+/* ==============================================================================
+   🖨️ PRINT ENGINE CSS (@media print)
+   ============================================================================== */
+@page {
+    margin: 0mm !important;
+}
+
+@media print {
+    /* Auto-fit paper geometry */
+    @page {
+        margin: 0mm !important;
+        size: auto;
+    }
+
+    /* Reset global browser margins & paddings */
+    html, body {
+        width: 100% !important;
+        height: auto !important;
+        margin: 0mm !important;
+        padding: 0mm !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+        overflow: visible !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    /* Hide interactive elements when printing */
+    header,
+    nav,
+    aside,
+    footer,
+    #appHeader,
+    #sectionForm,
+    #sectionScanner,
+    #recentTableContainer,
+    #supabaseModal,
+    #batchPrintModal,
+    .no-print,
+    .preview-toolbar {
+        display: none !important;
+    }
+
+    .thermal-label-sticker {
+        box-shadow: none !important;
+        border: none !important;
+        border-radius: 0 !important;
+        margin: 0 auto !important;
+        page-break-inside: avoid !important;
+        page-break-after: always !important;
+        break-inside: avoid !important;
+        overflow: hidden !important;
+    }
+
+    .size-50x30 {
+        width: 50mm !important;
+        height: 30mm !important;
+        max-width: 50mm !important;
+        max-height: 30mm !important;
+        padding: 1.5mm 2mm 1.2mm 2mm !important;
+    }
+
+    .size-57roll {
+        width: 57mm !important;
+        max-width: 57mm !important;
+        padding: 2.5mm 5.5mm 0mm 5.5mm !important;
+    }
+
+    .size-70x50 {
+        width: 70mm !important;
+        height: 50mm !important;
+        max-width: 70mm !important;
+        max-height: 50mm !important;
+        padding: 2.5mm 3mm 2.2mm 3mm !important;
+    }
+
+    .sticker-distributor {
+        color: #000 !important;
+    }
+
+    .sticker-price-badge {
+        background: #000 !important;
+        color: #fff !important;
+        border: 0.5px solid #000 !important;
+    }
+
+    .sticker-care {
+        color: #000 !important;
+        border-top: 0.5px solid #000 !important;
+    }
+}
+

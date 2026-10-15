@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบคลังสินค้า & สต็อกเสื้อผ้า (Garment Warehouse & Inventory) – S-Gyver</title>
+    <meta name="description" content="ระบบจัดการคลังสินค้าเสื้อผ้า ตรวจนับสต็อก รับเข้า-เบิกออก รายงานสินค้าใกล้หมด เชื่อมต่อ Supabase">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Kanit:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        prompt: ['Prompt', 'sans-serif'],
+                        kanit: ['Kanit', 'sans-serif'],
+                        fira: ['Fira Code', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Supabase JS Client & Shared Modules -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../../assets/js/supabaseClient.js"></script>
+
+    <style>
+        body {
+            font-family: 'Prompt', 'Kanit', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+            min-height: 100vh;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased selection:bg-emerald-500 selection:text-white">
+
+    <!-- ====================================================
+         TOP HEADER BAR
+         ==================================================== -->
+    <header class="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40 px-4 py-2.5 transition-all">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            <!-- Brand & VIP Badge -->
+            <div class="flex items-center space-x-3">
+                <button type="button" onclick="handleBackToWorkspace()" 
+                    class="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors" title="กลับหน้า Workspace">
+                    <i class="bi bi-arrow-left text-lg"></i>
+                </button>
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-600 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
+                    <i class="bi bi-boxes text-xl"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-base sm:text-lg font-bold text-slate-900 font-kanit tracking-tight leading-tight">
+                            Garment Warehouse & Stock
+                        </h1>
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-600 border border-rose-200">
+                            <i class="bi bi-star-fill text-[10px]"></i> VIP Lv.4
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-500 hidden sm:block">ระบบจัดการคลังสินค้าเสื้อผ้า • รับเข้า-เบิกออก • ติดตามสต็อก Real-time</p>
+                </div>
+            </div>
+
+            <!-- Top Actions & Navigation -->
+            <div class="flex items-center flex-wrap gap-2 text-xs">
+                <!-- Jump to Label Printer Button -->
+                <a href="../product_labels/label_printer.html" 
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium transition-colors shadow-sm">
+                    <i class="bi bi-printer-fill"></i>
+                    <span>ระบบพิมพ์ฉลาก (Label Printer)</span>
+                </a>
+
+                <!-- Database Status Badge -->
+                <div id="dbStatusBadge" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 font-medium">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span id="dbStatusText">Supabase เชื่อมต่อแล้ว</span>
+                </div>
+
+                <!-- Config Modal Button -->
+                <button type="button" onclick="openSupabaseModal()" 
+                    class="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 transition-colors" title="ตั้งค่า Supabase URL & Key">
+                    <i class="bi bi-gear-fill"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ====================================================
+         TOP METRICS & WAREHOUSE KPI BANNER
+         ==================================================== -->
+    <div class="max-w-7xl mx-auto px-4 pt-5 pb-2">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+            <!-- Metric 1: Total SKUs -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">สินค้าทั้งหมดในระบบ</span>
+                    <span id="metricTotalSkus" class="text-2xl font-bold text-slate-900 font-mono">0</span>
+                    <span class="text-[10px] text-slate-400 block">รุ่น / รหัสสินค้า</span>
+                </div>
+                <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl">
+                    <i class="bi bi-tags-fill"></i>
+                </div>
+            </div>
+
+            <!-- Metric 2: Total Stock in Pcs -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">สต็อกเสื้อผ้ารวม</span>
+                    <span id="metricTotalStock" class="text-2xl font-bold text-emerald-600 font-mono">0</span>
+                    <span class="text-[10px] text-slate-400 block">ชิ้นในคลังสินค้า</span>
+                </div>
+                <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">
+                    <i class="bi bi-box-seam-fill"></i>
+                </div>
+            </div>
+
+            <!-- Metric 3: Low Stock Count -->
+            <div onclick="filterByTab('LOW')" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between cursor-pointer hover:border-amber-300 transition-colors group">
+                <div>
+                    <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block group-hover:text-amber-600">สินค้าใกล้หมดสต็อก</span>
+                    <span id="metricLowStock" class="text-2xl font-bold text-amber-500 font-mono">0</span>
+                    <span class="text-[10px] text-slate-400 block">คลิกเพื่อกรองดูรายการ</span>
+                </div>
+                <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                </div>
+            </div>
+
+            <!-- Metric 4: Inventory Valuation -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">มูลค่าสต็อกรวม</span>
+                    <span id="metricTotalValue" class="text-2xl font-bold text-teal-600 font-mono">฿0</span>
+                    <span class="text-[10px] text-slate-400 block">ราคาประเมินคลัง</span>
+                </div>
+                <div class="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center text-xl">
+                    <i class="bi bi-cash-stack"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====================================================
+         MAIN INVENTORY WORKSPACE
+         ==================================================== -->
+    <main class="max-w-7xl mx-auto px-4 py-4 space-y-4">
+        <!-- Action Toolbar & Search Filter -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <!-- Left: Filter Tabs -->
+            <div class="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
+                <button type="button" id="tabAll" onclick="filterByTab('ALL')" 
+                    class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-emerald-600 text-white shadow-sm flex items-center gap-1.5 whitespace-nowrap">
+                    <span>ทั้งหมด</span>
+                    <span id="tabCountAll" class="bg-white/20 px-1.5 py-0.2 rounded-full text-[10px]">0</span>
+                </button>
+                <button type="button" id="tabInStock" onclick="filterByTab('INSTOCK')" 
+                    class="px-3 py-1.5 rounded-xl text-xs font-medium transition-all text-slate-600 hover:bg-slate-100 flex items-center gap-1.5 whitespace-nowrap">
+                    <span>สต็อกปกติ</span>
+                </button>
+                <button type="button" id="tabLow" onclick="filterByTab('LOW')" 
+                    class="px-3 py-1.5 rounded-xl text-xs font-medium transition-all text-amber-600 hover:bg-amber-50 flex items-center gap-1.5 whitespace-nowrap">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <span>ใกล้หมด</span>
+                    <span id="tabCountLow" class="bg-amber-100 px-1.5 py-0.2 rounded-full text-[10px]">0</span>
+                </button>
+                <button type="button" id="tabOut" onclick="filterByTab('OUT')" 
+                    class="px-3 py-1.5 rounded-xl text-xs font-medium transition-all text-rose-600 hover:bg-rose-50 flex items-center gap-1.5 whitespace-nowrap">
+                    <i class="bi bi-x-circle"></i>
+                    <span>หมดสต็อก</span>
+                    <span id="tabCountOut" class="bg-rose-100 px-1.5 py-0.2 rounded-full text-[10px]">0</span>
+                </button>
+            </div>
+
+            <!-- Right: Search Input & Action Buttons -->
+            <div class="flex items-center flex-wrap gap-2">
+                <!-- Search Box -->
+                <div class="relative flex-1 sm:w-64">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                        <i class="bi bi-search text-xs"></i>
+                    </div>
+                    <input type="text" id="inventorySearch" placeholder="ค้นหา SKU, ชื่อสินค้า, ชั้นวาง..." 
+                        oninput="handleSearchInput()"
+                        class="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none">
+                </div>
+
+                <!-- History Audit Log Button -->
+                <button type="button" onclick="openHistoryModal()" 
+                    class="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium flex items-center gap-1.5 shadow-sm transition-colors">
+                    <i class="bi bi-clock-history text-slate-500"></i>
+                    <span class="hidden sm:inline">ประวัติรับ-เบิก</span>
+                </button>
+
+                <!-- Export CSV Button -->
+                <button type="button" onclick="exportInventoryToCSV()" 
+                    class="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium flex items-center gap-1.5 shadow-sm transition-colors">
+                    <i class="bi bi-file-earmark-spreadsheet text-emerald-600"></i>
+                    <span class="hidden sm:inline">ส่งออก CSV</span>
+                </button>
+
+                <!-- Quick Stock Movement Button -->
+                <button type="button" onclick="openStockMovementModal()" 
+                    class="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all active:scale-95">
+                    <i class="bi bi-arrow-left-right text-emerald-400"></i>
+                    <span>บันทึกรับ/เบิก</span>
+                </button>
+
+                <!-- Add New Product Button -->
+                <button type="button" onclick="openProductModal()" 
+                    class="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all active:scale-95">
+                    <i class="bi bi-plus-lg"></i>
+                    <span>เพิ่มสินค้า</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Master Inventory Table Card -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs text-slate-600">
+                    <thead class="bg-slate-50 text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 font-kanit">
+                        <tr>
+                            <th class="py-3 px-4">รหัส SKU</th>
+                            <th class="py-3 px-3">ชื่อสินค้า / ไซส์ & สี</th>
+                            <th class="py-3 px-3 text-center">ชั้นวาง (Rack)</th>
+                            <th class="py-3 px-3 text-center">สต็อกคงเหลือ</th>
+                            <th class="py-3 px-3 text-right">ราคาขาย</th>
+                            <th class="py-3 px-3 text-right">มูลค่ารวม</th>
+                            <th class="py-3 px-4 text-center">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryTableBody" class="divide-y divide-slate-100 font-sans">
+                        <tr>
+                            <td colspan="7" class="py-12 text-center text-slate-400">
+                                <div class="inline-block animate-spin rounded-full h-6 w-6 border-2 border-emerald-600 border-t-transparent mr-2"></div>
+                                กำลังโหลดคลังสินค้า...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Table Footer Pagination / Count -->
+            <div class="p-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between text-xs text-slate-500">
+                <div>
+                    แสดง <span id="showingCount" class="font-bold text-slate-700 font-mono">0</span> รายการ
+                </div>
+                <button type="button" onclick="loadInventory()" 
+                    class="text-xs text-emerald-600 hover:text-emerald-700 font-medium inline-flex items-center gap-1">
+                    <i class="bi bi-arrow-repeat"></i> โหลดข้อมูลใหม่
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- ====================================================
+         MODAL: QUICK STOCK IN/OUT MOVEMENT
+         ==================================================== -->
+    <div id="stockMovementModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl p-5 relative">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-base font-bold">
+                        <i class="bi bi-arrow-left-right"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-900 font-kanit">บันทึกรับเข้า / ตัดจ่ายสต็อก</h3>
+                        <p class="text-xs text-slate-500">บันทึกธุรกรรมการเคลื่อนไหวสต็อกสินค้า</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeStockMovementModal()" class="text-slate-400 hover:text-slate-600 p-1">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <form onsubmit="handleExecuteStockMovement(event)" class="space-y-3.5">
+                <!-- Select Product -->
+                <div>
+                    <label for="moveProductSelect" class="block text-xs font-semibold text-slate-700 mb-1">
+                        เลือกสินค้า <span class="text-rose-500">*</span>
+                    </label>
+                    <select id="moveProductSelect" required 
+                        class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none">
+                        <option value="">-- เลือกสินค้า --</option>
+                    </select>
+                </div>
+
+                <!-- Movement Type (Radio / Buttons) -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">
+                        ประเภทรายการ <span class="text-rose-500">*</span>
+                    </label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-emerald-200 bg-emerald-50/50 text-emerald-700 text-xs font-bold cursor-pointer has-[:checked]:bg-emerald-600 has-[:checked]:text-white">
+                            <input type="radio" name="moveType" value="IN" checked class="hidden">
+                            <i class="bi bi-plus-circle"></i> รับเข้า
+                        </label>
+                        <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-rose-200 bg-rose-50/50 text-rose-700 text-xs font-bold cursor-pointer has-[:checked]:bg-rose-600 has-[:checked]:text-white">
+                            <input type="radio" name="moveType" value="OUT" class="hidden">
+                            <i class="bi bi-dash-circle"></i> ตัดจ่าย
+                        </label>
+                        <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-blue-200 bg-blue-50/50 text-blue-700 text-xs font-bold cursor-pointer has-[:checked]:bg-blue-600 has-[:checked]:text-white">
+                            <input type="radio" name="moveType" value="ADJUST" class="hidden">
+                            <i class="bi bi-sliders"></i> ปรับยอด
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Quantity -->
+                <div>
+                    <label for="moveQty" class="block text-xs font-semibold text-slate-700 mb-1">
+                        จำนวน (ตัว/ชิ้น) <span class="text-rose-500">*</span>
+                    </label>
+                    <input type="number" id="moveQty" min="1" value="1" required 
+                        class="w-full px-3 py-2 text-base font-bold font-mono border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none">
+                </div>
+
+                <!-- Note -->
+                <div>
+                    <label for="moveNote" class="block text-xs font-semibold text-slate-700 mb-1">
+                        หมายเหตุ / เลขที่ใบเสร็จ / ล็อตผลิต
+                    </label>
+                    <input type="text" id="moveNote" placeholder="เช่น รับจากโรงงานล็อต #12, ออเดอร์ Shopee #SPX-99" 
+                        class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none">
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" id="btnSubmitMovement" 
+                        class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold shadow-md shadow-emerald-500/20 transition-all">
+                        บันทึกการเคลื่อนไหวสต็อก
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ====================================================
+         MODAL: ADD / EDIT PRODUCT
+         ==================================================== -->
+    <div id="productModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full border border-slate-200 shadow-2xl p-6 relative max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-base font-bold">
+                        <i class="bi bi-box-seam"></i>
+                    </div>
+                    <div>
+                        <h3 id="modalProductTitle" class="text-sm font-bold text-slate-900 font-kanit">เพิ่มสินค้าใหม่</h3>
+                        <p class="text-xs text-slate-500">บันทึกข้อมูลสินค้าและตั้งค่าสต็อก</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeProductModal()" class="text-slate-400 hover:text-slate-600 p-1">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <form onsubmit="handleSaveProductModal(event)" class="space-y-3">
+                <input type="hidden" id="modalProdId" value="">
+
+                <!-- SKU with Random Auto-gen -->
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label for="modalSku" class="text-xs font-semibold text-slate-700">
+                            รหัส SKU / บาร์โค้ด <span class="text-rose-500">*</span>
+                        </label>
+                        <button type="button" onclick="generateRandomSkuModal()" 
+                            class="text-[11px] text-emerald-600 hover:text-emerald-800 font-medium inline-flex items-center gap-1">
+                            <i class="bi bi-magic"></i> สุ่มรหัส
+                        </button>
+                    </div>
+                    <input type="text" id="modalSku" required placeholder="เช่น TSH-WHT-M" 
+                        class="w-full px-3 py-2 text-xs font-mono uppercase border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none">
+                </div>
+
+                <!-- Product Name -->
+                <div>
+                    <label for="modalName" class="block text-xs font-semibold text-slate-700 mb-1">
+                        ชื่อสินค้า <span class="text-rose-500">*</span>
+                    </label>
+                    <input type="text" id="modalName" required placeholder="เช่น เสื้อยืดคอกลม Premium Cotton" 
+                        class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none">
+                </div>
+
+                <!-- Variant & Price -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label for="modalVariant" class="block text-xs font-semibold text-slate-700 mb-1">
+                            ไซส์ / สี (Variant)
+                        </label>
+                        <input type="text" id="modalVariant" placeholder="สีขาว / Size M" 
+                            class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none">
+                    </div>
+                    <div>
+                        <label for="modalPrice" class="block text-xs font-semibold text-slate-700 mb-1">
+                            ราคาขาย (บาท)
+                        </label>
+                        <input type="number" step="0.01" min="0" id="modalPrice" placeholder="290.00" 
+                            class="w-full px-3 py-2 text-xs font-mono border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none">
+                    </div>
+                </div>
+
+                <!-- Stock, Min Alert, Location Rack (3 Cols) -->
+                <div class="grid grid-cols-3 gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                    <div>
+                        <label for="modalStock" class="block text-[11px] font-semibold text-slate-600 mb-1">
+                            สต็อกคงเหลือ
+                        </label>
+                        <input type="number" min="0" id="modalStock" value="0" 
+                            class="w-full px-2.5 py-1.5 text-xs font-mono font-bold border border-slate-200 rounded-lg outline-none">
+                    </div>
+                    <div>
+                        <label for="modalMinAlert" class="block text-[11px] font-semibold text-slate-600 mb-1">
+                            จุดเตือนใกล้หมด
+                        </label>
+                        <input type="number" min="0" id="modalMinAlert" value="5" 
+                            class="w-full px-2.5 py-1.5 text-xs font-mono border border-slate-200 rounded-lg outline-none">
+                    </div>
+                    <div>
+                        <label for="modalLocation" class="block text-[11px] font-semibold text-slate-600 mb-1">
+                            ชั้นวาง (Rack)
+                        </label>
+                        <input type="text" id="modalLocation" placeholder="A-01" 
+                            class="w-full px-2.5 py-1.5 text-xs font-mono uppercase border border-slate-200 rounded-lg outline-none">
+                    </div>
+                </div>
+
+                <!-- Distributor -->
+                <div>
+                    <label for="modalDistributor" class="block text-xs font-semibold text-slate-700 mb-1">
+                        ผู้จัดจำหน่าย
+                    </label>
+                    <input type="text" id="modalDistributor" placeholder="บริษัท ซิกเนเจอร์ แอพพาเรล จำกัด" 
+                        class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none">
+                </div>
+
+                <!-- Care Instructions -->
+                <div>
+                    <label for="modalCare" class="block text-xs font-semibold text-slate-700 mb-1">
+                        คำแนะนำการดูแลรักษา
+                    </label>
+                    <textarea id="modalCare" rows="2" placeholder="ซักเครื่องด้วยน้ำเย็น ห้ามใช้น้ำยาฟอกขาว" 
+                        class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none resize-none"></textarea>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeProductModal()" class="px-4 py-2 text-xs text-slate-600 hover:text-slate-800 font-medium">ยกเลิก</button>
+                    <button type="submit" id="btnSaveModalProd" 
+                        class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-500/20">
+                        บันทึกข้อมูล
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ====================================================
+         MODAL: AUDIT HISTORY (STOCK LOGS)
+         ==================================================== -->
+    <div id="historyModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full border border-slate-200 shadow-2xl p-6 relative max-h-[85vh] flex flex-col">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center text-base font-bold">
+                        <i class="bi bi-clock-history"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-900 font-kanit">ประวัติการเคลื่อนไหวสต็อก (Stock Movement Log)</h3>
+                        <p class="text-xs text-slate-500">บันทึกการรับเข้า ตัดจ่าย และปรับยอดสต็อก</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeHistoryModal()" class="text-slate-400 hover:text-slate-600 p-1">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <!-- Table Container -->
+            <div class="overflow-y-auto flex-1 border border-slate-100 rounded-xl">
+                <table class="w-full text-left text-xs text-slate-600">
+                    <thead class="bg-slate-50 text-[11px] font-semibold text-slate-500 sticky top-0 border-b border-slate-200">
+                        <tr>
+                            <th class="py-2.5 px-3">วัน/เวลา</th>
+                            <th class="py-2.5 px-2">รหัส SKU</th>
+                            <th class="py-2.5 px-2 text-center">ประเภท</th>
+                            <th class="py-2.5 px-2 text-right">จำนวน</th>
+                            <th class="py-2.5 px-2 text-right">คงเหลือหลังทำ</th>
+                            <th class="py-2.5 px-3">หมายเหตุ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody" class="divide-y divide-slate-100 font-mono">
+                        <tr>
+                            <td colspan="6" class="py-8 text-center text-slate-400 font-sans">
+                                กำลังโหลดประวัติ...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====================================================
+         MODAL: SETTINGS (SUPABASE CREDENTIALS)
+         ==================================================== -->
+    <div id="supabaseModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full border border-slate-200 shadow-2xl p-6 relative">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-base font-bold">
+                        <i class="bi bi-database-fill-gear"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-900 font-kanit">ตั้งค่าการเชื่อมต่อ Supabase</h3>
+                        <p class="text-xs text-slate-500">กำหนด URL และ Anon Key</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeSupabaseModal()" class="text-slate-400 hover:text-slate-600 p-1">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <form onsubmit="handleSaveSupabaseConfig(event)" class="space-y-4">
+                <div>
+                    <label for="cfgSupabaseUrl" class="block text-xs font-semibold text-slate-700 mb-1">SUPABASE_URL</label>
+                    <input type="url" id="cfgSupabaseUrl" required class="w-full px-3 py-2 text-xs font-mono border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none">
+                </div>
+
+                <div>
+                    <label for="cfgSupabaseKey" class="block text-xs font-semibold text-slate-700 mb-1">SUPABASE_ANON_KEY</label>
+                    <textarea id="cfgSupabaseKey" rows="3" required class="w-full px-3 py-2 text-xs font-mono border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"></textarea>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeSupabaseModal()" class="px-4 py-2 text-xs text-slate-600 font-medium">ยกเลิก</button>
+                    <button type="submit" class="px-4 py-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium">บันทึก</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Application Script -->
+    <script src="inventory.js?v=20261015_01"></script>
+</body>
+</html>
