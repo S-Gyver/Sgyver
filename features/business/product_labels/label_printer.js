@@ -1252,6 +1252,9 @@ function printLabelsViaIsolatedIframe(stickersHtmlList) {
         <head>
             <meta charset="UTF-8">
             <title>Label</title>
+            <link rel="preconnect" href="https://fonts.googleapis.com">
+            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+            <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@600;700;800;900&family=Prompt:wght@600;700;800;900&display=swap" rel="stylesheet">
             <style>
                 @page {
                     size: ${pageSizeCss};
@@ -1268,9 +1271,10 @@ function printLabelsViaIsolatedIframe(stickersHtmlList) {
                     padding: 0 !important;
                     background: #ffffff !important;
                     color: #000000 !important;
-                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                    font-family: 'Kanit', 'Prompt', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif !important;
                     -webkit-print-color-adjust: exact !important;
                     print-color-adjust: exact !important;
+                    font-weight: 700 !important;
                 }
                 .print-page-sticker {
                     background: #ffffff !important;
@@ -1299,9 +1303,10 @@ function printLabelsViaIsolatedIframe(stickersHtmlList) {
                     width: 57mm !important;
                     max-width: 57mm !important;
                     box-sizing: border-box !important;
-                    padding: 2.5mm 5.5mm 0mm 5.5mm !important;
-                    font-size: 6.2pt !important;
-                    line-height: 1.28 !important;
+                    padding: 2.5mm 5mm 0mm 5mm !important;
+                    font-size: 7.2pt !important;
+                    line-height: 1.3 !important;
+                    font-weight: 700 !important;
                 }
                 .tear-feed-spacer {
                     width: 100% !important;
@@ -1467,64 +1472,105 @@ function printLabelsViaIsolatedIframe(stickersHtmlList) {
                 .size-57roll .sticker-care { font-size: 5.5pt !important; }
                 .size-70x50 .sticker-care { font-size: 7pt !important; }
 
-                /* Thai Garment Label Styles for Print */
+                /* Thai Garment Label Styles for Print - High Contrast Bold for Thermal Print */
                 .sticker-line-brand {
-                    font-size: 8pt !important;
+                    font-size: 8.8pt !important;
                     line-height: 1.25 !important;
-                    margin-bottom: 2px !important;
+                    margin-bottom: 2.5px !important;
+                    font-weight: 800 !important;
                 }
                 .sticker-line-brand .sticker-tag-lbl {
-                    font-size: 8.5pt !important;
+                    font-size: 9.2pt !important;
                     font-weight: 800 !important;
                 }
                 .sticker-val-brand {
-                    font-size: 8.8pt !important;
+                    font-size: 9.2pt !important;
                     font-weight: 800 !important;
                 }
                 .sticker-tag-lbl {
-                    font-weight: 700 !important;
+                    font-weight: 800 !important;
                     color: #000000 !important;
                     margin-right: 3px !important;
                     display: inline !important;
+                    font-size: 7.2pt !important;
                 }
                 .sticker-val {
                     color: #000000 !important;
-                    font-weight: 500 !important;
+                    font-weight: 700 !important;
                     display: inline !important;
+                    font-size: 7.2pt !important;
                 }
                 .sticker-line {
-                    margin-bottom: 1.5px !important;
-                    line-height: 1.25 !important;
+                    margin-bottom: 2px !important;
+                    line-height: 1.28 !important;
+                    font-weight: 700 !important;
                 }
                 .sticker-line-care {
-                    margin-bottom: 2px !important;
-                    line-height: 1.22 !important;
-                    font-size: 5.8pt !important;
-                    text-align: justify !important;
+                    margin-bottom: 2.5px !important;
+                    line-height: 1.25 !important;
+                    font-size: 6.5pt !important;
+                    font-weight: 700 !important;
+                    text-align: left !important;
+                }
+                .sticker-line-care .sticker-tag-lbl {
+                    font-size: 6.8pt !important;
+                    font-weight: 800 !important;
+                }
+                .sticker-line-care .sticker-val {
+                    font-size: 6.5pt !important;
+                    font-weight: 700 !important;
                 }
                 .sticker-line-distributor {
-                    margin-bottom: 1.5px !important;
-                    line-height: 1.22 !important;
-                    font-size: 6pt !important;
+                    margin-bottom: 2px !important;
+                    line-height: 1.25 !important;
+                    font-size: 6.8pt !important;
+                    font-weight: 700 !important;
+                }
+                .sticker-line-distributor .sticker-tag-lbl {
+                    font-size: 7.2pt !important;
+                    font-weight: 800 !important;
+                }
+                .sticker-line-distributor .sticker-val {
+                    font-size: 7.0pt !important;
+                    font-weight: 700 !important;
                 }
                 .sticker-val-address {
-                    font-size: 5.3pt !important;
-                    line-height: 1.2 !important;
+                    font-size: 6.5pt !important;
+                    font-weight: 700 !important;
+                    line-height: 1.24 !important;
                     padding-left: 2px !important;
-                    margin-top: 1px !important;
+                    margin-top: 1.5px !important;
+                    word-break: break-word !important;
                 }
                 .sticker-line-price {
-                    margin-top: 1.5px !important;
-                    margin-bottom: 2px !important;
-                    font-size: 7pt !important;
+                    margin-top: 2.5px !important;
+                    margin-bottom: 2.5px !important;
+                    font-size: 8.2pt !important;
+                    font-weight: 800 !important;
+                }
+                .sticker-line-price .sticker-tag-lbl {
+                    font-size: 8.5pt !important;
+                    font-weight: 800 !important;
+                }
+                .sticker-line-price .sticker-val {
+                    font-size: 8.8pt !important;
+                    font-weight: 800 !important;
                 }
                 .sticker-barcode-section {
-                    border-top: 0.5px dashed #000000 !important;
-                    padding-top: 1.5px !important;
-                    margin-top: 2px !important;
+                    border-top: 1px dashed #000000 !important;
+                    padding-top: 2px !important;
+                    margin-top: 2.5px !important;
+                }
+                .sticker-barcode-section strong {
+                    font-weight: 800 !important;
+                    font-size: 5.8pt !important;
+                }
+                .sticker-barcode-section span {
+                    font-weight: 700 !important;
+                    font-size: 5.5pt !important;
                 }
                 .size-57roll .sticker-barcode-wrapper svg {
-                    height: 9.5mm !important;
+                    height: 10mm !important;
                 }
             </style>
         </head>
