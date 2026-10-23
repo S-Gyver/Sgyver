@@ -372,6 +372,31 @@
                     </div>
                 </div>
 
+                <!-- Warehouse Location Showcase (โน้ต & รูปภาพจุดเก็บในคลัง) -->
+                <div id="varModalLocationSection" class="hidden p-3 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/80 rounded-xl space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-emerald-800 flex items-center gap-1.5">
+                            <i class="bi bi-geo-alt-fill text-emerald-600"></i> พิกัด & จุดจัดเก็บในคลัง (Warehouse Location)
+                        </span>
+                        <span id="varModalLocationRackBadge" class="text-[11px] font-mono font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-md">ชั้น A-01</span>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <!-- Photo of shelf/location -->
+                        <div id="varModalLocationImgContainer" class="shrink-0 w-24 h-24 rounded-lg overflow-hidden border border-emerald-300 bg-white cursor-pointer group shadow-2xs hidden" title="คลิกดูรูปใหญ่">
+                            <img id="varModalLocationImg" src="" alt="พิกัดจุดเก็บในคลัง" class="w-full h-full object-cover group-hover:scale-105 transition-transform">
+                        </div>
+                        <!-- Comment / Note -->
+                        <div class="flex-1 text-xs text-slate-700 space-y-1">
+                            <div class="font-semibold text-emerald-950 flex items-center gap-1">
+                                <i class="bi bi-chat-left-text text-emerald-600"></i> บันทึกตำแหน่ง / คอมเมนต์:
+                            </div>
+                            <div id="varModalLocationNote" class="text-slate-700 bg-white/80 p-2 rounded-lg border border-emerald-100 text-[11.5px] whitespace-pre-wrap leading-relaxed">
+                                -
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="text-xs text-slate-500 flex items-center justify-between">
                     <span>รายการตัวเลือกสินค้า (สี / ไซส์) ทั้งหมดของสินค้านี้:</span>
                     <span class="text-[11px] text-slate-400">คลิก + หรือ - เพื่อปรับสต็อกหน้าร้านได้ทันที</span>
@@ -547,6 +572,10 @@
                     <button type="button" id="shopeeTabBtn_others" onclick="switchShopeeTab('others')"
                         class="py-3 px-4 text-xs font-medium text-slate-600 hover:text-slate-900 border-b-2 border-transparent hover:border-slate-300 whitespace-nowrap transition-colors flex items-center gap-1.5">
                         <i class="bi bi-three-dots"></i> อื่น ๆ
+                    </button>
+                    <button type="button" id="shopeeTabBtn_location" onclick="switchShopeeTab('location')"
+                        class="py-3 px-4 text-xs font-medium text-slate-600 hover:text-slate-900 border-b-2 border-transparent hover:border-slate-300 whitespace-nowrap transition-colors flex items-center gap-1.5">
+                        <i class="bi bi-geo-alt-fill text-emerald-600"></i> ลิงก์ & พิกัดคลัง
                     </button>
                 </div>
             </div>
@@ -1519,6 +1548,151 @@
                                         <option value="new">ของใหม่</option>
                                         <option value="used">มือสอง</option>
                                     </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ====================================================
+                         TAB 7: ลิงก์ต้นทาง & พิกัดจัดเก็บสินค้าในคลัง (SOURCE URL & WAREHOUSE LOCATION)
+                         ==================================================== -->
+                    <div id="shopeeTabPane_location" class="space-y-5 hidden">
+                        <!-- Card 1: ลิงก์ต้นฉบับสินค้า & การตรวจสอบซ้ำ -->
+                        <div class="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs space-y-4">
+                            <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                                <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                                    <i class="bi bi-link-45deg text-blue-600 text-lg"></i> ลิงก์ต้นฉบับสินค้า (Product Source URL)
+                                </h4>
+                                <span class="text-[11px] text-slate-400">เก็บ URL ไว้ตรวจสอบว่าเคยก็อปมาแล้วหรือยัง</span>
+                            </div>
+
+                            <div>
+                                <label for="modalProductUrl" class="block text-xs font-semibold text-slate-700 mb-1.5">
+                                    URL สินค้า (Shopee / Lazada / แหล่งที่มา)
+                                </label>
+                                <div class="flex items-center gap-2">
+                                    <div class="relative flex-1">
+                                        <input type="url" id="modalProductUrl" oninput="checkModalProductUrlDuplicate()" placeholder="https://shopee.co.th/product/..." 
+                                            class="w-full pl-9 pr-9 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 outline-none font-mono">
+                                        <i class="bi bi-link-45deg absolute left-3 top-2.5 text-slate-400 text-sm"></i>
+                                        <button type="button" onclick="document.getElementById('modalProductUrl').value = ''; checkModalProductUrlDuplicate();" title="ล้างข้อความ"
+                                            class="absolute right-2.5 top-2.5 text-slate-300 hover:text-rose-500 text-xs">
+                                            <i class="bi bi-x-circle-fill"></i>
+                                        </button>
+                                    </div>
+                                    <button type="button" onclick="pasteToModalProductUrl()"
+                                        class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shrink-0" title="วางลิงก์จากคลิปบอร์ด">
+                                        <i class="bi bi-clipboard"></i> วางลิงก์
+                                    </button>
+                                    <button type="button" id="btnOpenModalProductUrl" onclick="openModalProductUrl()"
+                                        class="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shrink-0" title="เปิดดูลิงก์สินค้าในแท็บใหม่">
+                                        <i class="bi bi-box-arrow-up-right"></i> เปิดดูต้นฉบับ
+                                    </button>
+                                </div>
+                                <!-- Duplicate / Status Check Box -->
+                                <div id="modalProductUrlStatus" class="mt-2 text-xs"></div>
+                            </div>
+                        </div>
+
+                        <!-- Card 2: บันทึกและคอมเมนต์ตำแหน่งจัดเก็บในคลัง (Warehouse Location Comment) -->
+                        <div class="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs space-y-4">
+                            <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                                <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                                    <i class="bi bi-chat-square-text text-amber-600"></i> คอมเมนต์ / บันทึกตำแหน่งของชิ้นนี้ในคลัง
+                                </h4>
+                                <span class="text-[11px] text-slate-400">จดระบุจุดวาง กล่อง แถว ราวแขวน หรือจุดสังเกต</span>
+                            </div>
+
+                            <div>
+                                <div class="flex items-center justify-between mb-1.5 flex-wrap gap-1">
+                                    <label for="modalLocationNote" class="text-xs font-semibold text-slate-700">
+                                        คำอธิบายพิกัดจัดเก็บ (Location Notes / Comments)
+                                    </label>
+                                    <span class="text-[10px] text-slate-400 font-medium">คำที่ใช้บ่อย (คลิกเพื่อต่อข้อความ):</span>
+                                </div>
+
+                                <!-- Quick Location Chips -->
+                                <div class="flex flex-wrap items-center gap-1.5 mb-2.5">
+                                    <button type="button" onclick="appendLocationChip('ชั้น 1')" class="px-2.5 py-1 bg-slate-50 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 border border-slate-200 rounded-lg text-[11px] text-slate-600 font-medium transition-colors cursor-pointer">+ ชั้น 1</button>
+                                    <button type="button" onclick="appendLocationChip('ชั้น 2')" class="px-2.5 py-1 bg-slate-50 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 border border-slate-200 rounded-lg text-[11px] text-slate-600 font-medium transition-colors cursor-pointer">+ ชั้น 2</button>
+                                    <button type="button" onclick="appendLocationChip('ชั้น 3')" class="px-2.5 py-1 bg-slate-50 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 border border-slate-200 rounded-lg text-[11px] text-slate-600 font-medium transition-colors cursor-pointer">+ ชั้น 3</button>
+                                    <button type="button" onclick="appendLocationChip('ล็อค A')" class="px-2.5 py-1 bg-slate-50 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 border border-slate-200 rounded-lg text-[11px] text-slate-600 font-medium transition-colors cursor-pointer">+ ล็อค A</button>
+                                    <button type="button" onclick="appendLocationChip('ล็อค B')" class="px-2.5 py-1 bg-slate-50 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 border border-slate-200 rounded-lg text-[11px] text-slate-600 font-medium transition-colors cursor-pointer">+ ล็อค B</button>
+                                    <button type="button" onclick="appendLocationChip('ราวแขวนผ้า')" class="px-2.5 py-1 bg-slate-50 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 border border-slate-200 rounded-lg text-[11px] text-slate-600 font-medium transition-colors cursor-pointer">+ ราวแขวนผ้า</button>
+                                    <button type="button" onclick="appendLocationChip('ในกล่องพลาสติก')" class="px-2.5 py-1 bg-slate-50 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 border border-slate-200 rounded-lg text-[11px] text-slate-600 font-medium transition-colors cursor-pointer">+ ในกล่องพลาสติก</button>
+                                    <button type="button" onclick="appendLocationChip('โซนหน้าร้าน')" class="px-2.5 py-1 bg-slate-50 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 border border-slate-200 rounded-lg text-[11px] text-slate-600 font-medium transition-colors cursor-pointer">+ โซนหน้าร้าน</button>
+                                </div>
+
+                                <div class="relative">
+                                    <textarea id="modalLocationNote" rows="3" 
+                                        placeholder="เช่น วางอยู่ชั้น 2 ล็อค B กล่องเบอร์ 4 ใต้ป้ายสีส้ม หรือ แขวนอยู่บนราวเหล็กเบอร์ 3..." 
+                                        class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 outline-none resize-none pr-8"></textarea>
+                                    <button type="button" onclick="document.getElementById('modalLocationNote').value = ''; document.getElementById('modalLocationNote').focus();" title="ล้างข้อความ"
+                                        class="absolute right-2.5 top-2.5 text-slate-300 hover:text-rose-500 text-xs">
+                                        <i class="bi bi-x-circle-fill"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card 3: แทรกรูปถ่ายพิกัดจุดเก็บในคลัง (Warehouse Shelf Photo) -->
+                        <div class="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs space-y-4">
+                            <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                                <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                                    <i class="bi bi-camera-fill text-emerald-600 text-lg"></i> รูปภาพจุดเก็บสินค้าจริงในคลัง (Warehouse Location Photo)
+                                </h4>
+                                <span class="text-[11px] text-slate-400">ถ่ายรูปชั้นวางหรือกล่อง เพื่อให้คนหยิบหาของเจอได้ทันที</span>
+                            </div>
+
+                            <input type="hidden" id="modalLocationImageUrl" value="">
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                                <!-- Left: Upload & URL inputs -->
+                                <div class="space-y-3">
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-700 mb-1.5">
+                                            ถ่ายภาพจากกล้อง หรือ อัปโหลดไฟล์รูป
+                                        </label>
+                                        <label class="flex flex-col items-center justify-center p-4 border-2 border-dashed border-emerald-300 hover:border-emerald-500 rounded-xl bg-emerald-50/30 hover:bg-emerald-50/60 cursor-pointer transition-colors text-center group">
+                                            <i class="bi bi-camera text-2xl text-emerald-600 mb-1 group-hover:scale-110 transition-transform"></i>
+                                            <span class="text-xs font-bold text-emerald-800">คลิกเพื่อถ่ายรูป / เลือกไฟล์</span>
+                                            <span class="text-[10px] text-slate-400 mt-0.5">รองรับ JPG, PNG, WEBP จากมือถือหรือคอม</span>
+                                            <input type="file" id="modalLocationImgFileInput" accept="image/*" class="hidden" onchange="handleLocationImageFileUpload(event)">
+                                        </label>
+                                    </div>
+
+                                    <div class="relative">
+                                        <label class="block text-xs font-semibold text-slate-700 mb-1">หรือวางลิงก์รูปภาพ (Image URL)</label>
+                                        <div class="flex items-center gap-2">
+                                            <input type="text" id="modalLocationImgUrlInput" placeholder="https://... หรือ data:image/..." 
+                                                class="flex-1 px-3 py-1.5 text-xs border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/30">
+                                            <button type="button" onclick="applyLocationImageUrlInput()" 
+                                                class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shrink-0 cursor-pointer">
+                                                ใช้รูปนี้
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Right: Preview Box -->
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">ตัวอย่างรูปถ่ายจุดเก็บในคลัง</label>
+                                    <div id="modalLocationImgPreviewWrapper" class="relative rounded-xl border border-slate-200 overflow-hidden bg-slate-50 aspect-video flex items-center justify-center text-slate-400 group">
+                                        <img id="modalLocationImgPreview" src="" alt="ตัวอย่างรูปตำแหน่ง" class="hidden w-full h-full object-cover cursor-pointer" onclick="openCurrentLocationImgLarge()">
+                                        <div id="modalLocationImgEmpty" class="text-center p-4">
+                                            <i class="bi bi-image text-3xl text-slate-300 block mb-1"></i>
+                                            <span class="text-xs text-slate-400">ยังไม่มีรูปถ่ายจุดเก็บ</span>
+                                        </div>
+                                        <!-- Actions on image -->
+                                        <div id="modalLocationImgActions" class="hidden absolute top-2 right-2 flex items-center gap-1.5">
+                                            <button type="button" onclick="openCurrentLocationImgLarge()" class="px-2 py-1 bg-black/60 hover:bg-black/80 text-white text-[10px] rounded-lg backdrop-blur-xs font-medium cursor-pointer" title="ดูรูปเต็ม">
+                                                <i class="bi bi-arrows-fullscreen"></i> ดูรูปใหญ่
+                                            </button>
+                                            <button type="button" onclick="clearLocationImage()" class="px-2 py-1 bg-rose-600 hover:bg-rose-700 text-white text-[10px] rounded-lg shadow-sm font-medium cursor-pointer" title="ลบรูปนี้">
+                                                <i class="bi bi-trash"></i> ลบรูป
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -2693,14 +2867,50 @@
                     </button>
                 </div>
 
-                <!-- Method 1: The Bookmarklet (Highlighted) -->
-                <div class="p-4 bg-gradient-to-br from-amber-50/80 via-orange-50/50 to-white border-2 border-orange-200 rounded-2xl space-y-3">
+                <!-- NEW: Chrome Extension (BigSeller-Style Scraper) -->
+                <div class="p-4 bg-gradient-to-r from-emerald-50 via-teal-50 to-indigo-50 border-2 border-emerald-300 rounded-2xl space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                            <span class="text-base">🚀</span>
+                            <span>วิธีแนะนำสูงสุด: ใช้งานผ่าน S-Gyver Extension (สำหรับ Firefox & Chrome)</span>
+                        </span>
+                        <span class="text-[10px] bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black px-2.5 py-0.5 rounded-full shadow-xs">อัตโนมัติ 100%</span>
+                    </div>
+
+                    <p class="text-xs text-slate-700 leading-relaxed">
+                        ระบบจะฝังปุ่ม <b>[ 📦 ดูดเข้า S-Gyver ]</b> บนการ์ดสินค้าทุกชิ้นใน Shopee โดยตรง และแสดงป้าย <b>[ ✅ ดูดแล้ว ]</b> ทันที เพื่อป้องกันการดูดซ้ำ ไม่ต้องสลับหน้าก๊อปปี้ให้เมื่อยมือ!
+                    </p>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] text-slate-700">
+                        <div class="p-2.5 bg-white rounded-xl border border-emerald-200 shadow-2xs">
+                            <div class="font-bold text-orange-600 mb-0.5 flex items-center gap-1">
+                                <span>🦊 สำหรับ Firefox:</span>
+                            </div>
+                            <p class="text-[10.5px] text-slate-500 leading-tight">พิมพ์ <code class="bg-slate-100 px-1 py-0.5 rounded text-[10px]">about:debugging#/runtime/this-firefox</code> กดปุ่ม <b>"โหลด Add-on ชั่วคราว..."</b> แล้วเลือกไฟล์ <code class="bg-slate-100 px-1 py-0.5 rounded text-[10px]">manifest.json</code> ในโฟลเดอร์ <code class="bg-slate-100 px-1 py-0.5 rounded text-[10px]">sgyver/extension</code></p>
+                        </div>
+                        <div class="p-2.5 bg-white rounded-xl border border-emerald-200 shadow-2xs">
+                            <div class="font-bold text-emerald-700 mb-0.5 flex items-center gap-1">
+                                <span>🛍️ ปุ่มลอยบนการ์ดสินค้า:</span>
+                            </div>
+                            <p class="text-[10.5px] text-slate-500 leading-tight">เปิดดูสินค้าบน Shopee จะมีปุ่มดูดเข้าคลังบนการ์ดทุกชิ้น พร้อมแถบดูดทั้งหน้าด้านล่าง</p>
+                        </div>
+                        <div class="p-2.5 bg-white rounded-xl border border-emerald-200 shadow-2xs">
+                            <div class="font-bold text-emerald-700 mb-0.5 flex items-center gap-1">
+                                <span>✅ ตรวจจับสินค้าซ้ำ:</span>
+                            </div>
+                            <p class="text-[10.5px] text-slate-500 leading-tight">ชิ้นไหนเคยดูดแล้วจะมีป้าย <b>[ ✅ ดูดแล้ว ]</b> สีเขียวติดไว้ถาวร แม้รีเฟรชหน้าก็ไม่หาย!</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Method 2: The Bookmarklet (Fallback) -->
+                <div class="p-4 bg-gradient-to-br from-amber-50/80 via-orange-50/50 to-white border border-orange-200 rounded-2xl space-y-3">
                     <div class="flex items-center justify-between">
                         <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                             <i class="bi bi-star-fill text-amber-500"></i>
-                            <span>วิธีที่ 1: ติดตั้งปุ่มลัด Bookmarklet (ดูดสินค้าทีละชิ้น ละเอียด 100%)</span>
+                            <span>วิธีสำรอง (ไม่ต้องลง Extension): ติดตั้งปุ่มลัด Bookmarklet</span>
                         </span>
-                        <span class="text-[10px] bg-[#ee4d2d] text-white font-extrabold px-2 py-0.5 rounded-full">แนะนำ</span>
+                        <span class="text-[10px] bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded-full">ทางเลือก</span>
                     </div>
 
                     <p class="text-xs text-slate-600 leading-relaxed">

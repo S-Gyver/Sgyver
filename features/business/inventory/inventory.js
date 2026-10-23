@@ -136,15 +136,58 @@ async function loadInventory() {
             }
 
             p.video_url = p.video_url || localStorage.getItem('sgyver_video_' + pKey) || localStorage.getItem('sgyver_video_' + p.sku) || '';
+            p.product_url = p.product_url || localStorage.getItem('sgyver_product_url_' + pKey) || localStorage.getItem('sgyver_product_url_' + p.sku) || localStorage.getItem('sgyver_shopee_url_' + pKey) || localStorage.getItem('sgyver_shopee_url_' + p.sku) || '';
+            p.item_id = p.item_id || localStorage.getItem('sgyver_item_id_' + pKey) || localStorage.getItem('sgyver_item_id_' + p.sku) || localStorage.getItem('sgyver_shopee_itemid_' + pKey) || localStorage.getItem('sgyver_shopee_itemid_' + p.sku) || '';
+            p.location_note = p.location_note || localStorage.getItem('sgyver_loc_note_' + pKey) || localStorage.getItem('sgyver_loc_note_' + p.sku) || '';
+            p.location_image = p.location_image || localStorage.getItem('sgyver_loc_img_' + pKey) || localStorage.getItem('sgyver_loc_img_' + p.sku) || '';
 
             return p;
         });
+
+        // Merge from localStorage cache so recently added or offline products never disappear
+        try {
+            const cachedCustom = localStorage.getItem('sgyver_custom_products');
+            if (cachedCustom) {
+                const parsedCustom = JSON.parse(cachedCustom);
+                if (Array.isArray(parsedCustom)) {
+                    parsedCustom.forEach(cp => {
+                        const exists = InventoryApp.products.find(p => (cp.id && p.id === cp.id) || (p.sku && p.sku.toUpperCase() === (cp.sku || '').toUpperCase()));
+                        if (!exists) {
+                            InventoryApp.products.push(cp);
+                        } else {
+                            if (!exists.product_url && cp.product_url) exists.product_url = cp.product_url;
+                            if (!exists.item_id && cp.item_id) exists.item_id = cp.item_id;
+                            if (!exists.location_note && cp.location_note) exists.location_note = cp.location_note;
+                            if (!exists.location_image && cp.location_image) exists.location_image = cp.location_image;
+                        }
+                    });
+                }
+            }
+        } catch(e) {
+            console.warn('Error merging cached custom products:', e);
+        }
+
         calculateMetrics(InventoryApp.products);
         renderTable();
         populateMoveProductSelect();
 
     } catch (err) {
         console.error('Load inventory error:', err);
+        // Fallback to local cache so user's products are never lost on refresh!
+        try {
+            const cachedCustom = localStorage.getItem('sgyver_custom_products');
+            if (cachedCustom) {
+                const parsedCustom = JSON.parse(cachedCustom);
+                if (Array.isArray(parsedCustom) && parsedCustom.length > 0) {
+                    InventoryApp.products = parsedCustom;
+                    calculateMetrics(InventoryApp.products);
+                    renderTable();
+                    populateMoveProductSelect();
+                    return;
+                }
+            }
+        } catch(e) {}
+
         if (tbody) {
             tbody.innerHTML = `
                 <tr>
@@ -689,8 +732,17 @@ function renderShopeeCardGrid(items) {
 
         // Shopee Origin URL detection
         const shopeeUrl = parent.items.find(x => x.product_url)?.product_url ||
+                          localStorage.getItem('sgyver_product_url_' + parent.parentSku) ||
+                          localStorage.getItem('sgyver_product_url_' + parent.key) ||
                           localStorage.getItem('sgyver_shopee_url_' + parent.parentSku) ||
                           localStorage.getItem('sgyver_shopee_url_' + parent.key) || '';
+
+        // Location Info detection
+        const hasLocationInfo = parent.items.some(x => x.location_image || x.location_note) ||
+                                localStorage.getItem('sgyver_loc_img_' + parent.parentSku) ||
+                                localStorage.getItem('sgyver_loc_img_' + parent.key) ||
+                                localStorage.getItem('sgyver_loc_note_' + parent.parentSku) ||
+                                localStorage.getItem('sgyver_loc_note_' + parent.key);
 
         return `
             <!-- Shopee Parent SKU Card (คลิกตรงไหนก็ได้เพื่อเปิดดู SKU ย่อยข้างใน) -->
@@ -730,6 +782,13 @@ function renderShopeeCardGrid(items) {
                             <span class="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-700 bg-white/90 px-2 py-0.5 rounded-md shadow-xs">${escapeHtml(parent.parentSku)}</span>
                         </div>
                     `}
+
+                    <!-- Location info badge (Bottom-Left) -->
+                    ${hasLocationInfo ? `
+                        <div class="absolute bottom-1.5 left-1.5 z-10 bg-emerald-700/85 text-white text-[9.5px] font-bold px-2 py-0.5 rounded-full backdrop-blur-xs flex items-center gap-1 shadow" title="มีรูปหรือโน้ตพิกัดคลัง">
+                            <i class="bi bi-geo-alt-fill text-amber-300 text-[9px]"></i> มีพิกัดคลัง
+                        </div>
+                    ` : ''}
 
                     <!-- Multi-Image Gallery Badge (if product has 2+ photos) -->
                     ${galleryCount > 1 ? `
@@ -1124,6 +1183,8 @@ function openShopeeVariationModal(parentKey) {
 
     const varShopeeBtn = document.getElementById('varModalShopeeBtn');
     const varShopeeUrl = parentItems.find(x => x.product_url)?.product_url ||
+                         localStorage.getItem('sgyver_product_url_' + rawParentSku) ||
+                         localStorage.getItem('sgyver_product_url_' + parentKey) ||
                          localStorage.getItem('sgyver_shopee_url_' + rawParentSku) ||
                          localStorage.getItem('sgyver_shopee_url_' + parentKey) ||
                          localStorage.getItem('sgyver_shopee_url_' + first.sku);
@@ -1135,6 +1196,39 @@ function openShopeeVariationModal(parentKey) {
         } else {
             varShopeeBtn.classList.add('hidden');
             varShopeeBtn.classList.remove('inline-flex');
+        }
+    }
+
+    // Populate Warehouse Location Section (Comment & Shelf Photo)
+    const varLocSection = document.getElementById('varModalLocationSection');
+    const varLocNote = parentItems.find(x => x.location_note)?.location_note ||
+                       localStorage.getItem('sgyver_loc_note_' + rawParentSku) ||
+                       localStorage.getItem('sgyver_loc_note_' + parentKey) ||
+                       localStorage.getItem('sgyver_loc_note_' + first.sku) || '';
+    const varLocImg = parentItems.find(x => x.location_image)?.location_image ||
+                      localStorage.getItem('sgyver_loc_img_' + rawParentSku) ||
+                      localStorage.getItem('sgyver_loc_img_' + parentKey) ||
+                      localStorage.getItem('sgyver_loc_img_' + first.sku) || '';
+
+    if (varLocSection) {
+        if (varLocNote || varLocImg) {
+            varLocSection.classList.remove('hidden');
+            const noteEl = document.getElementById('varModalLocationNote');
+            if (noteEl) noteEl.innerText = varLocNote || '(ไม่มีคอมเมนต์ข้อความ มีเฉพาะรูปถ่ายจุดเก็บ)';
+            const rackEl = document.getElementById('varModalLocationRackBadge');
+            if (rackEl) rackEl.innerText = 'ชั้น: ' + (first.warehouse_location || 'A-01');
+
+            const imgContainer = document.getElementById('varModalLocationImgContainer');
+            const imgEl = document.getElementById('varModalLocationImg');
+            if (varLocImg && imgContainer && imgEl) {
+                imgContainer.classList.remove('hidden');
+                imgEl.src = varLocImg;
+                imgContainer.onclick = () => openImagePreview(varLocImg, `พิกัดจุดเก็บในคลัง: ${escapeHtml(rawParentSku)} (${escapeHtml(first.name || '')})`);
+            } else if (imgContainer) {
+                imgContainer.classList.add('hidden');
+            }
+        } else {
+            varLocSection.classList.add('hidden');
         }
     }
 
@@ -1932,7 +2026,7 @@ InventoryApp.modalVariants = [];
 InventoryApp.modalImages = [];
 
 function switchShopeeTab(tabName) {
-    const tabs = ['general', 'attributes', 'description', 'sales', 'shipping', 'others'];
+    const tabs = ['general', 'attributes', 'description', 'sales', 'shipping', 'others', 'location'];
     tabs.forEach(t => {
         const btn = document.getElementById(`shopeeTabBtn_${t}`);
         const pane = document.getElementById(`shopeeTabPane_${t}`);
@@ -1946,11 +2040,193 @@ function switchShopeeTab(tabName) {
         if (pane) {
             if (t === tabName) {
                 pane.classList.remove('hidden');
+                if (tabName === 'location') {
+                    checkModalProductUrlDuplicate();
+                }
             } else {
                 pane.classList.add('hidden');
             }
         }
     });
+}
+
+// ==============================================================================
+// 5.5.1 TAB 7 HELPERS: URL & WAREHOUSE LOCATION (พิกัดจัดเก็บ & คอมเมนต์ & รูปถ่าย)
+// ==============================================================================
+
+function appendLocationChip(text) {
+    const textarea = document.getElementById('modalLocationNote');
+    if (!textarea) return;
+    const current = textarea.value.trim();
+    if (current) {
+        textarea.value = current + ', ' + text;
+    } else {
+        textarea.value = text;
+    }
+    textarea.focus();
+}
+
+function handleLocationImageFileUpload(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+        alert('กรุณาเลือกไฟล์รูปภาพเท่านั้น (JPG, PNG, WEBP)');
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const dataUrl = e.target.result;
+        setLocationImage(dataUrl);
+    };
+    reader.readAsDataURL(file);
+}
+
+function applyLocationImageUrlInput() {
+    const input = document.getElementById('modalLocationImgUrlInput');
+    const url = (input?.value || '').trim();
+    if (!url) {
+        alert('กรุณากรอกหรือวางลิงก์รูปภาพ');
+        return;
+    }
+    setLocationImage(url);
+    if (input) input.value = '';
+}
+
+function setLocationImage(url) {
+    const hidden = document.getElementById('modalLocationImageUrl');
+    const preview = document.getElementById('modalLocationImgPreview');
+    const emptyBox = document.getElementById('modalLocationImgEmpty');
+    const actions = document.getElementById('modalLocationImgActions');
+
+    if (hidden) hidden.value = url || '';
+    if (url) {
+        if (preview) {
+            preview.src = url;
+            preview.classList.remove('hidden');
+        }
+        if (emptyBox) emptyBox.classList.add('hidden');
+        if (actions) actions.classList.remove('hidden');
+    } else {
+        if (preview) {
+            preview.src = '';
+            preview.classList.add('hidden');
+        }
+        if (emptyBox) emptyBox.classList.remove('hidden');
+        if (actions) actions.classList.add('hidden');
+    }
+}
+
+function clearLocationImage() {
+    setLocationImage('');
+    const fileInput = document.getElementById('modalLocationImgFileInput');
+    if (fileInput) fileInput.value = '';
+}
+
+function openCurrentLocationImgLarge() {
+    const hidden = document.getElementById('modalLocationImageUrl');
+    const url = hidden?.value;
+    if (url) {
+        openImagePreview(url, 'รูปถ่ายพิกัดจุดเก็บสินค้าในคลัง');
+    }
+}
+
+async function pasteToModalProductUrl() {
+    try {
+        let text = '';
+        if (navigator.clipboard && navigator.clipboard.readText) {
+            try { text = await navigator.clipboard.readText(); } catch(e){}
+        }
+        if (!text) {
+            text = prompt('วาง URL สินค้าที่นี่:') || '';
+        }
+        text = (text || '').trim();
+        if (text) {
+            const input = document.getElementById('modalProductUrl');
+            if (input) {
+                input.value = text;
+                checkModalProductUrlDuplicate();
+            }
+        }
+    } catch (e) {
+        const input = document.getElementById('modalProductUrl');
+        if (input) input.focus();
+    }
+}
+
+function openModalProductUrl() {
+    const input = document.getElementById('modalProductUrl');
+    const url = (input?.value || '').trim();
+    if (url) {
+        window.open(url, '_blank', 'noopener,noreferrer');
+    } else {
+        alert('ยังไม่มี URL สินค้าให้เปิด');
+    }
+}
+
+function checkModalProductUrlDuplicate() {
+    const input = document.getElementById('modalProductUrl');
+    const statusBox = document.getElementById('modalProductUrlStatus');
+    if (!input || !statusBox) return;
+
+    const url = (input.value || '').trim();
+    if (!url) {
+        statusBox.innerHTML = '';
+        return;
+    }
+
+    const cleanUrl = url.split('?')[0].replace(/\/+$/, '');
+    const rawItemId = (url.match(/-i\.(\d+)\.(\d+)/)?.[2] || url.match(/\/product\/(\d+)\/(\d+)/)?.[2] || url.match(/[?&]item_?id=(\d+)/)?.[1]) || '';
+
+    // Check duplicate in InventoryApp.products
+    let match = null;
+    if (Array.isArray(InventoryApp.products)) {
+        match = InventoryApp.products.find(p => {
+            const pKey = typeof getParentGroupKey === 'function' ? getParentGroupKey(p) : (p.parent_sku || p.sku);
+            const pUrl = (p.product_url || localStorage.getItem('sgyver_product_url_' + pKey) || localStorage.getItem('sgyver_product_url_' + p.sku) || localStorage.getItem('sgyver_shopee_url_' + pKey) || '').split('?')[0].replace(/\/+$/, '');
+            const pItemId = p.item_id || localStorage.getItem('sgyver_item_id_' + pKey) || localStorage.getItem('sgyver_shopee_itemid_' + pKey) || '';
+
+            if (rawItemId && pItemId && String(rawItemId) === String(pItemId)) return true;
+            if (cleanUrl && pUrl && cleanUrl === pUrl) return true;
+            return false;
+        });
+    }
+
+    if (match) {
+        const mKey = typeof getParentGroupKey === 'function' ? getParentGroupKey(match) : (match.parent_sku || match.sku);
+        statusBox.innerHTML = `
+            <div class="p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                    <i class="bi bi-exclamation-triangle-fill text-amber-600 text-sm shrink-0"></i>
+                    <div>
+                        <span class="font-bold">⚠️ เคยลงสินค้านี้ในคลังแล้ว!</span>
+                        <span class="text-[11px] block text-amber-700">ตรงกับสินค้า SKU: <b>${escapeHtml(mKey)}</b> (${escapeHtml(match.name || '')})</span>
+                    </div>
+                </div>
+                <button type="button" onclick="editProductModal(${match.id})" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[10.5px] font-bold shrink-0 cursor-pointer">
+                    เปิดดูสินค้าเดิม
+                </button>
+            </div>
+        `;
+    } else {
+        statusBox.innerHTML = `
+            <div class="p-2 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-700 flex items-center gap-2 text-[11px]">
+                <i class="bi bi-check-circle-fill text-emerald-600"></i>
+                <span>✅ ลิงก์นี้ยังไม่เคยถูกบันทึกลงคลัง (สามารถบันทึกเป็นสินค้าใหม่ได้ทันที)</span>
+            </div>
+        `;
+    }
+}
+
+function saveCustomProductsToLocalCache() {
+    try {
+        if (Array.isArray(InventoryApp.products)) {
+            localStorage.setItem('sgyver_custom_products', JSON.stringify(InventoryApp.products));
+        }
+    } catch (e) {
+        console.warn('saveCustomProductsToLocalCache warning:', e);
+    }
 }
 
 // ==============================================================================
@@ -3721,11 +3997,51 @@ function getStoredCategoryTree() {
     return DEFAULT_CATEGORY_TREE;
 }
 
-function saveStoredCategoryTree(tree) {
+async function saveStoredCategoryTree(tree) {
     try {
         localStorage.setItem('sgyver_category_tree', JSON.stringify(tree));
+        if (InventoryApp.supabaseClient) {
+            const { error } = await InventoryApp.supabaseClient
+                .from('product_categories')
+                .upsert({
+                    id: 'category_tree',
+                    tree: tree,
+                    updated_at: new Date().toISOString()
+                });
+            if (error) console.warn('Supabase product_categories sync notice:', error.message);
+        }
     } catch (e) {
-        console.error('Failed to save category tree:', e);
+        console.warn('saveStoredCategoryTree error:', e);
+    }
+}
+
+async function loadCategoryTreeFromSupabase() {
+    if (!InventoryApp.supabaseClient) return;
+    try {
+        const { data, error } = await InventoryApp.supabaseClient
+            .from('product_categories')
+            .select('tree')
+            .eq('id', 'category_tree')
+            .maybeSingle();
+
+        if (data && Array.isArray(data.tree) && data.tree.length > 0) {
+            localStorage.setItem('sgyver_category_tree', JSON.stringify(data.tree));
+            if (typeof populateModalCategories === 'function') {
+                populateModalCategories();
+            }
+        } else if (!error) {
+            // First time seeding to Supabase if table is empty
+            const currentTree = getStoredCategoryTree();
+            await InventoryApp.supabaseClient
+                .from('product_categories')
+                .upsert({
+                    id: 'category_tree',
+                    tree: currentTree,
+                    updated_at: new Date().toISOString()
+                });
+        }
+    } catch (e) {
+        console.warn('loadCategoryTreeFromSupabase notice:', e);
     }
 }
 
@@ -5497,6 +5813,12 @@ function openProductModal() {
     InventoryApp.currentShopeeUrl = '';
     InventoryApp.currentShopeeItemId = '';
 
+    // Reset Tab 7: URL & Warehouse Location
+    const urlInput = document.getElementById('modalProductUrl'); if (urlInput) urlInput.value = '';
+    const locNote = document.getElementById('modalLocationNote'); if (locNote) locNote.value = '';
+    clearLocationImage();
+    const urlStatus = document.getElementById('modalProductUrlStatus'); if (urlStatus) urlStatus.innerHTML = '';
+
     const modal = document.getElementById('productModal');
     if (modal) modal.classList.remove('hidden');
 }
@@ -5714,6 +6036,16 @@ function editProductModal(id) {
     const icon = document.getElementById('modalSkuStateIcon');
     if (icon) { icon.innerHTML = ''; }
 
+    // Restore Tab 7: URL & Warehouse Location
+    const pUrl = item.product_url || localStorage.getItem('sgyver_product_url_' + parentKey) || localStorage.getItem('sgyver_product_url_' + item.sku) || localStorage.getItem('sgyver_shopee_url_' + parentKey) || localStorage.getItem('sgyver_shopee_url_' + item.sku) || '';
+    const pNote = item.location_note || localStorage.getItem('sgyver_loc_note_' + parentKey) || localStorage.getItem('sgyver_loc_note_' + item.sku) || '';
+    const pLocImg = item.location_image || localStorage.getItem('sgyver_loc_img_' + parentKey) || localStorage.getItem('sgyver_loc_img_' + item.sku) || '';
+
+    const urlInput = document.getElementById('modalProductUrl'); if (urlInput) urlInput.value = pUrl;
+    const locNote = document.getElementById('modalLocationNote'); if (locNote) locNote.value = pNote;
+    setLocationImage(pLocImg);
+    checkModalProductUrlDuplicate();
+
     // Start on Shopee tab 'general'
     switchShopeeTab('general');
     renderDistributorPresetChips();
@@ -5785,7 +6117,15 @@ function generateRandomSkuModal() {
 }
 
 // Resilient upsert helper that automatically updates by ID if ID exists, or upserts by SKU.
-// Automatically recovers from column missing errors and never throws so local changes are always saved.
+// Automatically filters to allowed database columns and recovers from missing schema columns.
+const SUPABASE_ALLOWED_COLUMNS = new Set([
+    'sku', 'name', 'variant', 'price', 'distributor', 'care_instructions',
+    'barcode_type', 'stock_quantity', 'min_stock_alert', 'warehouse_location',
+    'image_url', 'images', 'product_type', 'created_at', 'updated_at',
+    // Optional schema columns (if added in Supabase):
+    'parent_sku', 'product_url', 'item_id', 'location_note', 'location_image', 'video_url'
+]);
+
 async function safeSupabaseUpsert(data) {
     if (!InventoryApp.supabaseClient) return { error: null };
     const isArray = Array.isArray(data);
@@ -5793,13 +6133,18 @@ async function safeSupabaseUpsert(data) {
 
     try {
         for (const item of list) {
-            const cleanItem = { ...item };
-            const id = cleanItem.id;
-            delete cleanItem.id; // avoid sending primary key inside body update
+            // Only send known columns to Supabase
+            const cleanItem = {};
+            for (const [k, v] of Object.entries(item)) {
+                if (SUPABASE_ALLOWED_COLUMNS.has(k) && v !== undefined) {
+                    cleanItem[k] = v;
+                }
+            }
+            const id = item.id;
 
             if (id) {
                 // Direct update by ID - immune to unique constraint or pkey duplicate conflicts
-                for (let attempt = 0; attempt < 4; attempt++) {
+                for (let attempt = 0; attempt < 10; attempt++) {
                     const { error } = await InventoryApp.supabaseClient
                         .from('product_labels')
                         .update(cleanItem)
@@ -5808,6 +6153,7 @@ async function safeSupabaseUpsert(data) {
                     console.warn(`Update attempt ${attempt + 1} notice for id ${id}:`, error.message);
                     const m = error.message?.match(/Could not find the ['"]?([^'"\s]+)['"]? column/i);
                     if (m && cleanItem[m[1]] !== undefined) {
+                        SUPABASE_ALLOWED_COLUMNS.delete(m[1]); // remember not in database so future saves skip it
                         delete cleanItem[m[1]];
                         continue;
                     }
@@ -5815,7 +6161,7 @@ async function safeSupabaseUpsert(data) {
                 }
             } else {
                 // Insert or upsert by SKU
-                for (let attempt = 0; attempt < 4; attempt++) {
+                for (let attempt = 0; attempt < 10; attempt++) {
                     const check = await InventoryApp.supabaseClient
                         .from('product_labels')
                         .select('id')
@@ -5830,6 +6176,7 @@ async function safeSupabaseUpsert(data) {
                         if (!error) break;
                         const m = error.message?.match(/Could not find the ['"]?([^'"\s]+)['"]? column/i);
                         if (m && cleanItem[m[1]] !== undefined) {
+                            SUPABASE_ALLOWED_COLUMNS.delete(m[1]);
                             delete cleanItem[m[1]];
                             continue;
                         }
@@ -5840,6 +6187,7 @@ async function safeSupabaseUpsert(data) {
                         if (!error) break;
                         const m = error.message?.match(/Could not find the ['"]?([^'"\s]+)['"]? column/i);
                         if (m && cleanItem[m[1]] !== undefined) {
+                            SUPABASE_ALLOWED_COLUMNS.delete(m[1]);
                             delete cleanItem[m[1]];
                             continue;
                         }
@@ -6071,20 +6419,42 @@ async function handleSaveProductModal(event) {
         if (origParentKey) localStorage.removeItem('sgyver_attrs_' + origParentKey);
     }
 
-    // Persist Shopee URL & Item ID if imported
-    if (InventoryApp.currentShopeeUrl) {
-        localStorage.setItem('sgyver_shopee_url_' + parentSku, InventoryApp.currentShopeeUrl);
-        if (origParentKey && origParentKey !== parentSku) {
-            localStorage.setItem('sgyver_shopee_url_' + origParentKey, InventoryApp.currentShopeeUrl);
-        }
+    // Tab 7: URL & Warehouse Location
+    const productUrl = (document.getElementById('modalProductUrl')?.value || '').trim() || InventoryApp.currentShopeeUrl || '';
+    const locationNote = (document.getElementById('modalLocationNote')?.value || '').trim();
+    const locationImage = (document.getElementById('modalLocationImageUrl')?.value || '').trim();
+
+    if (productUrl) {
+        localStorage.setItem('sgyver_product_url_' + parentSku, productUrl);
+        if (origParentKey) localStorage.setItem('sgyver_product_url_' + origParentKey, productUrl);
+        localStorage.setItem('sgyver_shopee_url_' + parentSku, productUrl);
+        if (origParentKey) localStorage.setItem('sgyver_shopee_url_' + origParentKey, productUrl);
+    } else {
+        localStorage.removeItem('sgyver_product_url_' + parentSku);
+        if (origParentKey) localStorage.removeItem('sgyver_product_url_' + origParentKey);
     }
+    if (locationNote) {
+        localStorage.setItem('sgyver_loc_note_' + parentSku, locationNote);
+        if (origParentKey) localStorage.setItem('sgyver_loc_note_' + origParentKey, locationNote);
+    } else {
+        localStorage.removeItem('sgyver_loc_note_' + parentSku);
+        if (origParentKey) localStorage.removeItem('sgyver_loc_note_' + origParentKey);
+    }
+    if (locationImage) {
+        localStorage.setItem('sgyver_loc_img_' + parentSku, locationImage);
+        if (origParentKey) localStorage.setItem('sgyver_loc_img_' + origParentKey, locationImage);
+    } else {
+        localStorage.removeItem('sgyver_loc_img_' + parentSku);
+        if (origParentKey) localStorage.removeItem('sgyver_loc_img_' + origParentKey);
+    }
+
     if (InventoryApp.currentShopeeItemId) {
         localStorage.setItem('sgyver_shopee_itemid_' + parentSku, InventoryApp.currentShopeeItemId);
         if (origParentKey && origParentKey !== parentSku) {
             localStorage.setItem('sgyver_shopee_itemid_' + origParentKey, InventoryApp.currentShopeeItemId);
         }
     }
-    if (InventoryApp.currentShopeeUrl || InventoryApp.currentShopeeItemId) {
+    if (productUrl || InventoryApp.currentShopeeItemId) {
         localStorage.setItem('sgyver_shopee_time_' + parentSku, new Date().toLocaleString('th-TH'));
     }
 
@@ -6130,6 +6500,9 @@ async function handleSaveProductModal(event) {
                 if (customAttrs.length > 0) localStorage.setItem('sgyver_attrs_' + subSku, JSON.stringify(customAttrs));
                 localStorage.setItem('sgyver_tab2_attrs_' + subSku, JSON.stringify(tab2Attrs));
                 localStorage.setItem('sgyver_shipping_' + subSku, JSON.stringify(shippingData));
+                if (productUrl) localStorage.setItem('sgyver_product_url_' + subSku, productUrl);
+                if (locationNote) localStorage.setItem('sgyver_loc_note_' + subSku, locationNote);
+                if (locationImage) localStorage.setItem('sgyver_loc_img_' + subSku, locationImage);
                 if (InventoryApp.modalVideoUrl) {
                     localStorage.setItem('sgyver_video_' + subSku, InventoryApp.modalVideoUrl);
                 } else {
@@ -6151,8 +6524,10 @@ async function handleSaveProductModal(event) {
                     warehouse_location: (v.warehouse_location || 'A-01').trim().toUpperCase(),
                     distributor,
                     care_instructions,
-                    product_url: InventoryApp.currentShopeeUrl || (v.product_url || null),
+                    product_url: productUrl || InventoryApp.currentShopeeUrl || (v.product_url || null),
                     item_id: InventoryApp.currentShopeeItemId || (v.item_id || null),
+                    location_note: locationNote || null,
+                    location_image: locationImage || null,
                     updated_at: new Date().toISOString()
                 };
                 if (v.id) {
@@ -6175,6 +6550,9 @@ async function handleSaveProductModal(event) {
                     }
                 });
             }
+
+            // Persist to local cache so reload never loses items!
+            saveCustomProductsToLocalCache();
 
             closeProductModal();
             calculateMetrics(InventoryApp.products);
@@ -6215,6 +6593,10 @@ async function handleSaveProductModal(event) {
             localStorage.setItem('sgyver_cat_' + parentSku, category);
             localStorage.setItem('sgyver_tab2_attrs_' + parentSku, JSON.stringify(tab2Attrs));
             localStorage.setItem('sgyver_shipping_' + parentSku, JSON.stringify(shippingData));
+            if (productUrl) localStorage.setItem('sgyver_product_url_' + parentSku, productUrl);
+            if (locationNote) localStorage.setItem('sgyver_loc_note_' + parentSku, locationNote);
+            if (locationImage) localStorage.setItem('sgyver_loc_img_' + parentSku, locationImage);
+
             if (InventoryApp.modalVideoUrl) {
                 localStorage.setItem('sgyver_video_' + parentSku, InventoryApp.modalVideoUrl);
                 if (origParentKey) localStorage.setItem('sgyver_video_' + origParentKey, InventoryApp.modalVideoUrl);
@@ -6238,8 +6620,10 @@ async function handleSaveProductModal(event) {
                 warehouse_location,
                 distributor,
                 care_instructions,
-                product_url: InventoryApp.currentShopeeUrl || (InventoryApp.editingId ? InventoryApp.products.find(p=>p.id===InventoryApp.editingId)?.product_url : null) || null,
+                product_url: productUrl || InventoryApp.currentShopeeUrl || (InventoryApp.editingId ? InventoryApp.products.find(p=>p.id===InventoryApp.editingId)?.product_url : null) || null,
                 item_id: InventoryApp.currentShopeeItemId || (InventoryApp.editingId ? InventoryApp.products.find(p=>p.id===InventoryApp.editingId)?.item_id : null) || null,
+                location_note: locationNote || null,
+                location_image: locationImage || null,
                 updated_at: new Date().toISOString()
             };
             if (InventoryApp.editingId) {
@@ -6258,6 +6642,9 @@ async function handleSaveProductModal(event) {
                     InventoryApp.products.push({ ...payload, id: Date.now() + Math.floor(Math.random() * 1000) });
                 }
             }
+
+            // Persist to local cache so reload never loses items!
+            saveCustomProductsToLocalCache();
 
             closeProductModal();
             calculateMetrics(InventoryApp.products);
@@ -6286,12 +6673,17 @@ async function deleteProduct(id) {
     if (!confirm(`ยืนยันการลบสินค้า SKU: "${item.sku}" ออกจากคลังใช่หรือไม่?`)) return;
 
     try {
-        const { error } = await InventoryApp.supabaseClient
-            .from('product_labels')
-            .delete()
-            .eq('id', id);
+        InventoryApp.products = InventoryApp.products.filter(p => p.id !== id);
+        saveCustomProductsToLocalCache();
 
-        if (error) throw error;
+        if (InventoryApp.supabaseClient) {
+            const { error } = await InventoryApp.supabaseClient
+                .from('product_labels')
+                .delete()
+                .eq('id', id);
+
+            if (error) console.warn('Supabase delete warning:', error.message);
+        }
 
         await loadInventory();
     } catch (err) {
@@ -7570,11 +7962,13 @@ function getShopeeBookmarkletCode() {
         '\'<div style="font-size:11px;margin-top:4px;opacity:0.9;">Shopee Item ID: <b>\'+ itemid +\'</b></div>\' +' +
         '\'</div>\' +' +
         '\'<div style="font-size:11.5px;margin-top:8px;opacity:0.95;">ต้องการคัดลอกข้อมูลซ้ำอีกครั้งหรือไม่?</div>\' +' +
-        '\'<div style="display:flex;gap:8px;margin-top:10px;">\' +' +
+        '\'<div style="display:flex;gap:6px;margin-top:10px;">\' +' +
         '\'<button id="sgyver-btn-repeat" style="flex:1;padding:10px 12px;background:#fef08a;color:#854d0e;border:2px solid #ca8a04;border-radius:10px;font-weight:bold;font-size:12px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.2);">📋 ยืนยันดูดซ้ำอีกรอบ</button>\' +' +
-        '\'<button id="sgyver-btn-cancel" style="padding:10px 14px;background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.4);border-radius:10px;font-size:12px;cursor:pointer;">✕ ยกเลิก</button>\' +' +
+        '\'<button id="sgyver-btn-clear" style="padding:10px 10px;background:rgba(255,255,255,0.18);color:#fff;border:1px solid rgba(255,255,255,0.35);border-radius:10px;font-size:11px;cursor:pointer;" title="ล้างประวัติที่เคยดูดชิ้นนี้">🗑️ ล้างประวัติ</button>\' +' +
+        '\'<button id="sgyver-btn-cancel" style="padding:10px 10px;background:transparent;color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:10px;font-size:11px;cursor:pointer;">✕ ยกเลิก</button>\' +' +
         '\'</div>\';' +
         'document.getElementById("sgyver-btn-repeat").onclick=function(){doExtractAndCopy(true);};' +
+        'document.getElementById("sgyver-btn-clear").onclick=function(){if(itemid)localStorage.removeItem("sgyver_copied_"+itemid);doExtractAndCopy(true);};' +
         'document.getElementById("sgyver-btn-cancel").onclick=function(){b.remove();};' +
         '}else{' +
         'doExtractAndCopy(false);' +
@@ -7985,6 +8379,13 @@ function applyShopeeExtractedData(data) {
     // 1. Open Product Modal (fresh clean state)
     openProductModal();
 
+    // Set Tab 7: Product Source URL
+    const urlInput = document.getElementById('modalProductUrl');
+    if (urlInput) {
+        urlInput.value = data.url || '';
+        checkModalProductUrlDuplicate();
+    }
+
     // 2. Set Product Name
     const nameInput = document.getElementById('modalName');
     if (nameInput) {
@@ -8297,6 +8698,7 @@ function applyShopeeExtractedData(data) {
 
 window.addEventListener('DOMContentLoaded', () => {
     initSupabase();
+    loadCategoryTreeFromSupabase();
     loadInventory();
     loadSavedAttributeOptions();
     renderDistributorPresetChips();
@@ -8369,4 +8771,20 @@ window.addEventListener('focus', async () => {
         // Silently ignore if browser restricts background clipboard read
     }
 });
+
+// Real-time synchronization when Chrome Extension scrapes a product from Shopee
+window.addEventListener('message', (event) => {
+    if (!event.data || typeof event.data !== 'object') return;
+    if (event.data.type === 'SGYVER_AUTO_SYNC_PRODUCT' && event.data.product) {
+        const p = event.data.product;
+        console.log('⚡ [S-Gyver Realtime] Received scraped product from Shopee extension:', p);
+        if (typeof showShopeeAutoDetectToast === 'function') {
+            showShopeeAutoDetectToast(p);
+        }
+        if (typeof loadInventoryData === 'function') {
+            loadInventoryData();
+        }
+    }
+});
+
 

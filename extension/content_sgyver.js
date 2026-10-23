@@ -83,6 +83,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             platformStatus: request.platformStatus
         }, '*');
         sendResponse({ received: true });
+    } else if (request.action === 'AUTO_PRODUCT_UPDATE' && request.product) {
+        console.log('⚡ [S-Gyver Assistant] Live product scraped from Shopee tab:', request.product.name);
+        window.postMessage({
+            type: 'SGYVER_AUTO_SYNC_PRODUCT',
+            product: request.product
+        }, '*');
+        sendResponse({ received: true });
     }
 });
 

@@ -5,6 +5,14 @@
 
 console.log('🌟 [S-Gyver Assistant] Background Worker Initialized');
 
+// Maintain active port connection with open tabs (prevents premature suspension in Firefox)
+chrome.runtime.onConnect.addListener((port) => {
+    // Keep alive channel
+    port.onDisconnect.addListener(() => {
+        // Disconnected
+    });
+});
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'PULL_ORDERS_FROM_BIGSELLER') {
         handlePullOrders(sendResponse);
@@ -22,6 +30,45 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             sendResponse({ success: true });
         }).catch(err => {
             sendResponse({ success: false, error: err.message });
+        });
+        return true;
+    } else if (request.action === 'AUTO_BROADCAST_PRODUCT') {
+        broadcastProductToSgyver(request.product);
+        sendResponse({ success: true });
+        return true;
+    } else if (request.action === 'SAVE_SCRAPED_PRODUCT_TO_SUPABASE') {
+        syncProductToSupabase(request.product).then((res) => {
+            sendResponse({ success: true, data: res });
+        }).catch(err => {
+            sendResponse({ success: false, error: err.message });
+        });
+        return true;
+    } else if (request.action === 'GET_ALL_SCRAPED_ITEMS') {
+        chrome.storage.local.get(null, (items) => {
+            const map = {};
+            for (const k in items) {
+                if (k.startsWith('sgyver_copied_')) {
+                    map[k.replace('sgyver_copied_', '')] = items[k];
+                }
+            }
+            sendResponse({ success: true, items: map });
+        });
+        return true;
+    } else if (request.action === 'CLEAR_ALL_SCRAPED_ITEMS') {
+        chrome.storage.local.get(null, (items) => {
+            const keysToRemove = [];
+            for (const k in items) {
+                if (k.startsWith('sgyver_copied_')) {
+                    keysToRemove.push(k);
+                }
+            }
+            if (keysToRemove.length > 0) {
+                chrome.storage.local.remove(keysToRemove, () => {
+                    sendResponse({ success: true, count: keysToRemove.length });
+                });
+            } else {
+                sendResponse({ success: true, count: 0 });
+            }
         });
         return true;
     }
@@ -181,4 +228,83 @@ async function syncToSupabase(orders) {
     } catch (e) {
         console.error('❌ [Background] Failed to sync to Supabase:', e);
     }
+}
+
+async function broadcastProductToSgyver(product) {
+    try {
+        if (!product) return;
+        await chrome.storage.local.set({ lastScrapedProduct: product });
+
+        // Query tabs that have S-Gyver Studio / Inventory open
+        const tabs = await chrome.tabs.query({});
+        for (const tab of tabs) {
+            if (tab.url && (tab.url.includes('inventory') || tab.url.includes('product_labels') || tab.url.includes('sgyver') || tab.url.includes('s-gyver'))) {
+                try {
+                    chrome.tabs.sendMessage(tab.id, { action: 'AUTO_PRODUCT_UPDATE', product: product });
+                } catch (e) {
+                    // Ignore inactive tab
+                }
+            }
+        }
+    } catch (e) {
+        console.error('Error broadcasting product:', e);
+    }
+}
+
+async function syncProductToSupabase(product) {
+    const SUPABASE_URL = 'https://igiihteeeprpcxxlldkd.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnaWlodGVlZXBycGN4eGxsZGtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5ODkwNzksImV4cCI6MjEwMDU2NTA3OX0.fr8_ZAYKQ3D-JgEtAWGJnNvKjoUmYxs1T7tjzzsEltw';
+
+    if (!product || !product.name) throw new Error('Invalid product payload');
+
+    const sku = (product.sku || (product.itemid ? `SP_${product.itemid}` : `SP_${Date.now()}`)).trim();
+    const payload = {
+        sku: sku,
+        name: (product.name || '').substring(0, 120),
+        variant: product.variant || (product.models && product.models.length > 0 ? `${product.models.length} ตัวเลือก` : 'ค่าเริ่มต้น'),
+        price: parseFloat(product.price || 0),
+        stock_quantity: parseInt(product.stock || 10, 10),
+        min_stock_alert: 5,
+        warehouse_location: product.warehouse_location || product.location || 'A-01',
+        image_url: product.image_url || (Array.isArray(product.images) && product.images[0]) || null,
+        distributor: product.distributor || (product.shopid ? `Shopee Shop ${product.shopid}` : 'Shopee Scraper'),
+        updated_at: new Date().toISOString()
+    };
+
+    // If extra columns exist in database:
+    if (product.url) payload.product_url = product.url;
+    if (product.location_comment) payload.location_comment = product.location_comment;
+    if (product.location_photo) payload.location_photo = product.location_photo;
+
+    // Use safe fetch with column pruning if needed
+    const doUpsert = async (bodyObj) => {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/product_labels`, {
+            method: 'POST',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json',
+                'Accept-Profile': 'public',
+                'Content-Profile': 'public',
+                'Prefer': 'resolution=merge-duplicates'
+            },
+            body: JSON.stringify(bodyObj)
+        });
+        if (!res.ok) {
+            const errJson = await res.json().catch(() => ({}));
+            const errMsg = errJson.message || '';
+            // If column does not exist in schema, prune it and retry
+            const colMatch = errMsg.match(/column "?([a-zA-Z0-9_]+)"? of relation "product_labels" does not exist/i) ||
+                             errMsg.match(/Could not find the '([a-zA-Z0-9_]+)' column/i);
+            if (colMatch && colMatch[1] && colMatch[1] in bodyObj) {
+                const pruned = { ...bodyObj };
+                delete pruned[colMatch[1]];
+                return doUpsert(pruned);
+            }
+            throw new Error(errMsg || `HTTP ${res.status}`);
+        }
+        return res;
+    };
+
+    return await doUpsert(payload);
 }

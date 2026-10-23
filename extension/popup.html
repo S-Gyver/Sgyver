@@ -85,20 +85,49 @@
 
     <p>ผู้ช่วยอัจฉริยะสำหรับ S-Gyver Studio:</p>
     <ul style="font-size: 12px; color: #94a3b8; padding-left: 18px; margin: 0 0 16px 0; line-height: 1.6;">
+        <li>🛍️ <b>Shopee Scraper (BigSeller-Style):</b> ปุ่มลอยดูดสินค้าบนหน้าเว็บ Shopee พร้อมป้ายเตือน [ ✅ ดูดแล้ว ] และแถบดูดทั้งหน้า 1-Click</li>
         <li>📦 <b>Shopee Warehouse:</b> ดึงสินค้า & สต็อกเข้าคลังทันทีจาก Shopee Seller Centre</li>
         <li>🚚 <b>BigSeller Orders:</b> ดึงออเดอร์ Shopee, TikTok, Lazada เข้า Shipping Studio</li>
     </ul>
 
     <div style="display: flex; flex-direction: column; gap: 8px;">
-        <a href="https://seller.shopee.co.th/portal/product/list/all" target="_blank" class="btn-launch" style="background: linear-gradient(135deg, #ea580c, #f97316);">
-            🛍️ เปิด Shopee Seller Centre
+        <a href="https://shopee.co.th" target="_blank" class="btn-launch" style="background: linear-gradient(135deg, #ea580c, #f97316);">
+            🛍️ เปิด Shopee (ดูดสินค้าหน้าร้าน)
         </a>
         <a href="../features/business/inventory/inventory.html" target="_blank" class="btn-launch" style="background: linear-gradient(135deg, #059669, #10b981);">
-            📦 เปิดระบบคลังสินค้า (Warehouse)
+            📦 เปิดระบบคลังสินค้า S-Gyver (Warehouse)
         </a>
-        <a href="../features/business/shopee_orders/shopee_orders.html" target="_blank" class="btn-launch" style="background: linear-gradient(135deg, #4f46e5, #3b82f6); font-size: 12px; padding: 8px;">
-            🚚 เปิด Shipping Orders Studio
+        <a href="https://seller.shopee.co.th/portal/product/list/all" target="_blank" class="btn-launch" style="background: #1e293b; color: #94a3b8; font-size: 11px; padding: 7px;">
+            🏬 เปิด Shopee Seller Centre (คลังหลังบ้าน)
         </a>
+        <button id="btn-reset-scraped" style="
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            color: #fca5a5;
+            padding: 8px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.2s;
+        ">
+            <span>🔄</span>
+            <span>ล้างประวัติการดูดสินค้า (เริ่มใหม่ทั้งหมด)</span>
+        </button>
     </div>
+
+    <script>
+        document.getElementById('btn-reset-scraped')?.addEventListener('click', async () => {
+            if (!confirm('ยืนยันล้างประวัติสินค้าที่ดูดแล้วทั้งหมดหรือไม่?')) return;
+            chrome.runtime.sendMessage({ action: 'CLEAR_ALL_SCRAPED_ITEMS' }, (res) => {
+                alert('ล้างประวัติเรียบร้อยแล้ว! กรุณารีเฟรช (F5) หน้า Shopee เพื่อเริ่มดูดใหม่');
+            });
+        });
+    </script>
 </body>
 </html>

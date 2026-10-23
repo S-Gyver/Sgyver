@@ -10,12 +10,14 @@
     "cookies",
     "storage",
     "tabs",
-    "scripting"
+    "scripting",
+    "clipboardWrite"
   ],
   "host_permissions": [
     "*://*.bigseller.com/*",
     "*://seller.shopee.co.th/*",
     "*://*.shopee.co.th/*",
+    "*://shopee.co.th/*",
     "*://seller.th.shopee.cn/*",
     "https://igiihteeeprpcxxlldkd.supabase.co/*",
     "https://s-gyver.github.io/*",
@@ -24,7 +26,6 @@
     "file:///*"
   ],
   "background": {
-    "service_worker": "background.js",
     "scripts": ["background.js"]
   },
   "browser_specific_settings": {
@@ -39,15 +40,23 @@
         "*://*.bigseller.com/*"
       ],
       "js": ["content_bigseller.js"],
-      "run_at": "document_end"
+      "run_at": "document_idle"
     },
     {
       "matches": [
         "*://seller.shopee.co.th/*",
         "*://seller.th.shopee.cn/*"
       ],
-      "js": ["content_shopee.js"],
-      "run_at": "document_end"
+      "js": ["content_shopee_seller.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://shopee.co.th/*",
+        "*://*.shopee.co.th/*"
+      ],
+      "js": ["content_shopee_scraper.js"],
+      "run_at": "document_idle"
     },
     {
       "matches": [
@@ -57,7 +66,7 @@
         "file:///*"
       ],
       "js": ["content_sgyver.js"],
-      "run_at": "document_end"
+      "run_at": "document_idle"
     }
   ],
   "action": {
