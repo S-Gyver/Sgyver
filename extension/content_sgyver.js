@@ -37,6 +37,17 @@ window.addEventListener('message', (event) => {
         });
     } else if (event.data.type === 'SGYVER_CHECK_EXTENSION') {
         window.postMessage({ type: 'SGYVER_EXTENSION_STATUS', installed: true, version: '1.0.0' }, '*');
+    } else if (event.data.type === 'SGYVER_FETCH_SHOPEE_DETAILS') {
+        const { itemid, shopid, reqId } = event.data;
+        chrome.runtime.sendMessage({ action: 'FETCH_SHOPEE_PRODUCT_FULL', itemid, shopid }, (response) => {
+            window.postMessage({
+                type: 'SGYVER_SHOPEE_DETAILS_RESPONSE',
+                reqId: reqId,
+                success: response && response.success,
+                data: response ? response.data : null,
+                error: response ? response.error : null
+            }, '*');
+        });
     }
 });
 

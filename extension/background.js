@@ -71,8 +71,120 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             }
         });
         return true;
+    } else if (request.action === 'FETCH_SHOPEE_PRODUCT_FULL') {
+        const { itemid, shopid } = request;
+        fetchShopeeFullItem(itemid, shopid).then(data => {
+            sendResponse({ success: true, data: data });
+        }).catch(err => {
+            console.warn('Error fetching Shopee full item in background:', err);
+            sendResponse({ success: false, error: err.message });
+        });
+        return true;
     }
 });
+
+async function fetchShopeeFullItem(itemid, shopid) {
+    if (!itemid) throw new Error('Missing itemid');
+    let data = null;
+
+    // 1. Try modern PDP endpoint
+    try {
+        const res = await fetch(`https://shopee.co.th/api/v4/pdp/get_pc?item_id=${itemid}&shop_id=${shopid || ''}`, {
+            headers: { 'Accept': 'application/json' }
+        });
+        if (res.ok) {
+            const j = await res.json();
+            if (j && (j.data || j.item)) data = j.data || j.item;
+        }
+    } catch (e) {}
+
+    // 2. Try classic item/get endpoint
+    if (!data) {
+        try {
+            const res = await fetch(`https://shopee.co.th/api/v4/item/get?itemid=${itemid}&shopid=${shopid || ''}`, {
+                headers: { 'Accept': 'application/json' }
+            });
+            if (res.ok) {
+                const j = await res.json();
+                if (j && j.data) data = j.data;
+            }
+        } catch (e) {}
+    }
+
+    if (!data) throw new Error('ไม่สามารถดึงข้อมูลสินค้าจาก Shopee API ได้');
+
+    const images = [];
+    if (data.images && Array.isArray(data.images)) {
+        data.images.forEach(img => {
+            images.push(img.startsWith('http') ? img : `https://down-th.img.susercontent.com/file/${img}`);
+        });
+    } else if (data.image) {
+        images.push(data.image.startsWith('http') ? data.image : `https://down-th.img.susercontent.com/file/${data.image}`);
+    }
+
+    let videoUrl = '';
+    if (data.video_info_list && data.video_info_list.length > 0) {
+        const v = data.video_info_list[0];
+        videoUrl = (v.default_format && v.default_format.url) || (v.formats && v.formats[0] && v.formats[0].url) || '';
+    }
+
+    let rawPrice = data.price || data.price_min || 0;
+    if (rawPrice > 100000) rawPrice = rawPrice / 100000;
+
+    let minPrice = (data.price_min > 100000) ? data.price_min / 100000 : (data.price_min || rawPrice);
+    let maxPrice = (data.price_max > 100000) ? data.price_max / 100000 : (data.price_max || rawPrice);
+
+    const variants = [];
+    if (data.models && Array.isArray(data.models)) {
+        data.models.forEach((m, idx) => {
+            let mPrice = m.price ? (m.price / 100000) : rawPrice;
+            let imgUrl = null;
+            if (m.extinfo && Array.isArray(m.extinfo.tier_index) && data.tier_variations) {
+                const t0 = m.extinfo.tier_index[0];
+                const tier0 = data.tier_variations[0];
+                if (tier0 && tier0.images && tier0.images[t0]) {
+                    imgUrl = `https://down-th.img.susercontent.com/file/${tier0.images[t0]}`;
+                }
+            }
+            variants.push({
+                name: m.name || `ตัวเลือกที่ ${idx + 1}`,
+                sku: (m.sku || m.model_sku || `SP_${itemid}_${idx + 1}`).trim(),
+                price: mPrice,
+                stock: (m.stock !== undefined) ? m.stock : (m.normal_stock || 10),
+                image_url: imgUrl || images[0] || null
+            });
+        });
+    }
+
+    const categories = [];
+    if (data.categories && Array.isArray(data.categories)) {
+        data.categories.forEach(c => {
+            if (c.display_name) categories.push(c.display_name);
+        });
+    }
+
+    return {
+        source: 'SGYVER_SHOPEE_IMPORT',
+        version: '2.0',
+        extracted_at: new Date().toISOString(),
+        itemid: String(itemid),
+        shopid: String(shopid || ''),
+        sku: `SP_${itemid}`,
+        name: (data.name || '').trim(),
+        price: rawPrice,
+        price_min: minPrice,
+        price_max: maxPrice,
+        stock: parseInt(data.stock || 10, 10),
+        images: images.slice(0, 15),
+        image_url: images[0] || null,
+        video_url: videoUrl,
+        description: data.description || '',
+        variants: variants,
+        categories: categories,
+        url: `https://shopee.co.th/product/${shopid || '0'}/${itemid}`,
+        warehouse_location: 'A-01'
+    };
+}
 
 async function broadcastOrdersToSgyver(orders) {
     try {

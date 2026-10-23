@@ -8913,13 +8913,155 @@ window.addEventListener('message', (event) => {
         if (productPayload && (productPayload.name || productPayload.itemid || productPayload.url)) {
             productPayload.source = 'SGYVER_SHOPEE_IMPORT';
             
-            // Apply into modal and warehouse
-            if (typeof applyShopeeExtractedData === 'function') {
+            const itemid = productPayload.itemid;
+            const shopid = productPayload.shopid;
+            const needsDeepFetch = (!productPayload.variants || productPayload.variants.length === 0) || 
+                                   (!productPayload.images || productPayload.images.length <= 1) || 
+                                   !productPayload.description;
+
+            if (itemid && needsDeepFetch) {
+                // Show Quick Toast / Modal Loading
+                showShopeeImportLoading(productPayload.name);
+
+                fetchShopeeFullDetailsAsync(itemid, shopid, productPayload.url).then(fullData => {
+                    hideShopeeImportLoading();
+                    if (fullData && fullData.name) {
+                        applyShopeeExtractedData(fullData);
+                    } else {
+                        applyShopeeExtractedData(productPayload);
+                    }
+                }).catch(() => {
+                    hideShopeeImportLoading();
+                    applyShopeeExtractedData(productPayload);
+                });
+            } else {
                 applyShopeeExtractedData(productPayload);
             }
         }
     });
+
+    // Helper: Async fetch full item details via Extension background or direct API
+    async function fetchShopeeFullDetailsAsync(itemid, shopid, url) {
+        if (!itemid) return null;
+
+        // Method 1: Bridge via Extension background (No CORS issue!)
+        try {
+            const reqId = 'shopee_req_' + Date.now();
+            const extensionPromise = new Promise((resolve) => {
+                const timer = setTimeout(() => resolve(null), 3000);
+                function handleMsg(e) {
+                    if (e.data && e.data.type === 'SGYVER_SHOPEE_DETAILS_RESPONSE' && e.data.reqId === reqId) {
+                        clearTimeout(timer);
+                        window.removeEventListener('message', handleMsg);
+                        resolve(e.data.success && e.data.data ? e.data.data : null);
+                    }
+                }
+                window.addEventListener('message', handleMsg);
+                window.postMessage({ type: 'SGYVER_FETCH_SHOPEE_DETAILS', itemid, shopid, reqId }, '*');
+            });
+
+            const extResult = await extensionPromise;
+            if (extResult && extResult.name && extResult.images && extResult.images.length > 0) {
+                return extResult;
+            }
+        } catch (e) {}
+
+        // Method 2: Direct API fetch fallback
+        try {
+            const res = await fetch(`https://shopee.co.th/api/v4/item/get?itemid=${itemid}&shopid=${shopid || ''}`);
+            if (res.ok) {
+                const j = await res.json();
+                if (j && j.data) {
+                    const d = j.data;
+                    const images = [];
+                    if (d.images && Array.isArray(d.images)) {
+                        d.images.forEach(img => images.push(img.startsWith('http') ? img : `https://down-th.img.susercontent.com/file/${img}`));
+                    }
+                    const variants = [];
+                    if (d.models && Array.isArray(d.models)) {
+                        d.models.forEach((m, idx) => {
+                            let imgUrl = null;
+                            if (m.extinfo && Array.isArray(m.extinfo.tier_index) && d.tier_variations) {
+                                const t0 = m.extinfo.tier_index[0];
+                                const tier0 = d.tier_variations[0];
+                                if (tier0 && tier0.images && tier0.images[t0]) {
+                                    imgUrl = `https://down-th.img.susercontent.com/file/${tier0.images[t0]}`;
+                                }
+                            }
+                            variants.push({
+                                name: m.name || `ตัวเลือก ${idx + 1}`,
+                                sku: (m.sku || m.model_sku || `SP_${itemid}_${idx + 1}`).trim(),
+                                price: m.price ? (m.price / 100000) : (d.price ? d.price / 100000 : 0),
+                                stock: (m.stock !== undefined) ? m.stock : (m.normal_stock || 10),
+                                image_url: imgUrl || images[0] || null
+                            });
+                        });
+                    }
+
+                    return {
+                        source: 'SGYVER_SHOPEE_IMPORT',
+                        version: '2.0',
+                        itemid: String(itemid),
+                        shopid: String(shopid || ''),
+                        sku: `SP_${itemid}`,
+                        name: (d.name || '').trim(),
+                        price: d.price ? d.price / 100000 : 0,
+                        stock: parseInt(d.stock || 10, 10),
+                        images: images.slice(0, 15),
+                        image_url: images[0] || null,
+                        description: d.description || '',
+                        variants: variants,
+                        url: url || `https://shopee.co.th/product/${shopid || '0'}/${itemid}`,
+                        warehouse_location: 'A-01'
+                    };
+                }
+            }
+        } catch (e) {}
+
+        return null;
+    }
+
+    function showShopeeImportLoading(name) {
+        let toast = document.getElementById('sgyver-import-loading-toast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'sgyver-import-loading-toast';
+            toast.style.cssText = `
+                position: fixed;
+                bottom: 30px;
+                right: 30px;
+                z-index: 999999999;
+                background: linear-gradient(135deg, #0f172a, #1e293b);
+                color: #ffffff;
+                padding: 16px 22px;
+                border-radius: 20px;
+                box-shadow: 0 20px 45px rgba(0,0,0,0.4);
+                display: flex;
+                align-items: center;
+                gap: 14px;
+                font-family: 'Prompt', sans-serif;
+                font-size: 13.5px;
+                border: 2px solid #10b981;
+                animation: sgyverSlideUp 0.3s ease;
+            `;
+            document.body.appendChild(toast);
+        }
+        toast.innerHTML = `
+            <div style="font-size: 26px; animation: spin 1s linear infinite;">⏳</div>
+            <div>
+                <div style="font-weight: 800; color: #34d399;">กำลังดูดข้อมูลเชิงลึกจาก Shopee...</div>
+                <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">ดึงรูปภาพครบ 15 รูป, วิดีโอ, ตัวเลือกสี/ไซส์ และรายละเอียดสินค้า</div>
+            </div>
+        `;
+        toast.style.display = 'flex';
+    }
+
+    function hideShopeeImportLoading() {
+        const toast = document.getElementById('sgyver-import-loading-toast');
+        if (toast) toast.style.display = 'none';
+    }
 })();
+
 
 
 

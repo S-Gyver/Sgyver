@@ -435,8 +435,22 @@ function scanAndDecorateCards() {
             card.dataset.sgyverDragBound = '1';
             card.setAttribute('draggable', 'true');
 
+            // Pre-fetch rich details (all 15 images, variants, description) on hover
+            card.addEventListener('mouseenter', async () => {
+                if (card._sgyverFullProduct) return;
+                try {
+                    const res = await fetch(`/api/v4/item/get?itemid=${itemid}&shopid=${shopid}`);
+                    if (res.ok) {
+                        const j = await res.json();
+                        if (j && j.data) {
+                            card._sgyverFullProduct = parseShopeeApiResponse(j.data, itemid, shopid);
+                        }
+                    }
+                } catch (e) {}
+            }, { once: true });
+
             card.addEventListener('dragstart', (e) => {
-                const prod = parseShopeeCardDom(card, itemid, shopid) || {
+                const prod = card._sgyverFullProduct || parseShopeeCardDom(card, itemid, shopid) || {
                     itemid: String(itemid),
                     shopid: String(shopid),
                     sku: `SP_${itemid}`,
