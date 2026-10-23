@@ -8787,4 +8787,139 @@ window.addEventListener('message', (event) => {
     }
 });
 
+// ==============================================================================
+// 🎯 DRAG & DROP SHOPEE PRODUCT (Split-Screen Drag directly from Shopee)
+// ==============================================================================
+(function initShopeeDragAndDrop() {
+    let dragCounter = 0;
+    let dropOverlay = null;
+
+    function getOrCreateDropOverlay() {
+        if (dropOverlay) return dropOverlay;
+        dropOverlay = document.createElement('div');
+        dropOverlay.id = 'sgyver-shopee-dropzone';
+        dropOverlay.style.cssText = `
+            position: fixed;
+            inset: 16px;
+            z-index: 99999999;
+            background: rgba(15, 23, 42, 0.88);
+            backdrop-filter: blur(12px);
+            border: 3px dashed #10b981;
+            border-radius: 28px;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            color: #ffffff;
+            pointer-events: none;
+            box-shadow: 0 0 60px rgba(16, 185, 129, 0.45);
+            font-family: 'Prompt', -apple-system, sans-serif;
+            transition: all 0.2s ease;
+        `;
+        dropOverlay.innerHTML = `
+            <div style="font-size: 58px; filter: drop-shadow(0 4px 14px rgba(16,185,129,0.7)); animation: bounce 1s infinite;">📥</div>
+            <div style="font-size: 24px; font-weight: 800; color: #34d399;">วางการ์ดสินค้า Shopee ตรงนี้!</div>
+            <div style="font-size: 13.5px; color: #cbd5e1; max-width: 480px; text-align: center; line-height: 1.6;">
+                S-Gyver จะดึงรูปภาพ, ราคา, ตัวเลือกสี/ไซส์ และเพิ่มเข้าคลังสินค้าทันที
+            </div>
+            <div style="
+                background: rgba(16, 185, 129, 0.2);
+                border: 1px solid rgba(16, 185, 129, 0.4);
+                padding: 6px 16px;
+                border-radius: 20px;
+                font-size: 12px;
+                color: #86efac;
+                font-weight: 700;
+            ">✨ รองรับ Drag & Drop ข้ามหน้าจอแบบ Split-Screen</div>
+        `;
+        document.body.appendChild(dropOverlay);
+        return dropOverlay;
+    }
+
+    window.addEventListener('dragenter', (e) => {
+        dragCounter++;
+        const overlay = getOrCreateDropOverlay();
+        overlay.style.display = 'flex';
+    });
+
+    window.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+    });
+
+    window.addEventListener('dragleave', (e) => {
+        dragCounter--;
+        if (dragCounter <= 0) {
+            dragCounter = 0;
+            if (dropOverlay) dropOverlay.style.display = 'none';
+        }
+    });
+
+    window.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        dragCounter = 0;
+        if (dropOverlay) dropOverlay.style.display = 'none';
+
+        // 1. Try application/json
+        let jsonStr = e.dataTransfer.getData('application/json');
+        let rawText = e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('text/uri-list') || '';
+        let htmlStr = e.dataTransfer.getData('text/html') || '';
+
+        let productPayload = null;
+
+        if (jsonStr) {
+            try { productPayload = JSON.parse(jsonStr); } catch (err) {}
+        }
+
+        if (!productPayload && rawText) {
+            try {
+                if (rawText.startsWith('{') && rawText.endsWith('}')) {
+                    productPayload = JSON.parse(rawText);
+                }
+            } catch (err) {}
+        }
+
+        // If dropped a raw Shopee link
+        if (!productPayload && (rawText.includes('shopee.co.th') || rawText.includes('-i.'))) {
+            const match = rawText.match(/-i\.(\d+)\.(\d+)/) || rawText.match(/\/product\/(\d+)\/(\d+)/);
+            const shopid = match ? match[1] : '';
+            const itemid = match ? match[2] : '';
+
+            productPayload = {
+                itemid: itemid,
+                shopid: shopid,
+                sku: `SP_${itemid || Date.now()}`,
+                url: rawText.split('?')[0],
+                name: `สินค้า Shopee (${itemid || 'ใหม่'})`,
+                source: 'SGYVER_SHOPEE_IMPORT',
+                warehouse_location: 'A-01'
+            };
+
+            if (htmlStr) {
+                const doc = new DOMParser().parseFromString(htmlStr, 'text/html');
+                const img = doc.querySelector('img');
+                if (img && img.src) {
+                    productPayload.images = [img.src];
+                    productPayload.image_url = img.src;
+                }
+                const link = doc.querySelector('a');
+                if (link && link.innerText) {
+                    productPayload.name = link.innerText.trim();
+                }
+            }
+        }
+
+        if (productPayload && (productPayload.name || productPayload.itemid || productPayload.url)) {
+            productPayload.source = 'SGYVER_SHOPEE_IMPORT';
+            
+            // Apply into modal and warehouse
+            if (typeof applyShopeeExtractedData === 'function') {
+                applyShopeeExtractedData(productPayload);
+            }
+        }
+    });
+})();
+
+
 

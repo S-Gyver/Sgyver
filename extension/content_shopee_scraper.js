@@ -429,6 +429,38 @@ function scanAndDecorateCards() {
         }
 
         renderCardOverlay(overlay, itemid, shopid, isScraped);
+
+        // Make Shopee card draggable across split windows into S-Gyver Warehouse
+        if (!card.dataset.sgyverDragBound) {
+            card.dataset.sgyverDragBound = '1';
+            card.setAttribute('draggable', 'true');
+
+            card.addEventListener('dragstart', (e) => {
+                const prod = parseShopeeCardDom(card, itemid, shopid) || {
+                    itemid: String(itemid),
+                    shopid: String(shopid),
+                    sku: `SP_${itemid}`,
+                    url: link.href || `https://shopee.co.th/product/${shopid}/${itemid}`,
+                    name: card.querySelector('img')?.alt || `สินค้า Shopee (${itemid})`,
+                    price: 0
+                };
+
+                prod.source = 'SGYVER_SHOPEE_IMPORT';
+                const jsonStr = JSON.stringify(prod);
+
+                e.dataTransfer.setData('application/json', jsonStr);
+                e.dataTransfer.setData('text/plain', jsonStr);
+                e.dataTransfer.setData('text/uri-list', prod.url);
+                e.dataTransfer.effectAllowed = 'copy';
+
+                card.style.opacity = '0.55';
+                showScraperToast(`📦 กำลังลาก "${prod.name.substring(0, 24)}..." ไปวางที่ S-Gyver`);
+            });
+
+            card.addEventListener('dragend', () => {
+                card.style.opacity = '1';
+            });
+        }
     }
 }
 
