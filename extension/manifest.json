@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "S-Gyver Omnichannel & Shopee Warehouse Assistant",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "ดึงออเดอร์ BigSeller และซิงค์คลังสินค้าจาก Shopee Seller Centre เข้าสู่ S-Gyver ในคลิกเดียว",
   "icons": {
     "128": "icon.png"

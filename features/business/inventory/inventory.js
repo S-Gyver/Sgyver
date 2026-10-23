@@ -8913,6 +8913,17 @@ window.addEventListener('message', (event) => {
         if (productPayload && (productPayload.name || productPayload.itemid || productPayload.url)) {
             productPayload.source = 'SGYVER_SHOPEE_IMPORT';
             
+            // Clean fallback name if it contains Shopee card metadata (e.g. ฿219-64%4.9ขายแล้ว 251 ชิ้น)
+            if (productPayload.name) {
+                productPayload.name = productPayload.name
+                    .replace(/฿\s*[\d,.-]+.*$/i, '')
+                    .replace(/-\d+%.*$/, '')
+                    .replace(/\b\d+(\.\d+)?\s*(ขายแล้ว|sold).*$/i, '')
+                    .replace(/[\n\r\t]+/g, ' ')
+                    .replace(/\s{2,}/g, ' ')
+                    .trim();
+            }
+
             const itemid = productPayload.itemid;
             const shopid = productPayload.shopid;
             const needsDeepFetch = (!productPayload.variants || productPayload.variants.length === 0) || 
@@ -8925,7 +8936,9 @@ window.addEventListener('message', (event) => {
 
                 fetchShopeeFullDetailsAsync(itemid, shopid, productPayload.url).then(fullData => {
                     hideShopeeImportLoading();
-                    if (fullData && fullData.name) {
+                    if (fullData && fullData.name && ((fullData.images && fullData.images.length > 1) || (fullData.variants && fullData.variants.length > 0))) {
+                        applyShopeeExtractedData(fullData);
+                    } else if (fullData && fullData.name) {
                         applyShopeeExtractedData(fullData);
                     } else {
                         applyShopeeExtractedData(productPayload);
@@ -8944,11 +8957,11 @@ window.addEventListener('message', (event) => {
     async function fetchShopeeFullDetailsAsync(itemid, shopid, url) {
         if (!itemid) return null;
 
-        // Method 1: Bridge via Extension background (No CORS issue!)
+        // Method 1: Bridge via Extension background (Uses open Shopee tab session!)
         try {
             const reqId = 'shopee_req_' + Date.now();
             const extensionPromise = new Promise((resolve) => {
-                const timer = setTimeout(() => resolve(null), 3000);
+                const timer = setTimeout(() => resolve(null), 5500);
                 function handleMsg(e) {
                     if (e.data && e.data.type === 'SGYVER_SHOPEE_DETAILS_RESPONSE' && e.data.reqId === reqId) {
                         clearTimeout(timer);
@@ -8961,7 +8974,10 @@ window.addEventListener('message', (event) => {
             });
 
             const extResult = await extensionPromise;
-            if (extResult && extResult.name && extResult.images && extResult.images.length > 0) {
+            if (extResult && extResult.name && (extResult.images?.length > 1 || extResult.variants?.length > 0)) {
+                return extResult;
+            }
+            if (extResult && extResult.name) {
                 return extResult;
             }
         } catch (e) {}

@@ -71,17 +71,86 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             }
         });
         return true;
+    } else if (request.action === 'REGISTER_SHOPEE_ITEM') {
+        const { itemid, product } = request;
+        if (itemid && product) {
+            registeredShopeeItems.set(String(itemid), product);
+        }
+        sendResponse({ success: true });
+        return true;
     } else if (request.action === 'FETCH_SHOPEE_PRODUCT_FULL') {
         const { itemid, shopid } = request;
-        fetchShopeeFullItem(itemid, shopid).then(data => {
-            sendResponse({ success: true, data: data });
-        }).catch(err => {
-            console.warn('Error fetching Shopee full item in background:', err);
-            sendResponse({ success: false, error: err.message });
+        // 1. Check in-memory registered items
+        if (registeredShopeeItems.has(String(itemid))) {
+            const cached = registeredShopeeItems.get(String(itemid));
+            if (cached && cached.images && cached.images.length > 1) {
+                sendResponse({ success: true, data: cached });
+                return true;
+            }
+        }
+
+        // 2. Query open Shopee tabs to fetch from page context (with valid session cookies)
+        queryShopeeTabForDetails(itemid, shopid).then(data => {
+            if (data && data.name) {
+                registeredShopeeItems.set(String(itemid), data);
+                sendResponse({ success: true, data: data });
+            } else {
+                // 3. Fallback to direct fetchShopeeFullItem
+                fetchShopeeFullItem(itemid, shopid).then(fallbackData => {
+                    sendResponse({ success: true, data: fallbackData });
+                }).catch(err => {
+                    sendResponse({ success: false, error: err.message });
+                });
+            }
+        }).catch(() => {
+            fetchShopeeFullItem(itemid, shopid).then(fallbackData => {
+                sendResponse({ success: true, data: fallbackData });
+            }).catch(err => {
+                sendResponse({ success: false, error: err.message });
+            });
         });
         return true;
     }
 });
+
+// Cache for products dragged/scraped from Shopee
+const registeredShopeeItems = new Map();
+
+// Helper: Query active Shopee tab to fetch item details directly inside Shopee's authenticated session
+async function queryShopeeTabForDetails(itemid, shopid) {
+    return new Promise((resolve) => {
+        try {
+            chrome.tabs.query({ url: ["*://*.shopee.co.th/*", "*://shopee.co.th/*"] }, (tabs) => {
+                if (!tabs || tabs.length === 0) return resolve(null);
+                let resolved = false;
+                let pending = tabs.length;
+                tabs.forEach(tab => {
+                    chrome.tabs.sendMessage(tab.id, {
+                        action: 'FETCH_ITEM_DETAILS_FROM_SHOPEE_PAGE',
+                        itemid,
+                        shopid
+                    }, (response) => {
+                        pending--;
+                        if (!resolved && response && response.success && response.data) {
+                            resolved = true;
+                            resolve(response.data);
+                        } else if (pending === 0 && !resolved) {
+                            resolve(null);
+                        }
+                    });
+                });
+                setTimeout(() => {
+                    if (!resolved) {
+                        resolved = true;
+                        resolve(null);
+                    }
+                }, 4000);
+            });
+        } catch (e) {
+            resolve(null);
+        }
+    });
+}
 
 async function fetchShopeeFullItem(itemid, shopid) {
     if (!itemid) throw new Error('Missing itemid');
@@ -90,7 +159,12 @@ async function fetchShopeeFullItem(itemid, shopid) {
     // 1. Try modern PDP endpoint
     try {
         const res = await fetch(`https://shopee.co.th/api/v4/pdp/get_pc?item_id=${itemid}&shop_id=${shopid || ''}`, {
-            headers: { 'Accept': 'application/json' }
+            headers: { 
+                'Accept': 'application/json',
+                'Referer': 'https://shopee.co.th/',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'include'
         });
         if (res.ok) {
             const j = await res.json();
@@ -102,7 +176,12 @@ async function fetchShopeeFullItem(itemid, shopid) {
     if (!data) {
         try {
             const res = await fetch(`https://shopee.co.th/api/v4/item/get?itemid=${itemid}&shopid=${shopid || ''}`, {
-                headers: { 'Accept': 'application/json' }
+                headers: { 
+                    'Accept': 'application/json',
+                    'Referer': 'https://shopee.co.th/',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                credentials: 'include'
             });
             if (res.ok) {
                 const j = await res.json();

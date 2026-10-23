@@ -17,6 +17,7 @@ console.log('🛍️ [S-Gyver] Shopee Consumer Marketplace Scraper Script Loaded
 
 // 1. All Top-Level State Variables (Declared at top to prevent TDZ issues)
 const scrapedCache = new Map(); // itemid -> { time, name, sku }
+const scrapedItemDetailsCache = new Map(); // itemid -> full product payload
 let isScraperInitialized = false;
 let scanDebounceTimer = null;
 let keepAlivePort = null;
@@ -435,22 +436,33 @@ function scanAndDecorateCards() {
             card.dataset.sgyverDragBound = '1';
             card.setAttribute('draggable', 'true');
 
-            // Pre-fetch rich details (all 15 images, variants, description) on hover
-            card.addEventListener('mouseenter', async () => {
-                if (card._sgyverFullProduct) return;
+            // Robust pre-fetch rich details (all 15 images, variants, description) in page context
+            const prefetchDetails = async () => {
+                if (card._sgyverFullProduct || card._sgyverPrefetching) return;
+                card._sgyverPrefetching = true;
                 try {
-                    const res = await fetch(`/api/v4/item/get?itemid=${itemid}&shopid=${shopid}`);
-                    if (res.ok) {
-                        const j = await res.json();
-                        if (j && j.data) {
-                            card._sgyverFullProduct = parseShopeeApiResponse(j.data, itemid, shopid);
+                    const fullData = await fetchShopeeProductDetailsInPage(itemid, shopid);
+                    if (fullData && fullData.name) {
+                        card._sgyverFullProduct = fullData;
+                        scrapedItemDetailsCache.set(String(itemid), fullData);
+                        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+                            chrome.runtime.sendMessage({ action: 'REGISTER_SHOPEE_ITEM', itemid: String(itemid), product: fullData });
                         }
                     }
-                } catch (e) {}
-            }, { once: true });
+                } catch (e) {} finally {
+                    card._sgyverPrefetching = false;
+                }
+            };
+
+            card.addEventListener('mouseenter', prefetchDetails);
+            card.addEventListener('pointerenter', prefetchDetails);
+            card.addEventListener('pointerdown', prefetchDetails);
+            card.addEventListener('mousedown', prefetchDetails);
 
             card.addEventListener('dragstart', (e) => {
-                const prod = card._sgyverFullProduct || parseShopeeCardDom(card, itemid, shopid) || {
+                prefetchDetails();
+                const cached = scrapedItemDetailsCache.get(String(itemid));
+                const prod = card._sgyverFullProduct || cached || parseShopeeCardDom(card, itemid, shopid) || {
                     itemid: String(itemid),
                     shopid: String(shopid),
                     sku: `SP_${itemid}`,
@@ -467,8 +479,18 @@ function scanAndDecorateCards() {
                 e.dataTransfer.setData('text/uri-list', prod.url);
                 e.dataTransfer.effectAllowed = 'copy';
 
+                // Save to local storage & broadcast to background immediately
+                try {
+                    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                        chrome.storage.local.set({ ['sgyver_dragged_' + itemid]: prod });
+                    }
+                    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+                        chrome.runtime.sendMessage({ action: 'REGISTER_SHOPEE_ITEM', itemid: String(itemid), product: prod });
+                    }
+                } catch (err) {}
+
                 card.style.opacity = '0.55';
-                showScraperToast(`📦 กำลังลาก "${prod.name.substring(0, 24)}..." ไปวางที่ S-Gyver`);
+                showScraperToast(`📦 กำลังลาก "${(prod.name || '').substring(0, 24)}..." ไปวางที่ S-Gyver`);
             });
 
             card.addEventListener('dragend', () => {
@@ -725,12 +747,88 @@ function parseShopeeApiResponse(d, itemid, shopid) {
     };
 }
 
+// 11.1 Dedicated In-Page Shopee Product Fetcher (Runs with full page session & cookies)
+async function fetchShopeeProductDetailsInPage(itemid, shopid) {
+    if (!itemid) return null;
+    let apiData = null;
+
+    // 1. Try modern PDP endpoint (/api/v4/pdp/get_pc)
+    try {
+        const res = await fetch(`/api/v4/pdp/get_pc?item_id=${itemid}&shop_id=${shopid || ''}`, {
+            headers: { 'Accept': 'application/json' },
+            credentials: 'include'
+        });
+        if (res.ok) {
+            const j = await res.json();
+            if (j && (j.data || j.item)) {
+                apiData = parseShopeeApiResponse(j.data || j.item, itemid, shopid);
+            }
+        }
+    } catch (e) {}
+
+    // 2. Try classic item/get endpoint (/api/v4/item/get)
+    if (!apiData || !apiData.name) {
+        try {
+            const res = await fetch(`/api/v4/item/get?itemid=${itemid}&shopid=${shopid || ''}`, {
+                headers: { 'Accept': 'application/json' },
+                credentials: 'include'
+            });
+            if (res.ok) {
+                const j = await res.json();
+                if (j && j.data) {
+                    apiData = parseShopeeApiResponse(j.data, itemid, shopid);
+                }
+            }
+        } catch (e) {}
+    }
+
+    if (apiData && apiData.name) {
+        scrapedItemDetailsCache.set(String(itemid), apiData);
+        return apiData;
+    }
+    return null;
+}
+
+// Listen for background requests to fetch Shopee item via active tab page session
+if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+        if (request.action === 'FETCH_ITEM_DETAILS_FROM_SHOPEE_PAGE') {
+            const { itemid, shopid } = request;
+            const cached = scrapedItemDetailsCache.get(String(itemid));
+            if (cached && cached.name && cached.images && cached.images.length > 1) {
+                sendResponse({ success: true, data: cached });
+                return true;
+            }
+            fetchShopeeProductDetailsInPage(itemid, shopid).then(data => {
+                if (data) {
+                    sendResponse({ success: true, data });
+                } else {
+                    sendResponse({ success: false, error: 'Product not found on Shopee' });
+                }
+            }).catch(err => {
+                sendResponse({ success: false, error: err.message });
+            });
+            return true;
+        }
+    });
+}
+
 // 12. Fallback: Parse Card from DOM
 function parseShopeeCardDom(cardEl, itemid, shopid) {
     if (!cardEl) return null;
 
-    const titleEl = cardEl.querySelector('.shopee-search-item-result__item, div[class*="line-clamp-"], div[class*="title"], [data-sq="item"] div[class*="name"]');
-    const name = titleEl ? titleEl.innerText.trim() : `สินค้า Shopee (${itemid})`;
+    // Use specific title selectors to avoid matching container text with price/sales count
+    const titleEl = cardEl.querySelector('div[class*="line-clamp-2"], div[class*="line-clamp"], div[class*="title"], [data-sq="item"] div[class*="name"]');
+    let name = titleEl ? titleEl.innerText.trim() : (cardEl.querySelector('img')?.alt || `สินค้า Shopee (${itemid})`);
+
+    // Clean out trailing price / sold count / discount if leaked into title
+    name = name
+        .replace(/฿\s*[\d,.-]+.*$/i, '')
+        .replace(/-\d+%.*$/, '')
+        .replace(/\b\d+(\.\d+)?\s*(ขายแล้ว|sold).*$/i, '')
+        .replace(/[\n\r\t]+/g, ' ')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
 
     const imgEl = cardEl.querySelector('img');
     let imgUrl = imgEl ? (imgEl.src || imgEl.getAttribute('data-src') || '') : '';
