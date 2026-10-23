@@ -152,18 +152,42 @@ async function queryShopeeTabForDetails(itemid, shopid) {
     });
 }
 
+// Sniff and capture Shopee anti-bot headers (af-ac-enc-dat, x-api-source, etc.) - BigSeller Technique
+let lastShopeeHeaders = {};
+if (typeof chrome !== 'undefined' && chrome.webRequest && chrome.webRequest.onBeforeSendHeaders) {
+    try {
+        chrome.webRequest.onBeforeSendHeaders.addListener(
+            (details) => {
+                if (details.requestHeaders && details.requestHeaders.length) {
+                    for (let i = 0; i < details.requestHeaders.length; i++) {
+                        const h = details.requestHeaders[i];
+                        const nameLower = h.name.toLowerCase();
+                        if (nameLower === 'af-ac-enc-dat' || nameLower.startsWith('x-shopee') || nameLower === 'x-api-source' || nameLower === 'x-csrftoken') {
+                            lastShopeeHeaders[h.name] = h.value;
+                        }
+                    }
+                }
+            },
+            { urls: ["*://*.shopee.co.th/api/v4/*", "*://shopee.co.th/api/v4/*"] },
+            ["requestHeaders"]
+        );
+    } catch (e) {}
+}
+
 async function fetchShopeeFullItem(itemid, shopid) {
     if (!itemid) throw new Error('Missing itemid');
     let data = null;
 
+    const requestHeaders = Object.assign({
+        'Accept': 'application/json',
+        'Referer': 'https://shopee.co.th/',
+        'X-Requested-With': 'XMLHttpRequest'
+    }, lastShopeeHeaders);
+
     // 1. Try modern PDP endpoint
     try {
         const res = await fetch(`https://shopee.co.th/api/v4/pdp/get_pc?item_id=${itemid}&shop_id=${shopid || ''}`, {
-            headers: { 
-                'Accept': 'application/json',
-                'Referer': 'https://shopee.co.th/',
-                'X-Requested-With': 'XMLHttpRequest'
-            },
+            headers: requestHeaders,
             credentials: 'include'
         });
         if (res.ok) {
@@ -176,11 +200,7 @@ async function fetchShopeeFullItem(itemid, shopid) {
     if (!data) {
         try {
             const res = await fetch(`https://shopee.co.th/api/v4/item/get?itemid=${itemid}&shopid=${shopid || ''}`, {
-                headers: { 
-                    'Accept': 'application/json',
-                    'Referer': 'https://shopee.co.th/',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
+                headers: requestHeaders,
                 credentials: 'include'
             });
             if (res.ok) {

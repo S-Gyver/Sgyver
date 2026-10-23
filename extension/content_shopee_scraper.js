@@ -23,6 +23,38 @@ let scanDebounceTimer = null;
 let keepAlivePort = null;
 let lastBatchSig = '';
 
+// Inject In-Page Network Interceptor (Hooks window.fetch on Shopee, BigSeller-style)
+function injectShopeeInterceptor() {
+    try {
+        if (document.getElementById('sgyver-shopee-interceptor')) return;
+        const script = document.createElement('script');
+        script.id = 'sgyver-shopee-interceptor';
+        script.src = chrome.runtime.getURL('intercept_shopee.js');
+        script.onload = () => script.remove();
+        (document.head || document.documentElement).appendChild(script);
+    } catch (e) {}
+}
+injectShopeeInterceptor();
+
+// Listen for intercepted Shopee responses from page context
+window.addEventListener('SGYVER_SHOPEE_INTERCEPTED', (e) => {
+    if (!e.detail || !e.detail.data) return;
+    const { type, data } = e.detail;
+    if (type === 'PDP_DATA' && data) {
+        const itemid = data.itemid || data.item_id;
+        const shopid = data.shopid || data.shop_id;
+        if (itemid) {
+            const parsed = parseShopeeApiResponse(data, itemid, shopid);
+            if (parsed && parsed.name) {
+                scrapedItemDetailsCache.set(String(itemid), parsed);
+                if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+                    chrome.runtime.sendMessage({ action: 'REGISTER_SHOPEE_ITEM', itemid: String(itemid), product: parsed });
+                }
+            }
+        }
+    }
+});
+
 // 2. Keep-Alive connection to background script for Firefox MV3
 function keepBackgroundAlive() {
     try {
@@ -568,8 +600,16 @@ async function doScrapeItem(itemid, shopid, overlayEl, isRepeat = false) {
         let productData = null;
         const isDetailPage = location.pathname.includes('-i.') || location.pathname.includes('/product/');
 
+        // Priority 0: Instant Cache from Interceptor or Pre-fetch
+        if (scrapedItemDetailsCache.has(String(itemid))) {
+            const cached = scrapedItemDetailsCache.get(String(itemid));
+            if (cached && cached.name && cached.images && cached.images.length > 0) {
+                productData = Object.assign({}, cached);
+            }
+        }
+
         // Priority 1: If on product detail page, extract directly from DOM first (100% reliable)
-        if (isDetailPage) {
+        if (!productData && isDetailPage) {
             productData = parseShopeeDetailDom(itemid, shopid);
         }
 
@@ -1206,9 +1246,9 @@ function updateBatchBar() {
             <span style="color: #4ade80;">(✅ ดูดแล้ว ${scrapedCount})</span>
         </div>
         ${unscrapedCount > 0 ? `
-            <button id="sgyver-batch-scrape-all-btn" class="sgyver-batch-btn">
+            <button id="sgyver-batch-scrape-all-btn" class="sgyver-batch-btn" title="ดูดสินค้าทุกชิ้นในหน้านี้ พร้อมเลื่อนหน้าจอลงล่างอัตโนมัติ">
                 <span>⚡</span>
-                <span>ดูดหน้านี้ (${unscrapedCount} รายการ)</span>
+                <span>ดูดทั้งหน้าอัตโนมัติ (Auto-Scroll)</span>
             </button>
             <button id="sgyver-batch-auto-pages-btn" class="sgyver-batch-btn" style="background: linear-gradient(135deg, #6366f1, #3b82f6) !important;" title="ดูดหน้านี้แล้วเปิดหน้าถัดไปอัตโนมัติ">
                 <span>⏩</span>
@@ -1245,18 +1285,75 @@ function updateBatchBar() {
         resetBtn.onclick = () => resetAllScrapedStatus();
     }
 
+    let isAutoBatchRunning = false;
+
+    async function runAutoBatchScrapeWithScroll(btnEl) {
+        if (isAutoBatchRunning) {
+            isAutoBatchRunning = false;
+            btnEl.innerHTML = `<span>⏹️</span><span>หยุดการดูดแล้ว</span>`;
+            return;
+        }
+
+        isAutoBatchRunning = true;
+        let totalScrapedInSession = 0;
+        let consecutiveEmptyPasses = 0;
+
+        showScraperToast(`🚀 เริ่มระบบดูดสินค้าทั้งหน้าอัตโนมัติ (พร้อมเลื่อนจอให้อัตโนมัติ)...`);
+
+        while (isAutoBatchRunning) {
+            scanAndDecorateCards();
+            const cards = Array.from(document.querySelectorAll('.sgyver-card-wrapper'));
+            const pendingTargets = [];
+
+            for (const card of cards) {
+                const overlay = card.querySelector('.sgyver-card-overlay');
+                const itemid = overlay?.dataset?.itemid;
+                const shopid = overlay?.dataset?.shopid;
+                if (itemid && !scrapedCache.has(String(itemid))) {
+                    pendingTargets.push({ itemid, shopid, overlay, card });
+                }
+            }
+
+            if (pendingTargets.length > 0) {
+                consecutiveEmptyPasses = 0;
+                for (const target of pendingTargets) {
+                    if (!isAutoBatchRunning) break;
+                    totalScrapedInSession++;
+                    btnEl.innerHTML = `<span>⏳</span><span>กำลังดูด (${totalScrapedInSession} ชิ้น) [คลิกเพื่อหยุด]</span>`;
+                    
+                    target.card.style.outline = '3px solid #f97316';
+                    target.card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+                    await doScrapeItem(target.itemid, target.shopid, target.overlay, false);
+                    target.card.style.outline = '';
+                    await new Promise(r => setTimeout(r, 450));
+                }
+            } else {
+                consecutiveEmptyPasses++;
+            }
+
+            const isAtBottom = (window.innerHeight + window.scrollY) >= (document.body.scrollHeight - 250);
+
+            if (isAtBottom && consecutiveEmptyPasses >= 2) {
+                break;
+            }
+
+            btnEl.innerHTML = `<span>📜</span><span>กำลังเลื่อนจอเพื่อโหลดสินค้าถัดไป...</span>`;
+            window.scrollBy({ top: 800, behavior: 'smooth' });
+            await new Promise(r => setTimeout(r, 1000));
+            scanAndDecorateCards();
+        }
+
+        isAutoBatchRunning = false;
+        btnEl.innerHTML = `<span>🎉</span><span>ดูดเสร็จสิ้น (${totalScrapedInSession} รายการ)</span>`;
+        showScraperToast(`🎉 ดูดสินค้าครบถ้วนแล้วทั้งหมด ${totalScrapedInSession} รายการ!`);
+        setTimeout(updateBatchBar, 2500);
+    }
+
     const autoPagesBtn = bar.querySelector('#sgyver-batch-auto-pages-btn');
     if (autoPagesBtn) {
         autoPagesBtn.onclick = async () => {
-            autoPagesBtn.disabled = true;
-            autoPagesBtn.style.opacity = '0.7';
-
-            for (let i = 0; i < unscrapedItems.length; i++) {
-                const target = unscrapedItems[i];
-                autoPagesBtn.innerHTML = `<span>⏳</span><span>กำลังดูด ${i + 1}/${unscrapedItems.length}...</span>`;
-                await doScrapeItem(target.itemid, target.shopid, target.overlay, false);
-                await new Promise(r => setTimeout(r, 350));
-            }
+            await runAutoBatchScrapeWithScroll(autoPagesBtn);
 
             // Click Next Page
             const nextBtn = document.querySelector(
@@ -1280,20 +1377,7 @@ function updateBatchBar() {
 
     const batchBtn = bar.querySelector('#sgyver-batch-scrape-all-btn');
     if (batchBtn) {
-        batchBtn.onclick = async () => {
-            batchBtn.disabled = true;
-            batchBtn.style.opacity = '0.7';
-
-            for (let i = 0; i < unscrapedItems.length; i++) {
-                const target = unscrapedItems[i];
-                batchBtn.innerHTML = `<span>⏳</span><span>กำลังดูด ${i + 1}/${unscrapedItems.length}...</span>`;
-                await doScrapeItem(target.itemid, target.shopid, target.overlay, false);
-                await new Promise(r => setTimeout(r, 400));
-            }
-
-            batchBtn.innerHTML = `<span>✅</span><span>ดูดเสร็จสิ้นทั้งหมดแล้ว!</span>`;
-            setTimeout(updateBatchBar, 2000);
-        };
+        batchBtn.onclick = () => runAutoBatchScrapeWithScroll(batchBtn);
     }
 }
 
