@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "S-Gyver Omnichannel Order Assistant",
-  "version": "1.0.0",
-  "description": "ดึงออเดอร์ Shopee, TikTok, Lazada จาก BigSeller 2 บัญชีเข้าสู่ S-Gyver Studio ในคลิกเดียว",
+  "name": "S-Gyver Omnichannel & Shopee Warehouse Assistant",
+  "version": "1.1.0",
+  "description": "ดึงออเดอร์ BigSeller และซิงค์คลังสินค้าจาก Shopee Seller Centre เข้าสู่ S-Gyver ในคลิกเดียว",
   "icons": {
     "128": "icon.png"
   },
@@ -14,13 +14,24 @@
   ],
   "host_permissions": [
     "*://*.bigseller.com/*",
+    "*://seller.shopee.co.th/*",
+    "*://*.shopee.co.th/*",
+    "*://seller.th.shopee.cn/*",
+    "https://igiihteeeprpcxxlldkd.supabase.co/*",
     "https://s-gyver.github.io/*",
     "http://localhost/*",
     "http://127.0.0.1/*",
     "file:///*"
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "scripts": ["background.js"]
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "sgyver-assistant@s-gyver.github.io",
+      "strict_min_version": "109.0"
+    }
   },
   "content_scripts": [
     {
@@ -28,6 +39,14 @@
         "*://*.bigseller.com/*"
       ],
       "js": ["content_bigseller.js"],
+      "run_at": "document_end"
+    },
+    {
+      "matches": [
+        "*://seller.shopee.co.th/*",
+        "*://seller.th.shopee.cn/*"
+      ],
+      "js": ["content_shopee.js"],
       "run_at": "document_end"
     },
     {
@@ -42,7 +61,7 @@
     }
   ],
   "action": {
-    "default_title": "S-Gyver Order Assistant",
+    "default_title": "S-Gyver Assistant",
     "default_popup": "popup.html"
   }
 }

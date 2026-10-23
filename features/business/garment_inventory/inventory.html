@@ -30,6 +30,9 @@
         }
     </script>
 
+    <!-- SheetJS (xlsx) for reading Shopee Excel & CSV files -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
     <!-- Supabase JS Client & Shared Modules -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../../../assets/js/supabaseClient.js"></script>
@@ -211,6 +214,13 @@
                     class="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium flex items-center gap-1.5 shadow-sm transition-colors">
                     <i class="bi bi-file-earmark-spreadsheet text-emerald-600"></i>
                     <span class="hidden sm:inline">ส่งออก CSV</span>
+                </button>
+
+                <!-- Import Shopee Excel / CSV Button -->
+                <button type="button" onclick="openShopeeImportModal()" 
+                    class="px-3.5 py-1.5 rounded-xl border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700 text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all active:scale-95" title="นำเข้าสินค้าจากไฟล์ Excel / CSV ของ Shopee">
+                    <i class="bi bi-bag-check-fill text-orange-500"></i>
+                    <span>นำเข้าจาก Shopee</span>
                 </button>
 
                 <!-- Quick Stock Movement Button -->
@@ -552,7 +562,239 @@
         </div>
     </div>
 
+    <!-- ====================================================
+         MODAL: SHOPEE EXCEL / CSV IMPORT
+         ==================================================== -->
+    <div id="shopeeImportModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 sm:p-4">
+        <div class="bg-white rounded-3xl max-w-3xl w-full border border-slate-200 shadow-2xl p-5 sm:p-6 relative max-h-[92vh] flex flex-col">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between pb-3.5 border-b border-slate-100 mb-3 flex-shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-orange-50 text-orange-600 border border-orange-200 flex items-center justify-center text-lg shadow-sm">
+                        <i class="bi bi-bag-check-fill"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-sm sm:text-base font-bold text-slate-900 font-kanit">นำเข้าสินค้าจาก Shopee</h3>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700">Excel / CSV</span>
+                        </div>
+                        <p class="text-xs text-slate-500">นำเข้าสินค้าหรืออัปเดตข้อมูลจาก Shopee Seller Centre เข้าสู่คลังสินค้า</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeShopeeImportModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <!-- Scrollable Content Area -->
+            <div class="overflow-y-auto flex-1 space-y-4 pr-1">
+                <!-- Instruction Alert Box -->
+                <div class="bg-amber-50/80 border border-amber-200/80 rounded-2xl p-3 text-xs text-amber-900">
+                    <div class="flex items-start gap-2.5">
+                        <i class="bi bi-lightbulb-fill text-amber-500 text-base mt-0.5 flex-shrink-0"></i>
+                        <div class="space-y-1">
+                            <span class="font-bold">วิธีดาวน์โหลดไฟล์จาก Shopee Seller Centre:</span>
+                            <p class="text-[11px] text-amber-800 leading-relaxed">
+                                เข้า <b>Shopee Seller Centre</b> ➔ เมนู <b>สินค้าของฉัน (My Products)</b> ➔ <b>เครื่องมือจัดการเป็นชุด (Batch Tools)</b> ➔ <b>แก้ไขข้อมูลสินค้าเป็นชุด (Mass Update)</b> ➔ ดาวน์โหลดเทมเพลต <b>"ข้อมูลพื้นฐาน"</b> หรือ <b>"ข้อมูลการขาย"</b> (ไฟล์ .xlsx หรือ .csv) แล้วนำมาอัปโหลดที่นี่
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dropzone Area -->
+                <div id="shopeeDropzone" 
+                    onclick="document.getElementById('shopeeFileInput').click()"
+                    ondragover="handleShopeeDragOver(event)" 
+                    ondragleave="handleShopeeDragLeave(event)" 
+                    ondrop="handleShopeeDrop(event)"
+                    class="border-2 border-dashed border-slate-300 hover:border-orange-500 bg-slate-50/60 hover:bg-orange-50/30 rounded-2xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 group">
+                    <input type="file" id="shopeeFileInput" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleShopeeFileSelect(event)">
+                    <div class="w-12 h-12 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                        <i class="bi bi-file-earmark-arrow-up-fill"></i>
+                    </div>
+                    <div>
+                        <span class="text-xs sm:text-sm font-bold text-slate-800 block">คลิกเพื่อเลือกไฟล์ หรือ ลากไฟล์มาวางที่นี่</span>
+                        <span class="text-[11px] text-slate-500">รองรับไฟล์ Excel (.xlsx, .xls) และ .csv จาก Shopee</span>
+                    </div>
+                    <div id="shopeeFileInfo" class="hidden mt-2 inline-flex items-center gap-2 px-3 py-1 bg-white border border-slate-200 rounded-xl text-xs font-mono text-slate-700 shadow-sm">
+                        <i class="bi bi-file-earmark-check-fill text-emerald-500"></i>
+                        <span id="shopeeFileName">-</span>
+                        <span id="shopeeFileSize" class="text-slate-400 text-[10px]">-</span>
+                    </div>
+                </div>
+
+                <!-- Step 2: Analysis & Conflict Handling Section (Hidden until file parsed) -->
+                <div id="shopeeAnalysisSection" class="hidden space-y-4">
+                    <!-- Metric Cards -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        <div onclick="setShopeePreviewTab('ALL')" id="cardShopeeAll" 
+                            class="bg-slate-50 p-2.5 rounded-xl border-2 border-slate-200 text-center cursor-pointer hover:border-slate-400 transition-all group" title="คลิกเพื่อดูรายการทั้งหมด">
+                            <span class="text-[10px] font-semibold text-slate-500 block group-hover:text-slate-800">พบในไฟล์ทั้งหมด</span>
+                            <span id="statShopeeTotal" class="text-base font-bold text-slate-800 font-mono">0</span>
+                            <span class="text-[9px] text-slate-400 block">แถวข้อมูล (คลิกดู)</span>
+                        </div>
+                        <div onclick="setShopeePreviewTab('NEW')" id="cardShopeeNew" 
+                            class="bg-emerald-50 p-2.5 rounded-xl border-2 border-emerald-200 text-center cursor-pointer hover:border-emerald-500 transition-all group" title="คลิกเพื่อดูเฉพาะสินค้าใหม่">
+                            <span class="text-[10px] font-semibold text-emerald-700 block group-hover:text-emerald-900">🆕 สินค้าใหม่</span>
+                            <span id="statShopeeNew" class="text-base font-bold text-emerald-600 font-mono">0</span>
+                            <span class="text-[9px] text-emerald-600 block">ยังไม่มีในคลัง (คลิกดู)</span>
+                        </div>
+                        <div onclick="setShopeePreviewTab('EXISTING')" id="cardShopeeExist" 
+                            class="bg-blue-50 p-2.5 rounded-xl border-2 border-blue-200 text-center cursor-pointer hover:border-blue-500 transition-all group" title="คลิกเพื่อดูเฉพาะสินค้าเดิม">
+                            <span class="text-[10px] font-semibold text-blue-700 block group-hover:text-blue-900">🔁 สินค้าเดิม</span>
+                            <span id="statShopeeExist" class="text-base font-bold text-blue-600 font-mono">0</span>
+                            <span class="text-[9px] text-blue-600 block">มี SKU ในระบบแล้ว (คลิกดู)</span>
+                        </div>
+                        <div onclick="setShopeePreviewTab('SKIP')" id="cardShopeeSkip" 
+                            class="bg-rose-50 p-2.5 rounded-xl border-2 border-rose-300 text-center cursor-pointer hover:border-rose-500 hover:scale-[1.02] transition-all group shadow-sm" title="คลิกเพื่อดูรายการที่เพิ่มไม่ได้/ถูกข้าม">
+                            <span class="text-[10px] font-bold text-rose-700 block group-hover:text-rose-900">⚠️ ไม่มี SKU / ข้าม</span>
+                            <span id="statShopeeSkip" class="text-base font-bold text-rose-600 font-mono">0</span>
+                            <span class="text-[9px] text-rose-600 font-bold block animate-pulse">คลิกดูสินค้าที่ข้าม ➔</span>
+                        </div>
+                    </div>
+
+                    <!-- Conflict Handling Strategy Radios -->
+                    <div class="bg-white border border-slate-200 rounded-2xl p-4 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <label class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                <i class="bi bi-gear-fill text-slate-500"></i>
+                                <span>การจัดการกรณี "สินค้าเดิมที่มีอยู่แล้วในคลัง":</span>
+                            </label>
+                            <span class="text-[10px] text-slate-400">เลือกเงื่อนไขการบันทึก</span>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                            <!-- Policy 1: Update Info, Keep Real Stock (Recommended) -->
+                            <label class="p-3 rounded-xl border-2 border-slate-200 hover:border-orange-400 cursor-pointer transition-all flex flex-col justify-between has-[:checked]:border-orange-500 has-[:checked]:bg-orange-50/40">
+                                <div class="flex items-start gap-2 mb-1.5">
+                                    <input type="radio" name="shopeeConflictPolicy" value="UPDATE_INFO_KEEP_STOCK" checked class="mt-0.5 text-orange-600 focus:ring-orange-500">
+                                    <div>
+                                        <span class="text-xs font-bold text-slate-800 block">ซิงก์ข้อมูล แต่ไม่ทับสต็อก</span>
+                                        <span class="text-[9px] font-bold text-orange-600 bg-orange-100 px-1.5 py-0.2 rounded inline-block mt-0.5">แนะนำ</span>
+                                    </div>
+                                </div>
+                                <p class="text-[11px] text-slate-500 leading-tight">
+                                    สินค้าใหม่เพิ่มปกติ / สินค้าเดิมอัปเดตชื่อและราคา แต่<b>คงจำนวนสต็อกในคลังและชั้นวางเดิมไว้</b>
+                                </p>
+                            </label>
+
+                            <!-- Policy 2: Skip Existing (Insert Only New) -->
+                            <label class="p-3 rounded-xl border-2 border-slate-200 hover:border-orange-400 cursor-pointer transition-all flex flex-col justify-between has-[:checked]:border-orange-500 has-[:checked]:bg-orange-50/40">
+                                <div class="flex items-start gap-2 mb-1.5">
+                                    <input type="radio" name="shopeeConflictPolicy" value="SKIP_EXISTING" class="mt-0.5 text-orange-600 focus:ring-orange-500">
+                                    <div>
+                                        <span class="text-xs font-bold text-slate-800 block">ข้ามสินค้าเดิมทั้งหมด</span>
+                                        <span class="text-[9px] font-semibold text-slate-500 block">เพิ่มเฉพาะของใหม่</span>
+                                    </div>
+                                </div>
+                                <p class="text-[11px] text-slate-500 leading-tight">
+                                    ไม่แตะต้องสินค้าเดิมในคลังเลย <b>เพิ่มเฉพาะสินค้าใหม่ที่ยังไม่มี</b> เท่านั้น
+                                </p>
+                            </label>
+
+                            <!-- Policy 3: Overwrite All (Including Stock) -->
+                            <label class="p-3 rounded-xl border-2 border-slate-200 hover:border-orange-400 cursor-pointer transition-all flex flex-col justify-between has-[:checked]:border-orange-500 has-[:checked]:bg-orange-50/40">
+                                <div class="flex items-start gap-2 mb-1.5">
+                                    <input type="radio" name="shopeeConflictPolicy" value="OVERWRITE_ALL" class="mt-0.5 text-orange-600 focus:ring-orange-500">
+                                    <div>
+                                        <span class="text-xs font-bold text-slate-800 block">อัปเดตทับทั้งหมด</span>
+                                        <span class="text-[9px] font-semibold text-slate-500 block">ยึด Shopee เป็นหลัก</span>
+                                    </div>
+                                </div>
+                                <p class="text-[11px] text-slate-500 leading-tight">
+                                    อัปเดตข้อมูลทุกอย่างตามไฟล์ Shopee <b>รวมถึงแทนที่จำนวนสต็อกด้วย</b>
+                                </p>
+                            </label>
+                        </div>
+
+                        <!-- Rack location default for new items -->
+                        <div class="pt-2 border-t border-slate-100 flex items-center justify-between gap-3 text-xs">
+                            <span class="text-slate-600">ชั้นวางเริ่มต้นสำหรับสินค้าใหม่ (Rack Location):</span>
+                            <input type="text" id="shopeeDefaultRack" value="A-01" class="w-24 px-2 py-1 text-xs font-mono uppercase border border-slate-200 rounded-lg text-center outline-none focus:ring-1 focus:ring-orange-500">
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Preview Table with Interactive Filter Tabs -->
+                    <div class="space-y-2">
+                        <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
+                            <!-- Preview Category Tabs -->
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <span class="font-bold text-slate-700">แสดงตัวอย่าง:</span>
+                                <div class="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-[11px]">
+                                    <button type="button" id="tabShopeePrevAll" onclick="setShopeePreviewTab('ALL')" 
+                                        class="px-2.5 py-1 rounded-lg font-bold bg-white text-slate-800 shadow-sm transition-all">
+                                        ทั้งหมด (<span id="prevCountAll">0</span>)
+                                    </button>
+                                    <button type="button" id="tabShopeePrevNew" onclick="setShopeePreviewTab('NEW')" 
+                                        class="px-2.5 py-1 rounded-lg text-emerald-700 hover:text-emerald-900 font-medium transition-all">
+                                        🆕 สินค้าใหม่ (<span id="prevCountNew">0</span>)
+                                    </button>
+                                    <button type="button" id="tabShopeePrevExist" onclick="setShopeePreviewTab('EXISTING')" 
+                                        class="px-2.5 py-1 rounded-lg text-blue-700 hover:text-blue-900 font-medium transition-all">
+                                        🔁 สินค้าเดิม (<span id="prevCountExist">0</span>)
+                                    </button>
+                                    <button type="button" id="tabShopeePrevSkip" onclick="setShopeePreviewTab('SKIP')" 
+                                        class="px-2.5 py-1 rounded-lg text-rose-700 hover:text-rose-900 font-bold transition-all bg-rose-50/50">
+                                        ⚠️ รายการที่ข้าม (<span id="prevCountSkip">0</span>)
+                                    </button>
+                                </div>
+                            </div>
+                            <span id="shopeePreviewCount" class="text-slate-400 text-[11px]">-</span>
+                        </div>
+
+                        <!-- Table Scroll Container -->
+                        <div class="overflow-x-auto max-h-[240px] overflow-y-auto border border-slate-200 rounded-xl">
+                            <table class="w-full text-left text-xs text-slate-600">
+                                <thead class="bg-slate-50 text-[11px] font-semibold text-slate-500 sticky top-0 border-b border-slate-200 z-10">
+                                    <tr>
+                                        <th class="py-2 px-2.5">สถานะ</th>
+                                        <th class="py-2 px-2.5">SKU / แถวในไฟล์</th>
+                                        <th class="py-2 px-2.5">ชื่อสินค้า</th>
+                                        <th class="py-2 px-2">ตัวเลือก (Variant)</th>
+                                        <th class="py-2 px-2 text-right">ราคา</th>
+                                        <th class="py-2 px-2 text-center">สต็อก Shopee</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="shopeePreviewTbody" class="divide-y divide-slate-100 font-sans">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Progress Bar Container (Hidden by default) -->
+                <div id="shopeeProgressContainer" class="hidden space-y-1.5 pt-2">
+                    <div class="flex items-center justify-between text-xs font-medium text-slate-700">
+                        <span id="shopeeProgressStatus">กำลังประมวลผลข้อมูล...</span>
+                        <span id="shopeeProgressPercent" class="font-mono font-bold text-orange-600">0%</span>
+                    </div>
+                    <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                        <div id="shopeeProgressBar" class="bg-gradient-to-r from-orange-500 to-amber-500 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer Actions -->
+            <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 flex-shrink-0 mt-3">
+                <button type="button" onclick="closeShopeeImportModal()" class="px-4 py-2 text-xs text-slate-600 hover:text-slate-800 font-medium rounded-xl hover:bg-slate-100 transition-colors">
+                    ยกเลิก
+                </button>
+                <div class="flex items-center gap-2">
+                    <button type="button" id="btnResetShopeeModal" onclick="resetShopeeImport()" class="px-3 py-2 text-xs text-slate-500 hover:text-slate-700 rounded-xl hover:bg-slate-100 transition-colors hidden">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i> เลือกลบไฟล์ใหม่
+                    </button>
+                    <button type="button" id="btnConfirmShopeeImport" onclick="executeShopeeImport()" disabled
+                        class="px-5 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-orange-500/20 transition-all active:scale-95 flex items-center gap-2">
+                        <i class="bi bi-cloud-arrow-up-fill"></i>
+                        <span id="btnConfirmShopeeText">กรุณาเลือกไฟล์ก่อน</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Application Script -->
-    <script src="inventory.js?v=20261015_01"></script>
+    <script src="inventory.js?v=20261016_04"></script>
 </body>
 </html>

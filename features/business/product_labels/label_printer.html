@@ -84,10 +84,10 @@
             <!-- Settings & Controls -->
             <div class="flex items-center flex-wrap gap-2 text-xs">
                 <!-- Direct Link to Inventory Menu -->
-                <a href="../garment_inventory/inventory.html" 
+                <a href="../inventory/inventory.html" 
                     class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold transition-colors shadow-sm">
                     <i class="bi bi-boxes"></i>
-                    <span>คลังสินค้าเสื้อผ้า</span>
+                    <span>คลังสินค้า</span>
                 </a>
 
                 <!-- Database Connection Status Badge -->
@@ -141,7 +141,7 @@
 
             <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
                 <div>
-                    <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">สต็อกเสื้อผ้ารวม</span>
+                    <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">สต็อกสินค้ารวม</span>
                     <span id="metricTotalStock" class="text-lg sm:text-xl font-bold text-indigo-600 font-mono">0</span>
                     <span class="text-[10px] text-slate-400 block">ชิ้นในคลังสินค้า</span>
                 </div>
@@ -434,10 +434,16 @@
                                 รายการสินค้า & คลัง (<span id="productCount">0</span>)
                             </h3>
                         </div>
-                        <button type="button" onclick="loadProductsList()" 
-                            class="text-xs text-slate-500 hover:text-blue-600 inline-flex items-center gap-1 font-medium" title="โหลดข้อมูลใหม่">
-                            <i class="bi bi-arrow-repeat"></i> รีเฟรช
-                        </button>
+                        <div class="flex items-center gap-1.5">
+                            <a href="../inventory/inventory.html?action=shopee_import" 
+                                class="text-xs text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 px-2 py-1 rounded-lg inline-flex items-center gap-1 font-bold shadow-sm transition-colors" title="นำเข้าสินค้าจากไฟล์ Shopee Excel / CSV ในคลังสินค้า">
+                                <i class="bi bi-bag-check-fill text-orange-500"></i> นำเข้า Shopee
+                            </a>
+                            <button type="button" onclick="loadProductsList()" 
+                                class="text-xs text-slate-500 hover:text-blue-600 inline-flex items-center gap-1 font-medium" title="โหลดข้อมูลใหม่">
+                                <i class="bi bi-arrow-repeat"></i> รีเฟรช
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Search Filter -->

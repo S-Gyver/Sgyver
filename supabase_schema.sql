@@ -336,6 +336,7 @@ ALTER TABLE public.product_labels ADD COLUMN IF NOT EXISTS usage_info TEXT DEFAU
 ALTER TABLE public.product_labels ADD COLUMN IF NOT EXISTS manufacturer TEXT DEFAULT 'ประเทศจีน';
 ALTER TABLE public.product_labels ADD COLUMN IF NOT EXISTS distributor_address TEXT;
 ALTER TABLE public.product_labels ADD COLUMN IF NOT EXISTS price_text TEXT DEFAULT 'ระบุ ณ จุดขาย';
+ALTER TABLE public.product_labels ADD COLUMN IF NOT EXISTS image_url TEXT;
 
 -- สร้าง Unique Index บนคอลัมน์ sku เพื่อให้ทำ Upsert ได้รวดเร็วและไม่ซ้ำซ้อน
 CREATE UNIQUE INDEX IF NOT EXISTS idx_product_labels_sku ON public.product_labels (sku);
