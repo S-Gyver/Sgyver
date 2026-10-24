@@ -7851,7 +7851,7 @@ function getShopeeBookmarkletCode() {
         'if(b)b.remove();' +
         'b=document.createElement("div");' +
         'b.id="sgyver-shopee-toast";' +
-        'b.style.cssText="position:fixed;top:20px;right:20px;z-index:999999999;font-family:sans-serif;max-width:390px;font-size:13px;line-height:1.5;box-shadow:0 20px 45px rgba(0,0,0,0.4);border-radius:18px;overflow:hidden;border:2px solid rgba(255,255,255,0.3);";' +
+        'b.style.cssText="position:fixed;top:20px;right:20px;z-index:999999999;font-family:sans-serif;max-width:400px;font-size:13px;line-height:1.5;box-shadow:0 20px 45px rgba(0,0,0,0.45);border-radius:18px;overflow:hidden;border:2px solid rgba(255,255,255,0.35);";' +
         'document.body.appendChild(b);' +
         'async function doExtractAndCopy(isRepeat){' +
         'b.style.background="linear-gradient(135deg,#ff5722,#ee4d2d)";b.style.color="#fff";b.style.padding="16px 20px";' +
@@ -7925,50 +7925,79 @@ function getShopeeBookmarkletCode() {
         'let weight="";' +
         'if(d&&d.weight){weight=(d.weight>50?(d.weight/1000):d.weight).toString();}' +
         'const copyTime=new Date().toLocaleString("th-TH");' +
-        'if(itemid){try{localStorage.setItem("sgyver_copied_"+itemid, copyTime);}catch(e){}}' +
         'const singlePayload={' +
         'source:"SGYVER_SHOPEE_IMPORT",version:"2.0",extracted_at:new Date().toISOString(),url:window.location.href,' +
         'itemid:itemid||"",shopid:shopid||"",' +
         'name:title,images:images,video_url:videoUrl,description:desc,weight:weight||"0.25",variants:variants,raw_attributes:rawAttributes,categories:categories' +
         '};' +
-        'const singleJson=JSON.stringify(singlePayload,null,2);' +
-        'try{await navigator.clipboard.writeText(singleJson);}' +
-        'catch(err){const t=document.createElement("textarea");t.value=singleJson;document.body.appendChild(t);t.select();document.execCommand("copy");document.body.removeChild(t);}' +
+        'let basket=[];' +
+        'try{basket=JSON.parse(localStorage.getItem("sgyver_basket")||"[]");if(!Array.isArray(basket))basket=[];}catch(e){basket=[];}' +
+        'const cleanUrl=window.location.href.split("?")[0].replace(/\\/+$/,"");' +
+        'const exIdx=basket.findIndex(function(it){' +
+        'if(itemid&&it.itemid&&String(it.itemid)===String(itemid))return true;' +
+        'if(it.url&&it.url.split("?")[0].replace(/\\/+$/,"")===cleanUrl)return true;' +
+        'return false;' +
+        '});' +
+        'if(exIdx>=0){basket[exIdx]=singlePayload;}' +
+        'else{basket.push(singlePayload);}' +
+        'try{localStorage.setItem("sgyver_basket",JSON.stringify(basket));}catch(e){}' +
+        'if(itemid){try{localStorage.setItem("sgyver_copied_"+itemid, copyTime);}catch(e){}}' +
+        'const batchPayload={' +
+        'source:"SGYVER_SHOPEE_BATCH",version:"2.0",mode:"basket",extracted_at:new Date().toISOString(),' +
+        'total:basket.length,items:basket' +
+        '};' +
+        'const clipJson=JSON.stringify(batchPayload,null,2);' +
+        'try{await navigator.clipboard.writeText(clipJson);}' +
+        'catch(err){const t=document.createElement("textarea");t.value=clipJson;document.body.appendChild(t);t.select();document.execCommand("copy");document.body.removeChild(t);}' +
         'b.style.background="linear-gradient(135deg,#059669,#047857)";b.style.color="#fff";b.style.padding="16px 20px";' +
-        'b.innerHTML=\'<div style="display:flex;align-items:center;justify-content:space-between;"><div style="font-weight:bold;font-size:14px;display:flex;align-items:center;gap:6px;">🎉 ดูดข้อมูลสินค้าสำเร็จ 100%!</div><button onclick="this.closest(\\\'#sgyver-shopee-toast\\\').remove()" style="background:transparent;border:none;color:#fff;font-size:16px;cursor:pointer;opacity:0.8;">✕</button></div>\' +' +
+        'b.innerHTML=\'<div style="display:flex;align-items:center;justify-content:space-between;"><div style="font-weight:bold;font-size:14px;display:flex;align-items:center;gap:6px;">🛒 สินค้าเข้าตะกร้าแล้ว (สะสม \'+ basket.length +\' สินค้า)!</div><button onclick="this.closest(\\\'#sgyver-shopee-toast\\\').remove()" style="background:transparent;border:none;color:#fff;font-size:16px;cursor:pointer;opacity:0.8;">✕</button></div>\' +' +
         '\'<div style="font-size:12px;margin-top:6px;background:rgba(0,0,0,0.22);padding:8px 10px;border-radius:10px;">\' +' +
         '\'<div style="font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">\'+ (title||"สินค้า Shopee") +\'</div>\' +' +
         '\'<div style="font-size:11px;margin-top:3px;opacity:0.95;">📸 รูป: <b>\'+ images.length +\'</b> รูป | 🎬 วิดีโอ: <b>\'+ (videoUrl?"มี":"ไม่มี") +\'</b> | 🎨 ตัวเลือก: <b>\'+ variants.length +\'</b> แบบ</div>\' +' +
-        '(isRepeat?\'<div style="font-size:10.5px;color:#fef08a;margin-top:3px;font-weight:bold;">⚠️ ยืนยันการคัดลอกซ้ำเรียบร้อยแล้ว</div>\':\'<div style="font-size:10.5px;color:#a7f3d0;margin-top:3px;">✅ บันทึกประวัติการดูดเรียบร้อย (\'+copyTime+\')</div>\') + \'</div>\' +' +
-        '\'<button id="sgyver-copy-single-btn" style="width:100%;margin-top:10px;padding:12px 14px;background:#fef08a;color:#854d0e;border:2px solid #ca8a04;border-radius:12px;font-weight:900;font-size:13px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;gap:6px;">👉 📋 คัดลอกข้อมูลแล้ว! สลับไปวางที่ S-Gyver ได้เลย</button>\' +' +
-        '\'<div style="font-size:11px;text-align:center;margin-top:6px;opacity:0.9;">สลับไปที่หน้าเว็บ S-Gyver กด "วางข้อมูลจาก Shopee" เพื่อกรอกฟอร์มอัตโนมัติ</div>\';' +
+        '\'<div style="font-size:10.5px;color:#a7f3d0;margin-top:3px;">✅ อัปเดตคลิปบอร์ดแล้ว (\'+ basket.length +\' รายการ)</div>\' +' +
+        '\'</div>\' +' +
+        '\'<button id="sgyver-copy-single-btn" style="width:100%;margin-top:10px;padding:12px 14px;background:#fef08a;color:#854d0e;border:2px solid #ca8a04;border-radius:12px;font-weight:900;font-size:13px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;gap:6px;">👉 📋 คัดลอกแล้ว (\'+ basket.length +\' ชิ้น)! สลับไปวางที่ S-Gyver</button>\' +' +
+        '\'<div style="display:flex;gap:6px;margin-top:8px;">\' +' +
+        '\'<button id="sgyver-clear-basket-btn" style="flex:1;padding:6px 8px;background:rgba(255,255,255,0.18);color:#fff;border:1px solid rgba(255,255,255,0.3);border-radius:8px;font-size:11px;cursor:pointer;">🗑️ ล้างตะกร้า (เริ่มใหม่)</button>\' +' +
+        '\'</div>\' +' +
+        '\'<div style="font-size:10.5px;text-align:center;margin-top:6px;opacity:0.85;">💡 เปิดดูดสินค้าชิ้นอื่นต่อได้เลย หรือสลับไปวางที่ S-Gyver เพื่อลงทีเดียว</div>\';' +
         'const copyBtn=document.getElementById("sgyver-copy-single-btn");' +
         'if(copyBtn){' +
         'copyBtn.onclick=async function(){' +
-        'try{await navigator.clipboard.writeText(singleJson);}' +
-        'catch(e){const t=document.createElement("textarea");t.value=singleJson;document.body.appendChild(t);t.select();document.execCommand("copy");document.body.removeChild(t);}' +
-        'copyBtn.innerHTML="✅ คัดลอกข้อมูลแล้ว!";copyBtn.style.background="#bbf7d0";copyBtn.style.color="#166534";' +
+        'try{await navigator.clipboard.writeText(clipJson);}' +
+        'catch(e){const t=document.createElement("textarea");t.value=clipJson;document.body.appendChild(t);t.select();document.execCommand("copy");document.body.removeChild(t);}' +
+        'copyBtn.innerHTML="✅ คัดลอกทั้ง "+ basket.length +" ชิ้นแล้ว!";copyBtn.style.background="#bbf7d0";copyBtn.style.color="#166534";' +
         '};' +
         '}' +
-        'setTimeout(function(){if(b&&b.parentNode)b.remove();},20000);' +
+        'const clearBtn=document.getElementById("sgyver-clear-basket-btn");' +
+        'if(clearBtn){' +
+        'clearBtn.onclick=function(){' +
+        'try{localStorage.removeItem("sgyver_basket");}catch(e){}' +
+        'b.remove();' +
+        'alert("🗑️ ล้างตะกร้าสะสมสินค้า Shopee เรียบร้อยแล้ว เริ่มดูดใหม่ได้เลยครับ");' +
+        '};' +
+        '}' +
+        'setTimeout(function(){if(b&&b.parentNode)b.remove();},25000);' +
         '}' +
         'const prevCopied=itemid?localStorage.getItem("sgyver_copied_"+itemid):null;' +
+        'let existingBasket=[];' +
+        'try{existingBasket=JSON.parse(localStorage.getItem("sgyver_basket")||"[]");if(!Array.isArray(existingBasket))existingBasket=[];}catch(e){existingBasket=[];}' +
         'if(prevCopied){' +
         'b.style.background="linear-gradient(135deg,#d97706,#b45309)";b.style.color="#fff";b.style.padding="16px 20px";' +
         'b.innerHTML=\'<div style="display:flex;align-items:center;justify-content:space-between;"><div style="font-weight:bold;font-size:14px;display:flex;align-items:center;gap:6px;">⚠️ สินค้านี้เคยดูดข้อมูลไปแล้ว!</div><button onclick="this.closest(\\\'#sgyver-shopee-toast\\\').remove()" style="background:transparent;border:none;color:#fff;font-size:16px;cursor:pointer;opacity:0.8;">✕</button></div>\' +' +
         '\'<div style="font-size:12px;margin-top:8px;background:rgba(0,0,0,0.25);padding:10px 12px;border-radius:10px;border-left:4px solid #fef08a;">\' +' +
         '\'<div>คุณเคยกดดูดสินค้านี้เข้า S-Gyver ไปแล้วเมื่อ:</div>\' +' +
         '\'<div style="font-weight:bold;font-size:13px;color:#fef08a;margin-top:2px;">🕒 \'+ prevCopied +\'</div>\' +' +
-        '\'<div style="font-size:11px;margin-top:4px;opacity:0.9;">Shopee Item ID: <b>\'+ itemid +\'</b></div>\' +' +
+        '\'<div style="font-size:11px;margin-top:4px;opacity:0.9;">Shopee Item ID: <b>\'+ itemid +\'</b> (ในตะกร้ามี \'+ existingBasket.length +\' ชิ้น)</div>\' +' +
         '\'</div>\' +' +
-        '\'<div style="font-size:11.5px;margin-top:8px;opacity:0.95;">ต้องการคัดลอกข้อมูลซ้ำอีกครั้งหรือไม่?</div>\' +' +
+        '\'<div style="font-size:11.5px;margin-top:8px;opacity:0.95;">ต้องการเพิ่มหรืออัปเดตข้อมูลสินค้านี้ลงในตะกร้าหรือไม่?</div>\' +' +
         '\'<div style="display:flex;gap:6px;margin-top:10px;">\' +' +
-        '\'<button id="sgyver-btn-repeat" style="flex:1;padding:10px 12px;background:#fef08a;color:#854d0e;border:2px solid #ca8a04;border-radius:10px;font-weight:bold;font-size:12px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.2);">📋 ยืนยันดูดซ้ำอีกรอบ</button>\' +' +
-        '\'<button id="sgyver-btn-clear" style="padding:10px 10px;background:rgba(255,255,255,0.18);color:#fff;border:1px solid rgba(255,255,255,0.35);border-radius:10px;font-size:11px;cursor:pointer;" title="ล้างประวัติที่เคยดูดชิ้นนี้">🗑️ ล้างประวัติ</button>\' +' +
+        '\'<button id="sgyver-btn-repeat" style="flex:1;padding:10px 12px;background:#fef08a;color:#854d0e;border:2px solid #ca8a04;border-radius:10px;font-weight:bold;font-size:12px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.2);">➕ เพิ่ม/อัปเดตลงตะกร้า</button>\' +' +
+        '\'<button id="sgyver-btn-clear" style="padding:10px 10px;background:rgba(255,255,255,0.18);color:#fff;border:1px solid rgba(255,255,255,0.35);border-radius:10px;font-size:11px;cursor:pointer;" title="ล้างตะกร้าทั้งหมด">🗑️ ล้างตะกร้า</button>\' +' +
         '\'<button id="sgyver-btn-cancel" style="padding:10px 10px;background:transparent;color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:10px;font-size:11px;cursor:pointer;">✕ ยกเลิก</button>\' +' +
         '\'</div>\';' +
         'document.getElementById("sgyver-btn-repeat").onclick=function(){doExtractAndCopy(true);};' +
-        'document.getElementById("sgyver-btn-clear").onclick=function(){if(itemid)localStorage.removeItem("sgyver_copied_"+itemid);doExtractAndCopy(true);};' +
+        'document.getElementById("sgyver-btn-clear").onclick=function(){localStorage.removeItem("sgyver_basket");if(itemid)localStorage.removeItem("sgyver_copied_"+itemid);doExtractAndCopy(true);};' +
         'document.getElementById("sgyver-btn-cancel").onclick=function(){b.remove();};' +
         '}else{' +
         'doExtractAndCopy(false);' +
@@ -7995,6 +8024,315 @@ async function copyShopeeBookmarkletCode() {
     } catch (err) {
         prompt('กรุณาคัดลอกโค้ด Bookmarklet ด้านล่างนี้:', code);
     }
+}
+
+// ------------------------------------------------------------------------------
+// 🛒 Shopee Scraper Basket Batch Importer (สร้างหลายการ์ดพร้อมกัน)
+// ------------------------------------------------------------------------------
+
+function openShopeeBasketConfirmModal(data) {
+    const modal = document.getElementById('shopeeBasketConfirmModal');
+    if (!modal) return;
+    const items = data.items || [];
+    if (items.length === 0) return;
+
+    const totalBadge = document.getElementById('basketConfirmTotalBadge');
+    if (totalBadge) totalBadge.innerText = `${items.length} รายการ`;
+
+    const btnText = document.getElementById('btnBasketConfirmImportAllText');
+    if (btnText) btnText.innerText = `⚡ สร้าง ${items.length} การ์ดสินค้าลงคลังทันที`;
+
+    const listEl = document.getElementById('basketConfirmItemsList');
+    if (listEl) {
+        listEl.innerHTML = items.map((it, idx) => {
+            const img = (it.images && it.images.length > 0) ? it.images[0] : (it.image_url || '');
+            const varCount = Array.isArray(it.variants) ? it.variants.length : 1;
+            const imgCount = Array.isArray(it.images) ? it.images.length : (it.image_url ? 1 : 0);
+            const price = it.price || (it.variants?.[0]?.price) || '-';
+            const priceStr = price !== '-' ? `฿${parseFloat(price).toLocaleString('th-TH')}` : '-';
+
+            return `
+                <div class="p-3 bg-white rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between gap-3.5 hover:border-emerald-300 transition-all">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 font-black text-xs flex items-center justify-center shrink-0">
+                            #${idx + 1}
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center">
+                            ${img ? `<img src="${img}" class="w-full h-full object-cover">` : `<i class="bi bi-image text-slate-400"></i>`}
+                        </div>
+                        <div class="min-w-0">
+                            <div class="text-xs font-bold text-slate-800 truncate" title="${escapeHtml(it.name || '')}">
+                                ${escapeHtml(it.name || 'สินค้า Shopee')}
+                            </div>
+                            <div class="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
+                                <span>📸 <b>${imgCount}</b> รูป</span>
+                                <span>•</span>
+                                <span>🎨 <b>${varCount}</b> ตัวเลือก</span>
+                                ${it.itemid ? `<span>•</span><span class="text-[10px] text-slate-400">ID: ${it.itemid}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-right shrink-0">
+                        <div class="text-xs font-black text-emerald-600">${priceStr}</div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">พร้อมสร้างการ์ด</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    const importBtn = document.getElementById('btnBasketConfirmImportAll');
+    if (importBtn) {
+        importBtn.onclick = function() {
+            closeShopeeBasketConfirmModal();
+            executeShopeeBasketBatchImport(items);
+        };
+    }
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeShopeeBasketConfirmModal() {
+    const modal = document.getElementById('shopeeBasketConfirmModal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+function executeShopeeBasketBatchImport(items) {
+    if (!Array.isArray(items) || items.length === 0) return;
+
+    const catTree = getStoredCategoryTree();
+    const existingProducts = InventoryApp.products || [];
+    const prefixSeqTracker = new Map();
+    const allNewItems = [];
+    let totalVariantsCreated = 0;
+
+    items.forEach((data, pIdx) => {
+        // 1. Determine Category & SKU Prefix
+        const titleLower = ((data.name || '') + ' ' + (data.categories ? data.categories.join(' ') : '')).toLowerCase();
+        let chosenL1 = -1, chosenL2 = -1, chosenL3 = -1;
+        let foundCat = false;
+
+        // Eyewear check
+        const isEyewear = /แว่น|แว่นตา|แว่นกันแดด|แว่นสายตา|แว่นแฟชั่น|glasses|sunglasses|eyewear|goggles|เลนส์/i.test(titleLower);
+        if (isEyewear) {
+            for (let i = 0; i < catTree.length; i++) {
+                if (catTree[i].code === 'ACC' || (catTree[i].name && catTree[i].name.includes('เครื่องประดับ'))) {
+                    const l1 = catTree[i];
+                    if (l1.children) {
+                        for (let j = 0; j < l1.children.length; j++) {
+                            const l2 = l1.children[j];
+                            if (l2.code === 'EYE' || (l2.name && l2.name.includes('แว่น'))) {
+                                chosenL1 = i; chosenL2 = j; chosenL3 = 0;
+                                if (l2.children) {
+                                    for (let k = 0; k < l2.children.length; k++) {
+                                        const l3 = l2.children[k];
+                                        if (/สายตา|กรองแสง|opt/i.test(titleLower) && (l3.code === 'OPT' || l3.name.includes('สายตา'))) {
+                                            chosenL3 = k; break;
+                                        } else if (/แฟชั่น|fsh/i.test(titleLower) && (l3.code === 'FSH' || l3.name.includes('แฟชั่น'))) {
+                                            chosenL3 = k; break;
+                                        } else if (/กันแดด|sun/i.test(titleLower) && (l3.code === 'SUN' || l3.name.includes('กันแดด'))) {
+                                            chosenL3 = k; break;
+                                        }
+                                    }
+                                }
+                                foundCat = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (foundCat) break;
+                }
+            }
+        }
+
+        // Level 3 matching
+        if (!foundCat) {
+            for (let i = 0; i < catTree.length; i++) {
+                const l1 = catTree[i];
+                if (!l1.children) continue;
+                for (let j = 0; j < l1.children.length; j++) {
+                    const l2 = l1.children[j];
+                    if (!l2.children) continue;
+                    for (let k = 0; k < l2.children.length; k++) {
+                        const l3 = l2.children[k];
+                        const l3Name = (l3.name || '').toLowerCase();
+                        if (l3Name && titleLower.includes(l3Name)) {
+                            chosenL1 = i; chosenL2 = j; chosenL3 = k;
+                            foundCat = true; break;
+                        }
+                    }
+                    if (foundCat) break;
+                }
+                if (foundCat) break;
+            }
+        }
+
+        // Level 2 matching
+        if (!foundCat) {
+            for (let i = 0; i < catTree.length; i++) {
+                const l1 = catTree[i];
+                if (!l1.children) continue;
+                for (let j = 0; j < l1.children.length; j++) {
+                    const l2 = l1.children[j];
+                    const l2Name = (l2.name || '').toLowerCase();
+                    if (l2Name && titleLower.includes(l2Name)) {
+                        chosenL1 = i; chosenL2 = j; chosenL3 = 0;
+                        foundCat = true; break;
+                    }
+                }
+                if (foundCat) break;
+            }
+        }
+
+        // General fallback
+        if (!foundCat || chosenL1 === -1) {
+            let genIdx = catTree.findIndex(l1 => l1.code === 'GEN' || (l1.name && l1.name.includes('ทั่วไป')));
+            if (genIdx !== -1) { chosenL1 = genIdx; chosenL2 = 0; chosenL3 = 0; }
+            else { chosenL1 = 0; chosenL2 = 0; chosenL3 = 0; }
+        }
+
+        const l1Obj = catTree[chosenL1];
+        const l2Obj = l1Obj?.children?.[chosenL2];
+        const l3Obj = l2Obj?.children?.[chosenL3];
+        const fullCatPath = [l1Obj?.name, l2Obj?.name, l3Obj?.name].filter(Boolean).join(' > ');
+        
+        const codes = [];
+        if (l1Obj?.code) codes.push(l1Obj.code.trim().toUpperCase());
+        if (l2Obj?.code) codes.push(l2Obj.code.trim().toUpperCase());
+        if (l3Obj?.code) codes.push(l3Obj.code.trim().toUpperCase());
+        const prefix = codes.length > 0 ? codes.join('-') : 'GEN';
+
+        if (!prefixSeqTracker.has(prefix)) {
+            let maxSeq = 0;
+            const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const prefixPattern = new RegExp(`^${escaped}-([0-9]+)(?:[-_][0-9A-Z]+)?$`, 'i');
+            existingProducts.forEach(p => {
+                const sku = (p.sku || '').trim().toUpperCase();
+                const pSku = (p.parent_sku || '').trim().toUpperCase();
+                const pKey = (typeof getParentGroupKey === 'function' ? getParentGroupKey(p) : '').trim().toUpperCase();
+                [sku, pSku, pKey].forEach(val => {
+                    if (!val) return;
+                    const m = val.match(prefixPattern);
+                    if (m && m[1]) {
+                        const num = parseInt(m[1], 10);
+                        if (!isNaN(num) && num > maxSeq) maxSeq = num;
+                    }
+                });
+            });
+            prefixSeqTracker.set(prefix, maxSeq);
+        }
+
+        const nextSeqNum = prefixSeqTracker.get(prefix) + 1;
+        prefixSeqTracker.set(prefix, nextSeqNum);
+        const parentSku = `${prefix}-${String(nextSeqNum).padStart(3, '0')}`;
+
+        // Prepare Images
+        const galleryImages = Array.isArray(data.images) ? data.images.slice(0, 15) : [];
+        const coverImage = galleryImages.length > 0 ? galleryImages[0] : (data.image_url || '');
+
+        // Cache in localStorage
+        if (coverImage) localStorage.setItem('sgyver_img_' + parentSku, coverImage);
+        if (galleryImages.length > 0) localStorage.setItem('sgyver_gallery_' + parentSku, JSON.stringify(galleryImages));
+        if (data.description) localStorage.setItem('sgyver_desc_' + parentSku, data.description);
+        if (data.video_url) localStorage.setItem('sgyver_video_' + parentSku, data.video_url);
+        if (data.url) {
+            localStorage.setItem('sgyver_product_url_' + parentSku, data.url);
+            localStorage.setItem('sgyver_shopee_url_' + parentSku, data.url);
+        }
+        if (data.itemid) localStorage.setItem('sgyver_shopee_itemid_' + parentSku, data.itemid);
+        localStorage.setItem('sgyver_shopee_time_' + parentSku, new Date().toLocaleString('th-TH'));
+        localStorage.setItem('sgyver_cat_' + parentSku, fullCatPath);
+
+        // Shipping Data
+        const shippingData = {
+            weight: parseFloat(data.weight || 0.25),
+            width: 15, length: 25, height: 5,
+            standard: true, express: true
+        };
+        localStorage.setItem('sgyver_shipping_' + parentSku, JSON.stringify(shippingData));
+
+        const distributor = data.shopid ? `Shopee Shop ID ${data.shopid}` : 'Shopee Seller Centre';
+
+        // Variants or Single
+        if (Array.isArray(data.variants) && data.variants.length > 0) {
+            data.variants.forEach((v, vIdx) => {
+                const subSku = `${parentSku}-${String(vIdx + 1).padStart(2, '0')}`;
+                const variantImg = v.image_url || coverImage || null;
+                if (variantImg) localStorage.setItem('sgyver_img_' + subSku, variantImg);
+                if (galleryImages.length > 0) localStorage.setItem('sgyver_gallery_' + subSku, JSON.stringify(galleryImages));
+                localStorage.setItem('sgyver_parent_sku_' + subSku, parentSku);
+                localStorage.setItem('sgyver_shipping_' + subSku, JSON.stringify(shippingData));
+                if (data.url) localStorage.setItem('sgyver_product_url_' + subSku, data.url);
+
+                const itemPayload = {
+                    id: Date.now() + Math.floor(Math.random() * 10000) + (pIdx * 100) + vIdx,
+                    sku: subSku,
+                    parent_sku: parentSku,
+                    name: data.name,
+                    product_type: fullCatPath,
+                    image_url: variantImg,
+                    images: galleryImages,
+                    video_url: data.video_url || null,
+                    variant: v.name || `ตัวเลือกที่ ${vIdx + 1}`,
+                    price: (v.price !== null && v.price !== undefined && !isNaN(v.price)) ? parseFloat(v.price) : 290,
+                    stock_quantity: (v.stock !== null && v.stock !== undefined && !isNaN(v.stock)) ? parseInt(v.stock, 10) : 10,
+                    min_stock_alert: 5,
+                    warehouse_location: 'A-01',
+                    distributor: distributor,
+                    care_instructions: '',
+                    product_url: data.url || null,
+                    item_id: data.itemid || null,
+                    location_note: null,
+                    location_image: null,
+                    updated_at: new Date().toISOString()
+                };
+
+                InventoryApp.products.push(itemPayload);
+                allNewItems.push(itemPayload);
+                totalVariantsCreated++;
+            });
+        } else {
+            const itemPayload = {
+                id: Date.now() + Math.floor(Math.random() * 10000) + (pIdx * 100),
+                sku: parentSku,
+                parent_sku: parentSku,
+                name: data.name,
+                product_type: fullCatPath,
+                image_url: coverImage || null,
+                images: galleryImages,
+                video_url: data.video_url || null,
+                variant: 'มาตรฐาน',
+                price: data.price ? parseFloat(data.price) : 290,
+                stock_quantity: data.stock ? parseInt(data.stock, 10) : 10,
+                min_stock_alert: 5,
+                warehouse_location: 'A-01',
+                distributor: distributor,
+                care_instructions: '',
+                product_url: data.url || null,
+                item_id: data.itemid || null,
+                location_note: null,
+                location_image: null,
+                updated_at: new Date().toISOString()
+            };
+
+            InventoryApp.products.push(itemPayload);
+            allNewItems.push(itemPayload);
+            totalVariantsCreated++;
+        }
+    });
+
+    saveCustomProductsToLocalCache();
+    calculateMetrics(InventoryApp.products);
+    renderTable();
+
+    // Background upsert
+    safeSupabaseUpsert(allNewItems);
+
+    // Show celebratory toast
+    showToastNotification(`🎉 นำเข้าสำเร็จ! สร้างการ์ดสินค้าหลัก ${items.length} สินค้า (${totalVariantsCreated} SKU ย่อย) เรียบร้อยแล้ว`);
 }
 
 function openShopeeScraperModal() {
@@ -8059,7 +8397,13 @@ async function importShopeeFromClipboard() {
         // Check if Batch Mode payload
         if (parsed && (parsed.source === 'SGYVER_SHOPEE_BATCH' || Array.isArray(parsed.items))) {
             closeShopeeScraperModal();
-            applyShopeeBatchExtractedData(parsed);
+            if (parsed.items && parsed.items.length === 1) {
+                applyShopeeExtractedData(parsed.items[0]);
+            } else if (parsed.items && parsed.items.length > 1) {
+                openShopeeBasketConfirmModal(parsed);
+            } else {
+                applyShopeeBatchExtractedData(parsed);
+            }
             return;
         }
 
@@ -8079,7 +8423,13 @@ async function importShopeeFromClipboard() {
             try {
                 const parsed = JSON.parse(manual.trim());
                 if (parsed.source === 'SGYVER_SHOPEE_BATCH' || Array.isArray(parsed.items)) {
-                    applyShopeeBatchExtractedData(parsed);
+                    if (parsed.items && parsed.items.length === 1) {
+                        applyShopeeExtractedData(parsed.items[0]);
+                    } else if (parsed.items && parsed.items.length > 1) {
+                        openShopeeBasketConfirmModal(parsed);
+                    } else {
+                        applyShopeeBatchExtractedData(parsed);
+                    }
                 } else {
                     applyShopeeExtractedData(parsed);
                 }
@@ -8103,17 +8453,18 @@ function showShopeeAutoDetectToast(data) {
     t.id = 'sgyver-autodetect-toast';
     t.className = 'fixed bottom-6 right-6 z-[999999] bg-gradient-to-r from-emerald-600 to-teal-700 text-white p-4 rounded-2xl shadow-2xl border-2 border-emerald-300 flex items-center gap-3.5 animate-bounce';
 
-    const titleText = isBatch ? `ตรวจพบสินค้าทั้งหน้า Shopee (${data.items?.length || 0} รายการ)!` : escapeHtml(data.name || 'สินค้า Shopee');
-    const subText = isBatch ? `พร้อมสร้าง SKU, หมวดหมู่ และนำเข้าคลังทันที` : `รูป ${data.images?.length || 0} รูป | ${data.variants?.length || 0} ตัวเลือก`;
-    const btnText = isBatch ? 'นำเข้าทั้งชุดทันที' : 'วางข้อมูลทันที';
+    const count = data.items?.length || 0;
+    const titleText = isBatch ? `ตรวจพบสินค้าในตะกร้าดูด Shopee (${count} รายการ)!` : escapeHtml(data.name || 'สินค้า Shopee');
+    const subText = isBatch ? `พร้อมสร้างการ์ดสินค้า ${count} รายการลงคลังทันที` : `รูป ${data.images?.length || 0} รูป | ${data.variants?.length || 0} ตัวเลือก`;
+    const btnText = isBatch ? (count > 1 ? `สร้าง ${count} การ์ดทันที` : 'วางข้อมูลทันที') : 'วางข้อมูลทันที';
 
     t.innerHTML = `
         <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-xl shrink-0">
-            ⚡
+            🛒
         </div>
         <div class="max-w-[280px]">
             <div class="text-xs font-black flex items-center gap-1.5 text-yellow-300">
-                <span>${isBatch ? '📦 ตรวจพบสินค้าทั้งหน้าในคลิปบอร์ด!' : 'ตรวจพบสินค้าจาก Shopee ในคลิปบอร์ด!'}</span>
+                <span>${isBatch ? `📦 ตะกร้าดูด Shopee (${count} สินค้า)!` : 'ตรวจพบสินค้าจาก Shopee ในคลิปบอร์ด!'}</span>
             </div>
             <div class="text-[11px] font-semibold truncate text-white/95 mt-0.5">${titleText}</div>
             <div class="text-[10px] text-white/80">${subText}</div>
@@ -8130,7 +8481,13 @@ function showShopeeAutoDetectToast(data) {
         pasteBtn.onclick = function() {
             t.remove();
             if (isBatch) {
-                applyShopeeBatchExtractedData(data);
+                if (data.items && data.items.length === 1) {
+                    applyShopeeExtractedData(data.items[0]);
+                } else if (data.items && data.items.length > 1) {
+                    openShopeeBasketConfirmModal(data);
+                } else {
+                    applyShopeeBatchExtractedData(data);
+                }
             } else {
                 applyShopeeExtractedData(data);
             }
@@ -8165,8 +8522,14 @@ function processShopeeRawInput() {
     try {
         const parsed = JSON.parse(text);
         if (parsed.source === 'SGYVER_SHOPEE_BATCH' || Array.isArray(parsed.items)) {
-            applyShopeeBatchExtractedData(parsed);
             closeShopeeScraperModal();
+            if (parsed.items && parsed.items.length === 1) {
+                applyShopeeExtractedData(parsed.items[0]);
+            } else if (parsed.items && parsed.items.length > 1) {
+                openShopeeBasketConfirmModal(parsed);
+            } else {
+                applyShopeeBatchExtractedData(parsed);
+            }
             return;
         }
         if (parsed && (parsed.name || (parsed.images && parsed.images.length > 0))) {
