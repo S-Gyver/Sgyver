@@ -6127,79 +6127,63 @@ const SUPABASE_ALLOWED_COLUMNS = new Set([
 ]);
 
 async function safeSupabaseUpsert(data) {
-    if (!InventoryApp.supabaseClient) return { error: null };
-    const isArray = Array.isArray(data);
-    const list = isArray ? data : [data];
+    const list = Array.isArray(data) ? data : (data ? [data] : []);
+    if (list.length === 0) return { error: null };
 
-    try {
-        for (const item of list) {
-            // Only send known columns to Supabase
-            const cleanItem = {};
-            for (const [k, v] of Object.entries(item)) {
-                if (SUPABASE_ALLOWED_COLUMNS.has(k) && v !== undefined) {
-                    cleanItem[k] = v;
-                }
-            }
-            const id = item.id;
+    const sbUrl = InventoryApp.supabaseUrl || 'https://igiihteeeprpcxxlldkd.supabase.co';
+    const sbKey = InventoryApp.supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnaWlodGVlZXBycGN4eGxsZGtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5ODkwNzksImV4cCI6MjEwMDU2NTA3OX0.fr8_ZAYKQ3D-JgEtAWGJnNvKjoUmYxs1T7tjzzsEltw';
 
-            if (id) {
-                // Direct update by ID - immune to unique constraint or pkey duplicate conflicts
-                for (let attempt = 0; attempt < 10; attempt++) {
-                    const { error } = await InventoryApp.supabaseClient
-                        .from('product_labels')
-                        .update(cleanItem)
-                        .eq('id', id);
-                    if (!error) break;
-                    console.warn(`Update attempt ${attempt + 1} notice for id ${id}:`, error.message);
-                    const m = error.message?.match(/Could not find the ['"]?([^'"\s]+)['"]? column/i);
-                    if (m && cleanItem[m[1]] !== undefined) {
-                        SUPABASE_ALLOWED_COLUMNS.delete(m[1]); // remember not in database so future saves skip it
-                        delete cleanItem[m[1]];
-                        continue;
-                    }
-                    break;
+    const cleanRows = list.map(item => {
+        const cleanItem = {};
+        for (const [k, v] of Object.entries(item)) {
+            if (SUPABASE_ALLOWED_COLUMNS.has(k) && v !== undefined) {
+                // If ID is a local timestamp (not a real database integer ID < 1000000000), omit it so Supabase creates/auto-increments
+                if (k === 'id' && typeof v === 'number' && v > 1000000000) {
+                    continue;
                 }
-            } else {
-                // Insert or upsert by SKU
-                for (let attempt = 0; attempt < 10; attempt++) {
-                    const check = await InventoryApp.supabaseClient
-                        .from('product_labels')
-                        .select('id')
-                        .eq('sku', cleanItem.sku)
-                        .maybeSingle();
-
-                    if (check.data && check.data.id) {
-                        const { error } = await InventoryApp.supabaseClient
-                            .from('product_labels')
-                            .update(cleanItem)
-                            .eq('id', check.data.id);
-                        if (!error) break;
-                        const m = error.message?.match(/Could not find the ['"]?([^'"\s]+)['"]? column/i);
-                        if (m && cleanItem[m[1]] !== undefined) {
-                            SUPABASE_ALLOWED_COLUMNS.delete(m[1]);
-                            delete cleanItem[m[1]];
-                            continue;
-                        }
-                    } else {
-                        const { error } = await InventoryApp.supabaseClient
-                            .from('product_labels')
-                            .insert(cleanItem);
-                        if (!error) break;
-                        const m = error.message?.match(/Could not find the ['"]?([^'"\s]+)['"]? column/i);
-                        if (m && cleanItem[m[1]] !== undefined) {
-                            SUPABASE_ALLOWED_COLUMNS.delete(m[1]);
-                            delete cleanItem[m[1]];
-                            continue;
-                        }
-                    }
-                    break;
-                }
+                cleanItem[k] = v;
             }
         }
-        return { error: null };
+        if (!cleanItem.sku) cleanItem.sku = item.sku;
+        if (!cleanItem.name) cleanItem.name = item.name || 'สินค้า';
+        return cleanItem;
+    });
+
+    try {
+        const resp = await fetch(`${sbUrl}/rest/v1/product_labels?on_conflict=sku`, {
+            method: 'POST',
+            headers: {
+                'apikey': sbKey,
+                'Authorization': `Bearer ${sbKey}`,
+                'Content-Type': 'application/json',
+                'Accept-Profile': 'public',
+                'Content-Profile': 'public',
+                'Prefer': 'resolution=merge-duplicates,return=representation'
+            },
+            body: JSON.stringify(cleanRows)
+        });
+
+        if (resp.ok) {
+            const savedData = await resp.json();
+            console.log(`[Supabase Sync] บันทึกลง Supabase สำเร็จ ${cleanRows.length} รายการ:`, savedData);
+            if (Array.isArray(savedData)) {
+                savedData.forEach(savedItem => {
+                    const match = (InventoryApp.products || []).find(p => p.sku === savedItem.sku);
+                    if (match && savedItem.id) {
+                        match.id = savedItem.id;
+                    }
+                });
+                saveCustomProductsToLocalCache();
+            }
+            return { error: null, data: savedData };
+        } else {
+            const errText = await resp.text();
+            console.warn('[Supabase Sync Warning]:', errText);
+            return { error: errText };
+        }
     } catch (err) {
         console.warn('safeSupabaseUpsert caught exception (local save proceeds):', err);
-        return { error: null };
+        return { error: err.message };
     }
 }
 
@@ -7949,12 +7933,17 @@ function getShopeeBookmarkletCode() {
         'const clipJson=JSON.stringify(batchPayload,null,2);' +
         'try{await navigator.clipboard.writeText(clipJson);}' +
         'catch(err){const t=document.createElement("textarea");t.value=clipJson;document.body.appendChild(t);t.select();document.execCommand("copy");document.body.removeChild(t);}' +
+        'const sbKey="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnaWlodGVlZXBycGN4eGxsZGtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5ODkwNzksImV4cCI6MjEwMDU2NTA3OX0.fr8_ZAYKQ3D-JgEtAWGJnNvKjoUmYxs1T7tjzzsEltw";' +
+        'const pSku="SHP-"+(itemid||Date.now());' +
+        'const pRows=(variants&&variants.length>0)?variants.map(function(v,idx){return {sku:pSku+"-"+String(idx+1).padStart(2,"0"),parent_sku:pSku,name:title,variant:v.name||("ตัวเลือก "+(idx+1)),price:v.price||(d&&d.price?d.price/100000:0),stock_quantity:v.stock||10,min_stock_alert:5,warehouse_location:"A-01",image_url:v.image_url||(images[0]||null),images:images,product_url:window.location.href,item_id:itemid||null,product_type:(categories&&categories.length>0)?categories.join(" > "):"สินค้า Shopee"};}):[{sku:pSku,parent_sku:pSku,name:title,variant:"มาตรฐาน",price:(d&&d.price?d.price/100000:0),stock_quantity:10,min_stock_alert:5,warehouse_location:"A-01",image_url:images[0]||null,images:images,product_url:window.location.href,item_id:itemid||null,product_type:(categories&&categories.length>0)?categories.join(" > "):"สินค้า Shopee"}];' +
+        'fetch("https://igiihteeeprpcxxlldkd.supabase.co/rest/v1/product_labels?on_conflict=sku",{method:"POST",headers:{"apikey":sbKey,"Authorization":"Bearer "+sbKey,"Content-Type":"application/json","Accept-Profile":"public","Content-Profile":"public","Prefer":"resolution=merge-duplicates"},body:JSON.stringify(pRows)}).then(function(r){if(r.ok){const el=document.getElementById("sgyver-sb-badge");if(el){el.innerHTML="☁️ ซิงค์ลง Supabase Cloud เรียบร้อยแล้ว 100%!";el.style.color="#a7f3d0";}}}).catch(function(e){console.warn(e);});' +
         'b.style.background="linear-gradient(135deg,#059669,#047857)";b.style.color="#fff";b.style.padding="16px 20px";' +
         'b.innerHTML=\'<div style="display:flex;align-items:center;justify-content:space-between;"><div style="font-weight:bold;font-size:14px;display:flex;align-items:center;gap:6px;">🛒 สินค้าเข้าตะกร้าแล้ว (สะสม \'+ basket.length +\' สินค้า)!</div><button onclick="this.closest(\\\'#sgyver-shopee-toast\\\').remove()" style="background:transparent;border:none;color:#fff;font-size:16px;cursor:pointer;opacity:0.8;">✕</button></div>\' +' +
         '\'<div style="font-size:12px;margin-top:6px;background:rgba(0,0,0,0.22);padding:8px 10px;border-radius:10px;">\' +' +
         '\'<div style="font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">\'+ (title||"สินค้า Shopee") +\'</div>\' +' +
         '\'<div style="font-size:11px;margin-top:3px;opacity:0.95;">📸 รูป: <b>\'+ images.length +\'</b> รูป | 🎬 วิดีโอ: <b>\'+ (videoUrl?"มี":"ไม่มี") +\'</b> | 🎨 ตัวเลือก: <b>\'+ variants.length +\'</b> แบบ</div>\' +' +
-        '\'<div style="font-size:10.5px;color:#a7f3d0;margin-top:3px;">✅ อัปเดตคลิปบอร์ดแล้ว (\'+ basket.length +\' รายการ)</div>\' +' +
+        '\'<div id="sgyver-sb-badge" style="font-size:10.5px;color:#fef08a;margin-top:3px;font-weight:bold;">☁️ กำลังซิงค์ขึ้น Supabase Cloud...</div>\' +' +
+        '\'<div style="font-size:10.5px;color:#a7f3d0;margin-top:2px;">✅ อัปเดตคลิปบอร์ดแล้ว (\'+ basket.length +\' รายการ)</div>\' +' +
         '\'</div>\' +' +
         '\'<button id="sgyver-copy-single-btn" style="width:100%;margin-top:10px;padding:12px 14px;background:#fef08a;color:#854d0e;border:2px solid #ca8a04;border-radius:12px;font-weight:900;font-size:13px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;gap:6px;">👉 📋 คัดลอกแล้ว (\'+ basket.length +\' ชิ้น)! สลับไปวางที่ S-Gyver</button>\' +' +
         '\'<div style="display:flex;gap:6px;margin-top:8px;">\' +' +
