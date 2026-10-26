@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sgyver Material – ระบบบันทึกและคำนวณราคาไม้สั่งซื้อ (VIP Lv.4)</title>
+    <meta name="description" content="ระบบบันทึก แคตตาล็อก และคำนวณราคาไม้สั่งซื้อ Sgyver Material สไตล์ Apple iOS / iPadOS ดีไซน์เรียบหรู ทันสมัย">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500;600;700&family=Kanit:wght@300;400;500;600;700;800&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+    <!-- Shared Toast Notification -->
+    <link rel="stylesheet" href="../../../assets/css/toast_shared.css">
+
+    <!-- App Stylesheet -->
+    <link rel="stylesheet" href="sgyver_material.css">
+</head>
+<body>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         1. แถบหัวกระดาษ (HEADER)
+         ══════════════════════════════════════════════════════════════ -->
+    <header class="app-header">
+        <div class="header-left">
+            <a href="../../../my_workspace.html" class="btn-classic" title="กลับสู่ My Workspace" style="padding: 5px 8px;">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <div class="user-badge" id="userBadgeEl">
+                <span class="status-dot"></span>
+                <span id="adminGreetingText">Hello admin</span>
+                <span class="vip-badge"><i class="bi bi-star-fill"></i> Lv.4</span>
+            </div>
+        </div>
+
+        <div class="header-center">
+            <h1 class="header-title">
+                <i class="bi bi-layers-half"></i> Sgyver Material
+            </h1>
+            <div class="header-subtitle">ระบบบันทึกและคำนวณราคาไม้สั่งซื้อ • ไม้แผ่น ไม้โครง ไม้อัด</div>
+        </div>
+
+        <div class="header-right">
+            <!-- Supabase Status -->
+            <div class="status-indicator online" id="supabaseStatusBadge" title="สถานะเชื่อมต่อ Supabase Database">
+                <i class="bi bi-database-check"></i> <span id="supabaseStatusText">Supabase Online</span>
+            </div>
+
+            <!-- Cloudinary Status -->
+            <div class="status-indicator cloud" id="cloudinaryStatusBadge" title="เชื่อมต่อ Cloudinary Storage เรียบร้อย">
+                <i class="bi bi-cloud-check-fill"></i> <span>Cloudinary</span>
+            </div>
+
+            <!-- Import / Export JSON Backup -->
+            <button class="btn-classic" onclick="exportDataJson()" title="ส่งออกข้อมูลสำรองเป็นไฟล์ JSON">
+                <i class="bi bi-download"></i> Export JSON
+            </button>
+            <button class="btn-classic" onclick="document.getElementById('importJsonInput').click()" title="นำเข้าข้อมูลสำรองจากไฟล์ JSON">
+                <i class="bi bi-upload"></i> Import JSON
+            </button>
+            <input type="file" id="importJsonInput" accept=".json" style="display: none;" onchange="importDataJson(event)">
+
+            <!-- Order History Modal Trigger -->
+            <button class="btn-classic" onclick="openOrderHistoryModal()" title="ดูประวัติการสั่งซื้อที่บันทึกไว้">
+                <i class="bi bi-clock-history"></i> ประวัติสั่งซื้อ
+            </button>
+        </div>
+    </header>
+
+    <!-- 📱 iOS Mobile Segmented Tab Bar (Visible on Mobile/Tablet) -->
+    <nav class="ios-mobile-segmented-bar" id="mobileSegmentedBar">
+        <button class="ios-segment-btn active" id="segBtnCatalog" onclick="switchMobileTab('catalog')">
+            <i class="bi bi-layers-half"></i> เลือกไม้ & ราคา
+        </button>
+        <button class="ios-segment-btn" id="segBtnOrder" onclick="switchMobileTab('order')">
+            <i class="bi bi-cart3"></i> ตารางสั่งซื้อ <span class="ios-segment-badge" id="mobileOrderBadge">0</span>
+        </button>
+    </nav>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         2. โครงสร้างหลักแบบ 3 คอลัมน์ (MAIN WORKSPACE)
+         ══════════════════════════════════════════════════════════════ -->
+    <main class="main-workspace" id="mainWorkspace">
+
+        <!-- ─────────────────────────────────────────────────────────
+             คอลัมน์ซ้าย (MATERIAL CATEGORIES)
+             ───────────────────────────────────────────────────────── -->
+        <section class="app-pane category-pane">
+            <div class="pane-header">
+                <h2 class="pane-title">
+                    <i class="bi bi-folder-fill" style="color: #d97706;"></i> Material
+                </h2>
+                <span class="pane-badge" id="categoryCountBadge">8 หมวด</span>
+            </div>
+
+            <div class="category-list-container" id="categoryListContainer">
+                <!-- Dynamically populated category buttons:
+                     [HMR], [MDF], [Rubber_Wood], [Pine_Wood], [Plywood_Black], [Plywood_Core], [Frame Wood], [HMR_White] -->
+            </div>
+
+            <div class="category-footer">
+                <button class="btn-add-category" onclick="openAddCategoryModal()">
+                    <i class="bi bi-plus-circle-fill"></i> + เพิ่มประเภทไม้
+                </button>
+            </div>
+        </section>
+
+        <!-- ─────────────────────────────────────────────────────────
+             คอลัมน์กลาง (ITEM LIST & PRICE)
+             ───────────────────────────────────────────────────────── -->
+        <section class="app-pane item-pane">
+            <div class="pane-header">
+                <h2 class="pane-title">
+                    <i class="bi bi-list-check" style="color: #2563eb;"></i> 
+                    <span id="currentCategoryTitle">MDF</span> 
+                    <span style="font-size: 0.82rem; font-weight: normal; color: var(--text-muted);">(รายการความหนา/ราคา)</span>
+                </h2>
+                <span class="pane-badge" id="itemCountBadge">0 รายการ</span>
+            </div>
+
+            <!-- Quick Filter / Search within category -->
+            <div class="item-search-bar">
+                <i class="bi bi-search text-muted"></i>
+                <input type="text" class="search-input" id="itemSearchInput" placeholder="ค้นหาความหนา หรือขนาดไม้..." oninput="filterItems()">
+            </div>
+
+            <div class="items-table-container">
+                <table class="classic-table" id="itemsTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 36px; text-align: center;">เลือก</th>
+                            <th style="width: 90px;">ประเภท</th>
+                            <th>ความหนา / ขนาด</th>
+                            <th style="width: 130px; text-align: right;">ราคา (฿)</th>
+                            <th style="width: 55px; text-align: center;">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemsTableBody">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="item-footer">
+                <button class="btn-add-item" onclick="openAddItemModal()">
+                    <i class="bi bi-plus-lg"></i> + เพิ่มขนาด/ราคาใหม่
+                </button>
+                <div style="font-size: 0.76rem; color: var(--text-muted);">
+                    <i class="bi bi-info-circle"></i> ติ๊กเลือกเพื่อใส่ตารางสั่งซื้อขวา
+                </div>
+            </div>
+        </section>
+
+        <!-- ─────────────────────────────────────────────────────────
+             คอลัมน์ขวา (IMAGE PREVIEW + ORDER / SUMMARY TABLE)
+             ───────────────────────────────────────────────────────── -->
+        <section class="right-pane-wrapper">
+
+            <!-- ฝั่งขวาบน: IMAGE PREVIEW -->
+            <div class="image-preview-card">
+                <div class="pane-header">
+                    <h2 class="pane-title">
+                        <i class="bi bi-image-fill" style="color: #0284c7;"></i> รูปตัวอย่างไม้: <span id="imageCategoryName">MDF</span>
+                    </h2>
+                    <span class="image-cloud-status" id="imageCloudStatus">
+                        <i class="bi bi-check-circle-fill"></i> Cloudinary Ready
+                    </span>
+                </div>
+                <div class="image-preview-content">
+                    <div class="image-frame" id="imageFrame">
+                        <img src="" id="categoryPreviewImage" alt="รูปตัวอย่างไม้" onerror="handleImageError(this)">
+                        <div class="image-frame-placeholder" id="imageFramePlaceholder" style="display: none;">
+                            <i class="bi bi-image"></i>
+                            <span>ยังไม่มีรูปภาพ</span>
+                        </div>
+                    </div>
+                    <div class="image-meta-info">
+                        <h3 class="image-meta-name" id="imageMetaName">MDF (Medium Density Fiberboard)</h3>
+                        <p class="image-meta-desc" id="imageMetaDesc">
+                            แผ่นใยไม้อัดความหนาแน่นปานกลาง ผิวเรียบเนียนทั้งสองด้าน เหมาะสำหรับทำเฟอร์นิเจอร์ บิวท์อิน และงานพ่นสี
+                        </p>
+                        <div class="image-actions">
+                            <button class="upload-cloudinary-btn" onclick="triggerImageUpload()">
+                                <i class="bi bi-cloud-arrow-up-fill"></i> อัปโหลดรูปขึ้น Cloudinary
+                            </button>
+                            <button class="btn-classic" style="padding: 4px 8px; font-size: 0.78rem;" onclick="openCustomUrlModal()" title="ใส่ลิงก์รูปภาพโดยตรง">
+                                <i class="bi bi-link-45deg"></i> ระบุ URL รูป
+                            </button>
+                            <input type="file" id="cloudinaryFileInput" accept="image/*" style="display: none;" onchange="handleImageFileSelected(event)">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ฝั่งขวาล่าง: ORDER / SUMMARY TABLE -->
+            <div class="order-summary-card">
+                <div class="pane-header">
+                    <h2 class="pane-title">
+                        <i class="bi bi-receipt" style="color: #10b981;"></i> รายการคำนวณราคาไม้สั่งซื้อ (Order Summary)
+                    </h2>
+                    <span class="pane-badge" id="orderItemsCountBadge">0 รายการ</span>
+                </div>
+
+                <div class="order-table-container">
+                    <table class="order-table" id="orderTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 36px; text-align: center;">No</th>
+                                <th style="width: 110px;">Material</th>
+                                <th>Size</th>
+                                <th style="width: 100px; text-align: right;">Price</th>
+                                <th style="width: 120px; text-align: center;">Quantity</th>
+                                <th style="width: 110px; text-align: right;">Total</th>
+                                <th style="width: 44px; text-align: center;">ลบ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orderTableBody">
+                            <!-- Populated when user ticks checkbox in column 2 -->
+                        </tbody>
+                    </table>
+                    <div class="empty-table-state" id="emptyOrderState">
+                        <i class="bi bi-cart3"></i>
+                        <p>ยังไม่มีรายการไม้ในตารางคำนวณ<br><span style="font-size: 0.8rem;">กรุณาติ๊กเลือกช่อง [✓] ที่คอลัมน์กลางเพื่อเพิ่มรายการ</span></p>
+                    </div>
+                </div>
+
+                <!-- สรุปยอดรวมสุทธิ & Action Buttons -->
+                <div class="order-summary-footer">
+                    <div class="summary-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">จำนวนทั้งหมด</span>
+                            <span class="stat-value" id="summaryTotalSheets">0 <span style="font-size: 0.82rem; font-weight: normal; color: var(--text-muted);">แผ่น</span></span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">ยอดรวมสุทธิ (Grand Total)</span>
+                            <span class="stat-value grand-total" id="summaryGrandTotal">0.00 ฿</span>
+                        </div>
+                    </div>
+
+                    <div class="summary-actions">
+                        <button class="btn-classic btn-line-classic" onclick="copyLineOrderSummary()" title="คัดลอกสรุปรายการเป็นข้อความพร้อมส่ง LINE ทันที">
+                            <i class="bi bi-line"></i> คัดลอกสรุปรายการส่ง LINE
+                        </button>
+                        <button class="btn-classic btn-primary-classic" onclick="saveOrderToHistory()" title="บันทึกออเดอร์นี้ลง Supabase และประวัติ">
+                            <i class="bi bi-floppy-fill"></i> บันทึกออเดอร์
+                        </button>
+                        <button class="btn-classic" style="color: #ef4444;" onclick="clearOrderList()" title="ล้างรายการทั้งหมดในตารางคำนวณ">
+                            <i class="bi bi-trash3-fill"></i> ล้างรายการ
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         MODALS (แก้ไขราคาด่วน, เพิ่มหมวด, เพิ่มขนาด, ใส่ URL รูปภาพ)
+         ══════════════════════════════════════════════════════════════ -->
+
+    <!-- 1. Modal: Quick Edit Price (แก้ไขราคาด่วนตอนคุยแชทกับร้าน) -->
+    <div class="classic-modal-overlay" id="quickEditModalOverlay">
+        <div class="classic-modal">
+            <div class="classic-modal-header">
+                <h3 class="classic-modal-title">
+                    <i class="bi bi-pencil-square" style="color: #007aff;"></i> แก้ไขขนาดและราคา
+                </h3>
+                <button class="classic-modal-close" onclick="closeModal('quickEditModalOverlay')">&times;</button>
+            </div>
+            <div class="classic-modal-body">
+                <div class="form-group">
+                    <label>ประเภทไม้</label>
+                    <input type="text" id="editMaterialName" class="form-input" readonly style="background: rgba(142, 142, 147, 0.12); color: var(--ios-label-secondary);">
+                </div>
+                <div class="form-group">
+                    <label>ขนาด / ความหนา <span style="color: red;">*</span></label>
+                    <input type="text" id="editSizeText" class="form-input" placeholder="เช่น 6 mm หรือ 18">
+                </div>
+                <div class="form-group">
+                    <label>ราคาต่อแผ่น (บาท) <span style="color: red;">*</span></label>
+                    <input type="number" id="editPriceInput" step="0.5" class="form-input" placeholder="เช่น 165.0" autofocus>
+                </div>
+            </div>
+            <div class="classic-modal-footer">
+                <button class="btn-classic" onclick="closeModal('quickEditModalOverlay')">ยกเลิก</button>
+                <button class="btn-classic btn-primary-classic" onclick="confirmSaveQuickPrice()">
+                    <i class="bi bi-check-lg"></i> อัปเดตราคา
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Modal: เพิ่มประเภทไม้ใหม่ (+ เพิ่มประเภทไม้) -->
+    <div class="classic-modal-overlay" id="addCategoryModalOverlay">
+        <div class="classic-modal">
+            <div class="classic-modal-header">
+                <h3 class="classic-modal-title">
+                    <i class="bi bi-plus-circle-fill" style="color: #d97706;"></i> เพิ่มประเภทไม้ใหม่
+                </h3>
+                <button class="classic-modal-close" onclick="closeModal('addCategoryModalOverlay')">&times;</button>
+            </div>
+            <div class="classic-modal-body">
+                <div class="form-group">
+                    <label>รหัสประเภทไม้ (Key) <span style="color: red;">*</span></label>
+                    <input type="text" id="newCatKey" class="form-input" placeholder="เช่น Teak_Wood หรือ MDF_Oak">
+                </div>
+                <div class="form-group">
+                    <label>ชื่อภาษาไทย / คำอธิบายสั้น</label>
+                    <input type="text" id="newCatDesc" class="form-input" placeholder="เช่น ไม้สักประสานเกรด A สำหรับทำท็อปโต๊ะ">
+                </div>
+                <div class="form-group">
+                    <label>URL รูปภาพตัวอย่าง (ใส่หรือไม่ใส่ก็ได้)</label>
+                    <input type="url" id="newCatImageUrl" class="form-input" placeholder="https://res.cloudinary.com/...">
+                </div>
+            </div>
+            <div class="classic-modal-footer">
+                <button class="btn-classic" onclick="closeModal('addCategoryModalOverlay')">ยกเลิก</button>
+                <button class="btn-classic btn-primary-classic" onclick="confirmAddCategory()">
+                    <i class="bi bi-save-fill"></i> เพิ่มประเภทไม้
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Modal: เพิ่มขนาด/ราคาใหม่ (+ เพิ่มขนาด/ราคาใหม่) -->
+    <div class="classic-modal-overlay" id="addItemModalOverlay">
+        <div class="classic-modal">
+            <div class="classic-modal-header">
+                <h3 class="classic-modal-title">
+                    <i class="bi bi-plus-lg" style="color: #2563eb;"></i> เพิ่มขนาด / ความหนาใหม่
+                </h3>
+                <button class="classic-modal-close" onclick="closeModal('addItemModalOverlay')">&times;</button>
+            </div>
+            <div class="classic-modal-body">
+                <div class="form-group">
+                    <label>ประเภทไม้ปัจจุบัน</label>
+                    <input type="text" id="addItemCategoryDisplay" class="form-input" readonly style="background: #f1f5f9;">
+                </div>
+                <div class="form-group">
+                    <label>ขนาดความหนา (เช่น 6, 15, 18 mm หรือ 1" x 2") <span style="color: red;">*</span></label>
+                    <input type="text" id="newSizeInput" class="form-input" placeholder="เช่น 18 mm หรือ 25">
+                </div>
+                <div class="form-group">
+                    <label>ราคาต่อหน่วย / แผ่น (บาท) <span style="color: red;">*</span></label>
+                    <input type="number" id="newPriceInput" step="0.5" class="form-input" placeholder="เช่น 410.0">
+                </div>
+            </div>
+            <div class="classic-modal-footer">
+                <button class="btn-classic" onclick="closeModal('addItemModalOverlay')">ยกเลิก</button>
+                <button class="btn-classic btn-primary-classic" onclick="confirmAddItem()">
+                    <i class="bi bi-plus-circle"></i> บันทึกรายการ
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. Modal: ระบุ URL รูปภาพโดยตรง -->
+    <div class="classic-modal-overlay" id="customUrlModalOverlay">
+        <div class="classic-modal">
+            <div class="classic-modal-header">
+                <h3 class="classic-modal-title">
+                    <i class="bi bi-link-45deg"></i> ระบุลิงก์รูปภาพตัวอย่างไม้
+                </h3>
+                <button class="classic-modal-close" onclick="closeModal('customUrlModalOverlay')">&times;</button>
+            </div>
+            <div class="classic-modal-body">
+                <div class="form-group">
+                    <label>URL รูปภาพสำหรับ <span id="customUrlCatLabel" style="font-weight: bold;"></span></label>
+                    <input type="url" id="customImageUrlInput" class="form-input" placeholder="https://...">
+                </div>
+            </div>
+            <div class="classic-modal-footer">
+                <button class="btn-classic" onclick="closeModal('customUrlModalOverlay')">ยกเลิก</button>
+                <button class="btn-classic btn-primary-classic" onclick="confirmCustomImageUrl()">
+                    <i class="bi bi-check-lg"></i> ตกลง
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 📱 iOS Mobile Floating Quick Order Bar -->
+    <div class="ios-mobile-floating-bar" id="mobileFloatingBar" style="display: none;">
+        <div class="floating-bar-info" onclick="switchMobileTab('order')" title="แตะเพื่อดูตารางคำนวณราคา">
+            <div class="floating-bar-title"><i class="bi bi-cart-fill" style="color: var(--ios-orange);"></i> ออเดอร์ของคุณ</div>
+            <div class="floating-bar-details">
+                <span id="mobileFloatingQty">0 แผ่น</span> • <strong id="mobileFloatingTotal" style="color: #248a3d;">0.00 ฿</strong>
+            </div>
+        </div>
+        <div class="floating-bar-actions">
+            <button class="btn-classic btn-line-classic" onclick="copyLineOrderSummary()" title="คัดลอกสรุปรายการส่ง LINE ทันที">
+                <i class="bi bi-line"></i> ส่ง LINE
+            </button>
+            <button class="btn-classic btn-primary-classic" onclick="switchMobileTab('order')" title="เปิดดูตารางสรุปราคา">
+                ตารางสรุป <i class="bi bi-chevron-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- 5. Modal: ดูประวัติคำสั่งซื้อ (Order History) -->
+    <div class="classic-modal-overlay" id="orderHistoryModalOverlay">
+        <div class="classic-modal" style="width: 650px;">
+            <div class="classic-modal-header">
+                <h3 class="classic-modal-title">
+                    <i class="bi bi-clock-history" style="color: #2563eb;"></i> ประวัติคำสั่งซื้อที่บันทึกไว้
+                </h3>
+                <button class="classic-modal-close" onclick="closeModal('orderHistoryModalOverlay')">&times;</button>
+            </div>
+            <div class="classic-modal-body" style="max-height: 400px; overflow-y: auto;">
+                <div id="orderHistoryContent">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+            <div class="classic-modal-footer">
+                <button class="btn-classic" onclick="closeModal('orderHistoryModalOverlay')">ปิด</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts: Supabase & Modules -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../../assets/js/supabaseClient.js"></script>
+    <script src="../../../assets/js/toast_shared.js"></script>
+
+    <!-- App JavaScript Logic -->
+    <script src="sgyver_material.js"></script>
+</body>
+</html>

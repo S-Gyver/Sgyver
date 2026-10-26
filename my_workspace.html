@@ -872,6 +872,21 @@
                             <div class="launchpad-desc">ระบบจัดการสต็อก รับเข้า-ตัดจ่าย รายงานสินค้าใกล้หมด (VIP Lv.4)</div>
                         </div>
                     </div>
+                    <div class="launchpad-app-item" data-required-level="4" draggable="true"
+                        ondragstart="onLaunchpadDragStart(event, 'app_sgyver_material')" onclick="launchTool('app_sgyver_material')"
+                        data-app-name="Sgyver Material คำนวณราคาไม้ ไม้สั่งซื้อ MDF HMR ไม้อัด ไม้โครง"
+                        title="Sgyver Material: ระบบบันทึกและคำนวณราคาไม้สั่งซื้อ MDF HMR ไม้อัด คัดลอกสรุปรายการส่ง LINE (VIP Lv.4)">
+                        <button type="button" class="launchpad-pin-btn" onclick="togglePinTool(event, 'app_sgyver_material')"
+                            title="ปักหมุดที่ Dock"><i class="bi bi-pin-angle-fill"></i></button>
+                        <span class="launchpad-lock-pill pill-vip pill-lv4"><i class="bi bi-star-fill"></i> VIP Lv.4</span>
+                        <div class="launchpad-icon"
+                            style="background: linear-gradient(145deg, #b45309, #d97706, #92400e);"><i
+                                class="bi bi-layers-half"></i></div>
+                        <div class="launchpad-content">
+                            <div class="launchpad-title">Sgyver Material</div>
+                            <div class="launchpad-desc">บันทึกและคำนวณราคาไม้สั่งซื้อ MDF/HMR/ไม้อัด ส่ง LINE (VIP Lv.4)</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1305,7 +1320,8 @@
         const VIP_LV4_TOOLS = new Set([
             'app_shopee_orders',
             'app_product_labels',
-            'app_garment_inventory'
+            'app_garment_inventory',
+            'app_sgyver_material'
         ]);
 
         // ⭐ Tools restricted to VIP Lv.3+ (Teacher Admin / Business):
@@ -2085,6 +2101,7 @@
             'app_shopee_orders': { id: 'app_shopee_orders', title: 'Shopee Orders', icon: 'bi bi-box-seam-fill', colorClass: 'text-warning', type: 'link', url: 'features/business/shopee_orders/shopee_orders.html' },
             'app_product_labels': { id: 'app_product_labels', title: 'พิมพ์ฉลากเสื้อผ้า', icon: 'bi bi-upc-scan', colorClass: 'text-info', type: 'link', url: 'features/business/product_labels/label_printer.html' },
             'app_garment_inventory': { id: 'app_garment_inventory', title: 'คลังสินค้า', icon: 'bi bi-boxes', colorClass: 'text-success', type: 'link', url: 'features/business/inventory/inventory.html' },
+            'app_sgyver_material': { id: 'app_sgyver_material', title: 'Sgyver Material', icon: 'bi bi-layers-half', colorClass: 'text-warning', type: 'link', url: 'features/business/sgyver_material/sgyver_material.html' },
             'app_change_pw': { id: 'app_change_pw', title: 'เปลี่ยนรหัสผ่าน', icon: 'bi bi-shield-lock', colorClass: 'text-warning', type: 'link', url: 'auth/change_password/change_password.html' }
         };
 
