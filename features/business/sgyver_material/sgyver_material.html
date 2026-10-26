@@ -140,7 +140,9 @@
                         <tr>
                             <th style="width: 36px; text-align: center;">เลือก</th>
                             <th style="width: 85px;">ประเภท</th>
-                            <th>ความหนา / ขนาด</th>
+                            <th style="cursor: pointer; user-select: none;" onclick="toggleSizeSort()" title="คลิกเพื่อสลับเรียงขนาด น้อย ⇄ มาก">
+                                ความหนา / ขนาด <i class="bi bi-sort-numeric-down" id="sizeSortIcon" style="font-size: 0.8rem; color: var(--ios-blue); margin-left: 2px;"></i>
+                            </th>
                             <th style="width: 110px;">ร้านขาย</th>
                             <th style="width: 105px; text-align: right;">ราคา (฿)</th>
                             <th style="width: 50px; text-align: center;">จัดการ</th>

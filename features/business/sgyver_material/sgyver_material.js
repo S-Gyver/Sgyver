@@ -347,11 +347,59 @@ const DEFAULT_CATEGORIES = [
 const AppState = {
     categories: [],
     selectedCategoryId: 'HMR',
+    sizeSortAscending: true, // เรียงตามความหนา น้อย ➔ มาก โดยเริ่มต้น
     orderList: [], // { id, categoryName, size, price, quantity, total }
     editingItemId: null,
     supabaseClient: null,
     isOnline: false
 };
+
+// ─────────────────────────────────────────────────────────────
+// WOOD SIZE SORTING (ระบบเรียงลำดับตามขนาดและความหนาของไม้)
+// ─────────────────────────────────────────────────────────────
+function parseSizeTokens(str) {
+    if (!str) return [];
+    return (String(str).match(/([0-9]+(?:\.[0-9]+)?)/g) || []).map(Number);
+}
+
+function compareWoodSizes(sizeA, sizeB, ascending = true) {
+    const na = parseSizeTokens(sizeA);
+    const nb = parseSizeTokens(sizeB);
+    const maxLen = Math.max(na.length, nb.length);
+    for (let i = 0; i < maxLen; i++) {
+        const valA = na[i] !== undefined ? na[i] : 0;
+        const valB = nb[i] !== undefined ? nb[i] : 0;
+        if (valA !== valB) {
+            return ascending ? (valA - valB) : (valB - valA);
+        }
+    }
+    const cmp = String(sizeA).localeCompare(String(sizeB), 'th', { numeric: true });
+    return ascending ? cmp : -cmp;
+}
+
+function sortAllCategoriesItems() {
+    if (Array.isArray(AppState.categories)) {
+        AppState.categories.forEach(cat => {
+            if (Array.isArray(cat.items)) {
+                cat.items.sort((a, b) => compareWoodSizes(a.size, b.size, true));
+            }
+        });
+    }
+}
+
+function toggleSizeSort() {
+    AppState.sizeSortAscending = !AppState.sizeSortAscending;
+    const icon = document.getElementById('sizeSortIcon');
+    if (icon) {
+        icon.className = AppState.sizeSortAscending ? 'bi bi-sort-numeric-down' : 'bi bi-sort-numeric-up-alt';
+    }
+    renderItemsList();
+    if (typeof showToast === 'function') {
+        const orderText = AppState.sizeSortAscending ? 'น้อย ➔ มาก (3mm ➔ 25mm)' : 'มาก ➔ น้อย (25mm ➔ 3mm)';
+        showToast('info', 'เรียงตามขนาด', `เรียงความหนา: ${orderText}`, 1500);
+    }
+}
+window.toggleSizeSort = toggleSizeSort;
 
 // ── INITIALIZATION ─────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
@@ -493,6 +541,7 @@ function loadAppDataLocalFirst() {
             const parsed = JSON.parse(stored);
             if (Array.isArray(parsed) && parsed.length > 0) {
                 AppState.categories = parsed;
+                sortAllCategoriesItems();
                 updateShopSuggestionsAndFilter();
                 renderCategories();
                 selectCategory(AppState.selectedCategoryId || 'HMR');
@@ -505,6 +554,7 @@ function loadAppDataLocalFirst() {
     }
     // Deep clone defaults
     AppState.categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+    sortAllCategoriesItems();
     updateShopSuggestionsAndFilter();
     renderCategories();
     selectCategory('HMR');
@@ -526,6 +576,7 @@ async function syncFromSupabase(isManual = false) {
 
         if (data && Array.isArray(data.data) && data.data.length > 0 && !error) {
             AppState.categories = data.data;
+            sortAllCategoriesItems();
             localStorage.setItem('sgyver_material_data', JSON.stringify(AppState.categories));
             updateShopSuggestionsAndFilter();
             renderCategories();
@@ -789,6 +840,9 @@ function renderItemsList() {
                itemShop.toLowerCase().includes(searchVal);
     });
 
+    // เรียงตามขนาดความหนาของไม้ (อัตโนมัติตาม AppState.sizeSortAscending)
+    filtered.sort((a, b) => compareWoodSizes(a.size, b.size, AppState.sizeSortAscending));
+
     if (countBadge) countBadge.textContent = `${filtered.length} รายการ`;
 
     if (filtered.length === 0) {
@@ -993,6 +1047,7 @@ function confirmSaveQuickPrice() {
     item.price = newPriceVal;
     item.size = newSizeVal;
     item.shop = newShopVal;
+    cat.items.sort((a, b) => compareWoodSizes(a.size, b.size, true));
 
     // Update if in orderList too
     const orderItem = AppState.orderList.find(o => o.id === item.id);
@@ -1055,6 +1110,7 @@ function confirmAddItem() {
         price: price,
         shop: shop
     });
+    cat.items.sort((a, b) => compareWoodSizes(a.size, b.size, true));
 
     saveAppData();
     updateShopSuggestionsAndFilter();
