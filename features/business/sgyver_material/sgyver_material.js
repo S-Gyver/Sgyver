@@ -426,15 +426,19 @@ const AppState = {
 // ─────────────────────────────────────────────────────────────
 // GROUP / ACCORDION HELPERS (จัดการเมนูหลักและเมนูย่อย)
 // ─────────────────────────────────────────────────────────────
-function getGroupEmoji(groupName) {
-    if (!groupName) return '📁';
+function getGroupIconHtml(groupName) {
+    if (!groupName) return '<i class="bi bi-folder-fill" style="color: #d97706;"></i>';
     const s = groupName.toLowerCase();
-    if (s.includes('ไม้') || s.includes('wood')) return '🪵';
-    if (s.includes('ฟิตติ้ง') || s.includes('fitting') || s.includes('ฮาร์ดแวร์') || s.includes('บานพับ') || s.includes('ราง')) return '🔩';
-    if (s.includes('สี') || s.includes('paint') || s.includes('เคมี')) return '🎨';
-    if (s.includes('กระจก') || s.includes('glass') || s.includes('อะคริลิค')) return '🪟';
-    if (s.includes('อลูมิเนียม') || s.includes('เหล็ก') || s.includes('metal')) return '🪛';
-    return '📁';
+    if (s.includes('ไม้') || s.includes('wood')) return '<i class="bi bi-tree-fill" style="color: #b45309;"></i>';
+    if (s.includes('ฟิตติ้ง') || s.includes('fitting') || s.includes('ฮาร์ดแวร์') || s.includes('บานพับ') || s.includes('ราง')) return '<i class="bi bi-tools" style="color: #475569;"></i>';
+    if (s.includes('สี') || s.includes('paint') || s.includes('เคมี')) return '<i class="bi bi-paint-bucket" style="color: #e11d48;"></i>';
+    if (s.includes('กระจก') || s.includes('glass') || s.includes('อะคริลิค')) return '<i class="bi bi-window" style="color: #0284c7;"></i>';
+    if (s.includes('อลูมิเนียม') || s.includes('เหล็ก') || s.includes('metal')) return '<i class="bi bi-wrench-adjustable" style="color: #475569;"></i>';
+    return '<i class="bi bi-folder-fill" style="color: #d97706;"></i>';
+}
+
+function getGroupEmoji(groupName) {
+    return getGroupIconHtml(groupName);
 }
 
 function getAllGroups() {
@@ -1055,7 +1059,7 @@ function renderCategories() {
     container.innerHTML = '';
     const groups = getAllGroups();
     const totalCats = AppState.categories.length;
-    if (badge) badge.textContent = `${groups.length} กลุ่ม • ${totalCats} หมวด`;
+    if (badge) badge.textContent = `${groups.length}/${totalCats}`;
 
     groups.forEach(groupName => {
         const groupCats = AppState.categories.filter(c => (c.group || 'งานไม้ (Wood)') === groupName);
@@ -1070,11 +1074,11 @@ function renderCategories() {
 
         header.innerHTML = `
             <div class="main-group-title">
-                <span class="main-group-emoji">${getGroupEmoji(groupName)}</span>
+                <span class="main-group-icon">${getGroupIconHtml(groupName)}</span>
                 <span class="main-group-text">${escapeHtml(groupName)}</span>
             </div>
             <div class="main-group-meta">
-                <span class="main-group-badge">${groupCats.length} หมวด</span>
+                <span class="main-group-badge">${groupCats.length}</span>
                 <i class="bi bi-chevron-down main-group-chevron"></i>
             </div>
         `;
