@@ -572,8 +572,47 @@ function subscribeToSupabaseRealtime() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// SHOP & SUPPLIER HELPERS (จัดการข้อมูลร้านค้า / แหล่งซื้อ)
+// SHOP & SUPPLIER HELPERS (จัดการข้อมูลร้านค้า / แหล่งซื้อ และสุ่มสีประจำร้าน)
 // ─────────────────────────────────────────────────────────────
+// Curated 12-color iOS pastel tint palette for shops
+const SHOP_COLOR_PALETTE = [
+    { bg: 'rgba(0, 122, 255, 0.12)', text: '#0284c7', border: 'rgba(0, 122, 255, 0.3)' },   // iOS Blue
+    { bg: 'rgba(52, 199, 89, 0.13)', text: '#16a34a', border: 'rgba(52, 199, 89, 0.32)' },  // iOS Green
+    { bg: 'rgba(255, 149, 0, 0.14)', text: '#d97706', border: 'rgba(245, 158, 11, 0.35)' }, // iOS Orange
+    { bg: 'rgba(175, 82, 222, 0.13)', text: '#9333ea', border: 'rgba(175, 82, 222, 0.3)' }, // iOS Purple
+    { bg: 'rgba(255, 45, 85, 0.12)', text: '#e11d48', border: 'rgba(255, 45, 85, 0.3)' },   // iOS Pink
+    { bg: 'rgba(48, 176, 199, 0.13)', text: '#0891b2', border: 'rgba(48, 176, 199, 0.32)' },// iOS Teal
+    { bg: 'rgba(88, 86, 214, 0.13)', text: '#4f46e5', border: 'rgba(88, 86, 214, 0.3)' },  // iOS Indigo
+    { bg: 'rgba(162, 132, 94, 0.15)', text: '#78350f', border: 'rgba(162, 132, 94, 0.35)' },// iOS Wood Brown
+    { bg: 'rgba(239, 68, 68, 0.12)', text: '#dc2626', border: 'rgba(239, 68, 68, 0.3)' },   // iOS Coral/Red
+    { bg: 'rgba(132, 204, 22, 0.15)', text: '#4d7c0f', border: 'rgba(132, 204, 22, 0.35)' },// Lime Green
+    { bg: 'rgba(20, 184, 166, 0.13)', text: '#0f766e', border: 'rgba(20, 184, 166, 0.32)' },// Cyan/Mint
+    { bg: 'rgba(217, 70, 239, 0.12)', text: '#a21caf', border: 'rgba(217, 70, 239, 0.3)' }  // Fuchsia
+];
+
+function getShopColorObj(shopName) {
+    if (!shopName || !shopName.trim()) {
+        return SHOP_COLOR_PALETTE[0];
+    }
+    const clean = shopName.trim().toLowerCase();
+    let hash = 0;
+    for (let i = 0; i < clean.length; i++) {
+        hash = clean.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const idx = Math.abs(hash) % SHOP_COLOR_PALETTE.length;
+    return SHOP_COLOR_PALETTE[idx];
+}
+
+function renderShopBadge(shopName) {
+    if (!shopName || !shopName.trim()) {
+        return `<span class="item-shop-badge empty" title="ยังไม่ระบุร้านขาย">-</span>`;
+    }
+    const clean = shopName.trim();
+    const color = getShopColorObj(clean);
+    const style = `background: ${color.bg}; color: ${color.text}; border-color: ${color.border};`;
+    return `<span class="item-shop-badge" style="${style}" title="ร้าน: ${escapeHtml(clean)}"><i class="bi bi-shop"></i> ${escapeHtml(clean)}</span>`;
+}
+
 function updateShopSuggestionsAndFilter() {
     const datalist = document.getElementById('shopSuggestionsList');
     const select = document.getElementById('shopFilterSelect');
@@ -774,7 +813,7 @@ function renderItemsList() {
                     <span class="item-size-text">${escapeHtml(item.size)}</span>
                 </td>
                 <td>
-                    ${displayShop ? `<span class="item-shop-badge" title="ร้าน: ${escapeHtml(displayShop)}"><i class="bi bi-shop"></i> ${escapeHtml(displayShop)}</span>` : `<span class="item-shop-badge empty" title="ยังไม่ระบุร้านขาย">-</span>`}
+                    ${renderShopBadge(displayShop)}
                 </td>
                 <td style="text-align: right;">
                     <div class="item-price-wrapper" style="justify-content: flex-end;">
@@ -1217,7 +1256,7 @@ function renderOrderTable() {
                 <td><span class="item-badge-cat">${escapeHtml(order.categoryName)}</span></td>
                 <td><strong>${escapeHtml(order.size)}</strong></td>
                 <td>
-                    ${orderShop ? `<span class="item-shop-badge" title="ร้าน: ${escapeHtml(orderShop)}"><i class="bi bi-shop"></i> ${escapeHtml(orderShop)}</span>` : `<span class="item-shop-badge empty">-</span>`}
+                    ${renderShopBadge(orderShop)}
                 </td>
                 <td style="text-align: right; font-family: 'Fira Code', monospace;">${formatMoney(order.price)}</td>
                 <td style="text-align: center;">
@@ -1398,14 +1437,15 @@ function openShopLineCopyModal() {
         const totalQty = items.reduce((sum, i) => sum + (Number(i.quantity) || 1), 0);
         const subtotal = items.reduce((sum, i) => sum + (Number(i.price) * Number(i.quantity)), 0);
 
+        const shopColor = getShopColorObj(sName);
         return `
-            <div class="shop-order-card">
-                <div class="shop-order-header">
-                    <div class="shop-order-name">
-                        <i class="bi bi-shop"></i>
+            <div class="shop-order-card" style="border-color: ${shopColor.border};">
+                <div class="shop-order-header" style="background: ${shopColor.bg}; border-color: ${shopColor.border};">
+                    <div class="shop-order-name" style="color: ${shopColor.text};">
+                        <i class="bi bi-shop" style="color: ${shopColor.text};"></i>
                         <span>${escapeHtml(sName)}</span>
                     </div>
-                    <span class="pane-badge" style="background: rgba(255, 149, 0, 0.2); color: #b45309;">
+                    <span class="pane-badge" style="background: rgba(255, 255, 255, 0.9); color: ${shopColor.text}; border: 0.5px solid ${shopColor.border};">
                         ${items.length} รายการ
                     </span>
                 </div>

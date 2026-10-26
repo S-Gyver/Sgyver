@@ -587,7 +587,8 @@ body {
 
 .item-shop-badge i {
     font-size: 0.76rem;
-    color: var(--ios-orange);
+    color: inherit;
+    opacity: 0.9;
 }
 
 .item-shop-badge.empty {
