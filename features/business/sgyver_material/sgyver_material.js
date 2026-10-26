@@ -273,22 +273,44 @@ const DEFAULT_CATEGORIES = [
     "name": "Frame Wood",
     "items": [
       {
+        "id": "fw_rubber_260",
+        "name": "Rubber",
+        "size": "1\" x 2\" x 2.44m",
+        "price": 260
+      },
+      {
+        "id": "fw_pine_320",
+        "name": "Pine",
+        "size": "1\" x 2\" x 2.44m",
+        "price": 320
+      },
+      {
+        "id": "fw_benjaporn_245",
+        "name": "Benjaporn",
+        "size": "1\" x 2\" x 2.44m",
+        "price": 245
+      },
+      {
         "id": "fw_1x2_244",
+        "name": "",
         "size": "1\" x 2\" x 2.44m",
         "price": 45
       },
       {
         "id": "fw_1x2_300",
+        "name": "",
         "size": "1\" x 2\" x 3.00m",
         "price": 58
       },
       {
         "id": "fw_15x3_244",
+        "name": "",
         "size": "1.5\" x 3\" x 2.44m",
         "price": 95
       },
       {
         "id": "fw_2x2_244",
+        "name": "",
         "size": "2\" x 2\" x 2.44m",
         "price": 85
       }
@@ -377,11 +399,64 @@ function compareWoodSizes(sizeA, sizeB, ascending = true) {
     return ascending ? cmp : -cmp;
 }
 
+function compareWoodItemSpecs(a, b, ascending = true) {
+    if (a.size && b.size) {
+        return compareWoodSizes(a.size, b.size, ascending);
+    }
+    const strA = a.name || a.size || '';
+    const strB = b.name || b.size || '';
+    const cmp = strA.localeCompare(strB, 'th', { numeric: true });
+    return ascending ? cmp : -cmp;
+}
+
+function ensureFrameWoodItems(categories) {
+    if (!Array.isArray(categories)) return false;
+    const fw = categories.find(c => c.id === 'Frame Wood' || c.name === 'Frame Wood');
+    if (!fw || !Array.isArray(fw.items)) return false;
+
+    let modified = false;
+    const hasRubber = fw.items.some(i => (i.name && i.name.toLowerCase().includes('rubber')) || (i.size && i.size.toLowerCase().includes('rubber')));
+    const hasPine = fw.items.some(i => (i.name && i.name.toLowerCase().includes('pine')) || (i.size && i.size.toLowerCase().includes('pine')));
+    const hasBenjaporn = fw.items.some(i => (i.name && i.name.toLowerCase().includes('benjaporn')) || (i.size && i.size.toLowerCase().includes('benjaporn')));
+
+    if (!hasBenjaporn) {
+        fw.items.unshift({
+            id: 'fw_benjaporn_245',
+            name: 'Benjaporn',
+            size: '1" x 2" x 2.44m',
+            price: 245,
+            shop: ''
+        });
+        modified = true;
+    }
+    if (!hasPine) {
+        fw.items.unshift({
+            id: 'fw_pine_320',
+            name: 'Pine',
+            size: '1" x 2" x 2.44m',
+            price: 320,
+            shop: ''
+        });
+        modified = true;
+    }
+    if (!hasRubber) {
+        fw.items.unshift({
+            id: 'fw_rubber_260',
+            name: 'Rubber',
+            size: '1" x 2" x 2.44m',
+            price: 260,
+            shop: ''
+        });
+        modified = true;
+    }
+    return modified;
+}
+
 function sortAllCategoriesItems() {
     if (Array.isArray(AppState.categories)) {
         AppState.categories.forEach(cat => {
             if (Array.isArray(cat.items)) {
-                cat.items.sort((a, b) => compareWoodSizes(a.size, b.size, true));
+                cat.items.sort((a, b) => compareWoodItemSpecs(a, b, true));
             }
         });
     }
@@ -541,7 +616,11 @@ function loadAppDataLocalFirst() {
             const parsed = JSON.parse(stored);
             if (Array.isArray(parsed) && parsed.length > 0) {
                 AppState.categories = parsed;
+                const updated = ensureFrameWoodItems(AppState.categories);
                 sortAllCategoriesItems();
+                if (updated) {
+                    saveAppData();
+                }
                 updateShopSuggestionsAndFilter();
                 renderCategories();
                 selectCategory(AppState.selectedCategoryId || 'HMR');
@@ -554,6 +633,7 @@ function loadAppDataLocalFirst() {
     }
     // Deep clone defaults
     AppState.categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+    ensureFrameWoodItems(AppState.categories);
     sortAllCategoriesItems();
     updateShopSuggestionsAndFilter();
     renderCategories();
@@ -576,8 +656,12 @@ async function syncFromSupabase(isManual = false) {
 
         if (data && Array.isArray(data.data) && data.data.length > 0 && !error) {
             AppState.categories = data.data;
+            const updated = ensureFrameWoodItems(AppState.categories);
             sortAllCategoriesItems();
             localStorage.setItem('sgyver_material_data', JSON.stringify(AppState.categories));
+            if (updated) {
+                syncCategoriesToSupabase();
+            }
             updateShopSuggestionsAndFilter();
             renderCategories();
             selectCategory(AppState.selectedCategoryId || 'HMR');
@@ -606,6 +690,7 @@ function subscribeToSupabaseRealtime() {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'sgyver_materials' }, (payload) => {
                 if (payload.new && Array.isArray(payload.new.data)) {
                     AppState.categories = payload.new.data;
+                    ensureFrameWoodItems(AppState.categories);
                     localStorage.setItem('sgyver_material_data', JSON.stringify(AppState.categories));
                     updateShopSuggestionsAndFilter();
                     renderCategories();
@@ -835,13 +920,14 @@ function renderItemsList() {
             return false;
         }
         if (!searchVal) return true;
-        return item.size.toLowerCase().includes(searchVal) || 
+        return (item.size && item.size.toLowerCase().includes(searchVal)) || 
+               (item.name && item.name.toLowerCase().includes(searchVal)) ||
                (item.price + '').includes(searchVal) ||
                itemShop.toLowerCase().includes(searchVal);
     });
 
-    // เรียงตามขนาดความหนาของไม้ (อัตโนมัติตาม AppState.sizeSortAscending)
-    filtered.sort((a, b) => compareWoodSizes(a.size, b.size, AppState.sizeSortAscending));
+    // เรียงตามขนาดความหนาหรือชื่อของไม้ (อัตโนมัติตาม AppState.sizeSortAscending)
+    filtered.sort((a, b) => compareWoodItemSpecs(a, b, AppState.sizeSortAscending));
 
     if (countBadge) countBadge.textContent = `${filtered.length} รายการ`;
 
@@ -853,6 +939,9 @@ function renderItemsList() {
     tbody.innerHTML = filtered.map(item => {
         const isChecked = AppState.orderList.some(o => o.id === item.id);
         const displayShop = item.shop || cat.defaultShop || '';
+        const hasName = Boolean(item.name && item.name.trim());
+        const hasSize = Boolean(item.size && item.size.trim());
+
         return `
             <tr class="${isChecked ? 'row-selected' : ''}" id="row-${item.id}">
                 <td style="text-align: center;">
@@ -864,7 +953,14 @@ function renderItemsList() {
                     <span class="item-badge-cat">${escapeHtml(cat.name)}</span>
                 </td>
                 <td>
-                    <span class="item-size-text">${escapeHtml(item.size)}</span>
+                    ${hasName ? `
+                        <div class="item-name-size-wrapper">
+                            <span class="item-wood-name-badge ${!hasSize ? 'standalone' : ''}">${escapeHtml(item.name)}</span>
+                            ${hasSize ? `<span class="item-size-text">${escapeHtml(item.size)}</span>` : ''}
+                        </div>
+                    ` : `
+                        <span class="item-size-text">${escapeHtml(item.size || '-')}</span>
+                    `}
                 </td>
                 <td>
                     ${renderShopBadge(displayShop)}
@@ -978,14 +1074,16 @@ function handleItemCheckboxToggle(itemId, isChecked) {
             AppState.orderList.push({
                 id: item.id,
                 categoryName: cat.name,
-                size: item.size,
+                name: item.name || '',
+                size: item.size || '',
                 price: Number(item.price) || 0,
                 shop: itemShop,
                 quantity: 1,
                 total: Number(item.price) || 0
             });
             if (typeof showToast === 'function') {
-                showToast('info', 'เพิ่มลงในตารางคำนวณแล้ว', `${cat.name} ${item.size} (1 แผ่น)`, 1800);
+                const label = item.name ? `[${item.name}] ${item.size || ''}` : `${item.size || ''}`;
+                showToast('info', 'เพิ่มลงในตารางคำนวณแล้ว', `${cat.name} ${label} (1 แผ่น)`, 1800);
             }
         }
     } else {
@@ -1008,20 +1106,26 @@ function openQuickEditModal(itemId) {
 
     AppState.editingItemId = itemId;
     document.getElementById('editMaterialName').value = cat.name;
-    document.getElementById('editSizeText').value = item.size;
+    document.getElementById('editItemName').value = item.name || '';
+    document.getElementById('editSizeText').value = item.size || '';
     document.getElementById('editShopInput').value = item.shop || cat.defaultShop || '';
     const priceInput = document.getElementById('editPriceInput');
     priceInput.value = item.price;
 
     openModal('quickEditModalOverlay');
     setTimeout(() => {
-        priceInput.focus();
-        priceInput.select();
+        if (!item.name && cat.id.toLowerCase().includes('frame')) {
+            document.getElementById('editItemName').focus();
+        } else {
+            priceInput.focus();
+            priceInput.select();
+        }
     }, 100);
 }
 
 function confirmSaveQuickPrice() {
     const newPriceVal = parseFloat(document.getElementById('editPriceInput').value);
+    const newNameVal = (document.getElementById('editItemName').value || '').trim();
     const newSizeVal = (document.getElementById('editSizeText').value || '').trim();
     const newShopVal = (document.getElementById('editShopInput').value || '').trim();
 
@@ -1032,9 +1136,9 @@ function confirmSaveQuickPrice() {
         return;
     }
 
-    if (!newSizeVal) {
+    if (!newNameVal && !newSizeVal) {
         if (typeof showToast === 'function') {
-            showToast('warning', 'กรุณาระบุขนาด', 'ขนาดความหนาต้องไม่เป็นค่าว่าง');
+            showToast('warning', 'กรุณาระบุชื่อหรือขนาด', 'ต้องระบุชื่อเรียก/ชนิดไม้ หรือขนาดความหนาอย่างน้อย 1 อย่าง');
         }
         return;
     }
@@ -1044,14 +1148,16 @@ function confirmSaveQuickPrice() {
     const item = cat.items.find(i => i.id === AppState.editingItemId);
     if (!item) return;
 
+    item.name = newNameVal;
     item.price = newPriceVal;
     item.size = newSizeVal;
     item.shop = newShopVal;
-    cat.items.sort((a, b) => compareWoodSizes(a.size, b.size, true));
+    cat.items.sort((a, b) => compareWoodItemSpecs(a, b, true));
 
     // Update if in orderList too
     const orderItem = AppState.orderList.find(o => o.id === item.id);
     if (orderItem) {
+        orderItem.name = newNameVal;
         orderItem.size = newSizeVal;
         orderItem.price = newPriceVal;
         orderItem.shop = newShopVal;
@@ -1065,7 +1171,8 @@ function confirmSaveQuickPrice() {
     closeModal('quickEditModalOverlay');
 
     if (typeof showToast === 'function') {
-        showToast('success', 'อัปเดตข้อมูลสำเร็จ', `${cat.name} ${newSizeVal}: ${formatMoney(newPriceVal)} ฿ ${newShopVal ? `(${newShopVal})` : ''}`);
+        const itemLabel = newNameVal ? `[${newNameVal}] ${newSizeVal}` : newSizeVal;
+        showToast('success', 'อัปเดตข้อมูลสำเร็จ', `${cat.name} ${itemLabel}: ${formatMoney(newPriceVal)} ฿ ${newShopVal ? `(${newShopVal})` : ''}`);
     }
 }
 
@@ -1077,24 +1184,32 @@ function openAddItemModal() {
     if (!cat) return;
 
     document.getElementById('addItemCategoryDisplay').value = cat.name;
+    document.getElementById('newItemNameInput').value = '';
     document.getElementById('newSizeInput').value = '';
     document.getElementById('newPriceInput').value = '';
     document.getElementById('newShopInput').value = cat.defaultShop || '';
 
     openModal('addItemModalOverlay');
-    setTimeout(() => document.getElementById('newSizeInput').focus(), 100);
+    setTimeout(() => {
+        if (cat.id.toLowerCase().includes('frame')) {
+            document.getElementById('newItemNameInput').focus();
+        } else {
+            document.getElementById('newSizeInput').focus();
+        }
+    }, 100);
 }
 
 function confirmAddItem() {
     const cat = AppState.categories.find(c => c.id === AppState.selectedCategoryId);
     if (!cat) return;
 
+    const name = (document.getElementById('newItemNameInput').value || '').trim();
     const size = (document.getElementById('newSizeInput').value || '').trim();
     const price = parseFloat(document.getElementById('newPriceInput').value);
     const shop = (document.getElementById('newShopInput').value || '').trim();
 
-    if (!size) {
-        if (typeof showToast === 'function') showToast('warning', 'กรุณาระบุขนาด', 'ต้องใส่ขนาดความหนา เช่น 18 mm หรือ 2" x 2"');
+    if (!name && !size) {
+        if (typeof showToast === 'function') showToast('warning', 'กรุณาระบุชื่อหรือขนาด', 'ต้องระบุชื่อเรียก/ชนิดไม้ หรือขนาดความหนาอย่างน้อย 1 อย่าง');
         return;
     }
 
@@ -1106,11 +1221,12 @@ function confirmAddItem() {
     const newItemId = `${cat.id.toLowerCase()}_${Date.now()}`;
     cat.items.push({
         id: newItemId,
+        name: name,
         size: size,
         price: price,
         shop: shop
     });
-    cat.items.sort((a, b) => compareWoodSizes(a.size, b.size, true));
+    cat.items.sort((a, b) => compareWoodItemSpecs(a, b, true));
 
     saveAppData();
     updateShopSuggestionsAndFilter();
@@ -1119,7 +1235,8 @@ function confirmAddItem() {
     closeModal('addItemModalOverlay');
 
     if (typeof showToast === 'function') {
-        showToast('success', 'เพิ่มขนาดใหม่สำเร็จ', `${cat.name} ขนาด ${size} ราคา ${formatMoney(price)} ฿ ${shop ? `(${shop})` : ''}`);
+        const itemLabel = name ? `[${name}] ${size}` : size;
+        showToast('success', 'เพิ่มรายการใหม่สำเร็จ', `${cat.name} ${itemLabel} ราคา ${formatMoney(price)} ฿ ${shop ? `(${shop})` : ''}`);
     }
 }
 
@@ -1306,11 +1423,20 @@ function renderOrderTable() {
         grandTotal += rowTotal;
         const orderShop = order.shop?.trim() || '';
 
+        let orderItemContent = '';
+        if (order.name && order.size) {
+            orderItemContent = `<div class="order-item-title"><span class="item-wood-name-badge">${escapeHtml(order.name)}</span> <strong>${escapeHtml(order.size)}</strong></div>`;
+        } else if (order.name) {
+            orderItemContent = `<span class="item-wood-name-badge standalone">${escapeHtml(order.name)}</span>`;
+        } else {
+            orderItemContent = `<strong>${escapeHtml(order.size || '-')}</strong>`;
+        }
+
         return `
             <tr id="order-row-${order.id}">
                 <td style="text-align: center; color: var(--text-muted); font-size: 0.82rem;">${index + 1}</td>
                 <td><span class="item-badge-cat">${escapeHtml(order.categoryName)}</span></td>
-                <td><strong>${escapeHtml(order.size)}</strong></td>
+                <td>${orderItemContent}</td>
                 <td>
                     ${renderShopBadge(orderShop)}
                 </td>
@@ -1447,7 +1573,15 @@ function copyLineOrderSummary() {
             const rowTotal = it.price * it.quantity;
             shopSheets += it.quantity;
             shopPrice += rowTotal;
-            lines.push(`  ${itemCounter++}. [${it.categoryName}] ขนาด ${it.size}`);
+            let itemDesc = '';
+            if (it.name && it.size) {
+                itemDesc = `[${it.categoryName} - ${it.name}] ขนาด ${it.size}`;
+            } else if (it.name) {
+                itemDesc = `[${it.categoryName} - ${it.name}]`;
+            } else {
+                itemDesc = `[${it.categoryName}] ขนาด ${it.size || '-'}`;
+            }
+            lines.push(`  ${itemCounter++}. ${itemDesc}`);
             lines.push(`     จำนวน: ${it.quantity} แผ่น @ ${formatMoney(it.price)} ฿ = ${formatMoney(rowTotal)} ฿`);
         });
         lines.push(`  ➡️ รวมร้าน ${sName}: ${shopSheets.toLocaleString('th-TH')} แผ่น | ${formatMoney(shopPrice)} ฿`);
@@ -1507,12 +1641,22 @@ function openShopLineCopyModal() {
                 </div>
                 <div class="shop-order-body">
                     <ul class="shop-order-item-list">
-                        ${items.map(it => `
-                            <li>
-                                <span><strong>[${escapeHtml(it.categoryName)}]</strong> ${escapeHtml(it.size)} &times; ${it.quantity} แผ่น</span>
-                                <span style="font-family: monospace; font-weight: 600;">${formatMoney(it.price * it.quantity)} ฿</span>
-                            </li>
-                        `).join('')}
+                        ${items.map(it => {
+                            let itemDesc = '';
+                            if (it.name && it.size) {
+                                itemDesc = `<strong>[${escapeHtml(it.categoryName)} - ${escapeHtml(it.name)}]</strong> ${escapeHtml(it.size)}`;
+                            } else if (it.name) {
+                                itemDesc = `<strong>[${escapeHtml(it.categoryName)} - ${escapeHtml(it.name)}]</strong>`;
+                            } else {
+                                itemDesc = `<strong>[${escapeHtml(it.categoryName)}]</strong> ${escapeHtml(it.size || '-')}`;
+                            }
+                            return `
+                                <li>
+                                    <span>${itemDesc} &times; ${it.quantity} แผ่น</span>
+                                    <span style="font-family: monospace; font-weight: 600;">${formatMoney(it.price * it.quantity)} ฿</span>
+                                </li>
+                            `;
+                        }).join('')}
                     </ul>
                     <div class="shop-order-footer">
                         <div style="font-size: 0.86rem; color: var(--ios-label);">
@@ -1554,7 +1698,15 @@ function copySingleShopLineOrder(shopName) {
         const rowTotal = it.price * it.quantity;
         totalQty += it.quantity;
         subtotal += rowTotal;
-        lines.push(`${idx + 1}. [${it.categoryName}] ขนาด ${it.size}`);
+        let itemDesc = '';
+        if (it.name && it.size) {
+            itemDesc = `[${it.categoryName} - ${it.name}] ขนาด ${it.size}`;
+        } else if (it.name) {
+            itemDesc = `[${it.categoryName} - ${it.name}]`;
+        } else {
+            itemDesc = `[${it.categoryName}] ขนาด ${it.size || '-'}`;
+        }
+        lines.push(`${idx + 1}. ${itemDesc}`);
         lines.push(`   จำนวน: ${it.quantity} แผ่น @ ${formatMoney(it.price)} ฿ = ${formatMoney(rowTotal)} ฿`);
     });
 

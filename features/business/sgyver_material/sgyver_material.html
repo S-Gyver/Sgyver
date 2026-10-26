@@ -141,7 +141,7 @@
                             <th style="width: 36px; text-align: center;">เลือก</th>
                             <th style="width: 85px;">ประเภท</th>
                             <th style="cursor: pointer; user-select: none;" onclick="toggleSizeSort()" title="คลิกเพื่อสลับเรียงขนาด น้อย ⇄ มาก">
-                                ความหนา / ขนาด <i class="bi bi-sort-numeric-down" id="sizeSortIcon" style="font-size: 0.8rem; color: var(--ios-blue); margin-left: 2px;"></i>
+                                ชื่อ / ความหนา / ขนาด <i class="bi bi-sort-numeric-down" id="sizeSortIcon" style="font-size: 0.8rem; color: var(--ios-blue); margin-left: 2px;"></i>
                             </th>
                             <th style="width: 110px;">ร้านขาย</th>
                             <th style="width: 105px; text-align: right;">ราคา (฿)</th>
@@ -220,7 +220,7 @@
                             <tr>
                                 <th style="width: 32px; text-align: center;">No</th>
                                 <th style="width: 95px;">Material</th>
-                                <th>Size</th>
+                                <th>รายการ / ขนาด</th>
                                 <th style="width: 100px;">ร้านขาย</th>
                                 <th style="width: 90px; text-align: right;">Price</th>
                                 <th style="width: 110px; text-align: center;">Quantity</th>
@@ -290,15 +290,19 @@
                     <input type="text" id="editMaterialName" class="form-input" readonly style="background: rgba(142, 142, 147, 0.12); color: var(--ios-label-secondary);">
                 </div>
                 <div class="form-group">
-                    <label>ขนาด / ความหนา <span style="color: red;">*</span></label>
-                    <input type="text" id="editSizeText" class="form-input" placeholder="เช่น 6 mm หรือ 18">
+                    <label><i class="bi bi-tag-fill" style="color: var(--ios-blue);"></i> ชื่อเรียก / ชนิดไม้ (เช่น Rubber, Pine, ไม้ยาง, เบญจพรรณ)</label>
+                    <input type="text" id="editItemName" class="form-input" placeholder="เช่น Rubber หรือ ไม้สน (เว้นว่างได้ถ้ามีขนาด)">
+                </div>
+                <div class="form-group">
+                    <label>ขนาด / ความหนา (เช่น 1&quot; x 2&quot; x 2.44m หรือ 18 mm)</label>
+                    <input type="text" id="editSizeText" class="form-input" placeholder="เช่น 1&quot; x 2&quot; x 2.44m หรือ 18 mm (เว้นว่างได้ถ้ามีชื่อ)">
                 </div>
                 <div class="form-group">
                     <label><i class="bi bi-shop" style="color: var(--ios-orange);"></i> ร้านขาย / แหล่งซื้อ (Shop / Supplier)</label>
                     <input type="text" id="editShopInput" list="shopSuggestionsList" class="form-input" placeholder="เช่น ร้านบางโพ, ไทวัสดุ, สยามไม้อัด (เว้นว่างได้)">
                 </div>
                 <div class="form-group">
-                    <label>ราคาต่อแผ่น (บาท) <span style="color: red;">*</span></label>
+                    <label>ราคาต่อหน่วย / แผ่น (บาท) <span style="color: red;">*</span></label>
                     <input type="number" id="editPriceInput" step="0.5" class="form-input" placeholder="เช่น 165.0" autofocus>
                 </div>
             </div>
@@ -352,7 +356,7 @@
         <div class="classic-modal">
             <div class="classic-modal-header">
                 <h3 class="classic-modal-title">
-                    <i class="bi bi-plus-lg" style="color: #2563eb;"></i> เพิ่มขนาด / ความหนาใหม่
+                    <i class="bi bi-plus-lg" style="color: #2563eb;"></i> เพิ่มรายการ / ความหนาใหม่
                 </h3>
                 <button class="classic-modal-close" onclick="closeModal('addItemModalOverlay')">&times;</button>
             </div>
@@ -362,8 +366,12 @@
                     <input type="text" id="addItemCategoryDisplay" class="form-input" readonly style="background: #f1f5f9;">
                 </div>
                 <div class="form-group">
-                    <label>ขนาดความหนา (เช่น 6, 15, 18 mm หรือ 1" x 2") <span style="color: red;">*</span></label>
-                    <input type="text" id="newSizeInput" class="form-input" placeholder="เช่น 18 mm หรือ 25">
+                    <label><i class="bi bi-tag-fill" style="color: var(--ios-blue);"></i> ชื่อเรียก / ชนิดไม้ (เช่น Rubber, Pine, ไม้ยาง, เบญจพรรณ)</label>
+                    <input type="text" id="newItemNameInput" class="form-input" placeholder="เช่น Rubber, Pine, ไม้สน, เบญจพรรณ (เว้นว่างได้ถ้ามีขนาด)">
+                </div>
+                <div class="form-group">
+                    <label>ขนาดความหนา (เช่น 1&quot; x 2&quot; x 2.44m หรือ 18 mm)</label>
+                    <input type="text" id="newSizeInput" class="form-input" placeholder="เช่น 1&quot; x 2&quot; x 2.44m หรือ 18 mm (เว้นว่างได้ถ้ามีชื่อ)">
                 </div>
                 <div class="form-group">
                     <label><i class="bi bi-shop" style="color: var(--ios-orange);"></i> ร้านขาย / แหล่งซื้อ (Shop / Supplier)</label>

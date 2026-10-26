@@ -592,6 +592,39 @@ body {
     letter-spacing: -0.2px;
 }
 
+.item-name-size-wrapper {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.item-wood-name-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2.5px 8.5px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    border-radius: 6px;
+    background: rgba(162, 132, 94, 0.16);
+    color: #78350f;
+    border: 0.5px solid rgba(162, 132, 94, 0.35);
+    letter-spacing: -0.2px;
+}
+
+.item-wood-name-badge.standalone {
+    font-size: 0.92rem;
+    padding: 3.5px 10px;
+}
+
+.order-item-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
 .item-size-text {
     font-weight: 700;
     color: var(--ios-label);
