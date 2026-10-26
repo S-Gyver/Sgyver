@@ -394,14 +394,43 @@ body {
     padding: 10px 12px;
     border-top: 0.5px solid var(--ios-separator);
     background: #ffffff;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.btn-add-main-group {
+    width: 100%;
+    padding: 9px 12px;
+    font-size: 0.84rem;
+    font-weight: 600;
+    border: 0.5px solid rgba(245, 158, 11, 0.35);
+    border-radius: var(--radius-pill);
+    background: rgba(255, 149, 0, 0.1);
+    color: #b45309;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.btn-add-main-group:hover {
+    background: rgba(255, 149, 0, 0.2);
+    transform: translateY(-1px);
+}
+
+.btn-add-main-group:active {
+    transform: scale(0.98);
 }
 
 .btn-add-category {
     width: 100%;
-    padding: 10px;
-    font-size: 0.88rem;
+    padding: 9px 12px;
+    font-size: 0.84rem;
     font-weight: 600;
-    border: none;
+    border: 0.5px solid rgba(0, 122, 255, 0.25);
     border-radius: var(--radius-pill);
     background: var(--ios-blue-light);
     color: var(--ios-blue);
@@ -415,10 +444,159 @@ body {
 
 .btn-add-category:hover {
     background: rgba(0, 122, 255, 0.18);
+    transform: translateY(-1px);
 }
 
 .btn-add-category:active {
     transform: scale(0.97);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   MAIN GROUP ACCORDION (เมนูหลัก & เมนูย่อย)
+   ───────────────────────────────────────────────────────────── */
+.main-group-block {
+    margin-bottom: 8px;
+    border-radius: 12px;
+    background: #ffffff;
+    border: 0.5px solid rgba(0, 0, 0, 0.07);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.main-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 12px;
+    background: #f8fafc;
+    cursor: pointer;
+    user-select: none;
+    font-size: 0.86rem;
+    font-weight: 700;
+    color: var(--ios-label);
+    border-bottom: 0.5px solid transparent;
+    transition: background 0.15s ease;
+}
+
+.main-group-header:hover {
+    background: #f1f5f9;
+}
+
+.main-group-header.expanded {
+    border-bottom: 0.5px solid var(--ios-separator);
+    background: #ffffff;
+}
+
+.main-group-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.main-group-emoji {
+    font-size: 1.05rem;
+    line-height: 1;
+}
+
+.main-group-text {
+    font-weight: 700;
+    letter-spacing: -0.2px;
+    color: var(--ios-label);
+}
+
+.main-group-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.main-group-badge {
+    font-size: 0.72rem;
+    padding: 2px 7px;
+    border-radius: var(--radius-pill);
+    background: rgba(142, 142, 147, 0.14);
+    color: var(--ios-label-secondary);
+    font-weight: 600;
+}
+
+.main-group-chevron {
+    font-size: 0.75rem;
+    color: var(--ios-label-tertiary);
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.main-group-header.collapsed .main-group-chevron {
+    transform: rotate(-90deg);
+}
+
+.main-group-sublist {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 6px;
+    background: #ffffff;
+}
+
+.main-group-sublist.is-collapsed {
+    display: none;
+}
+
+.empty-group-sub {
+    padding: 10px;
+    text-align: center;
+    font-size: 0.78rem;
+    color: var(--ios-label-tertiary);
+}
+
+.pane-group-breadcrumb {
+    font-size: 0.86rem;
+    font-weight: 700;
+    color: var(--ios-blue);
+    background: rgba(0, 122, 255, 0.08);
+    padding: 2px 8px;
+    border-radius: 6px;
+    border: 0.5px solid rgba(0, 122, 255, 0.2);
+}
+
+/* Icon Radio Picker */
+.group-icon-picker {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+}
+
+.icon-radio-pill {
+    cursor: pointer;
+    user-select: none;
+}
+
+.icon-radio-pill input {
+    display: none;
+}
+
+.icon-radio-pill span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--ios-separator);
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: #ffffff;
+    transition: all 0.15s ease;
+}
+
+.icon-radio-pill input:checked + span {
+    background: var(--ios-blue);
+    color: #ffffff;
+    border-color: var(--ios-blue);
+    box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
 }
 
 /* ─────────────────────────────────────────────────────────────

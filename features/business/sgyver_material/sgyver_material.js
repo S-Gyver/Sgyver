@@ -362,19 +362,236 @@ const DEFAULT_CATEGORIES = [
     "title": "HMR White (ไม้ HMR เคลือบเมลามีนขาว)",
     "imageUrl": "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80",
     "description": "ไม้ HMR ทนชื้น เคลือบผิวเมลามีนสีขาวสองด้าน ทนต่อรอยขีดข่วน ไม่ต้องทาสีพร้อมใช้งานทันที"
+  },
+  {
+    "id": "Hinge",
+    "name": "บานพับ (Hinges)",
+    "group": "อุปกรณ์ฟิตติ้ง (Fittings)",
+    "items": [
+      { "id": "hg_full_soft", "name": "บานพับถ้วย ทับขอบ (Full Overlay)", "size": "Soft-Close 35mm", "price": 35 },
+      { "id": "hg_half_soft", "name": "บานพับถ้วย กลางขอบ (Half Overlay)", "size": "Soft-Close 35mm", "price": 35 },
+      { "id": "hg_inset_soft", "name": "บานพับถ้วย ในขอบ (Inset)", "size": "Soft-Close 35mm", "price": 38 },
+      { "id": "hg_butterfly_4", "name": "บานพับปีกผีเสื้อ สแตนเลส", "size": "4\" x 3\"", "price": 55 },
+      { "id": "hg_piano_18", "name": "บานพับเปียโน ชุบนิกเกิล", "size": "ยาว 1.8m", "price": 120 }
+    ],
+    "title": "บานพับเฟอร์นิเจอร์ (Furniture Hinges)",
+    "imageUrl": "https://images.unsplash.com/photo-1581783342308-f792dbdd27c5?auto=format&fit=crop&w=600&q=80",
+    "description": "บานพับถ้วยระบบ Soft-Close ปิดนุ่มนวล บานพับผีเสื้อ และบานพับเปียโนสำหรับตู้และหน้าบาน"
+  },
+  {
+    "id": "Drawer_Slide",
+    "name": "รางลิ้นชัก (Drawer Slides)",
+    "group": "อุปกรณ์ฟิตติ้ง (Fittings)",
+    "items": [
+      { "id": "ds_ball_10", "name": "รางลูกปืน 3 ตอน", "size": "10 นิ้ว (250mm)", "price": 65 },
+      { "id": "ds_ball_12", "name": "รางลูกปืน 3 ตอน", "size": "12 นิ้ว (300mm)", "price": 75 },
+      { "id": "ds_ball_14", "name": "รางลูกปืน 3 ตอน", "size": "14 นิ้ว (350mm)", "price": 85 },
+      { "id": "ds_ball_16", "name": "รางลูกปืน 3 ตอน", "size": "16 นิ้ว (400mm)", "price": 95 },
+      { "id": "ds_soft_14", "name": "รางรับใต้ Soft-Close ซ่อนราง", "size": "14 นิ้ว (350mm)", "price": 220 },
+      { "id": "ds_soft_16", "name": "รางรับใต้ Soft-Close ซ่อนราง", "size": "16 นิ้ว (400mm)", "price": 240 }
+    ],
+    "title": "รางลิ้นชักลูกปืนและรางรับใต้ (Drawer Runners)",
+    "imageUrl": "https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=600&q=80",
+    "description": "รางลิ้นชักลูกปืนรับข้าง 3 ตอน แข็งแรง และรางรับใต้ระบบ Soft-Close ปิดนุ่มนวลเงียบสนิท"
+  },
+  {
+    "id": "Handle",
+    "name": "มือจับ & อุปกรณ์เสริม",
+    "group": "อุปกรณ์ฟิตติ้ง (Fittings)",
+    "items": [
+      { "id": "hd_c_96", "name": "มือจับตัว C อลูมิเนียมดำด้าน", "size": "ระยะรู 96 mm", "price": 45 },
+      { "id": "hd_c_128", "name": "มือจับตัว C อลูมิเนียมดำด้าน", "size": "ระยะรู 128 mm", "price": 55 },
+      { "id": "hd_knob_brass", "name": "ปุ่มจับกลม มินิมอล สีทองเหลือง", "size": "เส้นผ่านศูนย์กลาง 25 mm", "price": 30 },
+      { "id": "hd_gas_strut", "name": "โช๊คอัพแก๊สเปิดบานขึ้น (Gas Spring)", "size": "แรงดัน 100N (10kg)", "price": 60 }
+    ],
+    "title": "มือจับ ปุ่มจับ และโช๊คอัพตู้ (Handles & Accessories)",
+    "imageUrl": "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=600&q=80",
+    "description": "มือจับโมเดิร์น ปุ่มจับสไตล์มินิมอล และโช๊คไฮดรอลิกสำหรับงานบานเปิดยกขึ้น"
   }
 ];
 
 // ── GLOBAL APPLICATION STATE ──────────────────────────────────
 const AppState = {
     categories: [],
+    customGroups: ["งานไม้ (Wood)", "อุปกรณ์ฟิตติ้ง (Fittings)"],
+    expandedGroups: { "งานไม้ (Wood)": true, "อุปกรณ์ฟิตติ้ง (Fittings)": true },
     selectedCategoryId: 'HMR',
     sizeSortAscending: true, // เรียงตามความหนา น้อย ➔ มาก โดยเริ่มต้น
-    orderList: [], // { id, categoryName, size, price, quantity, total }
+    orderList: [], // { id, categoryName, name, size, price, quantity, total }
     editingItemId: null,
     supabaseClient: null,
     isOnline: false
 };
+
+// ─────────────────────────────────────────────────────────────
+// GROUP / ACCORDION HELPERS (จัดการเมนูหลักและเมนูย่อย)
+// ─────────────────────────────────────────────────────────────
+function getGroupEmoji(groupName) {
+    if (!groupName) return '📁';
+    const s = groupName.toLowerCase();
+    if (s.includes('ไม้') || s.includes('wood')) return '🪵';
+    if (s.includes('ฟิตติ้ง') || s.includes('fitting') || s.includes('ฮาร์ดแวร์') || s.includes('บานพับ') || s.includes('ราง')) return '🔩';
+    if (s.includes('สี') || s.includes('paint') || s.includes('เคมี')) return '🎨';
+    if (s.includes('กระจก') || s.includes('glass') || s.includes('อะคริลิค')) return '🪟';
+    if (s.includes('อลูมิเนียม') || s.includes('เหล็ก') || s.includes('metal')) return '🪛';
+    return '📁';
+}
+
+function getAllGroups() {
+    const set = new Set(AppState.customGroups || []);
+    set.add('งานไม้ (Wood)');
+    if (Array.isArray(AppState.categories)) {
+        AppState.categories.forEach(c => {
+            if (c.group && c.group.trim()) {
+                set.add(c.group.trim());
+            }
+        });
+    }
+    const list = Array.from(set);
+    const woodIdx = list.indexOf('งานไม้ (Wood)');
+    if (woodIdx > 0) {
+        list.splice(woodIdx, 1);
+        list.unshift('งานไม้ (Wood)');
+    }
+    return list;
+}
+
+function toggleMainGroup(groupName) {
+    AppState.expandedGroups[groupName] = !AppState.expandedGroups[groupName];
+    try {
+        localStorage.setItem('sgyver_expanded_groups', JSON.stringify(AppState.expandedGroups));
+    } catch (_) {}
+    renderCategories();
+}
+window.toggleMainGroup = toggleMainGroup;
+
+function openAddGroupModal() {
+    const input = document.getElementById('newGroupNameInput');
+    if (input) input.value = '';
+    openModal('addMainGroupModalOverlay');
+    setTimeout(() => input?.focus(), 100);
+}
+window.openAddGroupModal = openAddGroupModal;
+
+function confirmAddMainGroup() {
+    const name = (document.getElementById('newGroupNameInput')?.value || '').trim();
+    if (!name) {
+        if (typeof showToast === 'function') {
+            showToast('warning', 'กรุณาระบุชื่อเมนูหลัก', 'เช่น อุปกรณ์ฟิตติ้ง หรือ สีและเคมีภัณฑ์');
+        }
+        return;
+    }
+
+    if (!AppState.customGroups.includes(name)) {
+        AppState.customGroups.push(name);
+        try {
+            localStorage.setItem('sgyver_custom_groups', JSON.stringify(AppState.customGroups));
+        } catch (_) {}
+    }
+    AppState.expandedGroups[name] = true;
+
+    closeModal('addMainGroupModalOverlay');
+    renderCategories();
+    updateGroupDropdownOptions(name);
+
+    if (typeof showToast === 'function') {
+        showToast('success', 'เพิ่มเมนูหลักสำเร็จ!', `สร้างกลุ่ม "${name}" เรียบร้อยแล้ว`);
+    }
+}
+window.confirmAddMainGroup = confirmAddMainGroup;
+
+function updateGroupDropdownOptions(selectedGroup) {
+    const select = document.getElementById('newCatGroupSelect');
+    if (!select) return;
+
+    const groups = getAllGroups();
+    const currentCat = AppState.categories.find(c => c.id === AppState.selectedCategoryId);
+    const targetGroup = selectedGroup || currentCat?.group || 'งานไม้ (Wood)';
+
+    select.innerHTML = groups.map(g => `
+        <option value="${escapeHtml(g)}" ${g === targetGroup ? 'selected' : ''}>
+            ${getGroupEmoji(g)} ${escapeHtml(g)}
+        </option>
+    `).join('');
+}
+window.updateGroupDropdownOptions = updateGroupDropdownOptions;
+
+function ensureInitialData(categories) {
+    if (!Array.isArray(categories)) return false;
+    let modified = false;
+
+    // 1. Ensure all categories have a group (fallback to "งานไม้ (Wood)")
+    categories.forEach(c => {
+        if (!c.group) {
+            c.group = "งานไม้ (Wood)";
+            modified = true;
+        }
+    });
+
+    // 2. Ensure Frame Wood items
+    if (ensureFrameWoodItems(categories)) {
+        modified = true;
+    }
+
+    // 3. Ensure sample fittings exist
+    const sampleFittings = [
+      {
+        "id": "Hinge",
+        "name": "บานพับ (Hinges)",
+        "group": "อุปกรณ์ฟิตติ้ง (Fittings)",
+        "items": [
+          { "id": "hg_full_soft", "name": "บานพับถ้วย ทับขอบ (Full Overlay)", "size": "Soft-Close 35mm", "price": 35 },
+          { "id": "hg_half_soft", "name": "บานพับถ้วย กลางขอบ (Half Overlay)", "size": "Soft-Close 35mm", "price": 35 },
+          { "id": "hg_inset_soft", "name": "บานพับถ้วย ในขอบ (Inset)", "size": "Soft-Close 35mm", "price": 38 },
+          { "id": "hg_butterfly_4", "name": "บานพับปีกผีเสื้อ สแตนเลส", "size": "4\" x 3\"", "price": 55 },
+          { "id": "hg_piano_18", "name": "บานพับเปียโน ชุบนิกเกิล", "size": "ยาว 1.8m", "price": 120 }
+        ],
+        "title": "บานพับเฟอร์นิเจอร์ (Furniture Hinges)",
+        "imageUrl": "https://images.unsplash.com/photo-1581783342308-f792dbdd27c5?auto=format&fit=crop&w=600&q=80",
+        "description": "บานพับถ้วยระบบ Soft-Close ปิดนุ่มนวล บานพับผีเสื้อ และบานพับเปียโนสำหรับตู้และหน้าบาน"
+      },
+      {
+        "id": "Drawer_Slide",
+        "name": "รางลิ้นชัก (Drawer Slides)",
+        "group": "อุปกรณ์ฟิตติ้ง (Fittings)",
+        "items": [
+          { "id": "ds_ball_10", "name": "รางลูกปืน 3 ตอน", "size": "10 นิ้ว (250mm)", "price": 65 },
+          { "id": "ds_ball_12", "name": "รางลูกปืน 3 ตอน", "size": "12 นิ้ว (300mm)", "price": 75 },
+          { "id": "ds_ball_14", "name": "รางลูกปืน 3 ตอน", "size": "14 นิ้ว (350mm)", "price": 85 },
+          { "id": "ds_ball_16", "name": "รางลูกปืน 3 ตอน", "size": "16 นิ้ว (400mm)", "price": 95 },
+          { "id": "ds_soft_14", "name": "รางรับใต้ Soft-Close ซ่อนราง", "size": "14 นิ้ว (350mm)", "price": 220 },
+          { "id": "ds_soft_16", "name": "รางรับใต้ Soft-Close ซ่อนราง", "size": "16 นิ้ว (400mm)", "price": 240 }
+        ],
+        "title": "รางลิ้นชักลูกปืนและรางรับใต้ (Drawer Runners)",
+        "imageUrl": "https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=600&q=80",
+        "description": "รางลิ้นชักลูกปืนรับข้าง 3 ตอน แข็งแรง และรางรับใต้ระบบ Soft-Close ปิดนุ่มนวลเงียบสนิท"
+      },
+      {
+        "id": "Handle",
+        "name": "มือจับ & อุปกรณ์เสริม",
+        "group": "อุปกรณ์ฟิตติ้ง (Fittings)",
+        "items": [
+          { "id": "hd_c_96", "name": "มือจับตัว C อลูมิเนียมดำด้าน", "size": "ระยะรู 96 mm", "price": 45 },
+          { "id": "hd_c_128", "name": "มือจับตัว C อลูมิเนียมดำด้าน", "size": "ระยะรู 128 mm", "price": 55 },
+          { "id": "hd_knob_brass", "name": "ปุ่มจับกลม มินิมอล สีทองเหลือง", "size": "เส้นผ่านศูนย์กลาง 25 mm", "price": 30 },
+          { "id": "hd_gas_strut", "name": "โช๊คอัพแก๊สเปิดบานขึ้น (Gas Spring)", "size": "แรงดัน 100N (10kg)", "price": 60 }
+        ],
+        "title": "มือจับ ปุ่มจับ และโช๊คอัพตู้ (Handles & Accessories)",
+        "imageUrl": "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=600&q=80",
+        "description": "มือจับโมเดิร์น ปุ่มจับสไตล์มินิมอล และโช๊คไฮดรอลิกสำหรับงานบานเปิดยกขึ้น"
+      }
+    ];
+
+    sampleFittings.forEach(sampleCat => {
+        const exists = categories.some(c => c.id === sampleCat.id || c.name === sampleCat.name);
+        if (!exists) {
+            categories.push(JSON.parse(JSON.stringify(sampleCat)));
+            modified = true;
+        }
+    });
+
+    return modified;
+}
 
 // ─────────────────────────────────────────────────────────────
 // WOOD SIZE SORTING (ระบบเรียงลำดับตามขนาดและความหนาของไม้)
@@ -611,12 +828,23 @@ function updateSupabaseStatus(isOnline, text) {
 // 3. Load App Data (Supabase Remote First -> LocalStorage -> Default)
 function loadAppDataLocalFirst() {
     try {
+        const storedCustomGroups = localStorage.getItem('sgyver_custom_groups');
+        if (storedCustomGroups) {
+            const parsedG = JSON.parse(storedCustomGroups);
+            if (Array.isArray(parsedG)) AppState.customGroups = Array.from(new Set([...AppState.customGroups, ...parsedG]));
+        }
+        const storedExpanded = localStorage.getItem('sgyver_expanded_groups');
+        if (storedExpanded) {
+            const parsedE = JSON.parse(storedExpanded);
+            if (typeof parsedE === 'object' && parsedE !== null) AppState.expandedGroups = Object.assign(AppState.expandedGroups, parsedE);
+        }
+
         const stored = localStorage.getItem('sgyver_material_data');
         if (stored) {
             const parsed = JSON.parse(stored);
             if (Array.isArray(parsed) && parsed.length > 0) {
                 AppState.categories = parsed;
-                const updated = ensureFrameWoodItems(AppState.categories);
+                const updated = ensureInitialData(AppState.categories);
                 sortAllCategoriesItems();
                 if (updated) {
                     saveAppData();
@@ -633,7 +861,7 @@ function loadAppDataLocalFirst() {
     }
     // Deep clone defaults
     AppState.categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
-    ensureFrameWoodItems(AppState.categories);
+    ensureInitialData(AppState.categories);
     sortAllCategoriesItems();
     updateShopSuggestionsAndFilter();
     renderCategories();
@@ -656,7 +884,7 @@ async function syncFromSupabase(isManual = false) {
 
         if (data && Array.isArray(data.data) && data.data.length > 0 && !error) {
             AppState.categories = data.data;
-            const updated = ensureFrameWoodItems(AppState.categories);
+            const updated = ensureInitialData(AppState.categories);
             sortAllCategoriesItems();
             localStorage.setItem('sgyver_material_data', JSON.stringify(AppState.categories));
             if (updated) {
@@ -690,7 +918,7 @@ function subscribeToSupabaseRealtime() {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'sgyver_materials' }, (payload) => {
                 if (payload.new && Array.isArray(payload.new.data)) {
                     AppState.categories = payload.new.data;
-                    ensureFrameWoodItems(AppState.categories);
+                    ensureInitialData(AppState.categories);
                     localStorage.setItem('sgyver_material_data', JSON.stringify(AppState.categories));
                     updateShopSuggestionsAndFilter();
                     renderCategories();
@@ -825,22 +1053,71 @@ function renderCategories() {
     if (!container) return;
 
     container.innerHTML = '';
-    if (badge) badge.textContent = `${AppState.categories.length} หมวด`;
+    const groups = getAllGroups();
+    const totalCats = AppState.categories.length;
+    if (badge) badge.textContent = `${groups.length} กลุ่ม • ${totalCats} หมวด`;
 
-    AppState.categories.forEach(cat => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = `category-item-btn ${cat.id === AppState.selectedCategoryId ? 'active' : ''}`;
-        btn.onclick = () => selectCategory(cat.id);
+    groups.forEach(groupName => {
+        const groupCats = AppState.categories.filter(c => (c.group || 'งานไม้ (Wood)') === groupName);
+        const isExpanded = AppState.expandedGroups[groupName] !== false; // expanded by default
 
-        btn.innerHTML = `
-            <div class="category-item-title">
-                <i class="bi bi-box-fill category-icon"></i>
-                <span>${escapeHtml(cat.name)}</span>
+        const block = document.createElement('div');
+        block.className = 'main-group-block';
+
+        const header = document.createElement('div');
+        header.className = `main-group-header ${isExpanded ? 'expanded' : 'collapsed'}`;
+        header.onclick = () => toggleMainGroup(groupName);
+
+        header.innerHTML = `
+            <div class="main-group-title">
+                <span class="main-group-emoji">${getGroupEmoji(groupName)}</span>
+                <span class="main-group-text">${escapeHtml(groupName)}</span>
             </div>
-            <span class="category-count">${cat.items?.length || 0}</span>
+            <div class="main-group-meta">
+                <span class="main-group-badge">${groupCats.length} หมวด</span>
+                <i class="bi bi-chevron-down main-group-chevron"></i>
+            </div>
         `;
-        container.appendChild(btn);
+        block.appendChild(header);
+
+        const sublist = document.createElement('div');
+        sublist.className = `main-group-sublist ${isExpanded ? '' : 'is-collapsed'}`;
+
+        if (groupCats.length === 0) {
+            sublist.innerHTML = `
+                <div class="empty-group-sub">
+                    ยังไม่มีหมวดหมู่ย่อย 
+                    <button class="btn-classic" style="padding: 2px 8px; font-size: 0.76rem; margin-top: 4px;" onclick="event.stopPropagation(); openAddCategoryModal('${escapeHtml(groupName)}')">
+                        <i class="bi bi-plus-lg"></i> เพิ่มหมวด
+                    </button>
+                </div>
+            `;
+        } else {
+            groupCats.forEach(cat => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `category-item-btn ${cat.id === AppState.selectedCategoryId ? 'active' : ''}`;
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    selectCategory(cat.id);
+                };
+
+                const isHardware = groupName.includes('ฟิตติ้ง') || groupName.includes('ฮาร์ดแวร์') || groupName.includes('บานพับ') || groupName.includes('ราง');
+                const iconClass = isHardware ? 'bi-tools' : 'bi-box-fill';
+
+                btn.innerHTML = `
+                    <div class="category-item-title">
+                        <i class="bi ${iconClass} category-icon" style="${isHardware ? 'color: var(--ios-blue);' : ''}"></i>
+                        <span>${escapeHtml(cat.name)}</span>
+                    </div>
+                    <span class="category-count">${cat.items?.length || 0}</span>
+                `;
+                sublist.appendChild(btn);
+            });
+        }
+
+        block.appendChild(sublist);
+        container.appendChild(block);
     });
 }
 
@@ -848,6 +1125,13 @@ function selectCategory(catId) {
     AppState.selectedCategoryId = catId;
     const cat = AppState.categories.find(c => c.id === catId);
     if (!cat) return;
+
+    // Ensure the category's group is expanded
+    const groupName = cat.group || 'งานไม้ (Wood)';
+    if (AppState.expandedGroups[groupName] === false) {
+        AppState.expandedGroups[groupName] = true;
+        renderCategories();
+    }
 
     // Update active state in buttons
     document.querySelectorAll('.category-item-btn').forEach(btn => {
@@ -859,7 +1143,10 @@ function selectCategory(catId) {
         }
     });
 
-    // Update Middle Column Title
+    // Update Middle Column Group Badge & Title
+    const groupBadgeEl = document.getElementById('currentCategoryGroupBadge');
+    if (groupBadgeEl) groupBadgeEl.textContent = cat.group || 'งานไม้ (Wood)';
+
     const titleEl = document.getElementById('currentCategoryTitle');
     if (titleEl) titleEl.textContent = cat.name;
 
@@ -1243,7 +1530,8 @@ function confirmAddItem() {
 // ─────────────────────────────────────────────────────────────
 // ADD NEW CATEGORY MODAL
 // ─────────────────────────────────────────────────────────────
-function openAddCategoryModal() {
+function openAddCategoryModal(defaultGroup) {
+    updateGroupDropdownOptions(defaultGroup);
     document.getElementById('newCatKey').value = '';
     document.getElementById('newCatDesc').value = '';
     document.getElementById('newCatDefaultShop').value = '';
@@ -1252,38 +1540,48 @@ function openAddCategoryModal() {
     openModal('addCategoryModalOverlay');
     setTimeout(() => document.getElementById('newCatKey').focus(), 100);
 }
+window.openAddCategoryModal = openAddCategoryModal;
 
 function confirmAddCategory() {
     const key = (document.getElementById('newCatKey').value || '').trim().replace(/\s+/g, '_');
     const desc = (document.getElementById('newCatDesc').value || '').trim();
     const defaultShop = (document.getElementById('newCatDefaultShop').value || '').trim();
     const imageUrl = (document.getElementById('newCatImageUrl').value || '').trim();
+    const group = (document.getElementById('newCatGroupSelect')?.value || 'งานไม้ (Wood)').trim();
 
     if (!key) {
-        if (typeof showToast === 'function') showToast('warning', 'กรุณาระบุรหัสประเภทไม้', 'เช่น Teak_Wood หรือ OSB_Board');
+        if (typeof showToast === 'function') showToast('warning', 'กรุณาระบุรหัสประเภท', 'เช่น Teak_Wood หรือ Hinge_Soft');
         return;
     }
 
     if (AppState.categories.some(c => c.id.toLowerCase() === key.toLowerCase())) {
-        if (typeof showToast === 'function') showToast('warning', 'ประเภทไม้นี้มีอยู่แล้ว', 'กรุณาใช้รหัสอื่นที่ไม่ซ้ำกัน');
+        if (typeof showToast === 'function') showToast('warning', 'หมวดหมู่นี้มีอยู่แล้ว', 'กรุณาใช้รหัสอื่นที่ไม่ซ้ำกัน');
         return;
     }
+
+    const isFittings = group.includes('ฟิตติ้ง') || group.includes('ฮาร์ดแวร์') || group.includes('บานพับ') || group.includes('ราง');
 
     const newCat = {
         id: key,
         name: key,
+        group: group,
         title: `${key} (${desc || key})`,
-        description: desc || `ประเภทไม้ ${key} สำหรับงานเฟอร์นิเจอร์และตกแต่ง`,
+        description: desc || `หมวดหมู่ ${key} สำหรับงานผลิตและตกแต่ง`,
         defaultShop: defaultShop,
-        imageUrl: imageUrl || 'https://images.unsplash.com/photo-1546484475-7f7bd55792da?auto=format&fit=crop&w=600&q=80',
-        items: [
-            { id: `${key.toLowerCase()}_10`, size: '10 mm', price: 300.0, shop: defaultShop },
-            { id: `${key.toLowerCase()}_15`, size: '15 mm', price: 450.0, shop: defaultShop },
-            { id: `${key.toLowerCase()}_18`, size: '18 mm', price: 550.0, shop: defaultShop }
+        imageUrl: imageUrl || (isFittings ? 'https://images.unsplash.com/photo-1581783342308-f792dbdd27c5?auto=format&fit=crop&w=600&q=80' : 'https://images.unsplash.com/photo-1546484475-7f7bd55792da?auto=format&fit=crop&w=600&q=80'),
+        items: isFittings ? [
+            { id: `${key.toLowerCase()}_1`, name: 'รุ่นมาตรฐาน', size: '', price: 45.0, shop: defaultShop },
+            { id: `${key.toLowerCase()}_2`, name: 'รุ่นพรีเมียม Soft-Close', size: '', price: 85.0, shop: defaultShop }
+        ] : [
+            { id: `${key.toLowerCase()}_10`, name: '', size: '10 mm', price: 300.0, shop: defaultShop },
+            { id: `${key.toLowerCase()}_15`, name: '', size: '15 mm', price: 450.0, shop: defaultShop },
+            { id: `${key.toLowerCase()}_18`, name: '', size: '18 mm', price: 550.0, shop: defaultShop }
         ]
     };
 
     AppState.categories.push(newCat);
+    AppState.expandedGroups[group] = true;
+
     saveAppData();
     updateShopSuggestionsAndFilter();
     renderCategories();
@@ -1291,7 +1589,7 @@ function confirmAddCategory() {
     closeModal('addCategoryModalOverlay');
 
     if (typeof showToast === 'function') {
-        showToast('success', 'เพิ่มประเภทไม้สำเร็จ', `เพิ่มหมวด ${newCat.name} เรียบร้อยแล้ว`);
+        showToast('success', 'เพิ่มหมวดหมู่สำเร็จ!', `เพิ่ม ${newCat.name} ในกลุ่ม "${group}" เรียบร้อยแล้ว`);
     }
 }
 

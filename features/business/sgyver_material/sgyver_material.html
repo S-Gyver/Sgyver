@@ -90,24 +90,26 @@
     <main class="main-workspace" id="mainWorkspace">
 
         <!-- ─────────────────────────────────────────────────────────
-             คอลัมน์ซ้าย (MATERIAL CATEGORIES)
+             คอลัมน์ซ้าย (MATERIAL CATEGORIES & MAIN GROUPS)
              ───────────────────────────────────────────────────────── -->
         <section class="app-pane category-pane">
             <div class="pane-header">
                 <h2 class="pane-title">
-                    <i class="bi bi-folder-fill" style="color: #d97706;"></i> Material
+                    <i class="bi bi-folder-fill" style="color: #d97706;"></i> หมวดหมู่สินค้า
                 </h2>
-                <span class="pane-badge" id="categoryCountBadge">8 หมวด</span>
+                <span class="pane-badge" id="categoryCountBadge">0 กลุ่ม</span>
             </div>
 
             <div class="category-list-container" id="categoryListContainer">
-                <!-- Dynamically populated category buttons:
-                     [HMR], [MDF], [Rubber_Wood], [Pine_Wood], [Plywood_Black], [Plywood_Core], [Frame Wood], [HMR_White] -->
+                <!-- Dynamically populated main groups and sub-category buttons -->
             </div>
 
             <div class="category-footer">
-                <button class="btn-add-category" onclick="openAddCategoryModal()">
-                    <i class="bi bi-plus-circle-fill"></i> + เพิ่มประเภทไม้
+                <button class="btn-add-main-group" onclick="openAddGroupModal()" title="เพิ่มกลุ่มเมนูหลักใหม่ เช่น อุปกรณ์ฟิตติ้ง, งานสี">
+                    <i class="bi bi-folder-plus"></i> + เพิ่มเมนูหลัก
+                </button>
+                <button class="btn-add-category" onclick="openAddCategoryModal()" title="เพิ่มประเภท/หมวดย่อย">
+                    <i class="bi bi-plus-circle-fill"></i> + เพิ่มประเภทย่อย
                 </button>
             </div>
         </section>
@@ -117,8 +119,10 @@
              ───────────────────────────────────────────────────────── -->
         <section class="app-pane item-pane">
             <div class="pane-header">
-                <h2 class="pane-title">
+                <h2 class="pane-title" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                     <i class="bi bi-list-check" style="color: #2563eb;"></i> 
+                    <span id="currentCategoryGroupBadge" class="pane-group-breadcrumb">งานไม้ (Wood)</span>
+                    <span style="color: var(--ios-label-tertiary); font-size: 0.85rem;">/</span>
                     <span id="currentCategoryTitle">MDF</span> 
                     <span style="font-size: 0.82rem; font-weight: normal; color: var(--text-muted);">(รายการความหนา/ราคา)</span>
                 </h2>
@@ -315,27 +319,72 @@
         </div>
     </div>
 
-    <!-- 2. Modal: เพิ่มประเภทไม้ใหม่ (+ เพิ่มประเภทไม้) -->
+    <!-- Modal: เพิ่มเมนูหลักใหม่ (Main Group) -->
+    <div class="classic-modal-overlay" id="addMainGroupModalOverlay">
+        <div class="classic-modal">
+            <div class="classic-modal-header">
+                <h3 class="classic-modal-title">
+                    <i class="bi bi-folder-plus" style="color: #d97706;"></i> เพิ่มเมนูหลักใหม่ (Main Group)
+                </h3>
+                <button class="classic-modal-close" onclick="closeModal('addMainGroupModalOverlay')">&times;</button>
+            </div>
+            <div class="classic-modal-body">
+                <div class="form-group">
+                    <label>ชื่อเมนูหลัก (เช่น อุปกรณ์ฟิตติ้ง, สีและเคมีภัณฑ์, อลูมิเนียม) <span style="color: red;">*</span></label>
+                    <input type="text" id="newGroupNameInput" class="form-input" placeholder="เช่น อุปกรณ์ฟิตติ้ง หรือ สีและเคมีภัณฑ์" autofocus>
+                </div>
+                <div class="form-group">
+                    <label>ไอคอนประจำเมนูหลัก</label>
+                    <div class="group-icon-picker">
+                        <label class="icon-radio-pill"><input type="radio" name="groupIconChoice" value="🪵"> <span>🪵 งานไม้</span></label>
+                        <label class="icon-radio-pill"><input type="radio" name="groupIconChoice" value="🔩" checked> <span>🔩 ฟิตติ้ง</span></label>
+                        <label class="icon-radio-pill"><input type="radio" name="groupIconChoice" value="🎨"> <span>🎨 สี/เคมี</span></label>
+                        <label class="icon-radio-pill"><input type="radio" name="groupIconChoice" value="🪟"> <span>🪟 กระจก</span></label>
+                        <label class="icon-radio-pill"><input type="radio" name="groupIconChoice" value="📦"> <span>📦 ทั่วไป</span></label>
+                    </div>
+                </div>
+            </div>
+            <div class="classic-modal-footer">
+                <button class="btn-classic" onclick="closeModal('addMainGroupModalOverlay')">ยกเลิก</button>
+                <button class="btn-classic btn-primary-classic" onclick="confirmAddMainGroup()">
+                    <i class="bi bi-check-lg"></i> สร้างเมนูหลัก
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Modal: เพิ่มประเภทย่อยใหม่ (+ เพิ่มประเภทย่อย) -->
     <div class="classic-modal-overlay" id="addCategoryModalOverlay">
         <div class="classic-modal">
             <div class="classic-modal-header">
                 <h3 class="classic-modal-title">
-                    <i class="bi bi-plus-circle-fill" style="color: #d97706;"></i> เพิ่มประเภทไม้ใหม่
+                    <i class="bi bi-plus-circle-fill" style="color: #d97706;"></i> เพิ่มประเภทย่อยใหม่ (Sub-Category)
                 </h3>
                 <button class="classic-modal-close" onclick="closeModal('addCategoryModalOverlay')">&times;</button>
             </div>
             <div class="classic-modal-body">
                 <div class="form-group">
-                    <label>รหัสประเภทไม้ (Key) <span style="color: red;">*</span></label>
-                    <input type="text" id="newCatKey" class="form-input" placeholder="เช่น Teak_Wood หรือ MDF_Oak">
+                    <label><i class="bi bi-folder-fill" style="color: #d97706;"></i> เลือกเมนูหลัก (Main Menu) <span style="color: red;">*</span></label>
+                    <div style="display: flex; gap: 8px;">
+                        <select id="newCatGroupSelect" class="form-input" style="flex: 1;">
+                            <!-- Populated dynamically by JS -->
+                        </select>
+                        <button type="button" class="btn-classic" onclick="openAddGroupModal()" title="สร้างกลุ่มหลักใหม่" style="white-space: nowrap;">
+                            <i class="bi bi-plus-lg"></i> กลุ่มใหม่
+                        </button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>รหัสประเภทย่อย (Key) <span style="color: red;">*</span></label>
+                    <input type="text" id="newCatKey" class="form-input" placeholder="เช่น Teak_Wood หรือ Hinge_Soft">
                 </div>
                 <div class="form-group">
                     <label>ชื่อภาษาไทย / คำอธิบายสั้น</label>
-                    <input type="text" id="newCatDesc" class="form-input" placeholder="เช่น ไม้สักประสานเกรด A สำหรับทำท็อปโต๊ะ">
+                    <input type="text" id="newCatDesc" class="form-input" placeholder="เช่น บานพับถ้วย Soft-Close หรือ ไม้สักประสานเกรด A">
                 </div>
                 <div class="form-group">
                     <label><i class="bi bi-shop" style="color: var(--ios-orange);"></i> ร้านขายเริ่มต้น (Default Shop - เว้นว่างได้)</label>
-                    <input type="text" id="newCatDefaultShop" list="shopSuggestionsList" class="form-input" placeholder="เช่น ร้านบางโพ, ไทวัสดุ">
+                    <input type="text" id="newCatDefaultShop" list="shopSuggestionsList" class="form-input" placeholder="เช่น ร้านบางโพ, ไทวัสดุ, เฮเฟเล่">
                 </div>
                 <div class="form-group">
                     <label>URL รูปภาพตัวอย่าง (ใส่หรือไม่ใส่ก็ได้)</label>
@@ -345,7 +394,7 @@
             <div class="classic-modal-footer">
                 <button class="btn-classic" onclick="closeModal('addCategoryModalOverlay')">ยกเลิก</button>
                 <button class="btn-classic btn-primary-classic" onclick="confirmAddCategory()">
-                    <i class="bi bi-save-fill"></i> เพิ่มประเภทไม้
+                    <i class="bi bi-save-fill"></i> เพิ่มประเภทย่อย
                 </button>
             </div>
         </div>
