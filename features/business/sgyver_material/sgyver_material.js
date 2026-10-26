@@ -493,6 +493,7 @@ function loadAppDataLocalFirst() {
             const parsed = JSON.parse(stored);
             if (Array.isArray(parsed) && parsed.length > 0) {
                 AppState.categories = parsed;
+                updateShopSuggestionsAndFilter();
                 renderCategories();
                 selectCategory(AppState.selectedCategoryId || 'HMR');
                 renderOrderTable();
@@ -504,6 +505,7 @@ function loadAppDataLocalFirst() {
     }
     // Deep clone defaults
     AppState.categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+    updateShopSuggestionsAndFilter();
     renderCategories();
     selectCategory('HMR');
     renderOrderTable();
@@ -525,6 +527,7 @@ async function syncFromSupabase(isManual = false) {
         if (data && Array.isArray(data.data) && data.data.length > 0 && !error) {
             AppState.categories = data.data;
             localStorage.setItem('sgyver_material_data', JSON.stringify(AppState.categories));
+            updateShopSuggestionsAndFilter();
             renderCategories();
             selectCategory(AppState.selectedCategoryId || 'HMR');
             renderOrderTable();
@@ -553,6 +556,7 @@ function subscribeToSupabaseRealtime() {
                 if (payload.new && Array.isArray(payload.new.data)) {
                     AppState.categories = payload.new.data;
                     localStorage.setItem('sgyver_material_data', JSON.stringify(AppState.categories));
+                    updateShopSuggestionsAndFilter();
                     renderCategories();
                     selectCategory(AppState.selectedCategoryId || 'HMR');
                     renderOrderTable();
@@ -564,6 +568,48 @@ function subscribeToSupabaseRealtime() {
             .subscribe();
     } catch (e) {
         console.warn('Realtime subscription note:', e);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
+// SHOP & SUPPLIER HELPERS (จัดการข้อมูลร้านค้า / แหล่งซื้อ)
+// ─────────────────────────────────────────────────────────────
+function updateShopSuggestionsAndFilter() {
+    const datalist = document.getElementById('shopSuggestionsList');
+    const select = document.getElementById('shopFilterSelect');
+
+    const shopSet = new Set();
+    if (Array.isArray(AppState.categories)) {
+        AppState.categories.forEach(cat => {
+            if (cat.defaultShop && cat.defaultShop.trim()) {
+                shopSet.add(cat.defaultShop.trim());
+            }
+            if (Array.isArray(cat.items)) {
+                cat.items.forEach(it => {
+                    if (it.shop && it.shop.trim()) {
+                        shopSet.add(it.shop.trim());
+                    }
+                });
+            }
+        });
+    }
+
+    const shops = Array.from(shopSet).sort();
+
+    if (datalist) {
+        datalist.innerHTML = shops.map(s => `<option value="${escapeHtml(s)}"></option>`).join('');
+    }
+
+    if (select) {
+        const currentVal = select.value;
+        let html = '<option value="">🏪 ทุกร้าน</option>';
+        shops.forEach(s => {
+            html += `<option value="${escapeHtml(s)}" ${s === currentVal ? 'selected' : ''}>🏪 ${escapeHtml(s)}</option>`;
+        });
+        select.innerHTML = html;
+        if (shops.includes(currentVal)) {
+            select.value = currentVal;
+        }
     }
 }
 
@@ -683,29 +729,37 @@ function renderItemsList() {
     const tbody = document.getElementById('itemsTableBody');
     const countBadge = document.getElementById('itemCountBadge');
     const searchVal = (document.getElementById('itemSearchInput')?.value || '').toLowerCase().trim();
+    const shopFilter = (document.getElementById('shopFilterSelect')?.value || '').trim();
     if (!tbody) return;
 
     const cat = AppState.categories.find(c => c.id === AppState.selectedCategoryId);
     if (!cat || !cat.items) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center p-3 text-muted">ไม่พบข้อมูลไม้ในหมวดนี้</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center p-3 text-muted">ไม่พบข้อมูลไม้ในหมวดนี้</td></tr>';
         if (countBadge) countBadge.textContent = '0 รายการ';
         return;
     }
 
     const filtered = cat.items.filter(item => {
+        const itemShop = (item.shop || cat.defaultShop || '').trim();
+        if (shopFilter && itemShop !== shopFilter) {
+            return false;
+        }
         if (!searchVal) return true;
-        return item.size.toLowerCase().includes(searchVal) || (item.price + '').includes(searchVal);
+        return item.size.toLowerCase().includes(searchVal) || 
+               (item.price + '').includes(searchVal) ||
+               itemShop.toLowerCase().includes(searchVal);
     });
 
     if (countBadge) countBadge.textContent = `${filtered.length} รายการ`;
 
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center p-3 text-muted">ไม่พบขนาดไม้ที่ตรงกับคำค้นหา</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center p-3 text-muted">ไม่พบขนาดไม้ที่ตรงกับเงื่อนไขค้นหา</td></tr>';
         return;
     }
 
     tbody.innerHTML = filtered.map(item => {
         const isChecked = AppState.orderList.some(o => o.id === item.id);
+        const displayShop = item.shop || cat.defaultShop || '';
         return `
             <tr class="${isChecked ? 'row-selected' : ''}" id="row-${item.id}">
                 <td style="text-align: center;">
@@ -718,6 +772,9 @@ function renderItemsList() {
                 </td>
                 <td>
                     <span class="item-size-text">${escapeHtml(item.size)}</span>
+                </td>
+                <td>
+                    ${displayShop ? `<span class="item-shop-badge" title="ร้าน: ${escapeHtml(displayShop)}"><i class="bi bi-shop"></i> ${escapeHtml(displayShop)}</span>` : `<span class="item-shop-badge empty" title="ยังไม่ระบุร้านขาย">-</span>`}
                 </td>
                 <td style="text-align: right;">
                     <div class="item-price-wrapper" style="justify-content: flex-end;">
@@ -824,11 +881,13 @@ function handleItemCheckboxToggle(itemId, isChecked) {
         // Add to Order List if not present
         const existing = AppState.orderList.find(o => o.id === itemId);
         if (!existing) {
+            const itemShop = item.shop || cat.defaultShop || '';
             AppState.orderList.push({
                 id: item.id,
                 categoryName: cat.name,
                 size: item.size,
                 price: Number(item.price) || 0,
+                shop: itemShop,
                 quantity: 1,
                 total: Number(item.price) || 0
             });
@@ -846,7 +905,7 @@ function handleItemCheckboxToggle(itemId, isChecked) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// QUICK EDIT PRICE & SIZE MODAL
+// QUICK EDIT PRICE, SIZE & SHOP MODAL
 // ─────────────────────────────────────────────────────────────
 function openQuickEditModal(itemId) {
     const cat = AppState.categories.find(c => c.id === AppState.selectedCategoryId);
@@ -857,6 +916,7 @@ function openQuickEditModal(itemId) {
     AppState.editingItemId = itemId;
     document.getElementById('editMaterialName').value = cat.name;
     document.getElementById('editSizeText').value = item.size;
+    document.getElementById('editShopInput').value = item.shop || cat.defaultShop || '';
     const priceInput = document.getElementById('editPriceInput');
     priceInput.value = item.price;
 
@@ -870,6 +930,7 @@ function openQuickEditModal(itemId) {
 function confirmSaveQuickPrice() {
     const newPriceVal = parseFloat(document.getElementById('editPriceInput').value);
     const newSizeVal = (document.getElementById('editSizeText').value || '').trim();
+    const newShopVal = (document.getElementById('editShopInput').value || '').trim();
 
     if (isNaN(newPriceVal) || newPriceVal < 0) {
         if (typeof showToast === 'function') {
@@ -890,26 +951,27 @@ function confirmSaveQuickPrice() {
     const item = cat.items.find(i => i.id === AppState.editingItemId);
     if (!item) return;
 
-    const oldPrice = item.price;
-    const oldSize = item.size;
     item.price = newPriceVal;
     item.size = newSizeVal;
+    item.shop = newShopVal;
 
     // Update if in orderList too
     const orderItem = AppState.orderList.find(o => o.id === item.id);
     if (orderItem) {
         orderItem.size = newSizeVal;
         orderItem.price = newPriceVal;
+        orderItem.shop = newShopVal;
         orderItem.total = newPriceVal * orderItem.quantity;
         renderOrderTable();
     }
 
     saveAppData();
+    updateShopSuggestionsAndFilter();
     renderItemsList();
     closeModal('quickEditModalOverlay');
 
     if (typeof showToast === 'function') {
-        showToast('success', 'อัปเดตข้อมูลสำเร็จ', `${cat.name} ${newSizeVal}: ${formatMoney(newPriceVal)} ฿`);
+        showToast('success', 'อัปเดตข้อมูลสำเร็จ', `${cat.name} ${newSizeVal}: ${formatMoney(newPriceVal)} ฿ ${newShopVal ? `(${newShopVal})` : ''}`);
     }
 }
 
@@ -923,6 +985,7 @@ function openAddItemModal() {
     document.getElementById('addItemCategoryDisplay').value = cat.name;
     document.getElementById('newSizeInput').value = '';
     document.getElementById('newPriceInput').value = '';
+    document.getElementById('newShopInput').value = cat.defaultShop || '';
 
     openModal('addItemModalOverlay');
     setTimeout(() => document.getElementById('newSizeInput').focus(), 100);
@@ -934,6 +997,7 @@ function confirmAddItem() {
 
     const size = (document.getElementById('newSizeInput').value || '').trim();
     const price = parseFloat(document.getElementById('newPriceInput').value);
+    const shop = (document.getElementById('newShopInput').value || '').trim();
 
     if (!size) {
         if (typeof showToast === 'function') showToast('warning', 'กรุณาระบุขนาด', 'ต้องใส่ขนาดความหนา เช่น 18 mm หรือ 2" x 2"');
@@ -949,16 +1013,18 @@ function confirmAddItem() {
     cat.items.push({
         id: newItemId,
         size: size,
-        price: price
+        price: price,
+        shop: shop
     });
 
     saveAppData();
+    updateShopSuggestionsAndFilter();
     renderCategories();
     renderItemsList();
     closeModal('addItemModalOverlay');
 
     if (typeof showToast === 'function') {
-        showToast('success', 'เพิ่มขนาดใหม่สำเร็จ', `${cat.name} ขนาด ${size} ราคา ${formatMoney(price)} ฿`);
+        showToast('success', 'เพิ่มขนาดใหม่สำเร็จ', `${cat.name} ขนาด ${size} ราคา ${formatMoney(price)} ฿ ${shop ? `(${shop})` : ''}`);
     }
 }
 
@@ -968,6 +1034,7 @@ function confirmAddItem() {
 function openAddCategoryModal() {
     document.getElementById('newCatKey').value = '';
     document.getElementById('newCatDesc').value = '';
+    document.getElementById('newCatDefaultShop').value = '';
     document.getElementById('newCatImageUrl').value = '';
 
     openModal('addCategoryModalOverlay');
@@ -977,6 +1044,7 @@ function openAddCategoryModal() {
 function confirmAddCategory() {
     const key = (document.getElementById('newCatKey').value || '').trim().replace(/\s+/g, '_');
     const desc = (document.getElementById('newCatDesc').value || '').trim();
+    const defaultShop = (document.getElementById('newCatDefaultShop').value || '').trim();
     const imageUrl = (document.getElementById('newCatImageUrl').value || '').trim();
 
     if (!key) {
@@ -994,16 +1062,18 @@ function confirmAddCategory() {
         name: key,
         title: `${key} (${desc || key})`,
         description: desc || `ประเภทไม้ ${key} สำหรับงานเฟอร์นิเจอร์และตกแต่ง`,
+        defaultShop: defaultShop,
         imageUrl: imageUrl || 'https://images.unsplash.com/photo-1546484475-7f7bd55792da?auto=format&fit=crop&w=600&q=80',
         items: [
-            { id: `${key.toLowerCase()}_10`, size: '10 mm', price: 300.0 },
-            { id: `${key.toLowerCase()}_15`, size: '15 mm', price: 450.0 },
-            { id: `${key.toLowerCase()}_18`, size: '18 mm', price: 550.0 }
+            { id: `${key.toLowerCase()}_10`, size: '10 mm', price: 300.0, shop: defaultShop },
+            { id: `${key.toLowerCase()}_15`, size: '15 mm', price: 450.0, shop: defaultShop },
+            { id: `${key.toLowerCase()}_18`, size: '18 mm', price: 550.0, shop: defaultShop }
         ]
     };
 
     AppState.categories.push(newCat);
     saveAppData();
+    updateShopSuggestionsAndFilter();
     renderCategories();
     selectCategory(newCat.id);
     closeModal('addCategoryModalOverlay');
@@ -1139,12 +1209,16 @@ function renderOrderTable() {
         const rowTotal = (order.price * order.quantity) || 0;
         totalSheets += Number(order.quantity) || 0;
         grandTotal += rowTotal;
+        const orderShop = order.shop?.trim() || '';
 
         return `
             <tr id="order-row-${order.id}">
                 <td style="text-align: center; color: var(--text-muted); font-size: 0.82rem;">${index + 1}</td>
                 <td><span class="item-badge-cat">${escapeHtml(order.categoryName)}</span></td>
                 <td><strong>${escapeHtml(order.size)}</strong></td>
+                <td>
+                    ${orderShop ? `<span class="item-shop-badge" title="ร้าน: ${escapeHtml(orderShop)}"><i class="bi bi-shop"></i> ${escapeHtml(orderShop)}</span>` : `<span class="item-shop-badge empty">-</span>`}
+                </td>
                 <td style="text-align: right; font-family: 'Fira Code', monospace;">${formatMoney(order.price)}</td>
                 <td style="text-align: center;">
                     <div class="qty-stepper">
@@ -1234,7 +1308,7 @@ function clearOrderList() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// COPY LINE SUMMARY (คัดลอกสรุปรายการส่ง LINE)
+// COPY LINE SUMMARY (คัดลอกสรุปรายการส่ง LINE - จัดกลุ่มแยกตามร้าน)
 // ─────────────────────────────────────────────────────────────
 function copyLineOrderSummary() {
     if (AppState.orderList.length === 0) {
@@ -1248,44 +1322,171 @@ function copyLineOrderSummary() {
     const dateStr = now.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
     const timeStr = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
 
-    let totalSheets = 0;
-    let grandTotal = 0;
+    // จัดกลุ่มรายการสั่งซื้อตามร้านค้า
+    const shopGroups = {};
+    let grandTotalSheets = 0;
+    let grandTotalPrice = 0;
 
-    let lines = [];
-    lines.push(`📦 รายการสั่งซื้อไม้ - Sgyver Material`);
-    lines.push(`----------------------------------------`);
-
-    AppState.orderList.forEach((item, index) => {
-        const itemTotal = item.price * item.quantity;
-        totalSheets += item.quantity;
-        grandTotal += itemTotal;
-        lines.push(`${index + 1}. [${item.categoryName}] ขนาด ${item.size}`);
-        lines.push(`   จำนวน: ${item.quantity} แผ่น @ ${formatMoney(item.price)} ฿ = ${formatMoney(itemTotal)} ฿`);
+    AppState.orderList.forEach(item => {
+        const sName = item.shop?.trim() || 'ไม่ระบุร้านค้า';
+        if (!shopGroups[sName]) shopGroups[sName] = [];
+        shopGroups[sName].push(item);
+        grandTotalSheets += item.quantity;
+        grandTotalPrice += item.price * item.quantity;
     });
 
-    lines.push(`----------------------------------------`);
-    lines.push(`📊 จำนวนรวมทั้งหมด: ${totalSheets.toLocaleString('th-TH')} แผ่น`);
-    lines.push(`💰 ยอดรวมสุทธิ: ${formatMoney(grandTotal)} บาท`);
+    const shopNames = Object.keys(shopGroups);
+    let lines = [];
+    lines.push(`📦 รายการสั่งซื้อไม้ - Sgyver Material`);
     lines.push(`📅 วันที่: ${dateStr} เวลา ${timeStr} น.`);
-    lines.push(`----------------------------------------`);
+    lines.push(`========================================`);
+
+    let itemCounter = 1;
+    shopNames.forEach((sName, sIdx) => {
+        const items = shopGroups[sName];
+        let shopSheets = 0;
+        let shopPrice = 0;
+
+        lines.push(`📍 แหล่งซื้อ/ร้าน: 【 ${sName} 】`);
+        items.forEach(it => {
+            const rowTotal = it.price * it.quantity;
+            shopSheets += it.quantity;
+            shopPrice += rowTotal;
+            lines.push(`  ${itemCounter++}. [${it.categoryName}] ขนาด ${it.size}`);
+            lines.push(`     จำนวน: ${it.quantity} แผ่น @ ${formatMoney(it.price)} ฿ = ${formatMoney(rowTotal)} ฿`);
+        });
+        lines.push(`  ➡️ รวมร้าน ${sName}: ${shopSheets.toLocaleString('th-TH')} แผ่น | ${formatMoney(shopPrice)} ฿`);
+        if (sIdx < shopNames.length - 1) {
+            lines.push(`----------------------------------------`);
+        }
+    });
+
+    lines.push(`========================================`);
+    lines.push(`📊 จำนวนรวมทั้งหมด: ${grandTotalSheets.toLocaleString('th-TH')} แผ่น (${shopNames.length} ร้าน)`);
+    lines.push(`💰 ยอดรวมสุทธิ: ${formatMoney(grandTotalPrice)} บาท`);
+    lines.push(`========================================`);
     lines.push(`*ส่งจากระบบ Sgyver Material Studio*`);
 
     const fullMessage = lines.join('\n');
+    copyToClipboardWithFeedback(fullMessage, 'คัดลอกสรุปส่ง LINE แล้ว!', 'จัดกลุ่มแยกตามร้านเรียบร้อย พร้อมวางในแชท LINE ได้ทันที');
+}
 
+// ─────────────────────────────────────────────────────────────
+// MODAL: ส่ง LINE แยกเฉพาะร้าน (Shop Line Copy Modal)
+// ─────────────────────────────────────────────────────────────
+function openShopLineCopyModal() {
+    if (AppState.orderList.length === 0) {
+        if (typeof showToast === 'function') {
+            showToast('warning', 'ไม่มีรายการสินค้า', 'กรุณาเลือกไม้ลงในตารางก่อน');
+        }
+        return;
+    }
+
+    const container = document.getElementById('shopLineModalContent');
+    if (!container) return;
+
+    const shopGroups = {};
+    AppState.orderList.forEach(item => {
+        const sName = item.shop?.trim() || 'ไม่ระบุร้านค้า';
+        if (!shopGroups[sName]) shopGroups[sName] = [];
+        shopGroups[sName].push(item);
+    });
+
+    const shopNames = Object.keys(shopGroups);
+    container.innerHTML = shopNames.map(sName => {
+        const items = shopGroups[sName];
+        const totalQty = items.reduce((sum, i) => sum + (Number(i.quantity) || 1), 0);
+        const subtotal = items.reduce((sum, i) => sum + (Number(i.price) * Number(i.quantity)), 0);
+
+        return `
+            <div class="shop-order-card">
+                <div class="shop-order-header">
+                    <div class="shop-order-name">
+                        <i class="bi bi-shop"></i>
+                        <span>${escapeHtml(sName)}</span>
+                    </div>
+                    <span class="pane-badge" style="background: rgba(255, 149, 0, 0.2); color: #b45309;">
+                        ${items.length} รายการ
+                    </span>
+                </div>
+                <div class="shop-order-body">
+                    <ul class="shop-order-item-list">
+                        ${items.map(it => `
+                            <li>
+                                <span><strong>[${escapeHtml(it.categoryName)}]</strong> ${escapeHtml(it.size)} &times; ${it.quantity} แผ่น</span>
+                                <span style="font-family: monospace; font-weight: 600;">${formatMoney(it.price * it.quantity)} ฿</span>
+                            </li>
+                        `).join('')}
+                    </ul>
+                    <div class="shop-order-footer">
+                        <div style="font-size: 0.86rem; color: var(--ios-label);">
+                            รวม: <strong>${totalQty} แผ่น</strong> | <strong style="color: #248a3d;">${formatMoney(subtotal)} ฿</strong>
+                        </div>
+                        <button class="btn-classic btn-line-classic" onclick="copySingleShopLineOrder('${escapeHtml(sName)}')">
+                            <i class="bi bi-line"></i> คัดลอกส่งร้านนี้
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    openModal('shopLineModalOverlay');
+}
+window.openShopLineCopyModal = openShopLineCopyModal;
+
+function copySingleShopLineOrder(shopName) {
+    const items = AppState.orderList.filter(item => {
+        const sName = item.shop?.trim() || 'ไม่ระบุร้านค้า';
+        return sName === shopName;
+    });
+
+    if (items.length === 0) return;
+
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
+    const timeStr = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+
+    let lines = [];
+    lines.push(`📦 สั่งซื้อไม้ - ร้าน: ${shopName}`);
+    lines.push(`📅 วันที่: ${dateStr} เวลา ${timeStr} น.`);
+    lines.push(`----------------------------------------`);
+
+    let totalQty = 0;
+    let subtotal = 0;
+    items.forEach((it, idx) => {
+        const rowTotal = it.price * it.quantity;
+        totalQty += it.quantity;
+        subtotal += rowTotal;
+        lines.push(`${idx + 1}. [${it.categoryName}] ขนาด ${it.size}`);
+        lines.push(`   จำนวน: ${it.quantity} แผ่น @ ${formatMoney(it.price)} ฿ = ${formatMoney(rowTotal)} ฿`);
+    });
+
+    lines.push(`----------------------------------------`);
+    lines.push(`📊 จำนวนรวม: ${totalQty.toLocaleString('th-TH')} แผ่น`);
+    lines.push(`💰 ยอดรวม: ${formatMoney(subtotal)} บาท`);
+    lines.push(`----------------------------------------`);
+    lines.push(`*ส่งจากระบบ Sgyver Material Studio*`);
+
+    copyToClipboardWithFeedback(lines.join('\n'), `คัดลอกส่งร้าน "${shopName}" แล้ว!`, 'พร้อมวางในแชท LINE ของร้านนี้ได้ทันที');
+}
+window.copySingleShopLineOrder = copySingleShopLineOrder;
+
+function copyToClipboardWithFeedback(text, title, desc) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(fullMessage).then(() => {
+        navigator.clipboard.writeText(text).then(() => {
             if (typeof showToast === 'function') {
-                showToast('success', 'คัดลอกส่ง LINE แล้ว!', 'จัดรูปแบบข้อความและ Copy ลง Clipboard พร้อมวางในแชทร้านไม้ได้ทันที', 3500);
+                showToast('success', title, desc, 3500);
             }
-        }).catch(err => {
-            fallbackCopyText(fullMessage);
+        }).catch(() => {
+            fallbackCopyText(text, title, desc);
         });
     } else {
-        fallbackCopyText(fullMessage);
+        fallbackCopyText(text, title, desc);
     }
 }
 
-function fallbackCopyText(text) {
+function fallbackCopyText(text, title = 'คัดลอกสำเร็จ!', desc = 'ข้อความพร้อมใช้งานทันที') {
     const textarea = document.createElement('textarea');
     textarea.value = text;
     textarea.style.position = 'fixed';
@@ -1295,7 +1496,7 @@ function fallbackCopyText(text) {
     try {
         document.execCommand('copy');
         if (typeof showToast === 'function') {
-            showToast('success', 'คัดลอกส่ง LINE แล้ว!', 'ข้อความพร้อมวางในแชทร้านไม้ได้ทันที');
+            showToast('success', title, desc);
         }
     } catch (e) {
         alert('คัดลอกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');

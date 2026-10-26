@@ -125,10 +125,13 @@
                 <span class="pane-badge" id="itemCountBadge">0 รายการ</span>
             </div>
 
-            <!-- Quick Filter / Search within category -->
+            <!-- Quick Filter / Search within category & shop -->
             <div class="item-search-bar">
                 <i class="bi bi-search text-muted"></i>
-                <input type="text" class="search-input" id="itemSearchInput" placeholder="ค้นหาความหนา หรือขนาดไม้..." oninput="filterItems()">
+                <input type="text" class="search-input" id="itemSearchInput" placeholder="ค้นหาขนาด, ราคา หรือร้านขาย..." oninput="filterItems()">
+                <select class="shop-filter-select" id="shopFilterSelect" onchange="filterItems()" title="กรองตามร้านขาย">
+                    <option value="">🏪 ทุกร้าน</option>
+                </select>
             </div>
 
             <div class="items-table-container">
@@ -136,10 +139,11 @@
                     <thead>
                         <tr>
                             <th style="width: 36px; text-align: center;">เลือก</th>
-                            <th style="width: 90px;">ประเภท</th>
+                            <th style="width: 85px;">ประเภท</th>
                             <th>ความหนา / ขนาด</th>
-                            <th style="width: 130px; text-align: right;">ราคา (฿)</th>
-                            <th style="width: 55px; text-align: center;">จัดการ</th>
+                            <th style="width: 110px;">ร้านขาย</th>
+                            <th style="width: 105px; text-align: right;">ราคา (฿)</th>
+                            <th style="width: 50px; text-align: center;">จัดการ</th>
                         </tr>
                     </thead>
                     <tbody id="itemsTableBody">
@@ -212,13 +216,14 @@
                     <table class="order-table" id="orderTable">
                         <thead>
                             <tr>
-                                <th style="width: 36px; text-align: center;">No</th>
-                                <th style="width: 110px;">Material</th>
+                                <th style="width: 32px; text-align: center;">No</th>
+                                <th style="width: 95px;">Material</th>
                                 <th>Size</th>
-                                <th style="width: 100px; text-align: right;">Price</th>
-                                <th style="width: 120px; text-align: center;">Quantity</th>
-                                <th style="width: 110px; text-align: right;">Total</th>
-                                <th style="width: 44px; text-align: center;">ลบ</th>
+                                <th style="width: 100px;">ร้านขาย</th>
+                                <th style="width: 90px; text-align: right;">Price</th>
+                                <th style="width: 110px; text-align: center;">Quantity</th>
+                                <th style="width: 95px; text-align: right;">Total</th>
+                                <th style="width: 40px; text-align: center;">ลบ</th>
                             </tr>
                         </thead>
                         <tbody id="orderTableBody">
@@ -245,8 +250,11 @@
                     </div>
 
                     <div class="summary-actions">
-                        <button class="btn-classic btn-line-classic" onclick="copyLineOrderSummary()" title="คัดลอกสรุปรายการเป็นข้อความพร้อมส่ง LINE ทันที">
-                            <i class="bi bi-line"></i> คัดลอกสรุปรายการส่ง LINE
+                        <button class="btn-classic btn-line-classic" onclick="copyLineOrderSummary()" title="คัดลอกสรุปรายการแยกตามร้านส่ง LINE ทันที">
+                            <i class="bi bi-line"></i> คัดลอกส่ง LINE (รวม)
+                        </button>
+                        <button class="btn-classic" onclick="openShopLineCopyModal()" title="คัดลอกแยกเฉพาะร้าน เพื่อส่งแชทให้แต่ละร้าน">
+                            <i class="bi bi-shop"></i> ส่ง LINE แยกตามร้าน
                         </button>
                         <button class="btn-classic btn-primary-classic" onclick="saveOrderToHistory()" title="บันทึกออเดอร์นี้ลง Supabase และประวัติ">
                             <i class="bi bi-floppy-fill"></i> บันทึกออเดอร์
@@ -284,6 +292,10 @@
                     <input type="text" id="editSizeText" class="form-input" placeholder="เช่น 6 mm หรือ 18">
                 </div>
                 <div class="form-group">
+                    <label><i class="bi bi-shop" style="color: var(--ios-orange);"></i> ร้านขาย / แหล่งซื้อ (Shop / Supplier)</label>
+                    <input type="text" id="editShopInput" list="shopSuggestionsList" class="form-input" placeholder="เช่น ร้านบางโพ, ไทวัสดุ, สยามไม้อัด (เว้นว่างได้)">
+                </div>
+                <div class="form-group">
                     <label>ราคาต่อแผ่น (บาท) <span style="color: red;">*</span></label>
                     <input type="number" id="editPriceInput" step="0.5" class="form-input" placeholder="เช่น 165.0" autofocus>
                 </div>
@@ -291,7 +303,7 @@
             <div class="classic-modal-footer">
                 <button class="btn-classic" onclick="closeModal('quickEditModalOverlay')">ยกเลิก</button>
                 <button class="btn-classic btn-primary-classic" onclick="confirmSaveQuickPrice()">
-                    <i class="bi bi-check-lg"></i> อัปเดตราคา
+                    <i class="bi bi-check-lg"></i> อัปเดตข้อมูล
                 </button>
             </div>
         </div>
@@ -314,6 +326,10 @@
                 <div class="form-group">
                     <label>ชื่อภาษาไทย / คำอธิบายสั้น</label>
                     <input type="text" id="newCatDesc" class="form-input" placeholder="เช่น ไม้สักประสานเกรด A สำหรับทำท็อปโต๊ะ">
+                </div>
+                <div class="form-group">
+                    <label><i class="bi bi-shop" style="color: var(--ios-orange);"></i> ร้านขายเริ่มต้น (Default Shop - เว้นว่างได้)</label>
+                    <input type="text" id="newCatDefaultShop" list="shopSuggestionsList" class="form-input" placeholder="เช่น ร้านบางโพ, ไทวัสดุ">
                 </div>
                 <div class="form-group">
                     <label>URL รูปภาพตัวอย่าง (ใส่หรือไม่ใส่ก็ได้)</label>
@@ -346,6 +362,10 @@
                 <div class="form-group">
                     <label>ขนาดความหนา (เช่น 6, 15, 18 mm หรือ 1" x 2") <span style="color: red;">*</span></label>
                     <input type="text" id="newSizeInput" class="form-input" placeholder="เช่น 18 mm หรือ 25">
+                </div>
+                <div class="form-group">
+                    <label><i class="bi bi-shop" style="color: var(--ios-orange);"></i> ร้านขาย / แหล่งซื้อ (Shop / Supplier)</label>
+                    <input type="text" id="newShopInput" list="shopSuggestionsList" class="form-input" placeholder="เช่น ร้านบางโพ, ไทวัสดุ, สยามไม้อัด (เว้นว่างได้)">
                 </div>
                 <div class="form-group">
                     <label>ราคาต่อหน่วย / แผ่น (บาท) <span style="color: red;">*</span></label>
@@ -421,7 +441,33 @@
                 <button class="btn-classic" onclick="closeModal('orderHistoryModalOverlay')">ปิด</button>
             </div>
         </div>
+    <!-- 6. Modal: คัดลอกส่ง LINE แยกทีละร้าน (Shop Line Copy) -->
+    <div class="classic-modal-overlay" id="shopLineModalOverlay">
+        <div class="classic-modal" style="width: 650px;">
+            <div class="classic-modal-header">
+                <h3 class="classic-modal-title">
+                    <i class="bi bi-shop" style="color: var(--ios-orange);"></i> ส่ง LINE แยกตามร้านขาย
+                </h3>
+                <button class="classic-modal-close" onclick="closeModal('shopLineModalOverlay')">&times;</button>
+            </div>
+            <div class="classic-modal-body" style="max-height: 440px; overflow-y: auto;">
+                <p style="font-size: 0.84rem; color: var(--text-muted); margin-bottom: 12px;">
+                    ระบบจัดกลุ่มไม้ตามร้านขายให้เรียบร้อยแล้ว ท่านสามารถกดคัดลอกข้อความเพื่อส่งแชท LINE ให้แต่ละร้านได้ทันที
+                </p>
+                <div id="shopLineModalContent" class="shop-line-cards-container">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+            <div class="classic-modal-footer">
+                <button class="btn-classic" onclick="closeModal('shopLineModalOverlay')">ปิด</button>
+            </div>
+        </div>
     </div>
+
+    <!-- Datalist สำหรับแนะนำชื่อร้านที่เคยบันทึกไว้ในระบบ -->
+    <datalist id="shopSuggestionsList">
+        <!-- Populated dynamically by JS -->
+    </datalist>
 
     <!-- Scripts: Supabase & Modules -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

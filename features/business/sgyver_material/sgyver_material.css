@@ -249,7 +249,7 @@ body {
 .main-workspace {
     flex: 1;
     display: grid;
-    grid-template-columns: 250px 490px 1fr;
+    grid-template-columns: 240px minmax(520px, 1.2fr) 1fr;
     gap: 14px;
     padding: 14px 16px;
     height: calc(100vh - 68px);
@@ -448,6 +448,31 @@ body {
     box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2);
 }
 
+.shop-filter-select {
+    padding: 7px 12px;
+    font-size: 0.84rem;
+    font-weight: 600;
+    font-family: inherit;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: rgba(255, 149, 0, 0.12);
+    color: #b45309;
+    outline: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    max-width: 150px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.shop-filter-select:hover {
+    background: rgba(255, 149, 0, 0.18);
+}
+
+.shop-filter-select:focus {
+    box-shadow: 0 0 0 2px rgba(255, 149, 0, 0.3);
+}
+
 .items-table-container {
     flex: 1;
     overflow-y: auto;
@@ -539,6 +564,101 @@ body {
     font-weight: 700;
     font-size: 0.92rem;
     color: var(--ios-label);
+}
+
+/* iOS Shop / Supplier Badge */
+.item-shop-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    font-size: 0.74rem;
+    font-weight: 600;
+    border-radius: var(--radius-pill);
+    background: rgba(255, 149, 0, 0.12);
+    color: #b45309;
+    max-width: 130px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border: 0.5px solid rgba(245, 158, 11, 0.25);
+    letter-spacing: -0.1px;
+}
+
+.item-shop-badge i {
+    font-size: 0.76rem;
+    color: var(--ios-orange);
+}
+
+.item-shop-badge.empty {
+    background: rgba(142, 142, 147, 0.08);
+    color: var(--ios-label-tertiary);
+    border: none;
+    padding: 2px 6px;
+    font-weight: normal;
+}
+
+/* Modal 6: Shop Line Grouped Cards */
+.shop-line-cards-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.shop-order-card {
+    background: #ffffff;
+    border: 0.5px solid var(--ios-border-card);
+    border-radius: var(--radius-card);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    overflow: hidden;
+}
+
+.shop-order-header {
+    background: rgba(255, 149, 0, 0.08);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 0.5px solid rgba(255, 149, 0, 0.18);
+}
+
+.shop-order-name {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #92400e;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.shop-order-body {
+    padding: 12px 14px;
+}
+
+.shop-order-item-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 10px 0;
+    font-size: 0.85rem;
+}
+
+.shop-order-item-list li {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    border-bottom: 0.5px dashed var(--ios-separator);
+}
+
+.shop-order-item-list li:last-child {
+    border-bottom: none;
+}
+
+.shop-order-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 8px;
+    border-top: 0.5px solid var(--ios-separator);
 }
 
 /* iOS Action Dropdown Menu */
