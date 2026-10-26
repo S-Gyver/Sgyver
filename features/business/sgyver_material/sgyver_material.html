@@ -45,10 +45,13 @@
         </div>
 
         <div class="header-right">
-            <!-- Supabase Status -->
-            <div class="status-indicator online" id="supabaseStatusBadge" title="สถานะเชื่อมต่อ Supabase Database">
+            <!-- Supabase Status & Sync -->
+            <div class="status-indicator online" id="supabaseStatusBadge" title="คลิกเพื่อดึงข้อมูลล่าสุดจาก Supabase ทันที" style="cursor: pointer;" onclick="syncFromSupabase(true)">
                 <i class="bi bi-database-check"></i> <span id="supabaseStatusText">Supabase Online</span>
             </div>
+            <button class="btn-classic" onclick="syncFromSupabase(true)" title="กดเพื่อดึงข้อมูลล่าสุดจาก Supabase ทันที">
+                <i class="bi bi-arrow-repeat"></i> ซิงค์ Supabase
+            </button>
 
             <!-- Cloudinary Status -->
             <div class="status-indicator cloud" id="cloudinaryStatusBadge" title="เชื่อมต่อ Cloudinary Storage เรียบร้อย">

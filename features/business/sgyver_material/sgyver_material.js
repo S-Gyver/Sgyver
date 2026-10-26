@@ -12,139 +12,341 @@ const CLOUDINARY_CONFIG = {
     uploadPreset: 'gyver_live',
 };
 
-// ── DEFAULT WOOD DATA ──────────────────────────────────────────
+// ── DEFAULT WOOD DATA (Synced with Supabase) ──────────────────
 const DEFAULT_CATEGORIES = [
-    {
-        id: 'HMR',
-        name: 'HMR',
-        title: 'HMR (High Moisture Resistance Board)',
-        description: 'ไม้แผ่นใยไม้อัดทนความชื้น สีเขียว สำหรับงานครัว ห้องน้ำ และพื้นที่เสี่ยงความชื้นสูง',
-        imageUrl: 'https://images.unsplash.com/photo-1546484475-7f7bd55792da?auto=format&fit=crop&w=600&q=80',
-        items: [
-            { id: 'hmr_3', size: '3 mm', price: 145.0 },
-            { id: 'hmr_4', size: '4 mm', price: 175.0 },
-            { id: 'hmr_6', size: '6 mm', price: 235.0 },
-            { id: 'hmr_9', size: '9 mm', price: 310.0 },
-            { id: 'hmr_12', size: '12 mm', price: 420.0 },
-            { id: 'hmr_15', size: '15 mm', price: 510.0 },
-            { id: 'hmr_18', size: '18 mm', price: 590.0 },
-            { id: 'hmr_25', size: '25 mm', price: 820.0 }
-        ]
-    },
-    {
-        id: 'MDF',
-        name: 'MDF',
-        title: 'MDF (Medium Density Fiberboard)',
-        description: 'แผ่นใยไม้อัดความหนาแน่นปานกลาง ผิวเรียบเนียนทั้งสองด้าน เหมาะสำหรับทำเฟอร์นิเจอร์ บิวท์อิน และงานพ่นสี',
-        imageUrl: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=600&q=80',
-        items: [
-            { id: 'mdf_2_5', size: '2.5 mm', price: 68.0 },
-            { id: 'mdf_3', size: '3 mm', price: 91.0 },
-            { id: 'mdf_4', size: '4 mm', price: 115.0 },
-            { id: 'mdf_5_5', size: '5.5 mm', price: 150.0 },
-            { id: 'mdf_6', size: '6 mm', price: 165.0 },
-            { id: 'mdf_9', size: '9 mm', price: 220.0 },
-            { id: 'mdf_12', size: '12 mm', price: 290.0 },
-            { id: 'mdf_15', size: '15 mm', price: 350.0 },
-            { id: 'mdf_16', size: '16 mm', price: 385.0 },
-            { id: 'mdf_18', size: '18 mm', price: 410.0 },
-            { id: 'mdf_19', size: '19 mm', price: 460.0 },
-            { id: 'mdf_25', size: '25 mm', price: 650.0 }
-        ]
-    },
-    {
-        id: 'Rubber_Wood',
-        name: 'Rubber_Wood',
-        title: 'Rubber Wood (ไม้ยางพาราประสาน)',
-        description: 'ไม้จริงประสาน ลายไม้ธรรมชาติ แข็งแรง ทนทาน นิยมทำท็อปโต๊ะ บันได และเฟอร์นิเจอร์ไม้จริง',
-        imageUrl: 'https://images.unsplash.com/photo-1533090161767-e6ffed986c88?auto=format&fit=crop&w=600&q=80',
-        items: [
-            { id: 'rw_12', size: '12 mm', price: 550.0 },
-            { id: 'rw_16', size: '16 mm', price: 680.0 },
-            { id: 'rw_18', size: '18 mm', price: 750.0 },
-            { id: 'rw_20', size: '20 mm', price: 820.0 },
-            { id: 'rw_25', size: '25 mm', price: 1050.0 },
-            { id: 'rw_30', size: '30 mm', price: 1250.0 }
-        ]
-    },
-    {
-        id: 'Pine_Wood',
-        name: 'Pine_Wood',
-        title: 'Pine Wood (ไม้สนประสาน)',
-        description: 'ไม้สนประสาน ลายไม้มีตาไม้สไตล์นอร์ดิก / สแกนดิเนเวียน น้ำหนักเบา ขัดแต่งง่าย',
-        imageUrl: 'https://images.unsplash.com/photo-1546484396-fb3fc6f95f98?auto=format&fit=crop&w=600&q=80',
-        items: [
-            { id: 'pw_12', size: '12 mm', price: 620.0 },
-            { id: 'pw_15', size: '15 mm', price: 720.0 },
-            { id: 'pw_18', size: '18 mm', price: 850.0 },
-            { id: 'pw_20', size: '20 mm', price: 940.0 },
-            { id: 'pw_25', size: '25 mm', price: 1180.0 }
-        ]
-    },
-    {
-        id: 'Plywood_Black',
-        name: 'Plywood_Black',
-        title: 'Plywood Black (ไม้อัดเคลือบฟิล์มดำ)',
-        description: 'ไม้อัดเคลือบฟิล์มฟีนอลสีดำ กันน้ำ ทนแดด ทนสารเคมี งานหล่อคอนกรีตและงานโครงสร้างกลางแจ้ง',
-        imageUrl: 'https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=600&q=80',
-        items: [
-            { id: 'pb_10', size: '10 mm', price: 390.0 },
-            { id: 'pb_12', size: '12 mm', price: 460.0 },
-            { id: 'pb_15', size: '15 mm', price: 560.0 },
-            { id: 'pb_18', size: '18 mm', price: 690.0 },
-            { id: 'pb_20', size: '20 mm', price: 780.0 }
-        ]
-    },
-    {
-        id: 'Plywood_Core',
-        name: 'Plywood_Core',
-        title: 'Plywood Core (ไม้อัดไส้แน่น / ไม้อัดยาง)',
-        description: 'ไม้อัดยางไส้แน่น แข็งแรง ไม่แอ่นงอ เหมาะสำหรับงานบิวท์อิน โครงตู้ และงานปูพื้น',
-        imageUrl: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=600&q=80',
-        items: [
-            { id: 'pc_3', size: '3 mm', price: 120.0 },
-            { id: 'pc_4', size: '4 mm', price: 155.0 },
-            { id: 'pc_6', size: '6 mm', price: 230.0 },
-            { id: 'pc_10', size: '10 mm', price: 340.0 },
-            { id: 'pc_15', size: '15 mm', price: 490.0 },
-            { id: 'pc_20', size: '20 mm', price: 650.0 }
-        ]
-    },
-    {
-        id: 'Frame Wood',
-        name: 'Frame Wood',
-        title: 'Frame Wood (ไม้โครงสน / สะเดา / ไม้ยาง)',
-        description: 'ไม้แปรรูปสำหรับทำโครงสร้างเฟอร์นิเจอร์ โครงผนังเบา และงานตกแต่งภายใน ผ่านการอบน้ำยากันมอด',
-        imageUrl: 'https://images.unsplash.com/photo-1520699049698-acd2fccb8cc8?auto=format&fit=crop&w=600&q=80',
-        items: [
-            { id: 'fw_1x2_244', size: '1" x 2" x 2.44m', price: 45.0 },
-            { id: 'fw_1x2_300', size: '1" x 2" x 3.00m', price: 58.0 },
-            { id: 'fw_15x3_244', size: '1.5" x 3" x 2.44m', price: 95.0 },
-            { id: 'fw_2x2_244', size: '2" x 2" x 2.44m', price: 85.0 }
-        ]
-    },
-    {
-        id: 'HMR_White',
-        name: 'HMR_White',
-        title: 'HMR White (ไม้ HMR เคลือบเมลามีนขาว)',
-        description: 'ไม้ HMR ทนชื้น เคลือบผิวเมลามีนสีขาวสองด้าน ทนต่อรอยขีดข่วน ไม่ต้องทาสีพร้อมใช้งานทันที',
-        imageUrl: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80',
-        items: [
-            { id: 'hmrw_6', size: '6 mm', price: 295.0 },
-            { id: 'hmrw_9', size: '9 mm', price: 380.0 },
-            { id: 'hmrw_12', size: '12 mm', price: 480.0 },
-            { id: 'hmrw_15', size: '15 mm', price: 560.0 },
-            { id: 'hmrw_16', size: '16 mm', price: 610.0 },
-            { id: 'hmrw_18', size: '18 mm', price: 680.0 },
-            { id: 'hmrw_25', size: '25 mm', price: 950.0 }
-        ]
-    }
+  {
+    "id": "HMR",
+    "name": "HMR",
+    "items": [
+      {
+        "id": "hmr_3",
+        "size": "3 mm",
+        "price": 136
+      },
+      {
+        "id": "hmr_9",
+        "size": "9 mm",
+        "price": 295
+      },
+      {
+        "id": "hmr_12",
+        "size": "12 mm",
+        "price": 400
+      },
+      {
+        "id": "hmr_15",
+        "size": "15 mm",
+        "price": 460
+      },
+      {
+        "id": "hmr_18",
+        "size": "18 mm",
+        "price": 560
+      },
+      {
+        "id": "hmr_25",
+        "size": "25 mm",
+        "price": 930
+      }
+    ],
+    "title": "HMR (High Moisture Resistance Board)",
+    "imageUrl": "https://res.cloudinary.com/xn7rvu6g/image/upload/v1792978656/sgyver_materials/swqbufkp9xq43vicwmbc.webp",
+    "description": "ไม้แผ่นใยไม้อัดทนความชื้น สีเขียว สำหรับงานครัว ห้องน้ำ และพื้นที่เสี่ยงความชื้นสูง"
+  },
+  {
+    "id": "MDF",
+    "name": "MDF",
+    "items": [
+      {
+        "id": "mdf_2_5",
+        "size": "2.5 mm",
+        "price": 68
+      },
+      {
+        "id": "mdf_3",
+        "size": "3 mm",
+        "price": 91
+      },
+      {
+        "id": "mdf_4",
+        "size": "4 mm",
+        "price": 115
+      },
+      {
+        "id": "mdf_5_5",
+        "size": "5.5 mm",
+        "price": 150
+      },
+      {
+        "id": "mdf_6",
+        "size": "6 mm",
+        "price": 165
+      },
+      {
+        "id": "mdf_9",
+        "size": "9 mm",
+        "price": 220
+      },
+      {
+        "id": "mdf_12",
+        "size": "12 mm",
+        "price": 290
+      },
+      {
+        "id": "mdf_15",
+        "size": "15 mm",
+        "price": 350
+      },
+      {
+        "id": "mdf_16",
+        "size": "16 mm",
+        "price": 385
+      },
+      {
+        "id": "mdf_18",
+        "size": "18 mm",
+        "price": 410
+      },
+      {
+        "id": "mdf_19",
+        "size": "19 mm",
+        "price": 460
+      },
+      {
+        "id": "mdf_25",
+        "size": "25 mm",
+        "price": 650
+      }
+    ],
+    "title": "MDF (Medium Density Fiberboard)",
+    "imageUrl": "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=600&q=80",
+    "description": "แผ่นใยไม้อัดความหนาแน่นปานกลาง ผิวเรียบเนียนทั้งสองด้าน เหมาะสำหรับทำเฟอร์นิเจอร์ บิวท์อิน และงานพ่นสี"
+  },
+  {
+    "id": "Rubber_Wood",
+    "name": "Rubber_Wood",
+    "items": [
+      {
+        "id": "rw_12",
+        "size": "12 mm",
+        "price": 550
+      },
+      {
+        "id": "rw_16",
+        "size": "16 mm",
+        "price": 680
+      },
+      {
+        "id": "rw_18",
+        "size": "18 mm",
+        "price": 750
+      },
+      {
+        "id": "rw_20",
+        "size": "20 mm",
+        "price": 820
+      },
+      {
+        "id": "rw_25",
+        "size": "25 mm",
+        "price": 1050
+      },
+      {
+        "id": "rw_30",
+        "size": "30 mm",
+        "price": 1250
+      }
+    ],
+    "title": "Rubber Wood (ไม้ยางพาราประสาน)",
+    "imageUrl": "https://images.unsplash.com/photo-1533090161767-e6ffed986c88?auto=format&fit=crop&w=600&q=80",
+    "description": "ไม้จริงประสาน ลายไม้ธรรมชาติ แข็งแรง ทนทาน นิยมทำท็อปโต๊ะ บันได และเฟอร์นิเจอร์ไม้จริง"
+  },
+  {
+    "id": "Pine_Wood",
+    "name": "Pine_Wood",
+    "items": [
+      {
+        "id": "pw_12",
+        "size": "12 mm",
+        "price": 620
+      },
+      {
+        "id": "pw_15",
+        "size": "15 mm",
+        "price": 720
+      },
+      {
+        "id": "pw_18",
+        "size": "18 mm",
+        "price": 850
+      },
+      {
+        "id": "pw_20",
+        "size": "20 mm",
+        "price": 940
+      },
+      {
+        "id": "pw_25",
+        "size": "25 mm",
+        "price": 1180
+      }
+    ],
+    "title": "Pine Wood (ไม้สนประสาน)",
+    "imageUrl": "https://images.unsplash.com/photo-1546484396-fb3fc6f95f98?auto=format&fit=crop&w=600&q=80",
+    "description": "ไม้สนประสาน ลายไม้มีตาไม้สไตล์นอร์ดิก / สแกนดิเนเวียน น้ำหนักเบา ขัดแต่งง่าย"
+  },
+  {
+    "id": "Plywood_Black",
+    "name": "Plywood_Black",
+    "items": [
+      {
+        "id": "pb_10",
+        "size": "10 mm",
+        "price": 390
+      },
+      {
+        "id": "pb_12",
+        "size": "12 mm",
+        "price": 460
+      },
+      {
+        "id": "pb_15",
+        "size": "15 mm",
+        "price": 560
+      },
+      {
+        "id": "pb_18",
+        "size": "18 mm",
+        "price": 690
+      },
+      {
+        "id": "pb_20",
+        "size": "20 mm",
+        "price": 780
+      }
+    ],
+    "title": "Plywood Black (ไม้อัดเคลือบฟิล์มดำ)",
+    "imageUrl": "https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=600&q=80",
+    "description": "ไม้อัดเคลือบฟิล์มฟีนอลสีดำ กันน้ำ ทนแดด ทนสารเคมี งานหล่อคอนกรีตและงานโครงสร้างกลางแจ้ง"
+  },
+  {
+    "id": "Plywood_Core",
+    "name": "Plywood_Core",
+    "items": [
+      {
+        "id": "pc_3",
+        "size": "3 mm",
+        "price": 120
+      },
+      {
+        "id": "pc_4",
+        "size": "4 mm",
+        "price": 155
+      },
+      {
+        "id": "pc_6",
+        "size": "6 mm",
+        "price": 230
+      },
+      {
+        "id": "pc_10",
+        "size": "10 mm",
+        "price": 340
+      },
+      {
+        "id": "pc_15",
+        "size": "15 mm",
+        "price": 490
+      },
+      {
+        "id": "pc_20",
+        "size": "20 mm",
+        "price": 650
+      }
+    ],
+    "title": "Plywood Core (ไม้อัดไส้แน่น / ไม้อัดยาง)",
+    "imageUrl": "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=600&q=80",
+    "description": "ไม้อัดยางไส้แน่น แข็งแรง ไม่แอ่นงอ เหมาะสำหรับงานบิวท์อิน โครงตู้ และงานปูพื้น"
+  },
+  {
+    "id": "Frame Wood",
+    "name": "Frame Wood",
+    "items": [
+      {
+        "id": "fw_1x2_244",
+        "size": "1\" x 2\" x 2.44m",
+        "price": 45
+      },
+      {
+        "id": "fw_1x2_300",
+        "size": "1\" x 2\" x 3.00m",
+        "price": 58
+      },
+      {
+        "id": "fw_15x3_244",
+        "size": "1.5\" x 3\" x 2.44m",
+        "price": 95
+      },
+      {
+        "id": "fw_2x2_244",
+        "size": "2\" x 2\" x 2.44m",
+        "price": 85
+      }
+    ],
+    "title": "Frame Wood (ไม้โครงสน / สะเดา / ไม้ยาง)",
+    "imageUrl": "https://images.unsplash.com/photo-1520699049698-acd2fccb8cc8?auto=format&fit=crop&w=600&q=80",
+    "description": "ไม้แปรรูปสำหรับทำโครงสร้างเฟอร์นิเจอร์ โครงผนังเบา และงานตกแต่งภายใน ผ่านการอบน้ำยากันมอด"
+  },
+  {
+    "id": "HMR_White",
+    "name": "HMR_White",
+    "items": [
+      {
+        "id": "hmrw_6",
+        "size": "6 mm",
+        "price": 295
+      },
+      {
+        "id": "hmrw_9",
+        "size": "9 mm",
+        "price": 380
+      },
+      {
+        "id": "hmrw_12",
+        "size": "12 mm",
+        "price": 480
+      },
+      {
+        "id": "hmrw_15",
+        "size": "15 mm",
+        "price": 560
+      },
+      {
+        "id": "hmrw_16",
+        "size": "16 mm",
+        "price": 610
+      },
+      {
+        "id": "hmrw_18",
+        "size": "18 mm",
+        "price": 680
+      },
+      {
+        "id": "hmrw_25",
+        "size": "25 mm",
+        "price": 950
+      }
+    ],
+    "title": "HMR White (ไม้ HMR เคลือบเมลามีนขาว)",
+    "imageUrl": "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80",
+    "description": "ไม้ HMR ทนชื้น เคลือบผิวเมลามีนสีขาวสองด้าน ทนต่อรอยขีดข่วน ไม่ต้องทาสีพร้อมใช้งานทันที"
+  }
 ];
 
 // ── GLOBAL APPLICATION STATE ──────────────────────────────────
 const AppState = {
     categories: [],
-    selectedCategoryId: 'MDF',
+    selectedCategoryId: 'HMR',
     orderList: [], // { id, categoryName, size, price, quantity, total }
     editingItemId: null,
     supabaseClient: null,
@@ -152,14 +354,14 @@ const AppState = {
 };
 
 // ── INITIALIZATION ─────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     initUserGreeting();
     initSupabaseConnection();
-    loadAppData();
-    renderCategories();
-    selectCategory('MDF');
-    renderOrderTable();
+    loadAppDataLocalFirst();
     initMobileView();
+    // Fetch latest directly from Supabase to override any old local cache
+    await syncFromSupabase(false);
+    subscribeToSupabaseRealtime();
 });
 
 // ── 📱 iOS MOBILE TAB CONTROLLER ──────────────────────────────
@@ -283,14 +485,17 @@ function updateSupabaseStatus(isOnline, text) {
     }
 }
 
-// 3. Load App Data (LocalStorage -> Default)
-function loadAppData() {
+// 3. Load App Data (Supabase Remote First -> LocalStorage -> Default)
+function loadAppDataLocalFirst() {
     try {
         const stored = localStorage.getItem('sgyver_material_data');
         if (stored) {
             const parsed = JSON.parse(stored);
             if (Array.isArray(parsed) && parsed.length > 0) {
                 AppState.categories = parsed;
+                renderCategories();
+                selectCategory(AppState.selectedCategoryId || 'HMR');
+                renderOrderTable();
                 return;
             }
         }
@@ -299,7 +504,67 @@ function loadAppData() {
     }
     // Deep clone defaults
     AppState.categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
-    saveAppData();
+    renderCategories();
+    selectCategory('HMR');
+    renderOrderTable();
+}
+
+async function syncFromSupabase(isManual = false) {
+    if (!AppState.supabaseClient) return;
+    try {
+        if (isManual && typeof showToast === 'function') {
+            showToast('info', 'กำลังดึงข้อมูล...', 'กำลังดึงข้อมูลล่าสุดจาก Supabase', 1500);
+        }
+
+        const { data, error } = await AppState.supabaseClient
+            .from('sgyver_materials')
+            .select('*')
+            .eq('id', 'master_catalog')
+            .maybeSingle();
+
+        if (data && Array.isArray(data.data) && data.data.length > 0 && !error) {
+            AppState.categories = data.data;
+            localStorage.setItem('sgyver_material_data', JSON.stringify(AppState.categories));
+            renderCategories();
+            selectCategory(AppState.selectedCategoryId || 'HMR');
+            renderOrderTable();
+            updateSupabaseStatus(true, 'Supabase Synced');
+            if (isManual && typeof showToast === 'function') {
+                showToast('success', 'ซิงค์สำเร็จ!', 'ดึงข้อมูลล่าสุดจาก Supabase เรียบร้อยแล้ว');
+            }
+        } else if (isManual && typeof showToast === 'function') {
+            showToast('warning', 'ไม่พบข้อมูลใหม่', 'ยังไม่มีการเปลี่ยนแปลงใน Supabase');
+        }
+    } catch (err) {
+        console.warn('Sync from Supabase failed:', err);
+        if (isManual && typeof showToast === 'function') {
+            showToast('error', 'ซิงค์ล้มเหลว', 'ไม่สามารถเชื่อมต่อ Supabase ได้');
+        }
+    }
+}
+window.syncFromSupabase = syncFromSupabase;
+
+function subscribeToSupabaseRealtime() {
+    if (!AppState.supabaseClient) return;
+    try {
+        AppState.supabaseClient
+            .channel('sgyver_materials_realtime')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'sgyver_materials' }, (payload) => {
+                if (payload.new && Array.isArray(payload.new.data)) {
+                    AppState.categories = payload.new.data;
+                    localStorage.setItem('sgyver_material_data', JSON.stringify(AppState.categories));
+                    renderCategories();
+                    selectCategory(AppState.selectedCategoryId || 'HMR');
+                    renderOrderTable();
+                    if (typeof showToast === 'function') {
+                        showToast('info', 'อัปเดตข้อมูลอัตโนมัติ', 'ข้อมูลในหน้านี้ซิงค์ตรงกับ Supabase เรียบร้อยแล้ว', 2500);
+                    }
+                }
+            })
+            .subscribe();
+    } catch (e) {
+        console.warn('Realtime subscription note:', e);
+    }
 }
 
 function saveAppData() {
@@ -315,7 +580,7 @@ function saveAppData() {
 async function syncCategoriesToSupabase() {
     if (!AppState.supabaseClient) return;
     try {
-        // Upsert into Supabase materials store if table exists
+        // Upsert into Supabase materials store
         await AppState.supabaseClient
             .from('sgyver_materials')
             .upsert([
