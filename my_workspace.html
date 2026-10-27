@@ -25,6 +25,14 @@
     <script src="assets/js/system_broadcast.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
+    <!-- PWA Settings for Mobile Installation -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#06b6d4">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="S-Gyver">
+    <link rel="apple-touch-icon" href="features/communication/workchat/icon.svg">
+
     <style>
         /* Drawer styles are loaded from assets/css/classroom_screen.css */
 
@@ -128,6 +136,12 @@
             <button class="cs-btn-icon cs-btn-fullscreen d-none d-md-inline-flex" onclick="toggleFullscreen()"
                 title="แสดงผลเต็มจอ">
                 <i class="bi bi-arrows-fullscreen"></i>
+            </button>
+
+            <!-- 📲 PWA Install Button for Mobile & Desktop -->
+            <button class="cs-btn-text" id="btn-pwa-install-global" onclick="triggerGlobalPwaInstall()" title="ติดตั้ง S-Gyver ลงบนมือถือหรือคอมพิวเตอร์" style="color: #38bdf8 !important; border: 1px solid rgba(56, 189, 248, 0.4); background: rgba(56, 189, 248, 0.1); border-radius: 999px; padding: 4px 12px; font-weight: 600;">
+                <i class="bi bi-phone-arrow-down-fill text-warning"></i>
+                <span class="d-none d-sm-inline">ติดตั้งแอป</span>
             </button>
 
             <!-- 🔑 Level 0: Login Button -->
@@ -2933,6 +2947,51 @@
             window.renderDock = renderDock;
             window.saveDockItems = saveDockItems;
         });
+    </script>
+
+    <!-- 📲 Global PWA Install Script & Service Worker -->
+    <script>
+        let globalDeferredPwaPrompt = null;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            globalDeferredPwaPrompt = e;
+            const btn = document.getElementById('btn-pwa-install-global');
+            if (btn) {
+                btn.style.background = 'rgba(56, 189, 248, 0.25)';
+                btn.style.borderColor = '#38bdf8';
+            }
+        });
+
+        window.addEventListener('appinstalled', () => {
+            globalDeferredPwaPrompt = null;
+            if (typeof showToast === 'function') {
+                showToast('success', 'ติดตั้งสำเร็จ!', 'S-Gyver Workspace ถูกติดตั้งลงเครื่องแล้ว');
+            }
+        });
+
+        function triggerGlobalPwaInstall() {
+            if (globalDeferredPwaPrompt) {
+                globalDeferredPwaPrompt.prompt();
+                globalDeferredPwaPrompt.userChoice.then(({ outcome }) => {
+                    if (outcome === 'accepted') {
+                        globalDeferredPwaPrompt = null;
+                    }
+                });
+            } else {
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+                if (isIOS) {
+                    alert('วิธีติดตั้งลง iPhone/iPad:\n1. กดปุ่มแชร์ ⎋ (สี่เหลี่ยมลูกศรชี้ขึ้น) ด้านล่าง\n2. เลื่อนลงแล้วเลือก "เพิ่มไปยังหน้าจอโฮม (Add to Home Screen)"\n3. กดปุ่ม "เพิ่ม (Add)"');
+                } else {
+                    alert('วิธีติดตั้งลงมือถือ Android:\n1. กดปุ่มจุดสามจุด (⋮) มุมบนขวาของ Chrome\n2. เลือก "ติดตั้งแอป (Install App)" หรือ "เพิ่มลงหน้าจอหลัก"');
+                }
+            }
+        }
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(() => {});
+            });
+        }
     </script>
 </body>
 

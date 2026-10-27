@@ -67,8 +67,14 @@
             </button>
         </div>
 
-        <!-- Topbar Right: Current User (Auto-synced from Gyver Workspace) -->
-        <div class="topbar-right">
+        <!-- Topbar Right: Current User & Actions -->
+        <div class="topbar-right d-flex align-items-center gap-2">
+            <!-- 📲 Install Mobile App Button -->
+            <button type="button" class="btn btn-sm btn-outline-info rounded-pill px-2 px-sm-3 py-1 d-flex align-items-center gap-1 shadow-sm" id="btn-pwa-install-workchat" onclick="triggerWorkChatPwaInstall()" title="กดติดตั้งลงมือถือหรือคอมพิวเตอร์">
+                <i class="bi bi-phone-arrow-down-fill text-warning"></i>
+                <span class="d-none d-sm-inline fw-semibold">ติดตั้งลงมือถือ</span>
+            </button>
+
             <div class="user-profile-badge" id="btn-user-profile" onclick="handleUserProfileClick()" title="โปรไฟล์ซิงก์จากบัญชี Gyver Workspace">
                 <div class="user-avatar-circle" id="topbar-avatar">
                     <i class="bi bi-person-fill"></i>
@@ -381,6 +387,56 @@
                 </div>
                 <div class="modal-body p-0 text-center bg-black rounded-bottom overflow-hidden d-flex justify-content-center align-items-center" style="min-height: 420px; max-height: 80vh;" id="preview-modal-body">
                     <!-- Image or Document frame injected here -->
+                </div>
+            </div>
+        </div>
+    <!-- 5. Modal: PWA Mobile Install Guide & QR Code -->
+    <div class="modal fade" id="modalPwaInstallGuide" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
+            <div class="modal-content modal-cyber">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-white d-flex align-items-center gap-2">
+                        <i class="bi bi-phone-arrow-down-fill text-warning"></i> ติดตั้งลงมือถือ (Mobile App)
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body py-3">
+                    <div class="text-center mb-3">
+                        <p class="text-muted small mb-2">ติดตั้งเป็นไอคอนแอปบนหน้าจอมือถือ เปิดเต็มจอ ใช้งานลื่นไหล ไม่ต้องโหลดจาก Store</p>
+                        <div class="p-2 d-inline-block rounded-3 bg-white shadow-sm mb-2">
+                            <img id="pwa-install-qrcode" src="" alt="QR Code" style="width: 140px; height: 140px; display: block;">
+                        </div>
+                        <div class="text-white small fw-bold">ใช้มือถือสแกน QR Code นี้เพื่อเปิดและติดตั้ง</div>
+                    </div>
+
+                    <!-- Android Guide -->
+                    <div class="p-3 rounded-3 mb-2" style="background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.25);">
+                        <div class="fw-bold text-success small mb-1"><i class="bi bi-android2 me-1"></i> สำหรับมือถือ Android (Chrome):</div>
+                        <ol class="small text-white-50 mb-0 ps-3" style="font-size: 0.8rem; line-height: 1.5;">
+                            <li>เปิดลิงก์ในเบราว์เซอร์ Chrome</li>
+                            <li>กดปุ่มจุดสามจุด <strong class="text-white">(⋮)</strong> มุมบนขวา</li>
+                            <li>เลือก <strong class="text-white">"ติดตั้งแอป (Install App)"</strong> หรือ "เพิ่มลงหน้าจอหลัก"</li>
+                        </ol>
+                    </div>
+
+                    <!-- iOS Guide -->
+                    <div class="p-3 rounded-3 mb-3" style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25);">
+                        <div class="fw-bold text-info small mb-1"><i class="bi bi-apple me-1"></i> สำหรับ iPhone / iPad (Safari):</div>
+                        <ol class="small text-white-50 mb-0 ps-3" style="font-size: 0.8rem; line-height: 1.5;">
+                            <li>เปิดลิงก์ด้วยเบราว์เซอร์ Safari</li>
+                            <li>กดปุ่มแชร์ <strong class="text-white">⎋ (สี่เหลี่ยมลูกศรชี้ขึ้น)</strong> แถบล่าง</li>
+                            <li>เลื่อนลงแล้วเลือก <strong class="text-white">"เพิ่มไปยังหน้าจอโฮม (Add to Home Screen)"</strong></li>
+                        </ol>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-light flex-grow-1" onclick="copyAppUrl()">
+                            <i class="bi bi-clipboard-check me-1"></i> คัดลอกลิงก์
+                        </button>
+                        <button type="button" class="btn btn-sm btn-cyan flex-grow-1 text-dark fw-bold" id="btn-trigger-native-install" onclick="executeNativeInstallPrompt()">
+                            <i class="bi bi-download me-1"></i> ติดตั้งทันที
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

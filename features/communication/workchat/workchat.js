@@ -1247,3 +1247,72 @@ function escapeHtml(text) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
 }
+
+// ── 10. PWA INSTALLATION ENGINE ───────────────────────────────────────────
+let deferredPwaPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPwaPrompt = e;
+    const btn = document.getElementById('btn-pwa-install-workchat');
+    if (btn) {
+        btn.classList.remove('btn-outline-info');
+        btn.classList.add('btn-info', 'text-dark', 'fw-bold');
+    }
+});
+
+window.addEventListener('appinstalled', () => {
+    deferredPwaPrompt = null;
+    if (typeof showToast === 'function') {
+        showToast('success', 'ติดตั้งสำเร็จ!', 'WorkChat ถูกติดตั้งลงหน้าจอมือถือของคุณแล้ว', 3000);
+    }
+});
+
+function triggerWorkChatPwaInstall() {
+    // If native prompt is available (Chrome/Android), trigger it directly!
+    if (deferredPwaPrompt) {
+        executeNativeInstallPrompt();
+        return;
+    }
+
+    // Otherwise show the guided modal with QR code & platform instructions
+    const currentUrl = window.location.href.split('#')[0];
+    const qrImg = document.getElementById('pwa-install-qrcode');
+    if (qrImg) {
+        qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(currentUrl)}`;
+    }
+
+    const modalEl = document.getElementById('modalPwaInstallGuide');
+    if (modalEl) {
+        const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        bsModal.show();
+    }
+}
+
+async function executeNativeInstallPrompt() {
+    if (deferredPwaPrompt) {
+        deferredPwaPrompt.prompt();
+        const { outcome } = await deferredPwaPrompt.userChoice;
+        if (outcome === 'accepted') {
+            deferredPwaPrompt = null;
+            const modalEl = document.getElementById('modalPwaInstallGuide');
+            if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
+        }
+    } else {
+        if (typeof showToast === 'function') {
+            showToast('info', 'วิธีติดตั้ง', 'สำหรับ Android: จุดสามจุด > ติดตั้งแอป / สำหรับ iOS: แชร์ > เพิ่มลงหน้าจอโฮม', 3500);
+        }
+    }
+}
+
+function copyAppUrl() {
+    const url = window.location.href.split('#')[0];
+    navigator.clipboard.writeText(url).then(() => {
+        if (typeof showToast === 'function') {
+            showToast('success', 'คัดลอกลิงก์แล้ว', 'นำไปส่งทาง LINE หรือเปิดบนมือถือเพื่อติดตั้งได้เลย', 2500);
+        }
+    }).catch(() => {
+        prompt('คัดลอกลิงก์นี้ไปเปิดในมือถือ:', url);
+    });
+}
+
