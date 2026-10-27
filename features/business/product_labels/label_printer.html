@@ -1,15 +1,19 @@
 <!DOCTYPE html>
 <html lang="th">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ระบบจัดการและพิมพ์ฉลากสินค้าเสื้อผ้า (Product Label Printer) – S-Gyver</title>
-    <meta name="description" content="Web Application สำหรับจัดการและพิมพ์ฉลากสินค้าเสื้อผ้า บาร์โค้ด QR Code สแกนด่วน พิมพ์สติกเกอร์ความร้อน 50x30mm เชื่อมต่อ Supabase">
+    <meta name="description"
+        content="Web Application สำหรับจัดการและพิมพ์ฉลากสินค้าเสื้อผ้า บาร์โค้ด QR Code สแกนด่วน พิมพ์สติกเกอร์ความร้อน 50x30mm เชื่อมต่อ Supabase">
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Kanit:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Kanit:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
 
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -43,6 +47,7 @@
     <!-- Barcode & QR Code Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -50,73 +55,90 @@
     <script src="../../../assets/js/supabaseClient.js"></script>
 
     <!-- Custom CSS & Print Engine -->
-    <link rel="stylesheet" href="label_printer.css?v=20261015_11">
+    <link rel="stylesheet" href="label_printer.css?v=20261025_13">
 </head>
+
 <body class="bg-slate-50 text-slate-800 antialiased label-size-57roll selection:bg-blue-500 selection:text-white">
 
     <!-- ====================================================
          TOP HEADER BAR
          ==================================================== -->
-    <header id="appHeader" class="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40 px-4 py-2.5 transition-all">
+    <header id="appHeader"
+        class="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40 px-4 py-2.5 transition-all">
         <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
             <!-- Brand & VIP Badge -->
             <div class="flex items-center space-x-3">
-                <button type="button" id="btnBackWorkspace" onclick="handleBackToWorkspace()" 
-                    class="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors" title="กลับหน้า Workspace">
+                <button type="button" id="btnBackWorkspace" onclick="handleBackToWorkspace()"
+                    class="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+                    title="กลับหน้า Workspace">
                     <i class="bi bi-arrow-left text-lg"></i>
                 </button>
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+                <div
+                    class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
                     <i class="bi bi-upc-scan text-xl"></i>
                 </div>
                 <div>
                     <div class="flex items-center gap-2">
-                        <h1 class="text-base sm:text-lg font-bold text-slate-900 font-kanit tracking-tight leading-tight">
+                        <h1
+                            class="text-base sm:text-lg font-bold text-slate-900 font-kanit tracking-tight leading-tight">
                             Garment Label Studio
                         </h1>
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-600 border border-rose-200">
+                        <span
+                            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-600 border border-rose-200">
                             <i class="bi bi-star-fill text-[10px]"></i> VIP Lv.4
                         </span>
                     </div>
-                    <p class="text-xs text-slate-500 hidden sm:block">ระบบจัดการและพิมพ์ฉลากสินค้าเสื้อผ้า • สติกเกอร์ความร้อน Thermal Print</p>
+                    <p class="text-xs text-slate-500 hidden sm:block">ระบบจัดการและพิมพ์ฉลากสินค้าเสื้อผ้า •
+                        สติกเกอร์ความร้อน Thermal Print</p>
                 </div>
             </div>
 
             <!-- Settings & Controls -->
             <div class="flex items-center flex-wrap gap-2 text-xs">
                 <!-- Direct Link to Inventory Menu -->
-                <a href="../inventory/inventory.html" 
+                <a href="../inventory/inventory.html"
                     class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold transition-colors shadow-sm">
                     <i class="bi bi-boxes"></i>
                     <span>คลังสินค้า</span>
                 </a>
 
                 <!-- Database Connection Status Badge -->
-                <div id="dbStatusBadge" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 font-medium">
+                <div id="dbStatusBadge"
+                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 font-medium">
                     <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                     <span id="dbStatusText">Supabase เชื่อมต่อแล้ว</span>
                 </div>
 
                 <!-- Fixed Label Size for PeriPage A6 -->
-                <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 font-bold text-xs shadow-sm" title="ขนาดกระดาษล็อกไว้ที่ PeriPage 57mm สำหรับเครื่องพิมพ์ PeriPage A6">
+                <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 font-bold text-xs shadow-sm"
+                    title="ขนาดกระดาษล็อกไว้ที่ PeriPage 57mm สำหรับเครื่องพิมพ์ PeriPage A6">
                     <i class="bi bi-printer-fill"></i>
                     <span>PeriPage (57mm)</span>
                 </div>
 
-                <!-- Barcode Type Switcher -->
+                <!-- Barcode Type Switcher (Both / Barcode / QR) -->
                 <div class="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
-                    <button type="button" id="btnTypeBarcode" onclick="switchBarcodeType('CODE128')" 
-                        class="px-2 py-1 rounded-md text-xs font-medium transition-all bg-white text-blue-600 shadow-sm" title="บาร์โค้ดแท่ง (JsBarcode Code128)">
+                    <button type="button" id="btnTypeBoth" onclick="switchBarcodeType('BOTH')"
+                        class="px-2 py-1 rounded-md text-xs font-bold transition-all bg-white text-blue-600 shadow-sm"
+                        title="แสดงทั้ง 2 อย่าง: บาร์โค้ดแท่ง + คิวอาร์โค้ด">
+                        <i class="bi bi-grid-1x2-fill me-1"></i>บาร์โค้ด + QR
+                    </button>
+                    <button type="button" id="btnTypeBarcode" onclick="switchBarcodeType('CODE128')"
+                        class="px-2 py-1 rounded-md text-xs font-medium transition-all text-slate-600 hover:text-slate-900"
+                        title="เฉพาะบาร์โค้ดแท่ง (JsBarcode Code128)">
                         <i class="bi bi-upc me-1"></i>Barcode
                     </button>
-                    <button type="button" id="btnTypeQR" onclick="switchBarcodeType('QR')" 
-                        class="px-2 py-1 rounded-md text-xs font-medium transition-all text-slate-600 hover:text-slate-900" title="คิวอาร์โค้ด (QR Code)">
+                    <button type="button" id="btnTypeQR" onclick="switchBarcodeType('QR')"
+                        class="px-2 py-1 rounded-md text-xs font-medium transition-all text-slate-600 hover:text-slate-900"
+                        title="เฉพาะคิวอาร์โค้ด (QR Code)">
                         <i class="bi bi-qr-code me-1"></i>QR Code
                     </button>
                 </div>
 
                 <!-- Config Modal Button -->
-                <button type="button" onclick="openSupabaseModal()" 
-                    class="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 transition-colors" title="ตั้งค่า Supabase URL & Key">
+                <button type="button" onclick="openSupabaseModal()"
+                    class="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 transition-colors"
+                    title="ตั้งค่า Supabase URL & Key">
                     <i class="bi bi-gear-fill"></i>
                 </button>
             </div>
@@ -130,7 +152,8 @@
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
                 <div>
-                    <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">สินค้าทั้งหมด</span>
+                    <span
+                        class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">สินค้าทั้งหมด</span>
                     <span id="metricTotalSkus" class="text-lg sm:text-xl font-bold text-slate-900 font-mono">0</span>
                     <span class="text-[10px] text-slate-400 block">รุ่น / รหัสสินค้า</span>
                 </div>
@@ -141,7 +164,8 @@
 
             <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
                 <div>
-                    <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">สต็อกสินค้ารวม</span>
+                    <span
+                        class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">สต็อกสินค้ารวม</span>
                     <span id="metricTotalStock" class="text-lg sm:text-xl font-bold text-indigo-600 font-mono">0</span>
                     <span class="text-[10px] text-slate-400 block">ชิ้นในคลังสินค้า</span>
                 </div>
@@ -152,7 +176,8 @@
 
             <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
                 <div>
-                    <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">สินค้าใกล้หมด</span>
+                    <span
+                        class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">สินค้าใกล้หมด</span>
                     <span id="metricLowStock" class="text-lg sm:text-xl font-bold text-amber-500 font-mono">0</span>
                     <span class="text-[10px] text-slate-400 block">ต่ำกว่าจุดเตือน</span>
                 </div>
@@ -163,11 +188,14 @@
 
             <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
                 <div>
-                    <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">มูลค่าสต็อกรวม</span>
-                    <span id="metricTotalValue" class="text-lg sm:text-xl font-bold text-emerald-600 font-mono">฿0</span>
+                    <span
+                        class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">มูลค่าสต็อกรวม</span>
+                    <span id="metricTotalValue"
+                        class="text-lg sm:text-xl font-bold text-emerald-600 font-mono">฿0</span>
                     <span class="text-[10px] text-slate-400 block">ราคาประเมินคลัง</span>
                 </div>
-                <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg">
+                <div
+                    class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg">
                     <i class="bi bi-cash-stack"></i>
                 </div>
             </div>
@@ -188,240 +216,232 @@
                 <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
                     <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
                         <div class="flex items-center gap-2">
-                            <span class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm">
+                            <span
+                                class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm">
                                 1
                             </span>
                             <div>
-                                <h2 class="text-sm font-bold text-slate-900 font-kanit">บันทึกสินค้า & จัดการสต็อก</h2>
-                                <p class="text-xs text-slate-500">บันทึกฉลากและจำนวนสินค้าลง Supabase (Upsert)</p>
+                                <h2 class="text-sm font-bold text-slate-900 font-kanit">ข้อมูลสินค้าสำหรับพิมพ์ฉลาก</h2>
+                                <p class="text-xs text-slate-500">ดึงข้อมูลอัตโนมัติตามรหัส SKU เพื่อจัดทำฉลากสินค้า</p>
                             </div>
                         </div>
-                        <span id="formModeBadge" class="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-600 border border-emerald-200">
-                            โหมด: เพิ่มสินค้าใหม่
-                        </span>
+                        <span id="formModeBadge" class="hidden"></span>
                     </div>
 
                     <form id="productForm" onsubmit="handleSaveProduct(event)" class="space-y-3.5">
                         <input type="hidden" id="editProductId" value="">
 
-                        <!-- Row: SKU with Auto-generate -->
+                        <!-- 1. รหัส SKU / บาร์โค้ด -->
                         <div>
-                            <div class="flex items-center justify-between mb-1">
-                                <label for="formSku" class="text-xs font-semibold text-slate-700">
-                                    รหัส SKU / บาร์โค้ด <span class="text-rose-500">*</span>
-                                </label>
-                                <button type="button" onclick="generateRandomSku()" 
-                                    class="text-[11px] text-blue-600 hover:text-blue-800 font-medium inline-flex items-center gap-1">
-                                    <i class="bi bi-magic"></i> สุ่มรหัสอัตโนมัติ
-                                </button>
-                            </div>
+                            <label for="formSku"
+                                class="text-xs font-semibold text-slate-700 flex items-center gap-1.5 mb-1">
+                                <i class="bi bi-upc-scan text-blue-600"></i>
+                                <span>รหัส SKU / บาร์โค้ด</span> <span class="text-rose-500">*</span>
+                            </label>
                             <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                <div
+                                    class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                                     <i class="bi bi-upc"></i>
                                 </div>
-                                <input type="text" id="formSku" required placeholder="เช่น W1122 หรือ TSH-WHT-M" 
-                                    value="W1122"
-                                    oninput="onFormInputChange()"
+                                <input type="text" id="formSku" required
+                                    placeholder="เช่น WFC-SKT-MNS-001-01 หรือพิมพ์/ยิงบาร์โค้ด" value="W1122"
+                                    oninput="handleSkuInput(this.value)" onkeydown="handleSkuKeydown(event)"
+                                    onblur="handleSkuBlur(this.value)"
                                     class="w-full pl-9 pr-3 py-2 text-xs sm:text-sm font-mono border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all uppercase">
                             </div>
                         </div>
 
-                        <!-- 1. ชื่อแบรนด์ (Brand Name) -->
+                        <!-- 2. ผู้จัดจำหน่าย / ผู้ผลิต (Distributor) -->
                         <div>
-                            <div class="flex items-center justify-between mb-1">
-                                <label for="formBrand" class="text-xs font-semibold text-slate-700">
-                                    ชื่อแบรนด์ (Brand) <span class="text-rose-500">*</span>
-                                </label>
-                                <span class="text-[10px] text-slate-400">หัวข้อหลักของฉลาก</span>
-                            </div>
-                            <input type="text" id="formBrand" required placeholder="เช่น Paperstudio (เปเปอร์สตูดิโอ)" 
-                                value="Paperstudio (เปเปอร์สตูดิโอ)"
+                            <label for="formDistributor"
+                                class="text-xs font-semibold text-slate-700 flex items-center gap-1.5 mb-1">
+                                <i class="bi bi-building text-blue-600"></i>
+                                <span>ผู้จัดจำหน่าย / ผู้ผลิต (Distributor)</span>
+                            </label>
+                            <div id="labelDistributorChips" class="hidden"></div>
+                            <input type="text" id="formDistributor"
+                                placeholder="เช่น Whatever_Glitters หรือ บริษัท ซิกเนเจอร์ แอพพาเรล จำกัด"
+                                value="Whatever_Glitters" oninput="onFormInputChange()"
+                                class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
+                        </div>
+
+                        <!-- 3. ชื่อแบรนด์ (Brand Name) -->
+                        <div>
+                            <label for="formBrand"
+                                class="text-xs font-semibold text-slate-700 flex items-center gap-1.5 mb-1">
+                                <i class="bi bi-tag-fill text-blue-600"></i>
+                                <span>ชื่อแบรนด์</span> <span class="text-rose-500">*</span>
+                            </label>
+                            <input type="text" id="formBrand" required
+                                placeholder="เช่น Whatever_Glitters, Paperstudio, Signature" value="Whatever_Glitters"
                                 oninput="onFormInputChange()"
                                 class="w-full px-3 py-2 text-xs sm:text-sm font-semibold border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
                         </div>
 
-                        <!-- 2. ประเภทสินค้า (Product Type / Name) -->
+                        <!-- 4. ที่อยู่ผู้จัดจำหน่าย (Address อยู่ใต้ชื่อแบรนด์) -->
                         <div>
-                            <label for="formProductType" class="block text-xs font-semibold text-slate-700 mb-1">
-                                ประเภทสินค้า (Product Type) <span class="text-rose-500">*</span>
+                            <label for="formDistributorAddress"
+                                class="text-xs font-semibold text-slate-700 flex items-center gap-1.5 mb-1">
+                                <i class="bi bi-geo-alt-fill text-rose-500"></i>
+                                <span>ที่อยู่ผู้จัดจำหน่าย (Address สำหรับพิมพ์ฉลาก สคบ.)</span>
                             </label>
-                            <input type="text" id="formProductType" required placeholder="เช่น เสื้อผ้าแฟชั่น, กางเกง, เสื้อยืด" 
-                                value="เสื้อผ้าแฟชั่น"
+                            <textarea id="formDistributorAddress" rows="2"
+                                placeholder="เช่น 25 ซอยพุทธมณฑลสาย 2 ซอย 11 แขวงบางไผ่ เขตบางแค กรุงเทพฯ 10160"
                                 oninput="onFormInputChange()"
-                                class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all mb-1">
-                            <div class="flex flex-wrap gap-1">
-                                <button type="button" onclick="setQuickInput('formProductType', 'เสื้อผ้าแฟชั่น')" class="text-[10px] px-2 py-0.5 rounded bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600">เสื้อผ้าแฟชั่น</button>
-                                <button type="button" onclick="setQuickInput('formProductType', 'เสื้อยืด')" class="text-[10px] px-2 py-0.5 rounded bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600">เสื้อยืด</button>
-                                <button type="button" onclick="setQuickInput('formProductType', 'กางเกง')" class="text-[10px] px-2 py-0.5 rounded bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600">กางเกง</button>
-                                <button type="button" onclick="setQuickInput('formProductType', 'เสื้อเชิ้ต')" class="text-[10px] px-2 py-0.5 rounded bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600">เสื้อเชิ้ต</button>
-                                <button type="button" onclick="setQuickInput('formProductType', 'เดรส')" class="text-[10px] px-2 py-0.5 rounded bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600">เดรส</button>
-                            </div>
+                                class="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none">25 ซอยพุทธมณฑลสาย 2 ซอย 11 แขวงบางไผ่ เขตบางแค กรุงเทพฯ 10160</textarea>
                         </div>
 
-                        <!-- 3. ขนาด (Size / Variant) & 4. วิธีใช้ (Usage) (2 Cols) -->
+                        <!-- 5. ประเภทสินค้า (Product Type / Name) -->
+                        <div>
+                            <label for="formProductType"
+                                class="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+                                <i class="bi bi-grid text-blue-600"></i>
+                                <span>ประเภทสินค้า (Product Type)</span> <span class="text-rose-500">*</span>
+                            </label>
+                            <input type="text" id="formProductType" required
+                                placeholder="เช่น เสื้อผ้าแฟชั่น, กางเกง, เสื้อยืด" value="เสื้อผ้าแฟชั่น"
+                                oninput="cleanFormProductType(); onFormInputChange()"
+                                onchange="cleanFormProductType(); onFormInputChange()"
+                                onblur="cleanFormProductType(); onFormInputChange()"
+                                class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
+                        </div>
+
+                        <!-- 6. สี / ตัวเลือก (Color) & ไซส์ / ขนาด (Size) (2 Cols) -->
+                        <input type="hidden" id="formVariant" value="M L XL XXL">
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
-                                <label for="formVariant" class="block text-xs font-semibold text-slate-700 mb-1">
-                                    ขนาด (Size)
+                                <label for="formColor"
+                                    class="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+                                    <i class="bi bi-palette text-blue-600"></i>
+                                    <span>สี / แบบ (Color)</span>
                                 </label>
-                                <input type="text" id="formVariant" placeholder="เช่น M L XL XXL หรือ Free Size" 
-                                    value="M L XL XXL"
-                                    oninput="onFormInputChange()"
-                                    class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all mb-1">
-                                <div class="flex flex-wrap gap-1">
-                                    <button type="button" onclick="setQuickInput('formVariant', 'M L XL XXL')" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 hover:bg-blue-50 text-slate-600">M-XXL</button>
-                                    <button type="button" onclick="setQuickInput('formVariant', 'Free Size')" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 hover:bg-blue-50 text-slate-600">Free Size</button>
-                                    <button type="button" onclick="setQuickInput('formVariant', 'S')" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 hover:bg-blue-50 text-slate-600">S</button>
-                                    <button type="button" onclick="setQuickInput('formVariant', 'M')" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 hover:bg-blue-50 text-slate-600">M</button>
-                                    <button type="button" onclick="setQuickInput('formVariant', 'L')" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 hover:bg-blue-50 text-slate-600">L</button>
-                                    <button type="button" onclick="setQuickInput('formVariant', 'XL')" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 hover:bg-blue-50 text-slate-600">XL</button>
-                                </div>
-                            </div>
-                            <div>
-                                <label for="formUsage" class="block text-xs font-semibold text-slate-700 mb-1">
-                                    วิธีใช้ (Usage)
-                                </label>
-                                <input type="text" id="formUsage" placeholder="เช่น สำหรับสวมใส่" 
-                                    value="สำหรับสวมใส่"
-                                    oninput="onFormInputChange()"
-                                    class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all mb-1">
-                                <div class="flex flex-wrap gap-1">
-                                    <button type="button" onclick="setQuickInput('formUsage', 'สำหรับสวมใส่')" class="text-[10px] px-2 py-0.5 rounded bg-slate-100 hover:bg-blue-50 text-slate-600">สำหรับสวมใส่</button>
-                                    <button type="button" onclick="setQuickInput('formUsage', 'สำหรับสวมใส่ภายนอก')" class="text-[10px] px-2 py-0.5 rounded bg-slate-100 hover:bg-blue-50 text-slate-600">สวมใส่ภายนอก</button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 5. ข้อแนะนำ (Care Instructions) -->
-                        <div>
-                            <div class="flex items-center justify-between mb-1">
-                                <label for="formCare" class="text-xs font-semibold text-slate-700">
-                                    ข้อแนะนำ (Care Recommendations)
-                                </label>
-                            </div>
-                            <textarea id="formCare" rows="3" 
-                                oninput="onFormInputChange()"
-                                class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none mb-1">ควรซักก่อนสวมใส่ / ห้ามใช้น้ำยาฟอกขาว / ควรรีดด้วยไฟปานกลาง / ควรแยกผ้าสีกับผ้าขาวก่อนซัก การซักด้วยเครื่อง อาจทำให้เนื้อผ้าเสียรูปทรง</textarea>
-                            <div class="flex flex-wrap gap-1">
-                                <button type="button" onclick="setCarePreset('ควรซักก่อนสวมใส่ / ห้ามใช้น้ำยาฟอกขาว / ควรรีดด้วยไฟปานกลาง / ควรแยกผ้าสีกับผ้าขาวก่อนซัก การซักด้วยเครื่อง อาจทำให้เนื้อผ้าเสียรูปทรง')"
-                                    class="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-600 hover:bg-blue-50 hover:text-blue-600 border border-slate-200">
-                                    มาตรฐาน สคบ.
-                                </button>
-                                <button type="button" onclick="setCarePreset('ซักเครื่องด้วยน้ำเย็น ห้ามใช้น้ำยาฟอกขาว รีดด้วยไฟปานกลาง')"
-                                    class="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-600 hover:bg-blue-50 hover:text-blue-600 border border-slate-200">
-                                    คอตตอนทั่วไป
-                                </button>
-                                <button type="button" onclick="setCarePreset('ซักมือด้วยน้ำเย็น ตากในที่ร่ม ห้ามรีดทับลายสกรีน')"
-                                    class="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-600 hover:bg-blue-50 hover:text-blue-600 border border-slate-200">
-                                    เสื้อฮู้ดดี้/สกรีน
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- 6. ผู้ผลิต (Manufacturer) -->
-                        <div>
-                            <label for="formManufacturer" class="block text-xs font-semibold text-slate-700 mb-1">
-                                ผู้ผลิต (Manufacturer / Origin)
-                            </label>
-                            <input type="text" id="formManufacturer" placeholder="เช่น ประเทศจีน หรือ ผลิตในประเทศไทย" 
-                                value="ประเทศจีน"
-                                oninput="onFormInputChange()"
-                                class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all mb-1">
-                            <div class="flex flex-wrap gap-1">
-                                <button type="button" onclick="setQuickInput('formManufacturer', 'ประเทศจีน')" class="text-[10px] px-2 py-0.5 rounded bg-slate-100 hover:bg-blue-50 text-slate-600">ประเทศจีน</button>
-                                <button type="button" onclick="setQuickInput('formManufacturer', 'ผลิตในประเทศไทย')" class="text-[10px] px-2 py-0.5 rounded bg-slate-100 hover:bg-blue-50 text-slate-600">ผลิตในประเทศไทย</button>
-                                <button type="button" onclick="setQuickInput('formManufacturer', 'ประเทศเวียดนาม')" class="text-[10px] px-2 py-0.5 rounded bg-slate-100 hover:bg-blue-50 text-slate-600">ประเทศเวียดนาม</button>
-                            </div>
-                        </div>
-
-                        <!-- 7. ผู้จัดจำหน่าย & ที่อยู่ (Distributor) -->
-                        <div class="space-y-2">
-                            <div>
-                                <label for="formDistributor" class="block text-xs font-semibold text-slate-700 mb-1">
-                                    ผู้จัดจำหน่าย (Distributor)
-                                </label>
-                                <input type="text" id="formDistributor" placeholder="เช่น บริษัท เปเปอร์สตูดิโอ" 
-                                    value="บริษัท เปเปอร์สตูดิโอ"
-                                    oninput="onFormInputChange()"
+                                <input type="text" id="formColor" placeholder="เช่น ทอง, เงิน, ดำ, ขาว" value=""
+                                    oninput="onFormColorSizeChange()"
                                     class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
                             </div>
                             <div>
-                                <label for="formDistributorAddress" class="block text-[11px] font-semibold text-slate-600 mb-1">
-                                    ที่อยู่ผู้จัดจำหน่าย (Address)
+                                <label for="formSize"
+                                    class="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+                                    <i class="bi bi-aspect-ratio text-blue-600"></i>
+                                    <span>ขนาด / ไซส์ (Size)</span>
                                 </label>
-                                <textarea id="formDistributorAddress" rows="2" placeholder="ที่อยู่ผู้จัดจำหน่าย"
-                                    oninput="onFormInputChange()"
-                                    class="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none">25 ซอยพุทธมณฑลสาย 2 ซอย 11 แขวงบางไผ่ เขตบางแค กรุงเทพฯ 10160</textarea>
+                                <input type="text" id="formSize" placeholder="เช่น S, M, L, Free"
+                                    value="Free" oninput="onFormColorSizeChange()" onblur="cleanFormSizeInput()"
+                                    class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
                             </div>
                         </div>
 
-                        <!-- 8. ราคา (Price) -->
-                        <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                            <div class="flex items-center justify-between">
-                                <label class="text-xs font-bold text-slate-800">
-                                    ราคา (Price)
-                                </label>
-                                <label class="inline-flex items-center gap-1.5 cursor-pointer text-xs text-blue-700 font-semibold">
-                                    <input type="checkbox" id="chkPriceAsSpecified" checked onchange="togglePriceAsSpecified(this.checked)"
-                                        class="rounded text-blue-600 focus:ring-blue-500">
-                                    <span>ระบุ ณ จุดขาย</span>
-                                </label>
-                            </div>
-                            <div id="priceInputWrapper" class="relative hidden">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                                    <span class="text-xs font-bold">฿</span>
-                                </div>
-                                <input type="number" step="0.01" min="0" id="formPrice" placeholder="280.00" 
-                                    oninput="onFormInputChange()"
-                                    class="w-full pl-8 pr-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all font-mono">
-                            </div>
+                        <!-- 7. วิธีใช้ (Usage) -->
+                        <div>
+                            <label for="formUsage"
+                                class="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+                                <i class="bi bi-card-text text-emerald-600"></i>
+                                <span>วิธีใช้ (Usage)</span>
+                            </label>
+                            <input type="text" id="formUsage" placeholder="เช่น สำหรับสวมใส่" value="สำหรับสวมใส่"
+                                oninput="onFormInputChange()"
+                                class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
                         </div>
 
-                        <!-- 📦 สต็อก & คลังสินค้า (Stock & Rack Location) -->
-                        <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                            <div class="flex items-center justify-between text-xs font-bold text-slate-800">
-                                <span class="flex items-center gap-1.5"><i class="bi bi-box-seam text-blue-600"></i> ข้อมูลคลังสินค้า & สต็อก</span>
-                                <span class="text-[10px] text-slate-500">อัปเดตอัตโนมัติ</span>
-                            </div>
-                            <div class="grid grid-cols-3 gap-2">
-                                <div>
-                                    <label for="formStock" class="block text-[11px] font-semibold text-slate-600 mb-1">
-                                        สต็อกคงเหลือ
+                        <!-- 8. ข้อแนะนำ (Care Recommendations) -->
+                        <div>
+                            <label for="formCare"
+                                class="text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+                                <i class="bi bi-info-circle text-blue-600"></i>
+                                <span>ข้อแนะนำ (Care Recommendations)</span>
+                            </label>
+                            <textarea id="formCare" rows="2" oninput="onFormInputChange()"
+                                class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none">ควรซักก่อนสวมใส่ / ห้ามใช้น้ำยาฟอกขาว / ควรรีดด้วยไฟปานกลาง / ควรแยกผ้าสีกับผ้าขาวก่อนซัก การซักด้วยเครื่อง อาจทำให้เนื้อผ้าเสียรูปทรง</textarea>
+                        </div>
+
+                        <!-- 9. ผู้ผลิต (Manufacturer) -->
+                        <div>
+                            <label for="formManufacturer"
+                                class="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+                                <i class="bi bi-globe text-blue-600"></i>
+                                <span>ผู้ผลิต (Manufacturer / Origin)</span>
+                            </label>
+                            <input type="text" id="formManufacturer"
+                                placeholder="เช่น ประเทศจีน หรือ ผลิตในประเทศไทย" value="ประเทศจีน"
+                                oninput="onFormInputChange()"
+                                class="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
+                        </div>
+
+                            <!-- 8. ราคา (Price) -->
+                            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <label class="text-xs font-bold text-slate-800">
+                                        ราคา (Price)
                                     </label>
-                                    <input type="number" min="0" id="formStock" placeholder="0" value="48" 
+                                    <label
+                                        class="inline-flex items-center gap-1.5 cursor-pointer text-xs text-blue-700 font-semibold">
+                                        <input type="checkbox" id="chkPriceAsSpecified" checked
+                                            onchange="togglePriceAsSpecified(this.checked)"
+                                            class="rounded text-blue-600 focus:ring-blue-500">
+                                        <span>ระบุ ณ จุดขาย</span>
+                                    </label>
+                                </div>
+                                <div id="priceInputWrapper" class="relative hidden">
+                                    <div
+                                        class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                        <span class="text-xs font-bold">฿</span>
+                                    </div>
+                                    <input type="number" step="0.01" min="0" id="formPrice" placeholder="280.00"
                                         oninput="onFormInputChange()"
-                                        class="w-full px-2.5 py-1.5 text-xs font-mono font-bold border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
-                                </div>
-                                <div>
-                                    <label for="formMinStock" class="block text-[11px] font-semibold text-slate-600 mb-1">
-                                        จุดเตือนใกล้หมด
-                                    </label>
-                                    <input type="number" min="0" id="formMinStock" placeholder="5" value="5" 
-                                        class="w-full px-2.5 py-1.5 text-xs font-mono border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
-                                </div>
-                                <div>
-                                    <label for="formLocation" class="block text-[11px] font-semibold text-slate-600 mb-1">
-                                        ชั้นวาง (Rack)
-                                    </label>
-                                    <input type="text" id="formLocation" placeholder="A-01" value="A-01"
-                                        oninput="onFormInputChange()"
-                                        class="w-full px-2.5 py-1.5 text-xs font-mono uppercase border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                                        class="w-full pl-8 pr-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all font-mono">
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Action Buttons -->
-                        <div class="pt-2 flex items-center gap-2">
-                            <button type="submit" id="btnSubmitForm" 
-                                class="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-medium text-xs sm:text-sm rounded-xl shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-2">
-                                <i class="bi bi-cloud-arrow-up-fill text-base"></i>
-                                <span id="btnSubmitText">บันทึกลง Supabase (Upsert)</span>
-                            </button>
-                            <button type="button" onclick="resetProductForm()" 
-                                class="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs sm:text-sm font-medium transition-colors" title="ล้างฟอร์ม">
-                                <i class="bi bi-arrow-counterclockwise"></i>
-                            </button>
-                        </div>
+                            <!-- 📦 สต็อก & คลังสินค้า (Stock & Rack Location) -->
+                            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                                <div class="flex items-center justify-between text-xs font-bold text-slate-800">
+                                    <span class="flex items-center gap-1.5"><i class="bi bi-box-seam text-blue-600"></i>
+                                        ข้อมูลคลังสินค้า & สต็อก</span>
+                                    <span class="text-[10px] text-slate-500">อัปเดตอัตโนมัติ</span>
+                                </div>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <div>
+                                        <label for="formStock"
+                                            class="block text-[11px] font-semibold text-slate-600 mb-1">
+                                            สต็อกคงเหลือ
+                                        </label>
+                                        <input type="number" min="0" id="formStock" placeholder="0" value="48"
+                                            oninput="onFormInputChange()"
+                                            class="w-full px-2.5 py-1.5 text-xs font-mono font-bold border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                                    </div>
+                                    <div>
+                                        <label for="formMinStock"
+                                            class="block text-[11px] font-semibold text-slate-600 mb-1">
+                                            จุดเตือนใกล้หมด
+                                        </label>
+                                        <input type="number" min="0" id="formMinStock" placeholder="5" value="5"
+                                            class="w-full px-2.5 py-1.5 text-xs font-mono border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                                    </div>
+                                    <div>
+                                        <label for="formLocation"
+                                            class="block text-[11px] font-semibold text-slate-600 mb-1">
+                                            ชั้นวาง (Rack)
+                                        </label>
+                                        <input type="text" id="formLocation" placeholder="A-01" value="A-01"
+                                            oninput="onFormInputChange()"
+                                            class="w-full px-2.5 py-1.5 text-xs font-mono uppercase border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="pt-2 flex items-center gap-2">
+                                <button type="submit" id="btnSubmitForm"
+                                    class="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-medium text-xs sm:text-sm rounded-xl shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-2">
+                                    <i class="bi bi-cloud-arrow-up-fill text-base"></i>
+                                    <span id="btnSubmitText">บันทึกลง Supabase (Upsert)</span>
+                                </button>
+                                <button type="button" onclick="resetProductForm()"
+                                    class="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs sm:text-sm font-medium transition-colors"
+                                    title="ล้างฟอร์ม">
+                                    <i class="bi bi-arrow-counterclockwise"></i>
+                                </button>
+                            </div>
                     </form>
                 </div>
 
@@ -435,12 +455,14 @@
                             </h3>
                         </div>
                         <div class="flex items-center gap-1.5">
-                            <a href="../inventory/inventory.html?action=shopee_import" 
-                                class="text-xs text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 px-2 py-1 rounded-lg inline-flex items-center gap-1 font-bold shadow-sm transition-colors" title="นำเข้าสินค้าจากไฟล์ Shopee Excel / CSV ในคลังสินค้า">
+                            <a href="../inventory/inventory.html?action=shopee_import"
+                                class="text-xs text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 px-2 py-1 rounded-lg inline-flex items-center gap-1 font-bold shadow-sm transition-colors"
+                                title="นำเข้าสินค้าจากไฟล์ Shopee Excel / CSV ในคลังสินค้า">
                                 <i class="bi bi-bag-check-fill text-orange-500"></i> นำเข้า Shopee
                             </a>
-                            <button type="button" onclick="loadProductsList()" 
-                                class="text-xs text-slate-500 hover:text-blue-600 inline-flex items-center gap-1 font-medium" title="โหลดข้อมูลใหม่">
+                            <button type="button" onclick="loadProductsList()"
+                                class="text-xs text-slate-500 hover:text-blue-600 inline-flex items-center gap-1 font-medium"
+                                title="โหลดข้อมูลใหม่">
                                 <i class="bi bi-arrow-repeat"></i> รีเฟรช
                             </button>
                         </div>
@@ -448,18 +470,20 @@
 
                     <!-- Search Filter -->
                     <div class="relative mb-3">
-                        <div class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
+                        <div
+                            class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
                             <i class="bi bi-search text-xs"></i>
                         </div>
-                        <input type="text" id="tableSearchInput" placeholder="ค้นหาตาม SKU, ชื่อสินค้า, สี/ไซส์, ชั้นวาง..." 
-                            oninput="filterProductsTable()"
+                        <input type="text" id="tableSearchInput"
+                            placeholder="ค้นหาตาม SKU, ชื่อสินค้า, สี/ไซส์, ชั้นวาง..." oninput="filterProductsTable()"
                             class="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none">
                     </div>
 
                     <!-- Products Table Container -->
                     <div class="overflow-x-auto max-h-[340px] overflow-y-auto border border-slate-100 rounded-xl">
                         <table class="w-full text-left text-xs text-slate-600">
-                            <thead class="bg-slate-50 text-[11px] font-semibold text-slate-500 sticky top-0 border-b border-slate-200">
+                            <thead
+                                class="bg-slate-50 text-[11px] font-semibold text-slate-500 sticky top-0 border-b border-slate-200">
                                 <tr>
                                     <th class="py-2 px-2.5">SKU / ชั้นวาง</th>
                                     <th class="py-2 px-2">สินค้า / ไซส์</th>
@@ -488,11 +512,15 @@
                 <!-- Quick Scanner Card -->
                 <div class="scanner-card rounded-2xl p-5 text-white flex flex-col relative overflow-hidden">
                     <!-- Glow background accent -->
-                    <div class="absolute -right-8 -top-8 w-32 h-32 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none"></div>
+                    <div
+                        class="absolute -right-8 -top-8 w-32 h-32 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none">
+                    </div>
 
-                    <div class="flex items-center justify-between pb-3 border-b border-indigo-900/60 mb-3 relative z-10">
+                    <div
+                        class="flex items-center justify-between pb-3 border-b border-indigo-900/60 mb-3 relative z-10">
                         <div class="flex items-center gap-2">
-                            <span class="w-8 h-8 rounded-lg bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 flex items-center justify-center font-bold text-sm">
+                            <span
+                                class="w-8 h-8 rounded-lg bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 flex items-center justify-center font-bold text-sm">
                                 2
                             </span>
                             <div>
@@ -501,7 +529,8 @@
                             </div>
                         </div>
                         <span class="flex h-2.5 w-2.5 relative">
-                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                            <span
+                                class="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
                             <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-sky-500"></span>
                         </span>
                     </div>
@@ -512,17 +541,17 @@
                             เลือกโหมดการยิงสแกน (Operation Mode):
                         </label>
                         <div class="grid grid-cols-3 gap-1 bg-indigo-950/80 p-1 rounded-xl border border-indigo-800">
-                            <button type="button" id="btnModePrint" onclick="setScanMode('PRINT')" 
+                            <button type="button" id="btnModePrint" onclick="setScanMode('PRINT')"
                                 class="py-1 px-1.5 rounded-lg text-[10.5px] font-bold transition-all bg-blue-600 text-white shadow-sm flex flex-col items-center gap-0.5">
                                 <i class="bi bi-printer text-xs"></i>
                                 <span>พิมพ์ฉลาก</span>
                             </button>
-                            <button type="button" id="btnModeIn" onclick="setScanMode('IN')" 
+                            <button type="button" id="btnModeIn" onclick="setScanMode('IN')"
                                 class="py-1 px-1.5 rounded-lg text-[10.5px] font-medium transition-all text-indigo-300 hover:text-white flex flex-col items-center gap-0.5">
                                 <i class="bi bi-plus-circle text-xs text-emerald-400"></i>
                                 <span>รับเข้า (+1)</span>
                             </button>
-                            <button type="button" id="btnModeOut" onclick="setScanMode('OUT')" 
+                            <button type="button" id="btnModeOut" onclick="setScanMode('OUT')"
                                 class="py-1 px-1.5 rounded-lg text-[10.5px] font-medium transition-all text-indigo-300 hover:text-white flex flex-col items-center gap-0.5">
                                 <i class="bi bi-dash-circle text-xs text-rose-400"></i>
                                 <span>ตัดจ่าย (-1)</span>
@@ -533,16 +562,18 @@
                     <!-- Scanner Input Field -->
                     <div class="space-y-3 relative z-10">
                         <div>
-                            <label for="scannerInput" class="block text-xs font-medium text-indigo-200 mb-1.5 flex items-center justify-between">
-                                <span><i class="bi bi-barcode-scan me-1 text-sky-400"></i> ยิงรหัสบาร์โค้ด / Enter:</span>
-                                <span class="text-[10px] text-sky-300 bg-indigo-950/80 px-2 py-0.5 rounded border border-indigo-800">
+                            <label for="scannerInput"
+                                class="block text-xs font-medium text-indigo-200 mb-1.5 flex items-center justify-between">
+                                <span><i class="bi bi-barcode-scan me-1 text-sky-400"></i> ยิงรหัสบาร์โค้ด /
+                                    Enter:</span>
+                                <span
+                                    class="text-[10px] text-sky-300 bg-indigo-950/80 px-2 py-0.5 rounded border border-indigo-800">
                                     Autofocus พร้อมรับค่า
                                 </span>
                             </label>
                             <div class="relative">
-                                <input type="text" id="scannerInput" autofocus autocomplete="off" 
-                                    placeholder="ยิงรหัสบาร์โค้ด..." 
-                                    onkeydown="handleScannerKeydown(event)"
+                                <input type="text" id="scannerInput" autofocus autocomplete="off"
+                                    placeholder="ยิงรหัสบาร์โค้ด..." onkeydown="handleScannerKeydown(event)"
                                     class="scanner-input w-full px-4 py-3 rounded-xl uppercase">
                                 <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                                     <i class="bi bi-lightning-charge-fill text-amber-400 text-lg animate-pulse"></i>
@@ -554,7 +585,7 @@
                         <div class="bg-indigo-950/60 p-3 rounded-xl border border-indigo-900/80 space-y-2 text-xs">
                             <!-- Checkbox: Auto-Print -->
                             <label class="flex items-center gap-2.5 cursor-pointer group">
-                                <input type="checkbox" id="chkAutoPrint" checked 
+                                <input type="checkbox" id="chkAutoPrint" checked
                                     class="w-4 h-4 rounded text-blue-600 bg-slate-900 border-indigo-700 focus:ring-blue-500 focus:ring-offset-slate-900">
                                 <span class="font-semibold text-sky-300 group-hover:text-white transition-colors">
                                     ⚡ พิมพ์ทันทีเมื่อค้นพบ (Auto-Print)
@@ -563,25 +594,36 @@
 
                             <!-- Checkbox: Sound FX -->
                             <label class="flex items-center gap-2.5 cursor-pointer group">
-                                <input type="checkbox" id="chkSoundFx" checked 
+                                <input type="checkbox" id="chkSoundFx" checked
                                     class="w-4 h-4 rounded text-blue-600 bg-slate-900 border-indigo-700 focus:ring-blue-500 focus:ring-offset-slate-900">
                                 <span class="text-indigo-200 group-hover:text-white transition-colors">
-                                    <i class="bi bi-volume-up-fill me-1 text-emerald-400"></i> ส่งเสียงปี๊บตอบรับ (Sound FX)
+                                    <i class="bi bi-volume-up-fill me-1 text-emerald-400"></i> ส่งเสียงปี๊บตอบรับ (Sound
+                                    FX)
                                 </span>
                             </label>
 
                             <!-- Checkbox: Keep Autofocus -->
                             <label class="flex items-center gap-2.5 cursor-pointer group">
-                                <input type="checkbox" id="chkKeepFocus" checked 
+                                <input type="checkbox" id="chkKeepFocus" checked
                                     class="w-4 h-4 rounded text-blue-600 bg-slate-900 border-indigo-700 focus:ring-blue-500 focus:ring-offset-slate-900">
                                 <span class="text-indigo-200 group-hover:text-white transition-colors">
                                     <i class="bi bi-crosshair me-1 text-purple-400"></i> ตรึงโฟกัสช่องสแกนอัตโนมัติ
                                 </span>
                             </label>
+
+                            <!-- Checkbox: Big Size Callout -->
+                            <label class="flex items-center gap-2.5 cursor-pointer group">
+                                <input type="checkbox" id="chkBigSize" checked onchange="toggleBigSizeOption()"
+                                    class="w-4 h-4 rounded text-blue-600 bg-slate-900 border-indigo-700 focus:ring-blue-500 focus:ring-offset-slate-900">
+                                <span class="text-indigo-200 group-hover:text-white transition-colors">
+                                    <i class="bi bi-badge-ad me-1 text-amber-300"></i> แสดงไซส์ตัวใหญ่เด่นชัด (Big Size)
+                                </span>
+                            </label>
                         </div>
 
                         <!-- Live Scan Feedback Card -->
-                        <div id="scanResultCard" class="bg-indigo-950/40 border border-indigo-800/60 rounded-xl p-3 min-h-[110px] flex flex-col justify-between transition-all">
+                        <div id="scanResultCard"
+                            class="bg-indigo-950/40 border border-indigo-800/60 rounded-xl p-3 min-h-[110px] flex flex-col justify-between transition-all">
                             <div class="flex items-center justify-between text-[11px] text-indigo-300 mb-1">
                                 <span>สถานะการยิงล่าสุด:</span>
                                 <span id="scanTimestamp" class="font-mono text-[10px] text-indigo-400">-</span>
@@ -596,7 +638,8 @@
                         <div class="grid grid-cols-2 gap-2 text-center text-xs pt-1">
                             <div class="bg-indigo-950/50 p-2 rounded-lg border border-indigo-900/50">
                                 <span class="text-[10px] text-indigo-300 block">สแกนสำเร็จวันนี้</span>
-                                <span id="statSuccessCount" class="text-base font-bold text-emerald-400 font-mono">0</span>
+                                <span id="statSuccessCount"
+                                    class="text-base font-bold text-emerald-400 font-mono">0</span>
                             </div>
                             <div class="bg-indigo-950/50 p-2 rounded-lg border border-indigo-900/50">
                                 <span class="text-[10px] text-indigo-300 block">พิมพ์อัตโนมัติ</span>
@@ -614,15 +657,19 @@
                 <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col">
                     <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
                         <div class="flex items-center gap-2">
-                            <span class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm">
+                            <span
+                                class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm">
                                 3
                             </span>
                             <div>
-                                <h2 class="text-sm font-bold text-slate-900 font-kanit">พรีวิวฉลากจริง (Label Preview)</h2>
-                                <p id="previewSizeLabel" class="text-xs text-slate-500">กระดาษความร้อน PeriPage A6 (57mm)</p>
+                                <h2 class="text-sm font-bold text-slate-900 font-kanit">พรีวิวฉลากจริง (Label Preview)
+                                </h2>
+                                <p id="previewSizeLabel" class="text-xs text-slate-500">กระดาษความร้อน PeriPage A6
+                                    (57mm)</p>
                             </div>
                         </div>
-                        <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-600 border border-blue-200 font-mono">
+                        <span
+                            class="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-600 border border-blue-200 font-mono">
                             1:1 Scale
                         </span>
                     </div>
@@ -630,7 +677,8 @@
                     <!-- Label Preview Stage -->
                     <div class="preview-stage-container mb-4">
                         <!-- Printable Label Sticker Component (Standard Thai Garment Label - สคบ.) -->
-                        <div id="printableLabel" class="thermal-label-sticker size-57roll flex flex-col justify-between">
+                        <div id="printableLabel"
+                            class="thermal-label-sticker size-57roll flex flex-col justify-between">
                             <!-- 1. ชื่อแบรนด์ (Brand) -->
                             <div class="sticker-line-brand">
                                 <span class="sticker-tag-lbl">ชื่อแบรนด์ :</span>
@@ -643,22 +691,40 @@
                                 <span id="lblProductType" class="sticker-val">เสื้อผ้าแฟชั่น</span>
                             </div>
 
-                            <!-- 3. ขนาด (Size) -->
-                            <div class="sticker-line">
-                                <span class="sticker-tag-lbl">ขนาด :</span>
-                                <span id="lblVariant" class="sticker-val">M L XL XXL</span>
-                            </div>
+                            <!-- 3 & 4. ข้อมูลสี, ขนาด (ที่เดิมตามปกติ) และ วิธีใช้ พร้อมป้ายไซส์ตัวใหญ่ (Big Size) -->
+                            <div class="sticker-middle-row">
+                                <div class="sticker-middle-left">
+                                    <!-- 3.1 สี / แบบ (Color) (ซ่อนอัตโนมัติหากไม่มี) -->
+                                    <div id="stickerLineColor" class="sticker-line hidden">
+                                        <span class="sticker-tag-lbl">สี :</span>
+                                        <span id="lblColor" class="sticker-val">-</span>
+                                    </div>
 
-                            <!-- 4. วิธีใช้ (Usage) -->
-                            <div class="sticker-line">
-                                <span class="sticker-tag-lbl">วิธีใช้ :</span>
-                                <span id="lblUsage" class="sticker-val">สำหรับสวมใส่</span>
+                                    <!-- 3.2 ขนาด / ไซต์ (Size) (ที่เดิมตามปกติ) -->
+                                    <div class="sticker-line">
+                                        <span class="sticker-tag-lbl">ขนาด / ไซต์ :</span>
+                                        <span id="lblVariant" class="sticker-val">M L XL XXL</span>
+                                    </div>
+
+                                    <!-- 4. วิธีใช้ (Usage) -->
+                                    <div class="sticker-line">
+                                        <span class="sticker-tag-lbl">วิธีใช้ :</span>
+                                        <span id="lblUsage" class="sticker-val">สำหรับสวมใส่</span>
+                                    </div>
+                                </div>
+
+                                <!-- ป้ายแสดงไซส์ตัวใหญ่เด่นชัด (Big Size Callout) -->
+                                <div id="stickerBigSize" class="sticker-big-size" title="ไซส์สินค้า">
+                                    S
+                                </div>
                             </div>
 
                             <!-- 5. ข้อแนะนำ (Care Instructions) -->
                             <div class="sticker-line-care">
                                 <span class="sticker-tag-lbl">ข้อแนะนำ :</span>
-                                <span id="lblCare" class="sticker-val">ควรซักก่อนสวมใส่ / ห้ามใช้น้ำยาฟอกขาว / ควรรีดด้วยไฟปานกลาง / ควรแยกผ้าสีกับผ้าขาวก่อนซัก การซักด้วยเครื่อง อาจทำให้เนื้อผ้าเสียรูปทรง</span>
+                                <span id="lblCare" class="sticker-val">ควรซักก่อนสวมใส่ / ห้ามใช้น้ำยาฟอกขาว /
+                                    ควรรีดด้วยไฟปานกลาง / ควรแยกผ้าสีกับผ้าขาวก่อนซัก การซักด้วยเครื่อง
+                                    อาจทำให้เนื้อผ้าเสียรูปทรง</span>
                             </div>
 
                             <!-- 6. ผู้ผลิต (Manufacturer) -->
@@ -686,13 +752,20 @@
 
                             <!-- 9. Barcode / QR Code Area for PeriPage Roll & Stock Scanning -->
                             <div class="sticker-barcode-section">
-                                <div class="flex items-center justify-between text-[4.8pt] font-mono px-0.5 mb-0.5">
+                                <div
+                                    class="sticker-sku-line text-center px-0.5 mb-0.5 whitespace-nowrap overflow-hidden">
                                     <span>SKU: <strong id="lblSkuText">W1122</strong></span>
-                                    <span>ชั้นวาง: <strong id="lblLocationText">A-01</strong></span>
+                                    <span id="lblLocationText" class="hidden">A-01</span>
                                 </div>
-                                <div class="sticker-barcode-wrapper my-0.5">
-                                    <svg id="barcodeSvg" class="w-full"></svg>
-                                    <div id="qrcodeDiv" class="hidden flex justify-center py-0.5"></div>
+                                <div class="sticker-code-container my-0.5 flex flex-col items-center">
+                                    <!-- 1D Barcode สำหรับเครื่องยิงบาร์โค้ด -->
+                                    <div id="barcodeWrapper" class="sticker-barcode-wrapper w-full">
+                                        <svg id="barcodeSvg" class="w-full"></svg>
+                                    </div>
+                                    <!-- QR Code สำหรับมือถือ / iPad สแกนด่วน -->
+                                    <div id="qrcodeWrapper" class="sticker-qr-wrapper flex justify-center py-0.5">
+                                        <div id="qrcodeDiv"></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -705,50 +778,80 @@
                                 <i class="bi bi-scissors text-blue-600"></i>
                                 ระยะฟีดกระดาษตอนฉีก (Tear Feed):
                             </span>
-                            <span id="tearFeedDisplay" class="font-mono font-bold text-blue-700 bg-blue-100/70 px-2 py-0.5 rounded border border-blue-200">
+                            <span id="tearFeedDisplay"
+                                class="font-mono font-bold text-blue-700 bg-blue-100/70 px-2 py-0.5 rounded border border-blue-200">
                                 10 mm (1.0 cm)
                             </span>
                         </div>
                         <div class="flex items-center gap-1">
-                            <button type="button" onclick="adjustTearFeed(-5)" class="w-8 h-7 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg font-bold text-slate-700 active:scale-95 transition-all text-xs" title="ลดระยะ">-</button>
-                            <button type="button" onclick="setTearFeed(10)" id="btnFeed10" class="flex-1 py-1 bg-blue-600 text-white rounded-lg text-[11px] font-bold shadow-sm">10mm (เริ่มต้น)</button>
-                            <button type="button" onclick="setTearFeed(15)" id="btnFeed15" class="flex-1 py-1 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg text-[11px] font-medium text-slate-700">15mm</button>
-                            <button type="button" onclick="setTearFeed(20)" id="btnFeed20" class="flex-1 py-1 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg text-[11px] font-medium text-slate-700">20mm</button>
-                            <button type="button" onclick="setTearFeed(25)" id="btnFeed25" class="flex-1 py-1 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg text-[11px] font-medium text-slate-700">25mm</button>
-                            <button type="button" onclick="setTearFeed(30)" id="btnFeed30" class="flex-1 py-1 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg text-[11px] font-medium text-slate-700">30mm</button>
-                            <button type="button" onclick="adjustTearFeed(5)" class="w-8 h-7 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg font-bold text-slate-700 active:scale-95 transition-all text-xs" title="เพิ่มระยะ">+</button>
+                            <button type="button" onclick="adjustTearFeed(-5)"
+                                class="w-8 h-7 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg font-bold text-slate-700 active:scale-95 transition-all text-xs"
+                                title="ลดระยะ">-</button>
+                            <button type="button" onclick="setTearFeed(10)" id="btnFeed10"
+                                class="flex-1 py-1 bg-blue-600 text-white rounded-lg text-[11px] font-bold shadow-sm">10mm
+                                (เริ่มต้น)</button>
+                            <button type="button" onclick="setTearFeed(15)" id="btnFeed15"
+                                class="flex-1 py-1 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg text-[11px] font-medium text-slate-700">15mm</button>
+                            <button type="button" onclick="setTearFeed(20)" id="btnFeed20"
+                                class="flex-1 py-1 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg text-[11px] font-medium text-slate-700">20mm</button>
+                            <button type="button" onclick="setTearFeed(25)" id="btnFeed25"
+                                class="flex-1 py-1 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg text-[11px] font-medium text-slate-700">25mm</button>
+                            <button type="button" onclick="setTearFeed(30)" id="btnFeed30"
+                                class="flex-1 py-1 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg text-[11px] font-medium text-slate-700">30mm</button>
+                            <button type="button" onclick="adjustTearFeed(5)"
+                                class="w-8 h-7 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg font-bold text-slate-700 active:scale-95 transition-all text-xs"
+                                title="เพิ่มระยะ">+</button>
                         </div>
                         <div class="flex items-center justify-between pt-1 border-t border-slate-200/80">
-                            <label class="inline-flex items-center gap-1.5 cursor-pointer text-[11px] text-slate-700 font-medium">
-                                <input type="checkbox" id="chkTearLine" 
+                            <label
+                                class="inline-flex items-center gap-1.5 cursor-pointer text-[11px] text-slate-700 font-medium">
+                                <input type="checkbox" id="chkTearLine"
                                     class="rounded text-blue-600 focus:ring-blue-500">
-                                <span>พิมพ์เส้นประรอยฉีก (<strong class="text-blue-700">- - ✂ - -</strong>) บังคับหัวพิมพ์เลื่อน</span>
+                                <span>พิมพ์เส้นประรอยฉีก (<strong class="text-blue-700">- - ✂ - -</strong>)
+                                    บังคับหัวพิมพ์เลื่อน</span>
                             </label>
                         </div>
                         <p class="text-[10px] text-slate-500 leading-tight">
-                            * พิมพ์เส้นประท้ายฉลาก เพื่อป้องกันไดรเวอร์เครื่องพิมพ์ตัดระยะว่างทิ้ง และช่วยเลื่อนบาร์โค้ดให้พ้นฟันปลา
+                            * พิมพ์เส้นประท้ายฉลาก เพื่อป้องกันไดรเวอร์เครื่องพิมพ์ตัดระยะว่างทิ้ง
+                            และช่วยเลื่อนบาร์โค้ดให้พ้นฟันปลา
                         </p>
                     </div>
 
                     <!-- Print Action Buttons -->
                     <div class="space-y-2 pt-1 preview-toolbar">
-                        <!-- Main Print Button -->
-                        <button type="button" onclick="triggerManualPrint()" 
-                            class="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-[0.99] text-white font-bold text-sm rounded-xl shadow-lg shadow-blue-500/25 transition-all flex items-center justify-center gap-2">
-                            <i class="bi bi-printer-fill text-lg"></i>
-                            <span>สั่งพิมพ์ฉลากดวงนี้ (Print Now)</span>
+                        <!-- Primary Bluetooth Direct Print Button -->
+                        <button type="button" onclick="triggerBluetoothDirectPrint()" id="btnBtDirectPrint"
+                            class="w-full py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 active:scale-[0.99] text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-500/25 transition-all flex items-center justify-center gap-2">
+                            <i class="bi bi-bluetooth text-lg"></i>
+                            <span>พิมพ์ผ่านบลูทูธตรง (PeriPage / ESC-POS)</span>
                         </button>
 
                         <div class="grid grid-cols-2 gap-2">
+                            <!-- Share to Official PeriPage App Button (No Watermark) -->
+                            <button type="button" onclick="shareStickerToPeriPageApp()" id="btnShareApp"
+                                class="py-2.5 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95">
+                                <i class="bi bi-share-fill text-sm"></i>
+                                <span>แชร์เข้าแอป PeriPage</span>
+                            </button>
+
+                            <!-- Standard Browser Print Button -->
+                            <button type="button" onclick="triggerManualPrint()" id="btnSystemPrint"
+                                class="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 active:scale-95">
+                                <i class="bi bi-printer"></i>
+                                <span>พิมพ์ผ่านเบราว์เซอร์</span>
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 pt-0.5">
                             <!-- Batch Print Button -->
-                            <button type="button" onclick="openBatchPrintModal()" 
-                                class="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1.5">
+                            <button type="button" onclick="openBatchPrintModal()"
+                                class="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-medium transition-colors flex items-center justify-center gap-1.5">
                                 <i class="bi bi-copy"></i>
                                 <span>พิมพ์หลายดวง</span>
                             </button>
                             <!-- Test Sample Print Button -->
-                            <button type="button" onclick="loadSampleClothingItem()" 
-                                class="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1.5">
+                            <button type="button" onclick="loadSampleClothingItem()"
+                                class="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-medium transition-colors flex items-center justify-center gap-1.5">
                                 <i class="bi bi-file-earmark-check"></i>
                                 <span>ตัวอย่างสุ่ม</span>
                             </button>
@@ -756,16 +859,20 @@
                     </div>
 
                     <!-- Thermal Printer Tip -->
-                    <div class="mt-4 p-3.5 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900 space-y-1.5">
+                    <div
+                        class="mt-4 p-3.5 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900 space-y-1.5">
                         <div class="flex items-center gap-1.5 font-bold text-amber-950">
                             <i class="bi bi-printer-fill text-amber-600"></i>
                             <span>การตั้งค่าสำหรับ PeriPage A6 / เครื่องพิมพ์ความร้อน:</span>
                         </div>
                         <ol class="list-decimal list-inside space-y-1 text-[11px] text-amber-800 leading-relaxed">
                             <li>คลิก <strong>"การตั้งค่าเพิ่มเติม (More settings)"</strong> ในหน้าต่างพิมพ์</li>
-                            <li><strong>ระยะขอบ (Margins):</strong> เลือกเป็น <strong>"ไม่มี (None)"</strong> <em>(ตัดแถบวันที่และลิงก์ file:/// ออกทันที)</em></li>
-                            <li><strong>ส่วนหัวและส่วนท้าย (Headers and footers):</strong> <strong>เอาเครื่องหมายถูกออก</strong></li>
-                            <li><strong>กราฟิกพื้นหลัง (Background graphics):</strong> <strong>ติ๊กถูก</strong> เพื่อให้ป้ายราคาสีดำพิมพ์ออกมาชัดเจน</li>
+                            <li><strong>ระยะขอบ (Margins):</strong> เลือกเป็น <strong>"ไม่มี (None)"</strong>
+                                <em>(ตัดแถบวันที่และลิงก์ file:/// ออกทันที)</em></li>
+                            <li><strong>ส่วนหัวและส่วนท้าย (Headers and footers):</strong>
+                                <strong>เอาเครื่องหมายถูกออก</strong></li>
+                            <li><strong>กราฟิกพื้นหลัง (Background graphics):</strong> <strong>ติ๊กถูก</strong>
+                                เพื่อให้ป้ายราคาสีดำพิมพ์ออกมาชัดเจน</li>
                         </ol>
                     </div>
                 </div>
@@ -784,11 +891,13 @@
     <!-- ====================================================
          MODAL: SETTINGS (SUPABASE CREDENTIALS)
          ==================================================== -->
-    <div id="supabaseModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div id="supabaseModal"
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl max-w-lg w-full border border-slate-200 shadow-2xl p-6 relative">
             <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
                 <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-base font-bold">
+                    <div
+                        class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-base font-bold">
                         <i class="bi bi-database-fill-gear"></i>
                     </div>
                     <div>
@@ -806,7 +915,7 @@
                     <label for="cfgSupabaseUrl" class="block text-xs font-semibold text-slate-700 mb-1">
                         SUPABASE_URL
                     </label>
-                    <input type="url" id="cfgSupabaseUrl" required placeholder="https://xyzcompany.supabase.co" 
+                    <input type="url" id="cfgSupabaseUrl" required placeholder="https://xyzcompany.supabase.co"
                         class="w-full px-3 py-2 text-xs font-mono border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
 
@@ -814,26 +923,29 @@
                     <label for="cfgSupabaseKey" class="block text-xs font-semibold text-slate-700 mb-1">
                         SUPABASE_ANON_KEY
                     </label>
-                    <textarea id="cfgSupabaseKey" rows="3" required placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." 
+                    <textarea id="cfgSupabaseKey" rows="3" required
+                        placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                         class="w-full px-3 py-2 text-xs font-mono border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
                 </div>
 
                 <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-1">
                     <p class="font-semibold text-slate-800">💡 การตั้งค่าอัตโนมัติ:</p>
-                    <p>ระบบเชื่อมต่อกับ <code class="bg-slate-200 px-1 py-0.5 rounded text-[11px]">supabaseClient.js</code> ของโปรเจกต์ S-Gyver เป็นค่าเริ่มต้น หรือป้อนกุญแจส่วนตัวด้านบนเพื่อบันทึกไว้ใน Browser ของคุณ</p>
+                    <p>ระบบเชื่อมต่อกับ <code
+                            class="bg-slate-200 px-1 py-0.5 rounded text-[11px]">supabaseClient.js</code> ของโปรเจกต์
+                        S-Gyver เป็นค่าเริ่มต้น หรือป้อนกุญแจส่วนตัวด้านบนเพื่อบันทึกไว้ใน Browser ของคุณ</p>
                 </div>
 
                 <div class="flex items-center justify-between pt-2 gap-2">
-                    <button type="button" onclick="resetToDefaultSupabase()" 
+                    <button type="button" onclick="resetToDefaultSupabase()"
                         class="px-3 py-2 text-xs text-slate-500 hover:text-slate-800 font-medium">
                         คืนค่าเริ่มต้น S-Gyver
                     </button>
                     <div class="flex items-center gap-2">
-                        <button type="button" onclick="testSupabaseConnectionUI()" 
+                        <button type="button" onclick="testSupabaseConnectionUI()"
                             class="px-3 py-2 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium transition-colors">
                             ทดสอบเชื่อมต่อ
                         </button>
-                        <button type="submit" 
+                        <button type="submit"
                             class="px-4 py-2 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors shadow-sm">
                             บันทึกการตั้งค่า
                         </button>
@@ -846,11 +958,13 @@
     <!-- ====================================================
          MODAL: BATCH PRINT (พิมพ์หลายดวง)
          ==================================================== -->
-    <div id="batchPrintModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div id="batchPrintModal"
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl max-w-sm w-full border border-slate-200 shadow-2xl p-5 relative">
             <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
                 <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-base font-bold">
+                    <div
+                        class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-base font-bold">
                         <i class="bi bi-printer-fill"></i>
                     </div>
                     <div>
@@ -869,13 +983,13 @@
                         จำนวนดวงที่ต้องการพิมพ์ (Copies)
                     </label>
                     <div class="flex items-center gap-2">
-                        <button type="button" onclick="adjustBatchCount(-1)" 
+                        <button type="button" onclick="adjustBatchCount(-1)"
                             class="w-10 h-10 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 flex items-center justify-center font-bold text-slate-700">
                             -
                         </button>
-                        <input type="number" id="batchCountInput" value="5" min="1" max="200" 
+                        <input type="number" id="batchCountInput" value="5" min="1" max="200"
                             class="flex-1 text-center py-2 text-base font-bold font-mono border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
-                        <button type="button" onclick="adjustBatchCount(1)" 
+                        <button type="button" onclick="adjustBatchCount(1)"
                             class="w-10 h-10 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 flex items-center justify-center font-bold text-slate-700">
                             +
                         </button>
@@ -884,14 +998,22 @@
 
                 <!-- Quick presets -->
                 <div class="flex items-center justify-center gap-2">
-                    <button type="button" onclick="setBatchCount(2)" class="px-2.5 py-1 rounded-lg text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium">2 ดวง</button>
-                    <button type="button" onclick="setBatchCount(5)" class="px-2.5 py-1 rounded-lg text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium">5 ดวง</button>
-                    <button type="button" onclick="setBatchCount(10)" class="px-2.5 py-1 rounded-lg text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium">10 ดวง</button>
-                    <button type="button" onclick="setBatchCount(20)" class="px-2.5 py-1 rounded-lg text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium">20 ดวง</button>
+                    <button type="button" onclick="setBatchCount(2)"
+                        class="px-2.5 py-1 rounded-lg text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium">2
+                        ดวง</button>
+                    <button type="button" onclick="setBatchCount(5)"
+                        class="px-2.5 py-1 rounded-lg text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium">5
+                        ดวง</button>
+                    <button type="button" onclick="setBatchCount(10)"
+                        class="px-2.5 py-1 rounded-lg text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium">10
+                        ดวง</button>
+                    <button type="button" onclick="setBatchCount(20)"
+                        class="px-2.5 py-1 rounded-lg text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium">20
+                        ดวง</button>
                 </div>
 
                 <div class="pt-2">
-                    <button type="button" onclick="executeBatchPrint()" 
+                    <button type="button" onclick="executeBatchPrint()"
                         class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-2">
                         <i class="bi bi-printer"></i>
                         <span>เริ่มพิมพ์เป็นชุด (Start Batch)</span>
@@ -902,6 +1024,7 @@
     </div>
 
     <!-- Application Script Logic -->
-    <script src="label_printer.js?v=20261015_11"></script>
+    <script src="label_printer.js?v=20261025_15"></script>
 </body>
+
 </html>

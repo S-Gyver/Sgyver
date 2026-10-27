@@ -451,3 +451,97 @@ BEGIN
         ALTER PUBLICATION supabase_realtime ADD TABLE public.sgyver_material_orders;
     END IF;
 END $$;
+
+-- ------------------------------------------------------------------------------
+-- 15. ตารางระบบ WorkChat & Project Drive (แชทคุยงาน & ตู้เก็บไฟล์โปรเจกต์ - VIP Lv.3)
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.workchat_users (
+    username TEXT PRIMARY KEY,
+    display_name TEXT NOT NULL,
+    avatar_url TEXT,
+    role TEXT DEFAULT 'member',
+    is_online BOOLEAN DEFAULT false,
+    last_seen TIMESTAMPTZ DEFAULT now(),
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.workchat_projects (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    code TEXT,
+    color TEXT DEFAULT '#06b6d4',
+    description TEXT,
+    created_by TEXT,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.workchat_folders (
+    id TEXT PRIMARY KEY,
+    project_id TEXT REFERENCES public.workchat_projects(id) ON DELETE CASCADE,
+    parent_id TEXT REFERENCES public.workchat_folders(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    created_by TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.workchat_files (
+    id TEXT PRIMARY KEY,
+    project_id TEXT REFERENCES public.workchat_projects(id) ON DELETE CASCADE,
+    folder_id TEXT REFERENCES public.workchat_folders(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    file_url TEXT NOT NULL,
+    file_type TEXT, -- image, pdf, cad, doc, etc.
+    file_size BIGINT DEFAULT 0,
+    uploaded_by TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.workchat_messages (
+    id TEXT PRIMARY KEY,
+    sender_username TEXT NOT NULL,
+    sender_name TEXT NOT NULL,
+    message_text TEXT,
+    project_id TEXT REFERENCES public.workchat_projects(id) ON DELETE SET NULL,
+    folder_id TEXT REFERENCES public.workchat_folders(id) ON DELETE SET NULL,
+    file_data JSONB DEFAULT 'null'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- RLS Policies
+ALTER TABLE public.workchat_users ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all access to workchat_users" ON public.workchat_users;
+CREATE POLICY "Allow all access to workchat_users" ON public.workchat_users FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+ALTER TABLE public.workchat_projects ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all access to workchat_projects" ON public.workchat_projects;
+CREATE POLICY "Allow all access to workchat_projects" ON public.workchat_projects FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+ALTER TABLE public.workchat_folders ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all access to workchat_folders" ON public.workchat_folders;
+CREATE POLICY "Allow all access to workchat_folders" ON public.workchat_folders FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+ALTER TABLE public.workchat_files ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all access to workchat_files" ON public.workchat_files;
+CREATE POLICY "Allow all access to workchat_files" ON public.workchat_files FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+ALTER TABLE public.workchat_messages ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all access to workchat_messages" ON public.workchat_messages;
+CREATE POLICY "Allow all access to workchat_messages" ON public.workchat_messages FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+-- Realtime publication
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'workchat_messages') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.workchat_messages;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'workchat_projects') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.workchat_projects;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'workchat_files') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.workchat_files;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'workchat_folders') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.workchat_folders;
+    END IF;
+END $$;

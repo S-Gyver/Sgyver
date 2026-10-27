@@ -49,6 +49,8 @@
         ::-webkit-scrollbar-track { background: #f1f5f9; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased selection:bg-emerald-500 selection:text-white">
@@ -168,19 +170,19 @@
             <div class="flex items-center gap-8 text-sm font-medium">
                 <button type="button" id="tabAll" onclick="filterByTab('ALL')" 
                     class="py-3 px-1 border-b-2 border-transparent text-slate-500 hover:text-slate-900 transition-all font-sans whitespace-nowrap">
-                    <span>ทั้งหมด (<span id="tabCountAll">0</span>)</span>
+                    <span>ทั้งหมด (<span id="tabCardCountAll" class="font-bold">0</span> การ์ด • <span id="tabCountAll">0</span> SKU)</span>
                 </button>
                 <button type="button" id="tabInStock" onclick="filterByTab('INSTOCK')" 
                     class="py-3 px-1 border-b-2 border-[#ee4d2d] text-[#ee4d2d] font-bold transition-all font-sans whitespace-nowrap">
-                    <span>ขายอยู่ (<span id="tabCountInStock">0</span>)</span>
+                    <span>ขายอยู่ (<span id="tabCardCountInStock" class="font-bold">0</span> การ์ด • <span id="tabCountInStock">0</span> SKU)</span>
                 </button>
                 <button type="button" id="tabLow" onclick="filterByTab('LOW')" 
                     class="py-3 px-1 border-b-2 border-transparent text-slate-500 hover:text-slate-900 transition-all font-sans whitespace-nowrap">
-                    <span>ใกล้หมด (<span id="tabCountLow">0</span>)</span>
+                    <span>ใกล้หมด (<span id="tabCardCountLow" class="font-bold">0</span> การ์ด • <span id="tabCountLow">0</span> SKU)</span>
                 </button>
                 <button type="button" id="tabOut" onclick="filterByTab('OUT')" 
                     class="py-3 px-1 border-b-2 border-transparent text-slate-500 hover:text-slate-900 transition-all font-sans whitespace-nowrap">
-                    <span>หมดสต็อก (<span id="tabCountOut">0</span>)</span>
+                    <span>หมดสต็อก (<span id="tabCardCountOut" class="font-bold">0</span> การ์ด • <span id="tabCountOut">0</span> SKU)</span>
                 </button>
             </div>
 
@@ -191,84 +193,170 @@
         </div>
 
         <!-- Action Toolbar & Search Filter -->
-        <div class="bg-white p-3.5 rounded-b-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3 -mt-3">
-            <!-- Left: Search Box -->
-            <div class="flex items-center gap-2 flex-1 max-w-md">
-                <div class="relative w-full">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                        <i class="bi bi-search text-xs"></i>
+        <div class="bg-white p-3.5 rounded-b-2xl border border-slate-200 shadow-sm -mt-3 space-y-3">
+            <!-- Row 1: Search Box, Sort By & Action Buttons -->
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                <!-- Left: Search Box & Sort By -->
+                <div class="flex items-center gap-2.5 flex-1 max-w-xl">
+                    <!-- Search Input -->
+                    <div class="relative flex-1">
+                        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                            <i class="bi bi-search text-xs"></i>
+                        </div>
+                        <input type="text" id="inventorySearch" placeholder="ค้นหาด้วย ชื่อสินค้า, Parent SKU, รหัส SKU..." 
+                            oninput="handleSearchInput()"
+                            class="w-full pl-9 pr-3.5 py-2 text-xs bg-slate-50/60 hover:bg-white focus:bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#ee4d2d]/25 focus:border-[#ee4d2d] outline-none transition-all">
                     </div>
-                    <input type="text" id="inventorySearch" placeholder="ค้นหาด้วย ชื่อสินค้า, Parent SKU, เลข SKU..." 
-                        oninput="handleSearchInput()"
-                        class="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#ee4d2d] focus:border-[#ee4d2d] outline-none">
+
+                    <!-- เมนูที่ 1: เรียงโดย (Sort By) -->
+                    <div class="flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl px-3 py-2 text-xs transition-colors shrink-0">
+                        <i class="bi bi-arrow-down-up text-slate-500"></i>
+                        <span class="text-slate-500 font-medium text-[11px] whitespace-nowrap">เรียงโดย:</span>
+                        <select id="sortSelect" onchange="handleSortChange(this.value)" 
+                            class="bg-transparent font-bold text-slate-700 outline-none cursor-pointer pr-1 text-xs">
+                            <option value="DEFAULT">รหัส SKU: เรียงตามรหัส (ค่าเริ่มต้น)</option>
+                            <option value="SKU_ASC">รหัส SKU: น้อย ➔ มาก (01 ➔ 99)</option>
+                            <option value="SKU_DESC">รหัส SKU: มาก ➔ น้อย (99 ➔ 01)</option>
+                            <option value="PRICE_DESC">ราคา: มาก ➔ น้อย</option>
+                            <option value="PRICE_ASC">ราคา: น้อย ➔ มาก</option>
+                            <option value="NAME_ASC">ชื่อ: ก - ฮ (A - Z)</option>
+                            <option value="CATEGORY">ประเภท / หมวดหมู่</option>
+                            <option value="STOCK_DESC">สต็อก: มาก ➔ น้อย</option>
+                            <option value="STOCK_ASC">สต็อก: น้อย ➔ มาก</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Right: View Switcher & Action Buttons -->
+                <div class="flex items-center flex-wrap gap-2 text-xs shrink-0">
+                    <!-- View Mode Switcher (Card View vs Parent Group vs Flat List) -->
+                    <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
+                        <button type="button" id="btnViewCard" onclick="switchViewMode('CARD')" 
+                            class="px-2.5 py-1 rounded-lg font-bold transition-all bg-white text-[#ee4d2d] shadow-sm flex items-center gap-1.5 cursor-pointer" title="มุมมองการ์ดสินค้าแบบ Shopee (ตามรูป)">
+                            <i class="bi bi-grid-3x3-gap-fill text-[#ee4d2d]"></i>
+                            <span>การ์ด Shopee</span>
+                        </button>
+                        <button type="button" id="btnViewGrouped" onclick="switchViewMode('PARENT')" 
+                            class="px-2.5 py-1 rounded-lg font-medium transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1.5 cursor-pointer" title="จัดกลุ่มตามสินค้าแม่ กางดูตัวเลือกสี/ไซส์ย่อยแบบตาราง">
+                            <i class="bi bi-diagram-3-fill"></i>
+                            <span>กลุ่มสินค้าแม่</span>
+                        </button>
+                        <button type="button" id="btnViewFlat" onclick="switchViewMode('FLAT')" 
+                            class="px-2.5 py-1 rounded-lg font-medium transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1.5 cursor-pointer" title="แสดงทุก SKU ย่อยเรียงเป็นตาราง">
+                            <i class="bi bi-list-ul"></i>
+                            <span>ตารางทุก SKU</span>
+                        </button>
+                    </div>
+
+                    <!-- 🛍️ Dropdown: Shopee Tools & Management -->
+                    <div class="relative inline-block text-left" id="shopeeToolsDropdownContainer">
+                        <button type="button" id="btnShopeeToolsDropdown" onclick="toggleShopeeToolsDropdown(event)"
+                            class="px-3 py-1.5 rounded-xl border border-orange-200 bg-orange-50 hover:bg-orange-100 text-[#ee4d2d] text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer">
+                            <i class="bi bi-bag-check-fill text-[#ee4d2d]"></i>
+                            <span>จัดการ Shopee</span>
+                            <i class="bi bi-chevron-down text-[10px] ml-0.5 transition-transform duration-150" id="shopeeToolsDropdownArrow"></i>
+                        </button>
+
+                        <!-- Dropdown Menu -->
+                        <div id="shopeeToolsDropdownMenu" 
+                            class="hidden absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-slate-200/90 z-50 p-2 space-y-1 transform transition-all animate-in fade-in zoom-in-95 duration-150">
+                            
+                            <!-- 📋 Paste Data from Bookmarklet -->
+                            <button type="button" onclick="closeShopeeToolsDropdown(); importShopeeFromClipboard()" 
+                                id="btnMainPasteShopee"
+                                class="w-full px-3 py-2.5 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100 border border-emerald-200 text-emerald-900 text-xs font-bold flex items-center justify-between transition-all text-left cursor-pointer group">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-sm shadow-xs shrink-0">
+                                        <i class="bi bi-clipboard2-check-fill"></i>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <div class="font-black text-emerald-950 leading-tight">วางข้อมูลจาก Shopee</div>
+                                        <div class="text-[10px] text-emerald-700 font-normal mt-0.5 truncate">วางสินค้าที่ดูดมาลงคลังทันที</div>
+                                    </div>
+                                </div>
+                                <span class="text-[9.5px] px-1.5 py-0.5 bg-emerald-200 text-emerald-950 rounded font-black shrink-0">ด่วน</span>
+                            </button>
+
+                            <!-- ⚡ Shopee Bookmarklet Scraper -->
+                            <button type="button" onclick="closeShopeeToolsDropdown(); openShopeeScraperModal()" 
+                                class="w-full px-3 py-2 rounded-xl hover:bg-amber-50 text-slate-700 hover:text-amber-900 text-xs font-semibold flex items-center gap-2.5 transition-colors text-left cursor-pointer">
+                                <div class="w-7 h-7 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center text-sm shrink-0">
+                                    <i class="bi bi-lightning-charge-fill"></i>
+                                </div>
+                                <div class="min-w-0">
+                                    <div class="font-bold leading-tight text-slate-800">ดูดสินค้า Shopee</div>
+                                    <div class="text-[10px] text-slate-400 mt-0.5 truncate">ปุ่มลัด Bookmarklet ดูดสินค้า</div>
+                                </div>
+                            </button>
+
+                            <!-- 🛍️ Import Excel / CSV -->
+                            <button type="button" onclick="closeShopeeToolsDropdown(); openShopeeImportModal()" 
+                                class="w-full px-3 py-2 rounded-xl hover:bg-orange-50 text-slate-700 hover:text-[#ee4d2d] text-xs font-semibold flex items-center gap-2.5 transition-colors text-left cursor-pointer">
+                                <div class="w-7 h-7 rounded-lg bg-orange-100 text-[#ee4d2d] flex items-center justify-center text-sm shrink-0">
+                                    <i class="bi bi-file-earmark-arrow-down-fill"></i>
+                                </div>
+                                <div class="min-w-0">
+                                    <div class="font-bold leading-tight text-slate-800">นำเข้า Shopee</div>
+                                    <div class="text-[10px] text-slate-400 mt-0.5 truncate">นำเข้าไฟล์ Excel / CSV จาก Shopee</div>
+                                </div>
+                            </button>
+
+                            <!-- ↑ Export Mass Update CSV -->
+                            <button type="button" onclick="closeShopeeToolsDropdown(); exportShopeeMassUpdateCSV()" 
+                                class="w-full px-3 py-2 rounded-xl hover:bg-orange-50 text-slate-700 hover:text-[#ee4d2d] text-xs font-semibold flex items-center gap-2.5 transition-colors text-left cursor-pointer">
+                                <div class="w-7 h-7 rounded-lg bg-orange-100 text-[#ee4d2d] flex items-center justify-center text-sm shrink-0">
+                                    <i class="bi bi-upload"></i>
+                                </div>
+                                <div class="min-w-0">
+                                    <div class="font-bold leading-tight text-slate-800">ส่งออก Shopee</div>
+                                    <div class="text-[10px] text-slate-400 mt-0.5 truncate">ส่งออก Mass Update อัปเดตสต็อก</div>
+                                </div>
+                            </button>
+
+                            <div class="border-t border-slate-100 my-1"></div>
+
+                            <!-- # SKU Checker -->
+                            <button type="button" onclick="closeShopeeToolsDropdown(); openSkuCheckerModal()" 
+                                class="w-full px-3 py-2 rounded-xl hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 text-xs font-semibold flex items-center gap-2.5 transition-colors text-left cursor-pointer">
+                                <div class="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center text-sm shrink-0">
+                                    <i class="bi bi-hash"></i>
+                                </div>
+                                <div class="min-w-0">
+                                    <div class="font-bold leading-tight text-slate-800">เช็กรหัส SKU</div>
+                                    <div class="text-[10px] text-slate-400 mt-0.5 truncate">เช็กเลขรหัส SKU ล่าสุดในหมวด</div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Add New Product Button -->
+                    <button type="button" onclick="openProductModal()" 
+                        class="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer">
+                        <i class="bi bi-plus-lg"></i>
+                        <span>เพิ่มสินค้า</span>
+                    </button>
                 </div>
             </div>
 
-            <!-- Middle / Right: Sort, View Switcher & Action Buttons -->
-            <div class="flex items-center flex-wrap gap-2 text-xs">
-                <!-- View Mode Switcher (Card View vs Parent Group vs Flat List) -->
-                <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
-                    <button type="button" id="btnViewCard" onclick="switchViewMode('CARD')" 
-                        class="px-2.5 py-1 rounded-lg font-bold transition-all bg-white text-[#ee4d2d] shadow-sm flex items-center gap-1.5" title="มุมมองการ์ดสินค้าแบบ Shopee (ตามรูป)">
-                        <i class="bi bi-grid-3x3-gap-fill text-[#ee4d2d]"></i>
-                        <span>การ์ด Shopee</span>
-                    </button>
-                    <button type="button" id="btnViewGrouped" onclick="switchViewMode('PARENT')" 
-                        class="px-2.5 py-1 rounded-lg font-medium transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1.5" title="จัดกลุ่มตามสินค้าแม่ กางดูตัวเลือกสี/ไซส์ย่อยแบบตาราง">
-                        <i class="bi bi-diagram-3-fill"></i>
-                        <span>กลุ่มสินค้าแม่</span>
-                    </button>
-                    <button type="button" id="btnViewFlat" onclick="switchViewMode('FLAT')" 
-                        class="px-2.5 py-1 rounded-lg font-medium transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1.5" title="แสดงทุก SKU ย่อยเรียงเป็นตาราง">
-                        <i class="bi bi-list-ul"></i>
-                        <span>ตารางทุก SKU</span>
-                    </button>
+            <!-- Row 2: Category Filter Bar (เมนูที่ 2: กดเลือกดูหมวดหมู่สินค้า เช่น ผ้าเช็ดหน้า ในคลิกเดียว) -->
+            <div id="categoryChipsBar" class="pt-2.5 border-t border-slate-100 flex items-center gap-2 text-xs">
+                <div class="flex items-center gap-1.5 text-slate-500 font-bold shrink-0 text-[11px] pr-1">
+                    <i class="bi bi-tags-fill text-[#ee4d2d]"></i>
+                    <span>หมวดหมู่สินค้า:</span>
+                </div>
+                
+                <!-- Category Chips Horizontal Scroll -->
+                <div id="categoryChipsContainer" class="flex items-center gap-1.5 overflow-x-auto py-0.5 no-scrollbar flex-1">
+                    <!-- Populated dynamically via renderCategoryChips() -->
                 </div>
 
-                <!-- SKU Checker Button -->
-                <button type="button" onclick="openSkuCheckerModal()" 
-                    class="px-3 py-1.5 rounded-xl border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all active:scale-95" title="ค้นหาว่าหมวดนี้มี SKU รันถึงเบอร์ไหนแล้ว">
-                    <i class="bi bi-hash text-indigo-600"></i>
-                    <span class="hidden sm:inline">เช็กรหัส SKU</span>
-                </button>
-
-                <!-- Export Shopee Mass Update Button -->
-                <button type="button" onclick="exportShopeeMassUpdateCSV()" 
-                    class="px-3 py-1.5 rounded-xl border border-orange-200 bg-orange-50 hover:bg-orange-100 text-[#ee4d2d] text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all active:scale-95" title="ส่งออกไฟล์อัปเดตสต็อกสำหรับ Shopee Mass Update">
-                    <i class="bi bi-upload text-[#ee4d2d]"></i>
-                    <span class="hidden sm:inline">ส่งออก Shopee</span>
-                </button>
-
-                <!-- Import Shopee Excel / CSV Button -->
-                <button type="button" onclick="openShopeeImportModal()" 
-                    class="px-3 py-1.5 rounded-xl bg-[#ee4d2d] hover:bg-[#d43f21] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all active:scale-95" title="นำเข้าสินค้าจากไฟล์ Excel / CSV ของ Shopee">
-                    <i class="bi bi-bag-check-fill text-white"></i>
-                    <span>นำเข้า Shopee</span>
-                </button>
-
-                <!-- ⚡ Shopee One-Click Scraper / Bookmarklet Tool -->
-                <button type="button" onclick="openShopeeScraperModal()" 
-                    class="px-3 py-1.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer" 
-                    title="วิธีติดตั้งปุ่มลัดดูดข้อมูลสินค้าจากหน้าเว็บ Shopee อัตโนมัติ">
-                    <i class="bi bi-lightning-charge-fill text-amber-500"></i>
-                    <span>ดูดสินค้า Shopee</span>
-                </button>
-
-                <!-- 📋 Paste Data from Shopee Bookmarklet Button (High Visibility) -->
-                <button type="button" onclick="importShopeeFromClipboard()" 
-                    id="btnMainPasteShopee"
-                    class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-emerald-600/30 transition-all active:scale-95 cursor-pointer ring-2 ring-emerald-300" 
-                    title="คลิกปุ่มนี้ทันทีเพื่อวางข้อมูลสินค้าที่เพิ่งกดดูดมาจาก Shopee">
-                    <i class="bi bi-clipboard2-check-fill text-yellow-300 text-sm"></i>
-                    <span>วางข้อมูลจาก Shopee</span>
-                </button>
-
-                <!-- Add New Product Button -->
-                <button type="button" onclick="openProductModal()" 
-                    class="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all active:scale-95">
-                    <i class="bi bi-plus-lg"></i>
-                    <span>เพิ่มสินค้า</span>
-                </button>
+                <!-- Category Dropdown fallback for quick selection -->
+                <div class="shrink-0 hidden md:flex items-center border-l border-slate-200 pl-2">
+                    <select id="categoryFilterSelect" onchange="handleCategoryFilter(this.value)" 
+                        class="bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 font-medium rounded-lg px-2 py-1 text-[11px] outline-none cursor-pointer max-w-[130px] truncate">
+                        <option value="ALL">เลือกหมวดหมู่...</option>
+                    </select>
+                </div>
             </div>
         </div>
 
@@ -299,7 +387,7 @@
                 <table class="w-full text-left text-xs text-slate-600 min-w-[800px]">
                     <thead id="inventoryTableHeader" class="bg-slate-50 text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 font-kanit">
                         <tr>
-                            <th class="py-3 px-4 w-36 whitespace-nowrap">รหัส SKU</th>
+                            <th class="py-3 px-4 min-w-[210px] whitespace-nowrap">รหัส SKU</th>
                             <th class="py-3 px-3 min-w-[240px]">ชื่อสินค้า / ไซส์ & สี</th>
                             <th class="py-3 px-3 text-center w-28 whitespace-nowrap">ชั้นวาง (Rack)</th>
                             <th class="py-3 px-3 text-center w-36 whitespace-nowrap">สต็อกคงเหลือ</th>
@@ -1488,6 +1576,7 @@
                         <div class="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs space-y-4">
                             <h4 class="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2">ข้อมูลอื่น ๆ</h4>
 
+                            <!-- 1. ผู้จัดจำหน่าย / ผู้ผลิต (Distributor) -->
                             <div>
                                 <div class="flex items-center justify-between mb-1.5 flex-wrap gap-1">
                                     <label for="modalDistributor" class="text-xs font-semibold text-slate-700">
@@ -1509,6 +1598,85 @@
                                 </div>
                             </div>
 
+                            <!-- 2. ชื่อแบรนด์ (Brand Name สำหรับพิมพ์ฉลาก) -->
+                            <div>
+                                <div class="flex items-center justify-between mb-1.5 flex-wrap gap-1">
+                                    <label for="modalBrand" class="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                                        <i class="bi bi-tag-fill text-blue-600"></i>
+                                        <span>ชื่อแบรนด์ (Brand สำหรับพิมพ์ฉลากสินค้า / Label Printer)</span>
+                                    </label>
+                                    <span class="text-[10px] text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200 font-medium flex items-center gap-1">
+                                        <i class="bi bi-printer"></i> ซิงค์กับระบบพิมพ์ฉลาก
+                                    </span>
+                                </div>
+                                <div class="relative">
+                                    <input type="text" id="modalBrand" placeholder="เช่น Whatever_Glitters, Paperstudio, Signature (หากเว้นว่างจะแสดง No brand)" 
+                                        oninput="onModalBrandInput(this.value)"
+                                        class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 outline-none pr-8 bg-white font-medium text-slate-800">
+                                    <button type="button" onclick="document.getElementById('modalBrand').value = ''; onModalBrandInput(''); document.getElementById('modalBrand').focus();" title="ล้างข้อความ"
+                                        class="absolute right-2.5 top-2.5 text-slate-300 hover:text-rose-500 text-xs">
+                                        <i class="bi bi-x-circle-fill"></i>
+                                    </button>
+                                </div>
+                                <p class="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
+                                    <i class="bi bi-info-circle"></i>
+                                    <span>จะแสดงเป็นชื่อแบรนด์หัวกระดาษเวลาพิมพ์สติ๊กเกอร์บาร์โค้ด และซิงค์กับแท็บ 2 อัตโนมัติ</span>
+                                </p>
+                            </div>
+
+                            <!-- 2.1 ที่อยู่ผู้จัดจำหน่าย / ผู้ผลิต (Address สำหรับพิมพ์ฉลากสินค้า สคบ.) -->
+                            <div>
+                                <div class="flex items-center justify-between mb-1.5 flex-wrap gap-1">
+                                    <label for="modalDistributorAddress" class="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                                        <i class="bi bi-geo-alt-fill text-rose-500"></i>
+                                        <span>ที่อยู่ (Address สำหรับพิมพ์ฉลากสินค้า สคบ.)</span>
+                                    </label>
+                                    <span class="text-[10px] text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200 font-medium flex items-center gap-1">
+                                        <i class="bi bi-printer"></i> ซิงค์กับระบบพิมพ์ฉลาก
+                                    </span>
+                                </div>
+                                <div class="relative">
+                                    <input type="text" id="modalDistributorAddress" placeholder="เช่น 25 ซอยพุทธมณฑลสาย 2 ซอย 11 แขวงบางไผ่ เขตบางแค กรุงเทพฯ 10160" 
+                                        class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500 outline-none pr-8 bg-white text-slate-800">
+                                    <button type="button" onclick="document.getElementById('modalDistributorAddress').value = ''; document.getElementById('modalDistributorAddress').focus();" title="ล้างข้อความ"
+                                        class="absolute right-2.5 top-2.5 text-slate-300 hover:text-rose-500 text-xs">
+                                        <i class="bi bi-x-circle-fill"></i>
+                                    </button>
+                                </div>
+                                <p class="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
+                                    <i class="bi bi-info-circle"></i>
+                                    <span>จะถูกนำไปพิมพ์ลงในส่วนที่อยู่ผู้จัดจำหน่ายของฉลาก สคบ. / Label Printer อัตโนมัติ</span>
+                                </p>
+                            </div>
+
+                            <!-- 3. วิธีใช้ (Usage Instructions สำหรับพิมพ์ฉลาก สคบ.) -->
+                            <div>
+                                <div class="flex items-center justify-between mb-1.5 flex-wrap gap-1">
+                                    <label for="modalUsage" class="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                                        <i class="bi bi-card-text text-emerald-600"></i>
+                                        <span>วิธีใช้ (Usage Instructions สำหรับพิมพ์ฉลากสินค้า สคบ.)</span>
+                                    </label>
+                                    <span class="text-[10px] text-slate-400 font-medium">คำที่ใช้บ่อย (คลิกเพื่อใส่):</span>
+                                </div>
+                                <!-- Quick preset chips for Usage (Dynamic) -->
+                                <div id="usagePresetChips" class="flex flex-wrap items-center gap-1.5 mb-2">
+                                    <!-- Populated dynamically via renderUsagePresetChips() -->
+                                </div>
+                                <div class="relative">
+                                    <input type="text" id="modalUsage" placeholder="เช่น สำหรับสวมใส่, สำหรับสวมใส่ภายนอก" 
+                                        class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none pr-8">
+                                    <button type="button" onclick="document.getElementById('modalUsage').value = ''; document.getElementById('modalUsage').focus();" title="ล้างข้อความ"
+                                        class="absolute right-2.5 top-2.5 text-slate-300 hover:text-rose-500 text-xs">
+                                        <i class="bi bi-x-circle-fill"></i>
+                                    </button>
+                                </div>
+                                <p class="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
+                                    <i class="bi bi-info-circle"></i>
+                                    <span>ข้อความวิธีใช้จะถูกส่งไปแสดงในช่อง "วิธีใช้" ของระบบพิมพ์ฉลากสินค้า (Label Printer) โดยตรง</span>
+                                </p>
+                            </div>
+
+                            <!-- 4. คำแนะนำการดูแลรักษา (Care Instructions) -->
                             <div>
                                 <div class="flex items-center justify-between mb-1.5 flex-wrap gap-1">
                                     <label for="modalCare" class="text-xs font-semibold text-slate-700">
@@ -1608,11 +1776,16 @@
                                     <label for="modalLocationNote" class="text-xs font-semibold text-slate-700">
                                         คำอธิบายพิกัดจัดเก็บ (Location Notes / Comments)
                                     </label>
-                                    <span class="text-[10px] text-slate-400 font-medium">คำที่ใช้บ่อย (คลิกเพื่อต่อข้อความ):</span>
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="text-[10px] text-slate-400 font-medium">คำที่ใช้บ่อย (คลิกเพื่อต่อข้อความ):</span>
+                                        <button type="button" onclick="openManageLocationChipsModal()" class="text-[10px] text-amber-700 hover:text-amber-900 font-bold hover:underline inline-flex items-center gap-0.5 cursor-pointer">
+                                            <i class="bi bi-pencil-square"></i> จัดการ / แก้ไข
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <!-- Quick Location Chips -->
-                                <div class="flex flex-wrap items-center gap-1.5 mb-2.5">
+                                <div id="locationChipsContainer" class="flex flex-wrap items-center gap-1.5 mb-2.5">
                                     <button type="button" onclick="appendLocationChip('ชั้น 1')" class="px-2.5 py-1 bg-slate-50 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 border border-slate-200 rounded-lg text-[11px] text-slate-600 font-medium transition-colors cursor-pointer">+ ชั้น 1</button>
                                     <button type="button" onclick="appendLocationChip('ชั้น 2')" class="px-2.5 py-1 bg-slate-50 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 border border-slate-200 rounded-lg text-[11px] text-slate-600 font-medium transition-colors cursor-pointer">+ ชั้น 2</button>
                                     <button type="button" onclick="appendLocationChip('ชั้น 3')" class="px-2.5 py-1 bg-slate-50 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 border border-slate-200 rounded-lg text-[11px] text-slate-600 font-medium transition-colors cursor-pointer">+ ชั้น 3</button>
@@ -1621,6 +1794,10 @@
                                     <button type="button" onclick="appendLocationChip('ราวแขวนผ้า')" class="px-2.5 py-1 bg-slate-50 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 border border-slate-200 rounded-lg text-[11px] text-slate-600 font-medium transition-colors cursor-pointer">+ ราวแขวนผ้า</button>
                                     <button type="button" onclick="appendLocationChip('ในกล่องพลาสติก')" class="px-2.5 py-1 bg-slate-50 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 border border-slate-200 rounded-lg text-[11px] text-slate-600 font-medium transition-colors cursor-pointer">+ ในกล่องพลาสติก</button>
                                     <button type="button" onclick="appendLocationChip('โซนหน้าร้าน')" class="px-2.5 py-1 bg-slate-50 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 border border-slate-200 rounded-lg text-[11px] text-slate-600 font-medium transition-colors cursor-pointer">+ โซนหน้าร้าน</button>
+                                    <button type="button" onclick="openManageLocationChipsModal()" class="px-2.5 py-1 bg-white hover:bg-amber-50 hover:border-amber-400 hover:text-amber-800 border border-dashed border-amber-300 text-amber-700 rounded-lg text-[11px] font-bold transition-all shadow-2xs flex items-center gap-1 cursor-pointer active:scale-95" title="เพิ่มหรือแก้ไขปุ่มลัดคำพิกัดจัดเก็บ">
+                                        <i class="bi bi-pencil-square text-[10px] text-amber-600 font-bold"></i>
+                                        <span>+ เพิ่ม / แก้ไข</span>
+                                    </button>
                                 </div>
 
                                 <div class="relative">
@@ -2259,17 +2436,17 @@
          MODAL: SHOPEE-STYLE CASCADING CATEGORY TREE MANAGER
          (แก้ไขหมวดหมู่สินค้า แบบ 3-4 ระดับสไตล์ Shopee พร้อมปุ่มเพิ่มแต่ละส่วน)
          ==================================================== -->
-    <div id="categoryManagerModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-2 sm:p-3 md:p-4">
-        <div class="bg-white rounded-3xl w-[96vw] max-w-7xl border border-slate-200 shadow-2xl p-5 sm:p-6 relative max-h-[92vh] flex flex-col font-sans">
+    <div id="categoryManagerModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-2 sm:p-3 overflow-y-auto">
+        <div class="bg-white rounded-3xl w-[98vw] max-w-7xl border border-slate-200 shadow-2xl p-3.5 sm:p-5 relative max-h-[96vh] sm:max-h-[92vh] flex flex-col font-sans my-auto">
             <!-- Header -->
-            <div class="flex items-center justify-between pb-3.5 border-b border-slate-100 flex-shrink-0">
+            <div class="flex items-center justify-between pb-2 sm:pb-3 border-b border-slate-100 flex-shrink-0">
                 <div class="flex items-center gap-2.5">
-                    <div class="w-8 h-8 rounded-xl bg-orange-50 text-[#ee4d2d] flex items-center justify-center text-base font-bold shadow-2xs">
+                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-orange-50 text-[#ee4d2d] flex items-center justify-center text-sm sm:text-base font-bold shadow-2xs">
                         <i class="bi bi-diagram-3-fill"></i>
                     </div>
                     <div>
-                        <h3 class="text-base font-bold text-slate-800 font-kanit">แก้ไขหมวดหมู่สินค้า</h3>
-                        <p class="text-[11px] text-slate-500">เลือกหมวดหมู่หลัก หมวดย่อย และประเภทสินค้า หรือเพิ่มหมวดใหม่ในแต่ละระดับ</p>
+                        <h3 class="text-sm sm:text-base font-bold text-slate-800 font-kanit">แก้ไขหมวดหมู่สินค้า</h3>
+                        <p class="text-[10px] sm:text-[11px] text-slate-500">เลือกหมวดหมู่หลัก หมวดย่อย และประเภทสินค้า หรือเพิ่มหมวดใหม่ในแต่ละระดับ</p>
                     </div>
                 </div>
                 <button type="button" onclick="closeCategoryManagerModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
@@ -2278,17 +2455,17 @@
             </div>
 
             <!-- Search & Info Bar (Shopee Style) -->
-            <div class="py-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 flex-shrink-0">
+            <div class="py-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 flex-shrink-0">
                 <div class="relative flex-1 max-w-md">
                     <input type="text" id="catTreeSearchInput" placeholder="กรุณากรอกอย่างน้อย 1 ตัวอักษร"
                         oninput="onCategoryTreeSearch(this.value)"
-                        class="w-full px-3 py-2 pl-9 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#ee4d2d]/30 focus:border-[#ee4d2d] outline-none font-medium">
-                    <i class="bi bi-search absolute left-3 top-2.5 text-slate-400 text-xs"></i>
-                    <button type="button" id="btnClearCatSearch" onclick="clearCategoryTreeSearch()" class="hidden absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 text-xs">
+                        class="w-full px-3 py-1.5 pl-8 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#ee4d2d]/30 focus:border-[#ee4d2d] outline-none font-medium">
+                    <i class="bi bi-search absolute left-2.5 top-2 text-slate-400 text-xs"></i>
+                    <button type="button" id="btnClearCatSearch" onclick="clearCategoryTreeSearch()" class="hidden absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 text-xs">
                         <i class="bi bi-x-circle-fill"></i>
                     </button>
                 </div>
-                <div class="text-xs text-slate-500 flex items-center gap-1.5 shrink-0">
+                <div class="text-[11px] sm:text-xs text-slate-500 flex items-center gap-1.5 shrink-0">
                     <span>วิธีตั้งค่าหมวดหมู่สินค้า</span>
                     <a href="javascript:void(0)" onclick="alert('คุณสามารถกดเลือกหมวดหมู่ย่อยทีละคอลัมน์ หรือกดปุ่ม &quot;+ เพิ่มหมวด&quot; ที่ด้านล่างของแต่ละคอลัมน์เพื่อสร้างหมวดใหม่ได้ทันที รหัสบาร์โค้ดจะถูกสร้างอัตโนมัติ')" class="text-blue-600 hover:underline font-semibold">
                         คลิกเพื่อดูข้อมูลเพิ่มเติม
@@ -2297,116 +2474,116 @@
             </div>
 
             <!-- Dynamic Search Results Dropdown Panel (Shown when typing in search input) -->
-            <div id="catTreeSearchResults" class="hidden mb-3 max-h-48 overflow-y-auto bg-orange-50/70 border border-orange-200 rounded-2xl p-2 divide-y divide-orange-100 text-xs">
+            <div id="catTreeSearchResults" class="hidden mb-2 max-h-36 overflow-y-auto bg-orange-50/70 border border-orange-200 rounded-2xl p-2 divide-y divide-orange-100 text-xs">
                 <!-- Populated dynamically via onCategoryTreeSearch() -->
             </div>
 
             <!-- Multi-Column Cascading Tree Body (Shopee 3-4 Column Grid) -->
-            <div class="flex-1 overflow-hidden border border-slate-200 rounded-2xl bg-white shadow-2xs flex flex-col md:flex-row min-h-[360px]">
+            <div class="flex-1 overflow-hidden border border-slate-200 rounded-2xl bg-white shadow-2xs flex flex-col md:flex-row min-h-[180px]">
                 <!-- Column 1: หมวดหมู่หลัก (Level 1) -->
-                <div class="flex-1 md:flex-[1.6] min-w-0 md:min-w-[310px] border-b md:border-b-0 md:border-r border-slate-200 flex flex-col bg-white">
-                    <div class="px-3.5 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs font-bold text-slate-700">
+                <div class="flex-1 md:flex-[1.5] min-w-0 md:min-w-[260px] border-b md:border-b-0 md:border-r border-slate-200 flex flex-col bg-white min-h-0">
+                    <div class="px-3 py-1.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs font-bold text-slate-700 shrink-0">
                         <span>หมวดหมู่หลัก (Level 1)</span>
                         <span id="catCol1Count" class="text-[10px] text-slate-400 font-normal">0 รายการ</span>
                     </div>
-                    <div id="catCol1List" class="flex-1 overflow-y-auto divide-y divide-slate-100 text-xs py-1">
+                    <div id="catCol1List" class="flex-1 overflow-y-auto divide-y divide-slate-100 text-xs py-1 min-h-0">
                         <!-- Populated dynamically -->
                     </div>
-                    <div class="p-2 border-t border-slate-100 bg-slate-50/60">
+                    <div class="p-1.5 border-t border-slate-100 bg-slate-50/60 shrink-0">
                         <button type="button" onclick="promptAddCategoryTreeItem(1)"
-                            class="w-full py-1.5 px-2.5 bg-white hover:bg-orange-50 hover:text-[#ee4d2d] hover:border-orange-300 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5">
+                            class="w-full py-1 px-2.5 bg-white hover:bg-orange-50 hover:text-[#ee4d2d] hover:border-orange-300 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer">
                             <i class="bi bi-plus-circle text-xs text-[#ee4d2d]"></i> + เพิ่มหมวดหลัก
                         </button>
                     </div>
                 </div>
 
                 <!-- Column 2: หมวดหมู่ย่อย (Level 2) -->
-                <div class="flex-1 md:flex-1 min-w-0 md:min-w-[210px] border-b md:border-b-0 md:border-r border-slate-200 flex flex-col bg-white">
-                    <div class="px-3.5 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs font-bold text-slate-700">
+                <div class="flex-1 md:flex-1 min-w-0 md:min-w-[190px] border-b md:border-b-0 md:border-r border-slate-200 flex flex-col bg-white min-h-0">
+                    <div class="px-3 py-1.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs font-bold text-slate-700 shrink-0">
                         <span>หมวดหมู่ย่อย (Level 2)</span>
                         <span id="catCol2Count" class="text-[10px] text-slate-400 font-normal">-</span>
                     </div>
-                    <div id="catCol2List" class="flex-1 overflow-y-auto divide-y divide-slate-100 text-xs py-1">
-                        <div class="p-8 text-center text-slate-400 text-xs">กรุณาเลือกหมวดหมู่หลักทางซ้าย</div>
+                    <div id="catCol2List" class="flex-1 overflow-y-auto divide-y divide-slate-100 text-xs py-1 min-h-0">
+                        <div class="p-6 text-center text-slate-400 text-xs">กรุณาเลือกหมวดหมู่หลักทางซ้าย</div>
                     </div>
-                    <div class="p-2 border-t border-slate-100 bg-slate-50/60">
+                    <div class="p-1.5 border-t border-slate-100 bg-slate-50/60 shrink-0">
                         <button type="button" id="btnAddCol2Btn" onclick="promptAddCategoryTreeItem(2)" disabled
-                            class="w-full py-1.5 px-2.5 bg-white disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed hover:bg-orange-50 hover:text-[#ee4d2d] hover:border-orange-300 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5">
+                            class="w-full py-1 px-2.5 bg-white disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed hover:bg-orange-50 hover:text-[#ee4d2d] hover:border-orange-300 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer">
                             <i class="bi bi-plus-circle text-xs text-[#ee4d2d]"></i> + เพิ่มหมวดย่อย
                         </button>
                     </div>
                 </div>
 
                 <!-- Column 3: ประเภทย่อย (Level 3) -->
-                <div class="flex-1 md:flex-1 min-w-0 md:min-w-[210px] border-b md:border-b-0 md:border-r border-slate-200 flex flex-col bg-white">
-                    <div class="px-3.5 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs font-bold text-slate-700">
+                <div class="flex-1 md:flex-1 min-w-0 md:min-w-[190px] border-b md:border-b-0 md:border-r border-slate-200 flex flex-col bg-white min-h-0">
+                    <div class="px-3 py-1.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs font-bold text-slate-700 shrink-0">
                         <span>ประเภทย่อย (Level 3)</span>
                         <span id="catCol3Count" class="text-[10px] text-slate-400 font-normal">-</span>
                     </div>
-                    <div id="catCol3List" class="flex-1 overflow-y-auto divide-y divide-slate-100 text-xs py-1">
-                        <div class="p-8 text-center text-slate-400 text-xs">กรุณาเลือกหมวดย่อยตรงกลาง</div>
+                    <div id="catCol3List" class="flex-1 overflow-y-auto divide-y divide-slate-100 text-xs py-1 min-h-0">
+                        <div class="p-6 text-center text-slate-400 text-xs">กรุณาเลือกหมวดย่อยตรงกลาง</div>
                     </div>
-                    <div class="p-2 border-t border-slate-100 bg-slate-50/60">
+                    <div class="p-1.5 border-t border-slate-100 bg-slate-50/60 shrink-0">
                         <button type="button" id="btnAddCol3Btn" onclick="promptAddCategoryTreeItem(3)" disabled
-                            class="w-full py-1.5 px-2.5 bg-white disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed hover:bg-orange-50 hover:text-[#ee4d2d] hover:border-orange-300 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5">
+                            class="w-full py-1 px-2.5 bg-white disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed hover:bg-orange-50 hover:text-[#ee4d2d] hover:border-orange-300 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer">
                             <i class="bi bi-plus-circle text-xs text-[#ee4d2d]"></i> + เพิ่มประเภทย่อย
                         </button>
                     </div>
                 </div>
 
                 <!-- Column 4: สรุปและโครงสร้างบาร์โค้ด / SKU -->
-                <div class="w-full md:w-60 bg-slate-50/70 p-3.5 flex flex-col justify-between border-t md:border-t-0 border-slate-200 text-xs shrink-0">
-                    <div class="space-y-3">
-                        <div class="flex items-center gap-1.5 text-slate-700 font-bold text-xs pb-1.5 border-b border-slate-200">
+                <div class="w-full md:w-56 bg-slate-50/70 p-2.5 flex flex-col justify-between border-t md:border-t-0 border-slate-200 text-xs shrink-0 overflow-y-auto">
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-1.5 text-slate-700 font-bold text-[11px] pb-1 border-b border-slate-200">
                             <i class="bi bi-upc-scan text-[#ee4d2d]"></i>
                             <span>โครงสร้างบาร์โค้ด & SKU</span>
                         </div>
-                        <div class="space-y-2 text-[11px]">
-                            <div class="bg-white p-2 rounded-xl border border-slate-200 shadow-2xs">
-                                <span class="text-slate-400 block text-[10px]">1. หมวดหลัก:</span>
-                                <span id="catTreePreviewL1" class="font-bold text-slate-700 font-mono">-</span>
+                        <div class="space-y-1 text-[11px]">
+                            <div class="bg-white p-1.5 rounded-lg border border-slate-200 shadow-2xs flex items-center justify-between">
+                                <span class="text-slate-400 text-[10px]">1. หมวดหลัก:</span>
+                                <span id="catTreePreviewL1" class="font-bold text-slate-700 font-mono text-[10.5px] truncate max-w-[110px]">-</span>
                             </div>
-                            <div class="bg-white p-2 rounded-xl border border-slate-200 shadow-2xs">
-                                <span class="text-slate-400 block text-[10px]">2. หมวดย่อย:</span>
-                                <span id="catTreePreviewL2" class="font-bold text-slate-700 font-mono">-</span>
+                            <div class="bg-white p-1.5 rounded-lg border border-slate-200 shadow-2xs flex items-center justify-between">
+                                <span class="text-slate-400 text-[10px]">2. หมวดย่อย:</span>
+                                <span id="catTreePreviewL2" class="font-bold text-slate-700 font-mono text-[10.5px] truncate max-w-[110px]">-</span>
                             </div>
-                            <div class="bg-white p-2 rounded-xl border border-slate-200 shadow-2xs">
-                                <span class="text-slate-400 block text-[10px]">3. ประเภทย่อย:</span>
-                                <span id="catTreePreviewL3" class="font-bold text-slate-700 font-mono">-</span>
+                            <div class="bg-white p-1.5 rounded-lg border border-slate-200 shadow-2xs flex items-center justify-between">
+                                <span class="text-slate-400 text-[10px]">3. ประเภทย่อย:</span>
+                                <span id="catTreePreviewL3" class="font-bold text-slate-700 font-mono text-[10.5px] truncate max-w-[110px]">-</span>
                             </div>
                         </div>
 
                         <!-- Barcode preview simulation card -->
-                        <div class="p-2.5 bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl">
-                            <span class="text-[10px] font-bold text-emerald-800 block">บาร์โค้ดตัวอย่าง:</span>
-                            <div id="catTreeBarcodeBadge" class="text-xs font-mono font-bold text-emerald-700 mt-0.5 tracking-wider">
+                        <div class="p-2 bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-lg">
+                            <span class="text-[9px] font-bold text-emerald-800 block">บาร์โค้ดตัวอย่าง:</span>
+                            <div id="catTreeBarcodeBadge" class="text-[11px] font-mono font-bold text-emerald-700 mt-0.5 tracking-wider truncate">
                                 WM-PNT-PAG-001
                             </div>
-                            <span class="text-[9px] text-emerald-600 block mt-0.5">ระบบจะช่วยแนะนำรหัสนี้ลงใน SKU อัตโนมัติ</span>
+                            <span class="text-[8.5px] text-emerald-600 block mt-0.5">ระบบจะช่วยแนะนำรหัสลงใน SKU</span>
                         </div>
                     </div>
 
-                    <div class="pt-2 text-[10px] text-slate-400 text-center">
+                    <div class="pt-1 text-[9.5px] text-slate-400 text-center">
                         คลิกเลือกหรือดับเบิลคลิกเพื่อเลือกทันที
                     </div>
                 </div>
             </div>
 
-            <!-- Footer (Shopee Style) -->
-            <div class="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 flex-shrink-0 mt-3">
-                <div class="text-xs text-slate-600 min-w-0">
-                    <span class="text-slate-500">ที่เลือกในปัจจุบัน : </span>
-                    <span id="catTreeSelectedBreadcrumb" class="font-bold text-[#ee4d2d] font-kanit">
-                        เสื้อผ้าผู้หญิง > กางเกง > เลกกิ้ง
+            <!-- Footer (Shopee Style) - Always pinned and fully visible -->
+            <div class="pt-2.5 sm:pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 flex-shrink-0 mt-2 bg-white">
+                <div class="text-xs text-slate-600 min-w-0 flex items-center gap-1">
+                    <span class="text-slate-500 shrink-0 text-[11px]">ที่เลือกในปัจจุบัน : </span>
+                    <span id="catTreeSelectedBreadcrumb" class="font-bold text-[#ee4d2d] font-kanit text-xs truncate max-w-[400px]">
+                        -
                     </span>
                 </div>
                 <div class="flex items-center gap-2 self-end sm:self-auto shrink-0">
                     <button type="button" onclick="closeCategoryManagerModal()"
-                        class="px-5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl transition-colors">
+                        class="px-4 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-800 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer">
                         Cancel
                     </button>
                     <button type="button" id="btnConfirmCatTree" onclick="confirmCategoryTreeSelection()"
-                        class="px-6 py-2 bg-[#ee4d2d] hover:bg-[#d73211] text-white rounded-xl text-xs font-bold shadow-md shadow-orange-500/20 transition-all flex items-center gap-1.5 active:scale-95">
+                        class="px-5 py-1.5 bg-[#ee4d2d] hover:bg-[#d73211] text-white rounded-xl text-xs font-bold shadow-md shadow-orange-500/20 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer">
                         <i class="bi bi-check-lg"></i>
                         <span>Confirm</span>
                     </button>
@@ -2577,6 +2754,22 @@
                         <input type="text" id="inputDistributorPresetShort" placeholder="เช่น บ.ทีเอ็นพี แฟชั่น"
                             class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#ee4d2d]/30 focus:border-[#ee4d2d] outline-none bg-white">
                     </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">
+                            <span class="text-blue-600 font-bold"><i class="bi bi-tag-fill text-[10px]"></i></span> ชื่อแบรนด์ (Brand สำหรับพิมพ์ฉลากสินค้า / Label Printer)
+                        </label>
+                        <input type="text" id="inputDistributorPresetBrand" placeholder="เช่น Whatever_Glitters, Paperstudio (เว้นว่างจะใช้ชื่อเต็ม)"
+                            class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 outline-none bg-white font-medium">
+                        <p class="text-[10px] text-slate-400 mt-0.5">* ใช้พิมพ์เป็นชื่อแบรนด์หัวกระดาษในระบบพิมพ์ฉลาก (Label Printer)</p>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">
+                            <span class="text-rose-500 font-bold"><i class="bi bi-geo-alt-fill text-[10px]"></i></span> ที่อยู่ผู้จัดจำหน่าย / ผู้ผลิต (Address สำหรับพิมพ์ฉลาก สคบ.)
+                        </label>
+                        <input type="text" id="inputDistributorPresetAddress" placeholder="เช่น 25 ซอยพุทธมณฑลสาย 2 ซอย 11 แขวงบางไผ่ เขตบางแค กรุงเทพฯ 10160"
+                            class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500 outline-none bg-white">
+                        <p class="text-[10px] text-slate-400 mt-0.5">* หากระบุ จะช่วยกรอกที่อยู่ลงในช่องที่อยู่อัตโนมัติเมื่อกดเลือกชิป</p>
+                    </div>
                     <button type="button" id="btnSubmitDistributorPreset" onclick="saveDistributorPresetItem()"
                         class="w-full py-2 text-xs font-bold text-white bg-[#ee4d2d] hover:bg-[#d73211] rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1 active:scale-98">
                         <i class="bi bi-plus-lg"></i>
@@ -2678,6 +2871,157 @@
             <div class="px-5 py-3 border-t border-slate-100 flex items-center justify-end bg-slate-50 shrink-0">
                 <button type="button" onclick="closeManageCarePresetModal()"
                     class="px-5 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl transition-colors shadow-2xs">
+                    เสร็จสิ้น
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====================================================
+         MODAL: จัดการคำที่ใช้บ่อย: วิธีใช้ (Usage Instructions Presets)
+         ==================================================== -->
+    <div id="manageUsagePresetModal" class="fixed inset-0 z-[99998] bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-lg overflow-hidden animate-scaleIn flex flex-col max-h-[90vh]">
+            <!-- Header -->
+            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm font-bold">
+                        <i class="bi bi-card-text"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-bold text-slate-800">จัดการคำที่ใช้บ่อย: วิธีใช้ (Usage)</h4>
+                        <p class="text-[11px] text-slate-500">สำหรับพิมพ์ลงฉลากสินค้า สคบ. / ป้ายบาร์โค้ด</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeManageUsagePresetModal()" class="w-7 h-7 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="p-5 space-y-4 overflow-y-auto flex-1">
+                <!-- Form: Add/Edit -->
+                <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 space-y-2.5">
+                    <div class="flex items-center justify-between">
+                        <label id="usagePresetFormTitle" class="block text-xs font-bold text-slate-700">
+                            เพิ่มข้อความวิธีใช้ใหม่:
+                        </label>
+                        <button type="button" onclick="resetUsageModalForm()" class="text-[10px] text-slate-400 hover:text-rose-500">
+                            ล้างฟอร์ม
+                        </button>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">
+                            <span class="text-rose-500 font-bold">*</span> ชื่อหัวข้อ (แสดงบนปุ่มด้านหน้า)
+                        </label>
+                        <input type="text" id="inputUsagePresetTitle" placeholder="เช่น 👕 สำหรับสวมใส่, 🧥 สำหรับสวมใส่ภายนอก"
+                            class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none bg-white font-medium">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">
+                            <span class="text-rose-500 font-bold">*</span> ข้อความวิธีใช้ (ที่จะนำไปบันทึกและพิมพ์ฉลาก)
+                        </label>
+                        <input type="text" id="inputUsagePresetText" placeholder="เช่น สำหรับสวมใส่"
+                            class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none bg-white">
+                    </div>
+                    <button type="button" id="btnSubmitUsagePreset" onclick="saveUsagePresetItem()"
+                        class="w-full py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1 active:scale-98">
+                        <i class="bi bi-plus-lg"></i>
+                        <span>บันทึกวิธีใช้</span>
+                    </button>
+                </div>
+
+                <!-- Existing List -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold text-slate-700">รายการวิธีใช้ที่มีอยู่</span>
+                        <span id="manageUsageCount" class="text-[11px] text-slate-400 font-medium">0 รายการ</span>
+                    </div>
+                    <div id="manageUsageList" class="space-y-2 max-h-56 overflow-y-auto pr-1">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="px-5 py-3 border-t border-slate-100 flex items-center justify-end bg-slate-50 shrink-0">
+                <button type="button" onclick="closeManageUsagePresetModal()"
+                    class="px-5 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl transition-colors shadow-2xs">
+                    เสร็จสิ้น
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====================================================
+         MODAL: จัดการปุ่มลัดพิกัดจัดเก็บ (Location Notes Chips)
+         ==================================================== -->
+    <div id="manageLocationChipsModal" class="fixed inset-0 z-[99998] bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-md overflow-hidden animate-scaleIn flex flex-col max-h-[90vh]">
+            <!-- Header -->
+            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center text-sm font-bold">
+                        <i class="bi bi-geo-alt-fill"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-bold text-slate-800 font-kanit">จัดการปุ่มลัดพิกัดจัดเก็บ</h4>
+                        <p class="text-[11px] text-slate-500">เพิ่ม แก้ไข หรือลบข้อความพิกัดสำหรับกดเลือกด่วน</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeManageLocationChipsModal()" class="w-7 h-7 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center cursor-pointer">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="p-5 space-y-4 overflow-y-auto flex-1">
+                <!-- Form: Add/Edit -->
+                <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 space-y-2.5">
+                    <div class="flex items-center justify-between">
+                        <label id="locationChipFormTitle" class="block text-xs font-bold text-slate-700">
+                            เพิ่มปุ่มลัดใหม่:
+                        </label>
+                        <button type="button" id="btnCancelEditLocationChip" onclick="resetLocationChipModalForm()" class="text-[10px] text-slate-400 hover:text-rose-500 hidden cursor-pointer">
+                            ยกเลิกแก้ไข
+                        </button>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">
+                            <span class="text-rose-500 font-bold">*</span> คำพิกัดจัดเก็บ (ที่จะแสดงบนปุ่ม)
+                        </label>
+                        <input type="text" id="inputLocationChipText" placeholder="เช่น ฝั่งซ้าย, ลังเบอร์ 4, ตู้เหล็กชั้นบน..."
+                            onkeydown="if(event.key === 'Enter') { event.preventDefault(); saveLocationChipItem(); }"
+                            class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 outline-none bg-white font-medium">
+                    </div>
+                    <button type="button" id="btnSubmitLocationChip" onclick="saveLocationChipItem()"
+                        class="w-full py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1 active:scale-98 cursor-pointer">
+                        <i class="bi bi-plus-lg"></i>
+                        <span>บันทึกปุ่มลัด</span>
+                    </button>
+                </div>
+
+                <!-- Existing List -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold text-slate-700">รายการปุ่มลัดที่มีอยู่</span>
+                        <div class="flex items-center gap-2">
+                            <span id="manageLocationChipsCount" class="text-[11px] text-slate-400 font-medium">0 รายการ</span>
+                            <button type="button" onclick="resetLocationChipsToDefaults()" class="text-[10px] text-slate-400 hover:text-amber-700 underline cursor-pointer" title="รีเซ็ตกลับเป็นค่าเริ่มต้น">
+                                รีเซ็ตค่าเริ่มต้น
+                            </button>
+                        </div>
+                    </div>
+                    <div id="manageLocationChipsList" class="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                        <!-- Populated dynamically via renderManageLocationChipsList() -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="px-5 py-3 border-t border-slate-100 flex items-center justify-end bg-slate-50 shrink-0">
+                <button type="button" onclick="closeManageLocationChipsModal()"
+                    class="px-5 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl transition-colors shadow-2xs cursor-pointer">
                     เสร็จสิ้น
                 </button>
             </div>

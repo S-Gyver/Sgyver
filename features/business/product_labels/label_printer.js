@@ -29,7 +29,7 @@ const AppState = {
         warehouse_location: 'A-01'
     },
     labelSize: '57roll', // PeriPage A6 (57mm continuous roll)
-    barcodeType: 'CODE128', // 'CODE128' or 'QR'
+    barcodeType: localStorage.getItem('sgyver_label_barcode_type') || 'BOTH', // 'BOTH', 'CODE128', or 'QR'
     scanMode: 'PRINT', // 'PRINT', 'IN', 'OUT'
     stats: {
         scannedToday: 0,
@@ -225,9 +225,610 @@ function updateDbStatusBadge(isOnline, text) {
 // ==============================================================================
 // 2. PRODUCT & INVENTORY CRUD OPERATIONS (SECTION 1)
 // ==============================================================================
-async function loadProductsList() {
-    if (!AppState.supabaseClient) return;
 
+const DEFAULT_DISTRIBUTOR_PRESETS = [
+    { id: 'dist_1', name: 'บริษัท ซิกเนเจอร์ แอพพาเรล จำกัด', shortName: 'บ.ซิกเนเจอร์ แอพพาเรล', brand: 'Signature Apparel', address: '25 ซอยพุทธมณฑลสาย 2 ซอย 11 แขวงบางไผ่ เขตบางแค กรุงเทพฯ 10160' },
+    { id: 'dist_2', name: 'Paperstudio (เปเปอร์สตูดิโอ)', shortName: 'Paperstudio', brand: 'Paperstudio (เปเปอร์สตูดิโอ)', address: '25 ซอยพุทธมณฑลสาย 2 ซอย 11 แขวงบางไผ่ เขตบางแค กรุงเทพฯ 10160' },
+    { id: 'dist_3', name: 'S-Gyver Official Store', shortName: 'S-Gyver Official', brand: 'S-Gyver', address: '25 ซอยพุทธมณฑลสาย 2 ซอย 11 แขวงบางไผ่ เขตบางแค กรุงเทพฯ 10160' },
+    { id: 'dist_4', name: 'Whatever_Glitters', shortName: 'Whatever_Glitters', brand: 'Whatever_Glitters', address: '25 ซอยพุทธมณฑลสาย 2 ซอย 11 แขวงบางไผ่ เขตบางแค กรุงเทพฯ 10160' },
+    { id: 'dist_5', name: 'สินค้านำเข้า (Imported)', shortName: 'สินค้านำเข้า', brand: 'No brand', address: '25 ซอยพุทธมณฑลสาย 2 ซอย 11 แขวงบางไผ่ เขตบางแค กรุงเทพฯ 10160' },
+    { id: 'dist_6', name: 'ผลิตในประเทศไทย (Made in Thailand)', shortName: '🇹🇭 ผลิตในไทย', brand: 'Signature', address: '25 ซอยพุทธมณฑลสาย 2 ซอย 11 แขวงบางไผ่ เขตบางแค กรุงเทพฯ 10160' }
+];
+
+function getDistributorPresets() {
+    try {
+        const stored = localStorage.getItem('sgyver_distributor_presets');
+        if (stored !== null) {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                return parsed.map((item, idx) => ({
+                    id: item.id || `dist_${idx}_${Date.now()}`,
+                    name: item.name || '',
+                    shortName: item.shortName || item.name || '',
+                    brand: item.brand !== undefined ? item.brand : (item.name || ''),
+                    address: item.address || ''
+                }));
+            }
+        }
+    } catch (e) {}
+    return DEFAULT_DISTRIBUTOR_PRESETS.map((item, idx) => ({
+        ...item,
+        id: item.id || `dist_${idx}`,
+        brand: item.brand !== undefined ? item.brand : (item.name || ''),
+        address: item.address || ''
+    }));
+}
+
+function renderLabelDistributorChips() {
+    const container = document.getElementById('labelDistributorChips');
+    if (!container) return;
+    const presets = getDistributorPresets();
+    container.innerHTML = presets.map((p, idx) => `
+        <button type="button" onclick="selectLabelDistributorPreset('${p.id}', ${idx})" 
+            title="${p.name}${p.brand ? ` (แบรนด์: ${p.brand})` : ''}"
+            class="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 text-slate-600 rounded-lg text-[10px] border border-slate-200 transition-colors flex items-center gap-1 truncate max-w-[150px]">
+            <i class="bi bi-building text-[9px]"></i>
+            <span class="truncate">${p.shortName || p.name}</span>
+        </button>
+    `).join('');
+}
+
+function selectLabelDistributorPreset(id, idx) {
+    const presets = getDistributorPresets();
+    let item = presets.find(p => p.id === id);
+    if (!item && typeof idx === 'number' && presets[idx]) item = presets[idx];
+    if (!item) return;
+
+    if (item.name && document.getElementById('formDistributor')) {
+        document.getElementById('formDistributor').value = item.name;
+    }
+    if (item.brand && document.getElementById('formBrand')) {
+        document.getElementById('formBrand').value = item.brand;
+    }
+    if (item.address && document.getElementById('formDistributorAddress')) {
+        document.getElementById('formDistributorAddress').value = item.address;
+    }
+    onFormInputChange();
+}
+
+/**
+ * Extract only the primary/main category from hierarchical category paths
+ * e.g. "เสื้อผ้าแฟชั่นผู้หญิง > กระโปรง > กระโปรงสั้นเหนือเข่า" -> "เสื้อผ้าแฟชั่นผู้หญิง"
+ */
+function getMainProductType(rawType) {
+    if (!rawType) return '';
+    const str = String(rawType).trim();
+    if (str.includes('>')) {
+        const parts = str.split('>');
+        return parts[0].trim();
+    }
+    return str;
+}
+
+function cleanFormProductType() {
+    const el = document.getElementById('formProductType');
+    if (el && el.value.includes('>')) {
+        el.value = getMainProductType(el.value);
+    }
+}
+
+/**
+ * สกัดเฉพาะขนาด / ไซส์มาตรฐาน (S, M, L, XL, XXL, 2XL, 3XL, Free Size ฯลฯ)
+ * ตัดข้อความขยายความ เช่น (อก38"), (อก 40 นิ้ว), (เอว30) ออกทั้งหมด
+ * หากไม่มีไซส์ระบุไว้ จะคืนค่าเป็น 'Free Size' ตามที่ผู้ใช้กำหนด
+ */
+function extractPureSize(raw) {
+    if (!raw) return 'Free';
+    let str = String(raw).trim();
+    if (!str || str === '-' || str === 'ไม่มี') return 'Free';
+
+    // ตัดส่วนขยายความในวงเล็บ เช่น (อก38"), [เอว30], (รอบอก 40 นิ้ว)
+    str = str.replace(/[\(\[].*?[\)\]]/g, ' ').trim();
+    // ตัดข้อความขยายความที่ตามหลัง เช่น "อก 38", "รอบอก 40", "เอว 32"
+    str = str.replace(/(?:อก|รอบอก|เอว|สะโพก|ความยาว|ยาว).*$/i, '').trim();
+
+    if (!str) return 'Free';
+
+    // 1. ตรวจหาคำว่า Free Size / ฟรีไซส์ / One Size / F
+    if (/^(free\s*size|freesize|free-size|one\s*size|onesize|free|ฟรีไซส์|ฟรีไซต์|f)$/i.test(str)) {
+        return 'Free';
+    }
+
+    // 2. ตรวจหาช่วงไซส์เสื้อผ้ามาตรฐาน เช่น S-M, M-L, L-XL, XL-2XL, M-XXL
+    const rangeMatch = str.match(/\b([XSML]{1,3}\s*-\s*(?:[XSML]{1,3}|[2-5]XL))\b/i);
+    if (rangeMatch) {
+        return rangeMatch[1].toUpperCase().replace(/\s+/g, '');
+    }
+
+    // 3. ตรวจหาไซส์เสื้อผ้ามาตรฐาน (เรียงจากตัวยาวไปสั้น)
+    const sizeRegex = /(?:^|[\s/\-_,])(8XL|7XL|6XL|5XL|4XL|3XL|2XL|XXXXXL|XXXXL|XXXL|XXL|3XS|2XS|XXS|XS|XL|2X|3X|4X|5X|S|M|L|F)(?=[\s/\-_,"'(:;]|$)/i;
+    const match = str.match(sizeRegex);
+    if (match) {
+        const found = match[1].toUpperCase();
+        if (found === 'F') return 'Free';
+        return found;
+    }
+
+    // 4. ตรวจหากรณีไซส์กางเกง/รองเท้าที่เป็นตัวเลข 2 หลัก (เช่น 24 - 48 หรือ 28(เอว28))
+    const numMatch = str.match(/(?:^|[\s/\-_,])([2-4][0-9]|5[0-2])(?=[\s/\-_,"'(:;]|$)/);
+    if (numMatch) {
+        return numMatch[1];
+    }
+
+    // 5. หากมีคำว่า free หรือ ฟรี
+    if (/free|ฟรี/i.test(str)) {
+        return 'Free';
+    }
+
+    // 6. ถ้าไม่ได้ลงไซส์ไว้ หรือเป็นข้อความอื่นที่ไม่ใช่ไซส์ ให้เป็น 'Free Size' ตามคำขอ
+    return 'Free';
+}
+
+function extractPureSizeCandidate(raw) {
+    if (!raw) return null;
+    let str = String(raw).trim();
+    if (!str || str === '-' || str === 'ไม่มี') return null;
+
+    str = str.replace(/[\(\[].*?[\)\]]/g, ' ').trim();
+    str = str.replace(/(?:อก|รอบอก|เอว|สะโพก|ความยาว|ยาว).*$/i, '').trim();
+
+    if (!str) return null;
+
+    if (/^(free\s*size|freesize|free-size|one\s*size|onesize|free|ฟรีไซส์|ฟรีไซต์|f)$/i.test(str)) {
+        return 'Free';
+    }
+
+    const rangeMatch = str.match(/\b([XSML]{1,3}\s*-\s*(?:[XSML]{1,3}|[2-5]XL))\b/i);
+    if (rangeMatch) {
+        return rangeMatch[1].toUpperCase().replace(/\s+/g, '');
+    }
+
+    const sizeRegex = /(?:^|[\s/\-_,])(8XL|7XL|6XL|5XL|4XL|3XL|2XL|XXXXXL|XXXXL|XXXL|XXL|3XS|2XS|XXS|XS|XL|2X|3X|4X|5X|S|M|L|F)(?=[\s/\-_,"'(:;]|$)/i;
+    const match = str.match(sizeRegex);
+    if (match) {
+        const found = match[1].toUpperCase();
+        if (found === 'F') return 'Free';
+        return found;
+    }
+
+    const numMatch = str.match(/(?:^|[\s/\-_,])([2-4][0-9]|5[0-2])(?=[\s/\-_,"'(:;]|$)/);
+    if (numMatch) {
+        return numMatch[1];
+    }
+
+    if (/free|ฟรี/i.test(str)) {
+        return 'Free';
+    }
+
+    return null;
+}
+
+function splitVariantColorAndSize(rawVariant) {
+    const str = String(rawVariant || '').trim();
+    if (!str) return { color: '', size: 'Free' };
+
+    // กรณีมีตัวคั่น เช่น "ทอง, S(อก38")", "ชมพู / M(อก40")", "ดำ - XL"
+    if (str.includes(',') || str.includes('/') || str.includes(' - ') || str.includes('|')) {
+        const parts = str.split(/[,/|]+|(?:\s+-\s+)/).map(s => s.trim()).filter(Boolean);
+        if (parts.length >= 2) {
+            const p0Size = extractPureSizeCandidate(parts[0]);
+            const p1Size = extractPureSizeCandidate(parts[1]);
+
+            if (p1Size) {
+                return { color: parts[0], size: p1Size };
+            } else if (p0Size) {
+                return { color: parts.slice(1).join(', '), size: p0Size };
+            } else {
+                return { color: parts[0], size: extractPureSize(parts[1]) };
+            }
+        }
+    }
+
+    // กรณีไม่มีตัวคั่น เช่น มีข้อความเดียว เช่น "S(อก38")" หรือ "ทอง"
+    const candidate = extractPureSizeCandidate(str);
+    if (candidate) {
+        return { color: '', size: candidate };
+    }
+
+    // ถ้าไม่ใช่ไซส์ แสดงว่าเป็นสีอย่างเดียว เช่น "ทอง" -> ไซส์คือ 'Free'
+    return { color: str, size: 'Free' };
+}
+
+function cleanFormSizeInput() {
+    const el = document.getElementById('formSize');
+    if (el) {
+        el.value = extractPureSize(el.value);
+        onFormColorSizeChange();
+    }
+}
+
+function onFormColorSizeChange() {
+    const color = (document.getElementById('formColor')?.value || '').trim();
+    const rawSize = (document.getElementById('formSize')?.value || '').trim();
+    const size = rawSize ? extractPureSize(rawSize) : 'Free';
+    const hiddenVariant = document.getElementById('formVariant');
+    if (hiddenVariant) {
+        if (color && size) hiddenVariant.value = `${color},${size}`;
+        else if (size) hiddenVariant.value = size;
+        else if (color) hiddenVariant.value = color;
+        else hiddenVariant.value = '';
+    }
+    onFormInputChange();
+}
+
+function getInventoryLocalProducts() {
+    try {
+        const stored = localStorage.getItem('sgyver_custom_products');
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed)) return parsed;
+        }
+    } catch (e) {
+        console.warn('Error reading sgyver_custom_products:', e);
+    }
+    return [];
+}
+
+async function findProductFromInventory(querySku) {
+    if (!querySku) return null;
+    const cleanQuery = String(querySku).trim().toUpperCase();
+    if (!cleanQuery) return null;
+
+    // Helper to enrich product with localStorage metadata if missing
+    const enrichProduct = (p) => {
+        if (!p) return null;
+        const cleanSku = (p.sku || cleanQuery).trim().toUpperCase();
+        const parentKey = (p.parent_sku || (cleanSku.includes('-') ? cleanSku.split('-').slice(0, -1).join('-') : cleanSku) || '').trim().toUpperCase();
+
+        // 1. Distributor
+        let distributor = (p.distributor || '').trim();
+        if (!distributor && cleanSku) {
+            distributor = (localStorage.getItem('sgyver_distributor_' + cleanSku) || '').trim();
+        }
+        if (!distributor && parentKey) {
+            distributor = (localStorage.getItem('sgyver_distributor_' + parentKey) || '').trim();
+        }
+
+        // Match preset for distributor
+        const presets = getDistributorPresets();
+        const matchedPreset = presets.find(dp => 
+            (distributor && dp.name && dp.name.trim().toLowerCase() === distributor.toLowerCase()) ||
+            (distributor && dp.shortName && dp.shortName.trim().toLowerCase() === distributor.toLowerCase())
+        );
+
+        // 2. Brand resolution
+        // Priority:
+        // a. p.brand from DB (if not generic placeholder 'Paperstudio (เปเปอร์สตูดิโอ)' when distributor isn't Paperstudio)
+        // b. localStorage 'sgyver_brand_' for subSku or parentKey
+        // c. localStorage 'sgyver_tab2_attrs_' for subSku or parentKey
+        // d. matched preset's brand
+        // e. distributor name itself
+        let brand = '';
+        if (p.brand && p.brand !== 'No brand') {
+            if (p.brand !== 'Paperstudio (เปเปอร์สตูดิโอ)' || (distributor && distributor.includes('Paperstudio'))) {
+                brand = p.brand.trim();
+            }
+        }
+        if (!brand && cleanSku) {
+            brand = (localStorage.getItem('sgyver_brand_' + cleanSku) || '').trim();
+            if (brand === 'Paperstudio (เปเปอร์สตูดิโอ)' && distributor && !distributor.includes('Paperstudio')) {
+                brand = '';
+            }
+        }
+        if (!brand && parentKey) {
+            brand = (localStorage.getItem('sgyver_brand_' + parentKey) || '').trim();
+            if (brand === 'Paperstudio (เปเปอร์สตูดิโอ)' && distributor && !distributor.includes('Paperstudio')) {
+                brand = '';
+            }
+        }
+        if (!brand) {
+            try {
+                const tab2Sku = JSON.parse(localStorage.getItem('sgyver_tab2_attrs_' + cleanSku) || '{}');
+                const tab2Parent = JSON.parse(localStorage.getItem('sgyver_tab2_attrs_' + parentKey) || '{}');
+                const b = tab2Sku.brand || tab2Parent.brand;
+                if (b && b !== 'No brand') {
+                    if (b !== 'Paperstudio (เปเปอร์สตูดิโอ)' || (distributor && distributor.includes('Paperstudio'))) {
+                        brand = b.trim();
+                    }
+                }
+            } catch(e) {}
+        }
+        if (!brand && matchedPreset && matchedPreset.brand && matchedPreset.brand !== 'No brand') {
+            brand = matchedPreset.brand.trim();
+        }
+        if (!brand && distributor && distributor !== 'บริษัท เปเปอร์สตูดิโอ') {
+            brand = distributor;
+        }
+        if (!brand && p.brand) {
+            brand = p.brand.trim();
+        }
+        if (!brand) {
+            brand = 'Whatever_Glitters';
+        }
+
+        // 3. Distributor Address
+        let address = (p.distributor_address || '').trim();
+        if (!address && cleanSku) {
+            address = (localStorage.getItem('sgyver_dist_address_' + cleanSku) || '').trim();
+        }
+        if (!address && parentKey) {
+            address = (localStorage.getItem('sgyver_dist_address_' + parentKey) || '').trim();
+        }
+        if (!address && matchedPreset && matchedPreset.address) {
+            address = matchedPreset.address.trim();
+        }
+        if (!address) {
+            address = '25 ซอยพุทธมณฑลสาย 2 ซอย 11 แขวงบางไผ่ เขตบางแค กรุงเทพฯ 10160';
+        }
+
+        // 4. Usage Info
+        let usage = (p.usage_info || p.usage || '').trim();
+        if (!usage && cleanSku) {
+            usage = (localStorage.getItem('sgyver_usage_' + cleanSku) || '').trim();
+        }
+        if (!usage && parentKey) {
+            usage = (localStorage.getItem('sgyver_usage_' + parentKey) || '').trim();
+        }
+        if (!usage) {
+            usage = 'สำหรับสวมใส่';
+        }
+
+        // 5. Default distributor
+        if (!distributor) {
+            distributor = brand || 'Whatever_Glitters';
+        }
+
+        return {
+            ...p,
+            sku: p.sku || cleanQuery,
+            brand: brand,
+            product_type: getMainProductType(p.product_type || p.name || 'เสื้อผ้าแฟชั่น'),
+            name: getMainProductType(p.name || p.product_type || 'เสื้อผ้าแฟชั่น'),
+            variant: p.variant || 'M L XL XXL',
+            usage_info: usage,
+            care_instructions: p.care_instructions || 'ควรซักก่อนสวมใส่ / ห้ามใช้น้ำยาฟอกขาว / ควรรีดด้วยไฟปานกลาง / ควรแยกผ้าสีกับผ้าขาวก่อนซัก การซักด้วยเครื่อง อาจทำให้เนื้อผ้าเสียรูปทรง',
+            manufacturer: p.manufacturer || 'ประเทศจีน',
+            distributor: distributor,
+            distributor_address: address,
+            price: (p.price !== null && p.price !== undefined && p.price !== '' && !isNaN(p.price)) ? parseFloat(p.price) : null,
+            stock_quantity: parseInt(p.stock_quantity ?? 0, 10),
+            min_stock_alert: parseInt(p.min_stock_alert ?? 5, 10),
+            warehouse_location: (p.warehouse_location || 'A-01').trim()
+        };
+    };
+
+    // 1. Search in in-memory AppState.products
+    if (Array.isArray(AppState.products)) {
+        let found = AppState.products.find(p => p.sku && p.sku.trim().toUpperCase() === cleanQuery);
+        if (found) return enrichProduct(found);
+
+        found = AppState.products.find(p => p.sku && p.sku.replace(/\s+/g, '').toUpperCase() === cleanQuery.replace(/\s+/g, ''));
+        if (found) return enrichProduct(found);
+
+        found = AppState.products.find(p => p.parent_sku && p.parent_sku.trim().toUpperCase() === cleanQuery);
+        if (found) return enrichProduct(found);
+    }
+
+    // 2. Search in localStorage 'sgyver_custom_products' (Inventory page cache)
+    const localProds = getInventoryLocalProducts();
+    if (localProds.length > 0) {
+        let foundLocal = localProds.find(p => p.sku && p.sku.trim().toUpperCase() === cleanQuery);
+        if (foundLocal) return enrichProduct(foundLocal);
+
+        foundLocal = localProds.find(p => p.sku && p.sku.replace(/\s+/g, '').toUpperCase() === cleanQuery.replace(/\s+/g, ''));
+        if (foundLocal) return enrichProduct(foundLocal);
+
+        foundLocal = localProds.find(p => p.parent_sku && p.parent_sku.trim().toUpperCase() === cleanQuery);
+        if (foundLocal) return enrichProduct(foundLocal);
+
+        // Prefix match (e.g. parent sku)
+        foundLocal = localProds.find(p => p.sku && (p.sku.toUpperCase().startsWith(cleanQuery + '-') || cleanQuery.startsWith(p.sku.toUpperCase() + '-')));
+        if (foundLocal) return enrichProduct(foundLocal);
+    }
+
+    // 3. Query Supabase
+    if (AppState.supabaseClient) {
+        try {
+            // Exact match
+            const { data, error } = await AppState.supabaseClient
+                .from('product_labels')
+                .select('*')
+                .eq('sku', cleanQuery)
+                .maybeSingle();
+
+            if (!error && data) {
+                return enrichProduct(data);
+            }
+
+            // Fallback: match by parent_sku or prefix
+            const { data: parentList, error: parentErr } = await AppState.supabaseClient
+                .from('product_labels')
+                .select('*')
+                .or(`parent_sku.eq.${cleanQuery},sku.ilike.${cleanQuery}%`)
+                .limit(1);
+
+            if (!parentErr && parentList && parentList.length > 0) {
+                return enrichProduct(parentList[0]);
+            }
+        } catch (err) {
+            console.warn('Supabase query error in findProductFromInventory:', err);
+        }
+    }
+
+    return null;
+}
+
+function populateFormFromInventoryProduct(item, showNotification = true) {
+    if (!item) return;
+
+    AppState.currentProduct = { ...item };
+    AppState.isEditing = true;
+    AppState.editId = item.id || null;
+
+    const setVal = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.value = val !== undefined && val !== null ? val : '';
+    };
+
+    setVal('formSku', item.sku || '');
+    setVal('formBrand', item.brand || '');
+    setVal('formProductType', getMainProductType(item.product_type || item.name || 'เสื้อผ้าแฟชั่น'));
+    const parsedVar = splitVariantColorAndSize(item.variant || '');
+    setVal('formColor', parsedVar.color);
+    setVal('formSize', parsedVar.size);
+    setVal('formVariant', item.variant || '');
+    setVal('formUsage', item.usage_info || 'สำหรับสวมใส่');
+    setVal('formCare', item.care_instructions || '');
+    setVal('formManufacturer', item.manufacturer || 'ประเทศจีน');
+    setVal('formDistributor', item.distributor || '');
+    setVal('formDistributorAddress', item.distributor_address || '');
+
+    // Price handling
+    const chkPrice = document.getElementById('chkPriceAsSpecified');
+    const priceInput = document.getElementById('formPrice');
+    const priceWrapper = document.getElementById('priceInputWrapper');
+    if (item.price !== null && item.price !== undefined && item.price !== '' && !isNaN(item.price)) {
+        if (chkPrice) chkPrice.checked = false;
+        if (priceWrapper) priceWrapper.classList.remove('hidden');
+        if (priceInput) priceInput.value = item.price;
+    } else {
+        if (chkPrice) chkPrice.checked = true;
+        if (priceWrapper) priceWrapper.classList.add('hidden');
+        if (priceInput) priceInput.value = '';
+    }
+
+    setVal('formStock', item.stock_quantity ?? 0);
+    setVal('formMinStock', item.min_stock_alert ?? 5);
+    setVal('formLocation', item.warehouse_location || 'A-01');
+    setVal('editProductId', item.id || '');
+
+    // Form mode badge
+    const badge = document.getElementById('formModeBadge');
+    if (badge) {
+        badge.innerHTML = `<i class="bi bi-link-45deg text-blue-600 font-bold me-1"></i> เชื่อมกับคลังสินค้า: <strong>${escapeHtml(item.sku)}</strong>`;
+        badge.className = 'px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200 transition-all';
+    }
+
+    // Update label preview
+    updateLabelPreview(AppState.currentProduct);
+
+    if (showNotification) {
+        SoundFx.playSuccessBeep();
+        showInventorySyncToast(item);
+    }
+}
+
+function showInventorySyncToast(item, customMessage = null) {
+    let toast = document.getElementById('inventorySyncToast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'inventorySyncToast';
+        toast.className = 'fixed top-4 left-1/2 -translate-x-1/2 z-[99999] transition-all duration-300 pointer-events-none transform -translate-y-6 opacity-0';
+        document.body.appendChild(toast);
+    }
+
+    if (customMessage) {
+        toast.innerHTML = `
+            <div class="px-4 py-2.5 rounded-2xl bg-slate-900/95 text-white shadow-2xl backdrop-blur-md border border-slate-700 flex items-center gap-2.5 text-xs">
+                <span>${customMessage}</span>
+            </div>
+        `;
+    } else if (item) {
+        toast.innerHTML = `
+            <div class="px-4 py-2.5 rounded-2xl bg-slate-900/95 text-white shadow-2xl backdrop-blur-md border border-blue-500/40 flex items-center gap-3 text-xs">
+                <div class="w-7 h-7 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-sm shrink-0 border border-emerald-500/30">
+                    <i class="bi bi-check-lg"></i>
+                </div>
+                <div class="min-w-0 pr-1">
+                    <div class="font-bold text-white flex items-center gap-1.5 flex-wrap">
+                        <span class="text-sky-300 font-mono">${escapeHtml(item.sku)}</span>
+                        <span class="text-[10px] bg-blue-500/30 text-blue-200 px-1.5 py-0.2 rounded border border-blue-400/30">คลังสินค้า</span>
+                    </div>
+                    <div class="text-[11px] text-slate-300 truncate max-w-xs">
+                        ${escapeHtml(item.name || item.product_type || '')} ${item.variant ? `(${escapeHtml(item.variant)})` : ''} • ฿${item.price ?? 'ระบุ ณ จุดขาย'}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    toast.classList.remove('-translate-y-6', 'opacity-0');
+    toast.classList.add('translate-y-0', 'opacity-100');
+
+    if (window._syncToastTimer) clearTimeout(window._syncToastTimer);
+    window._syncToastTimer = setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('-translate-y-6', 'opacity-0');
+    }, 3200);
+}
+
+let skuLookupDebounceTimer = null;
+
+function handleSkuInput(val) {
+    onFormInputChange();
+    const cleanSku = (val || '').trim().toUpperCase();
+    if (!cleanSku || cleanSku.length < 3) return;
+
+    clearTimeout(skuLookupDebounceTimer);
+    skuLookupDebounceTimer = setTimeout(async () => {
+        const product = await findProductFromInventory(cleanSku);
+        if (product && product.sku.toUpperCase() === cleanSku) {
+            populateFormFromInventoryProduct(product, true);
+        }
+    }, 380);
+}
+
+async function handleSkuKeydown(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault(); // Do NOT submit the form!
+        const input = document.getElementById('formSku');
+        const sku = (input?.value || '').trim();
+        if (!sku) return;
+        await triggerManualSkuLookup(sku);
+    }
+}
+
+async function handleSkuBlur(val) {
+    const cleanSku = (val || '').trim().toUpperCase();
+    if (!cleanSku || cleanSku.length < 3) return;
+    if (AppState.currentProduct && AppState.currentProduct.sku && AppState.currentProduct.sku.toUpperCase() === cleanSku) {
+        return;
+    }
+    const product = await findProductFromInventory(cleanSku);
+    if (product) {
+        populateFormFromInventoryProduct(product, true);
+    }
+}
+
+async function triggerManualSkuLookup(forcedSku) {
+    const skuInput = document.getElementById('formSku');
+    const sku = (forcedSku || skuInput?.value || '').trim();
+    if (!sku) {
+        alert('กรุณากรอกรหัส SKU / บาร์โค้ดที่ต้องการค้นหา');
+        skuInput?.focus();
+        return;
+    }
+
+    const badge = document.getElementById('formModeBadge');
+    if (badge) {
+        badge.innerHTML = `<span class="inline-block animate-spin rounded-full h-3 w-3 border border-blue-600 border-t-transparent me-1"></span> กำลังดึงข้อมูลจากคลังสินค้า...`;
+        badge.className = 'px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200';
+    }
+
+    const product = await findProductFromInventory(sku);
+    if (product) {
+        populateFormFromInventoryProduct(product, true);
+    } else {
+        SoundFx.playErrorBuzz();
+        if (badge) {
+            badge.innerHTML = `<i class="bi bi-info-circle me-1"></i> โหมด: รหัสใหม่ (ยังไม่มีในคลัง)`;
+            badge.className = 'px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-600 border border-emerald-200';
+        }
+        showInventorySyncToast(null, `⚠️ ไม่พบข้อมูลรหัส "${sku}" ในคลังสินค้า (สามารถกรอกข้อมูลเพื่อบันทึกเป็นสินค้าใหม่ได้)`);
+    }
+}
+
+async function loadProductsList() {
     const tbody = document.getElementById('productsTableBody');
     if (tbody) {
         tbody.innerHTML = `
@@ -240,35 +841,41 @@ async function loadProductsList() {
         `;
     }
 
-    try {
-        const { data, error } = await AppState.supabaseClient
-            .from('product_labels')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(150);
+    let supabaseProducts = [];
+    if (AppState.supabaseClient) {
+        try {
+            const { data, error } = await AppState.supabaseClient
+                .from('product_labels')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(1000);
 
-        if (error) throw error;
-
-        AppState.products = data || [];
-        renderProductsTable(AppState.products);
-        updateWarehouseMetrics(AppState.products);
-
-        const countEl = document.getElementById('productCount');
-        if (countEl) countEl.innerText = AppState.products.length;
-    } catch (err) {
-        console.warn('Load products failed:', err);
-        if (tbody) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="5" class="py-4 text-center text-rose-500">
-                        <i class="bi bi-exclamation-triangle-fill text-lg block mb-1"></i>
-                        ยังไม่มีตาราง product_labels หรือไม่สามารถดึงข้อมูลได้<br>
-                        <span class="text-[11px] text-slate-400">กรุณารันไฟล์ SQL Schema ใน Supabase Dashboard</span>
-                    </td>
-                </tr>
-            `;
+            if (!error && Array.isArray(data)) {
+                supabaseProducts = data;
+            }
+        } catch (err) {
+            console.warn('Load products from Supabase warning:', err);
         }
     }
+
+    // Merge with localStorage 'sgyver_custom_products' from the Inventory page
+    const localProducts = getInventoryLocalProducts();
+    const map = new Map();
+
+    localProducts.forEach(p => {
+        if (p && p.sku) map.set(p.sku.toUpperCase(), p);
+    });
+
+    supabaseProducts.forEach(p => {
+        if (p && p.sku) map.set(p.sku.toUpperCase(), p);
+    });
+
+    AppState.products = Array.from(map.values());
+    renderProductsTable(AppState.products);
+    updateWarehouseMetrics(AppState.products);
+
+    const countEl = document.getElementById('productCount');
+    if (countEl) countEl.innerText = AppState.products.length;
 }
 
 function updateWarehouseMetrics(items) {
@@ -463,9 +1070,15 @@ async function handleSaveProduct(event) {
 
     const sku = (document.getElementById('formSku')?.value || '').trim().toUpperCase();
     const brand = (document.getElementById('formBrand')?.value || '').trim();
-    const product_type = (document.getElementById('formProductType')?.value || '').trim();
+    const product_type = getMainProductType((document.getElementById('formProductType')?.value || '').trim()) || 'เสื้อผ้าแฟชั่น';
     const name = product_type || (document.getElementById('formBrand')?.value || '').trim() || 'เสื้อผ้าแฟชั่น';
-    const variant = (document.getElementById('formVariant')?.value || '').trim();
+    const formColorVal = (document.getElementById('formColor')?.value || '').trim();
+    const formSizeVal = (document.getElementById('formSize')?.value || '').trim();
+    let variant = '';
+    if (formColorVal && formSizeVal) variant = `${formColorVal},${formSizeVal}`;
+    else if (formSizeVal) variant = formSizeVal;
+    else if (formColorVal) variant = formColorVal;
+    else variant = (document.getElementById('formVariant')?.value || '').trim();
     const usage_info = (document.getElementById('formUsage')?.value || '').trim();
     const care_instructions = (document.getElementById('formCare')?.value || '').trim();
     const manufacturer = (document.getElementById('formManufacturer')?.value || '').trim();
@@ -500,13 +1113,13 @@ async function handleSaveProduct(event) {
         stock_quantity,
         min_stock_alert,
         warehouse_location,
-        distributor: fullDistributor,
+        distributor: distributor || 'Whatever_Glitters',
+        distributor_address,
         care_instructions,
         brand,
         product_type,
         usage_info,
         manufacturer,
-        distributor_address,
         price_text,
         updated_at: new Date().toISOString()
     };
@@ -539,13 +1152,26 @@ async function handleSaveProduct(event) {
             data = fallbackRes.data;
         }
 
+        // Also update local inventory cache
+        try {
+            const localList = getInventoryLocalProducts();
+            const existingIdx = localList.findIndex(p => p.sku && p.sku.toUpperCase() === sku);
+            const savedItem = (data && data[0]) ? { ...data[0], ...payload } : payload;
+            if (existingIdx !== -1) {
+                localList[existingIdx] = { ...localList[existingIdx], ...savedItem };
+            } else {
+                localList.push(savedItem);
+            }
+            localStorage.setItem('sgyver_custom_products', JSON.stringify(localList));
+        } catch (e) {}
+
         SoundFx.playSuccessBeep();
 
         const savedItem = (data && data[0]) ? data[0] : payload;
-        selectProductForPreview(savedItem, true);
+        populateFormFromInventoryProduct(savedItem, false);
 
         await loadProductsList();
-        alert('บันทึกข้อมูลสินค้าและอัปเดตสต็อกเรียบร้อยแล้ว');
+        showInventorySyncToast(savedItem, `✅ บันทึกสินค้า "${sku}" ลงระบบและคลังสินค้าเรียบร้อยแล้ว`);
     } catch (err) {
         console.error('Save product failed:', err);
         SoundFx.playErrorBuzz();
@@ -570,8 +1196,11 @@ function handleEditItem(id) {
     AppState.editId = item.id;
 
     if (document.getElementById('formSku')) document.getElementById('formSku').value = item.sku || '';
-    if (document.getElementById('formBrand')) document.getElementById('formBrand').value = item.brand || 'Paperstudio (เปเปอร์สตูดิโอ)';
-    if (document.getElementById('formProductType')) document.getElementById('formProductType').value = item.product_type || item.name || 'เสื้อผ้าแฟชั่น';
+    if (document.getElementById('formBrand')) document.getElementById('formBrand').value = item.brand || 'Whatever_Glitters';
+    if (document.getElementById('formProductType')) document.getElementById('formProductType').value = getMainProductType(item.product_type || item.name || 'เสื้อผ้าแฟชั่น');
+    const parsedEditVar = splitVariantColorAndSize(item.variant || '');
+    if (document.getElementById('formColor')) document.getElementById('formColor').value = parsedEditVar.color;
+    if (document.getElementById('formSize')) document.getElementById('formSize').value = parsedEditVar.size;
     if (document.getElementById('formVariant')) document.getElementById('formVariant').value = item.variant || 'M L XL XXL';
     if (document.getElementById('formUsage')) document.getElementById('formUsage').value = item.usage_info || 'สำหรับสวมใส่';
     if (document.getElementById('formCare')) document.getElementById('formCare').value = item.care_instructions || '';
@@ -637,14 +1266,16 @@ function resetProductForm() {
     document.getElementById('productForm')?.reset();
     document.getElementById('editProductId').value = '';
     if (document.getElementById('formSku')) document.getElementById('formSku').value = 'W1122';
-    if (document.getElementById('formBrand')) document.getElementById('formBrand').value = 'Paperstudio (เปเปอร์สตูดิโอ)';
+    if (document.getElementById('formDistributor')) document.getElementById('formDistributor').value = 'Whatever_Glitters';
+    if (document.getElementById('formBrand')) document.getElementById('formBrand').value = 'Whatever_Glitters';
+    if (document.getElementById('formDistributorAddress')) document.getElementById('formDistributorAddress').value = '25 ซอยพุทธมณฑลสาย 2 ซอย 11 แขวงบางไผ่ เขตบางแค กรุงเทพฯ 10160';
     if (document.getElementById('formProductType')) document.getElementById('formProductType').value = 'เสื้อผ้าแฟชั่น';
-    if (document.getElementById('formVariant')) document.getElementById('formVariant').value = 'M L XL XXL';
+    if (document.getElementById('formColor')) document.getElementById('formColor').value = '';
+    if (document.getElementById('formSize')) document.getElementById('formSize').value = 'Free';
+    if (document.getElementById('formVariant')) document.getElementById('formVariant').value = 'Free';
     if (document.getElementById('formUsage')) document.getElementById('formUsage').value = 'สำหรับสวมใส่';
     if (document.getElementById('formCare')) document.getElementById('formCare').value = 'ควรซักก่อนสวมใส่ / ห้ามใช้น้ำยาฟอกขาว / ควรรีดด้วยไฟปานกลาง / ควรแยกผ้าสีกับผ้าขาวก่อนซัก การซักด้วยเครื่อง อาจทำให้เนื้อผ้าเสียรูปทรง';
     if (document.getElementById('formManufacturer')) document.getElementById('formManufacturer').value = 'ประเทศจีน';
-    if (document.getElementById('formDistributor')) document.getElementById('formDistributor').value = 'บริษัท เปเปอร์สตูดิโอ';
-    if (document.getElementById('formDistributorAddress')) document.getElementById('formDistributorAddress').value = '25 ซอยพุทธมณฑลสาย 2 ซอย 11 แขวงบางไผ่ เขตบางแค กรุงเทพฯ 10160';
 
     const chkPrice = document.getElementById('chkPriceAsSpecified');
     if (chkPrice) chkPrice.checked = true;
@@ -712,9 +1343,15 @@ function togglePriceAsSpecified(checked) {
 
 function onFormInputChange() {
     const sku = (document.getElementById('formSku')?.value || '').trim() || 'W1122';
-    const brand = (document.getElementById('formBrand')?.value || '').trim() || 'Paperstudio (เปเปอร์สตูดิโอ)';
-    const product_type = (document.getElementById('formProductType')?.value || '').trim() || 'เสื้อผ้าแฟชั่น';
-    const variant = (document.getElementById('formVariant')?.value || '').trim() || 'M L XL XXL';
+    const brand = (document.getElementById('formBrand')?.value || '').trim() || 'Whatever_Glitters';
+    const product_type = getMainProductType((document.getElementById('formProductType')?.value || '').trim()) || 'เสื้อผ้าแฟชั่น';
+    const formColorVal = (document.getElementById('formColor')?.value || '').trim();
+    const formSizeVal = (document.getElementById('formSize')?.value || '').trim();
+    let variant = '';
+    if (formColorVal && formSizeVal) variant = `${formColorVal},${formSizeVal}`;
+    else if (formSizeVal) variant = formSizeVal;
+    else if (formColorVal) variant = formColorVal;
+    else variant = (document.getElementById('formVariant')?.value || '').trim() || 'Free';
     const usage_info = (document.getElementById('formUsage')?.value || '').trim() || 'สำหรับสวมใส่';
     const care_instructions = (document.getElementById('formCare')?.value || '').trim() || 'ควรซักก่อนสวมใส่ / ห้ามใช้น้ำยาฟอกขาว / ควรรีดด้วยไฟปานกลาง / ควรแยกผ้าสีกับผ้าขาวก่อนซัก การซักด้วยเครื่อง อาจทำให้เนื้อผ้าเสียรูปทรง';
     const manufacturer = (document.getElementById('formManufacturer')?.value || '').trim() || 'ประเทศจีน';
@@ -801,14 +1438,8 @@ async function processBarcodeScan(sku) {
     }
 
     try {
-        // Query from Supabase
-        const { data, error } = await AppState.supabaseClient
-            .from('product_labels')
-            .select('*')
-            .eq('sku', sku)
-            .maybeSingle();
-
-        if (error) throw error;
+        // Query from Inventory (Local Cache + Memory + Supabase)
+        const data = await findProductFromInventory(sku);
 
         if (data) {
             AppState.stats.scannedToday++;
@@ -921,8 +1552,8 @@ async function processBarcodeScan(sku) {
                 }
             }
 
-            // Select and update preview immediately
-            selectProductForPreview(data, true);
+            // Populate every field in Card 1 form and update preview immediately
+            populateFormFromInventoryProduct(data, false);
 
             // Auto-Print check (Runs in PRINT mode, and optionally in IN mode if ticked)
             const autoPrintChecked = document.getElementById('chkAutoPrint')?.checked;
@@ -1025,9 +1656,12 @@ function selectProductForPreview(item, updateFormIfEmpty = false) {
 
     if (updateFormIfEmpty && !AppState.isEditing) {
         if (document.getElementById('formSku')) document.getElementById('formSku').value = item.sku || '';
-        if (document.getElementById('formBrand')) document.getElementById('formBrand').value = item.brand || 'Paperstudio (เปเปอร์สตูดิโอ)';
-        if (document.getElementById('formProductType')) document.getElementById('formProductType').value = item.product_type || item.name || 'เสื้อผ้าแฟชั่น';
-        if (document.getElementById('formVariant')) document.getElementById('formVariant').value = item.variant || 'M L XL XXL';
+        if (document.getElementById('formBrand')) document.getElementById('formBrand').value = item.brand || 'Whatever_Glitters';
+        if (document.getElementById('formProductType')) document.getElementById('formProductType').value = getMainProductType(item.product_type || item.name || 'เสื้อผ้าแฟชั่น');
+        const parsedPreview = splitVariantColorAndSize(item.variant || '');
+        if (document.getElementById('formColor')) document.getElementById('formColor').value = parsedPreview.color;
+        if (document.getElementById('formSize')) document.getElementById('formSize').value = parsedPreview.size;
+        if (document.getElementById('formVariant')) document.getElementById('formVariant').value = item.variant || 'Free';
         if (document.getElementById('formUsage')) document.getElementById('formUsage').value = item.usage_info || 'สำหรับสวมใส่';
         if (document.getElementById('formCare')) document.getElementById('formCare').value = item.care_instructions || 'ควรซักก่อนสวมใส่ / ห้ามใช้น้ำยาฟอกขาว / ควรรีดด้วยไฟปานกลาง / ควรแยกผ้าสีกับผ้าขาวก่อนซัก การซักด้วยเครื่อง อาจทำให้เนื้อผ้าเสียรูปทรง';
         if (document.getElementById('formManufacturer')) document.getElementById('formManufacturer').value = item.manufacturer || 'ประเทศจีน';
@@ -1068,9 +1702,80 @@ function updateLabelPreview(product) {
     const lblLocationText = document.getElementById('lblLocationText');
     const lblSkuText = document.getElementById('lblSkuText');
 
-    if (lblBrand) lblBrand.innerText = product.brand || 'Paperstudio (เปเปอร์สตูดิโอ)';
-    if (lblProductType) lblProductType.innerText = product.product_type || product.name || 'เสื้อผ้าแฟชั่น';
-    if (lblVariant) lblVariant.innerText = product.variant || 'M L XL XXL';
+    if (lblBrand) lblBrand.innerText = product.brand || 'Whatever_Glitters';
+    if (lblProductType) lblProductType.innerText = getMainProductType(product.product_type || product.name || 'เสื้อผ้าแฟชั่น');
+
+    // Parse color and size for sticker display
+    const formColorVal = (document.getElementById('formColor')?.value || '').trim();
+    const formSizeVal = (document.getElementById('formSize')?.value || '').trim();
+    let displayColor = formColorVal;
+    let displaySize = formSizeVal ? extractPureSize(formSizeVal) : '';
+
+    if (!displayColor && !displaySize && product.variant) {
+        const parsedV = splitVariantColorAndSize(product.variant);
+        displayColor = parsedV.color;
+        displaySize = parsedV.size;
+    } else if (!displaySize && product.variant) {
+        displaySize = extractPureSize(product.variant);
+    }
+
+    if (!displaySize) {
+        displaySize = 'Free';
+    }
+
+    const stickerLineColor = document.getElementById('stickerLineColor');
+    const lblColor = document.getElementById('lblColor');
+    if (stickerLineColor && lblColor) {
+        if (displayColor) {
+            stickerLineColor.classList.remove('hidden');
+            lblColor.innerText = displayColor;
+        } else {
+            stickerLineColor.classList.add('hidden');
+        }
+    }
+
+    if (lblVariant) lblVariant.innerText = displaySize;
+
+    // ⚡ Big Size Callout on right side (ตัวอักษรไซส์ตัวใหญ่เด่นชัด)
+    const stickerBigSize = document.getElementById('stickerBigSize');
+    const chkBigSize = document.getElementById('chkBigSize');
+    const isShowBigSize = chkBigSize ? chkBigSize.checked : true;
+    if (stickerBigSize) {
+        const rawSize = displaySize.trim();
+        if (isShowBigSize && rawSize) {
+            stickerBigSize.classList.remove('hidden');
+            stickerBigSize.innerText = rawSize;
+
+            const cleanUpper = rawSize.toUpperCase();
+            if (cleanUpper === 'FREE') {
+                stickerBigSize.style.setProperty('font-size', '14pt', 'important');
+                stickerBigSize.style.setProperty('line-height', '0.95', 'important');
+                stickerBigSize.style.setProperty('letter-spacing', '-0.5px', 'important');
+            } else if (cleanUpper.length <= 1) { // S, M, L, F
+                stickerBigSize.style.setProperty('font-size', '38pt', 'important');
+                stickerBigSize.style.setProperty('line-height', '0.85', 'important');
+                stickerBigSize.style.setProperty('letter-spacing', '-1px', 'important');
+            } else if (cleanUpper.length <= 2) { // XL, XS, 2X, 3X
+                stickerBigSize.style.setProperty('font-size', '30pt', 'important');
+                stickerBigSize.style.setProperty('line-height', '0.88', 'important');
+                stickerBigSize.style.setProperty('letter-spacing', '-1px', 'important');
+            } else if (cleanUpper.length <= 3) { // 2XL, XXL, 3XL, 4XL
+                stickerBigSize.style.setProperty('font-size', '24pt', 'important');
+                stickerBigSize.style.setProperty('line-height', '0.90', 'important');
+                stickerBigSize.style.setProperty('letter-spacing', '-0.8px', 'important');
+            } else if (cleanUpper.length <= 5) { // M-XXL, 5XL, S-M
+                stickerBigSize.style.setProperty('font-size', '15pt', 'important');
+                stickerBigSize.style.setProperty('line-height', '0.95', 'important');
+                stickerBigSize.style.setProperty('letter-spacing', '-0.5px', 'important');
+            } else { // Free Size, One Size
+                stickerBigSize.style.setProperty('font-size', '12pt', 'important');
+                stickerBigSize.style.setProperty('line-height', '1.02', 'important');
+                stickerBigSize.style.setProperty('letter-spacing', '-0.3px', 'important');
+            }
+        } else {
+            stickerBigSize.classList.add('hidden');
+        }
+    }
     if (lblUsage) lblUsage.innerText = product.usage_info || 'สำหรับสวมใส่';
     if (lblCare) lblCare.innerText = product.care_instructions || '-';
     if (lblManufacturer) lblManufacturer.innerText = product.manufacturer || 'ประเทศจีน';
@@ -1092,43 +1797,82 @@ function updateLabelPreview(product) {
 }
 
 function renderBarcodeOrQr(codeText) {
+    const barcodeWrapper = document.getElementById('barcodeWrapper');
+    const qrcodeWrapper = document.getElementById('qrcodeWrapper');
     const barcodeSvg = document.getElementById('barcodeSvg');
     const qrcodeDiv = document.getElementById('qrcodeDiv');
 
-    if (AppState.barcodeType === 'CODE128') {
-        if (barcodeSvg) barcodeSvg.classList.remove('hidden');
-        if (qrcodeDiv) qrcodeDiv.classList.add('hidden');
+    const is57 = AppState.labelSize === '57roll';
+    const is70 = AppState.labelSize === '70x50';
+    const type = AppState.barcodeType || 'BOTH';
 
+    const showBarcode = (type === 'BOTH' || type === 'CODE128');
+    const showQr = (type === 'BOTH' || type === 'QR');
+
+    // Toggle container visibilities
+    if (barcodeWrapper) {
+        if (showBarcode) barcodeWrapper.classList.remove('hidden');
+        else barcodeWrapper.classList.add('hidden');
+    }
+    if (qrcodeWrapper) {
+        if (showQr) qrcodeWrapper.classList.remove('hidden');
+        else qrcodeWrapper.classList.add('hidden');
+    }
+
+    // 1. Render 1D Barcode (JsBarcode CODE128 for handheld barcode scanner guns)
+    if (showBarcode && barcodeSvg) {
         try {
-            const is57 = AppState.labelSize === '57roll';
+            let barWidth = 1.55;
+            let barHeight = type === 'BOTH' ? 62 : 85;
+
+            if (is57) {
+                barWidth = 1.55;
+                barHeight = type === 'BOTH' ? 65 : 85;
+            } else if (is70) {
+                barWidth = 1.8;
+                barHeight = type === 'BOTH' ? 70 : 90;
+            } else { // 50x30
+                barWidth = 1.35;
+                barHeight = type === 'BOTH' ? 36 : 48;
+            }
+
             JsBarcode('#barcodeSvg', codeText, {
                 format: 'CODE128',
                 lineColor: '#000000',
-                width: is57 ? 1.3 : 1.2,
-                height: is57 ? 30 : 28,
+                width: barWidth,
+                height: barHeight,
                 displayValue: false,
-                margin: 0
+                margin: 3
             });
         } catch (err) {
             console.warn('JsBarcode render failed:', err);
         }
-    } else {
-        // QR Code mode
-        if (barcodeSvg) barcodeSvg.classList.add('hidden');
-        if (qrcodeDiv) {
-            qrcodeDiv.classList.remove('hidden');
-            qrcodeDiv.innerHTML = '';
-            const size = AppState.labelSize === '57roll' ? 52 : 44;
-            if (window.QRCode) {
-                new QRCode(qrcodeDiv, {
-                    text: codeText,
-                    width: size,
-                    height: size,
-                    colorDark: '#000000',
-                    colorLight: '#ffffff',
-                    correctLevel: QRCode.CorrectLevel.M
-                });
-            }
+    }
+
+    // 2. Render 2D QR Code (QRCode for mobile phone cameras & iPad fast scanning)
+    if (showQr && qrcodeDiv) {
+        qrcodeDiv.innerHTML = '';
+        let qrSize = 58; // ~15.5mm (perfect scan size for mobile camera lenses)
+        if (type === 'QR') {
+            qrSize = is57 ? 75 : (is70 ? 90 : 52);
+        } else {
+            // In BOTH mode
+            qrSize = is57 ? 58 : (is70 ? 70 : 42);
+        }
+
+        if (window.QRCode) {
+            new QRCode(qrcodeDiv, {
+                text: codeText,
+                width: qrSize,
+                height: qrSize,
+                colorDark: '#000000',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.M
+            });
+
+            // Explicitly hide the internal canvas created by qrcodejs so only the crisp img displays
+            const canvas = qrcodeDiv.querySelector('canvas');
+            if (canvas) canvas.style.display = 'none';
         }
     }
 }
@@ -1172,20 +1916,32 @@ function switchLabelSize(size) {
     renderBarcodeOrQr(AppState.currentProduct.sku || 'SAMPLE');
 }
 
+function toggleBigSizeOption() {
+    const chk = document.getElementById('chkBigSize');
+    const isChecked = chk ? chk.checked : true;
+    localStorage.setItem('sgyver_label_show_big_size', isChecked ? '1' : '0');
+    updateLabelPreview(AppState.currentProduct);
+}
+
 function switchBarcodeType(type) {
     AppState.barcodeType = type;
+    try {
+        localStorage.setItem('sgyver_label_barcode_type', type);
+    } catch (e) {}
+
+    const btnBoth = document.getElementById('btnTypeBoth');
     const btnBarcode = document.getElementById('btnTypeBarcode');
     const btnQR = document.getElementById('btnTypeQR');
 
-    if (type === 'CODE128') {
-        if (btnBarcode) btnBarcode.className = 'px-2 py-1 rounded-md text-xs font-medium transition-all bg-white text-blue-600 shadow-sm';
-        if (btnQR) btnQR.className = 'px-2 py-1 rounded-md text-xs font-medium transition-all text-slate-600 hover:text-slate-900';
-    } else {
-        if (btnBarcode) btnBarcode.className = 'px-2 py-1 rounded-md text-xs font-medium transition-all text-slate-600 hover:text-slate-900';
-        if (btnQR) btnQR.className = 'px-2 py-1 rounded-md text-xs font-medium transition-all bg-white text-blue-600 shadow-sm';
-    }
+    const activeClass = 'px-2 py-1 rounded-md text-xs font-bold transition-all bg-white text-blue-600 shadow-sm';
+    const inactiveClass = 'px-2 py-1 rounded-md text-xs font-medium transition-all text-slate-600 hover:text-slate-900';
 
-    renderBarcodeOrQr(AppState.currentProduct.sku || 'SAMPLE');
+    if (btnBoth) btnBoth.className = type === 'BOTH' ? activeClass : inactiveClass;
+    if (btnBarcode) btnBarcode.className = type === 'CODE128' ? activeClass : inactiveClass;
+    if (btnQR) btnQR.className = type === 'QR' ? activeClass : inactiveClass;
+
+    const sku = (AppState.currentProduct && AppState.currentProduct.sku) || 'SAMPLE';
+    renderBarcodeOrQr(sku);
 }
 
 // Tear Feed Spacer Management (สำหรับ PeriPage และเครื่องพิมพ์ความร้อนแบบม้วน)
@@ -1448,9 +2204,14 @@ function printLabelsViaIsolatedIframe(stickersHtmlList) {
                     display: block !important;
                     margin: 0 auto !important;
                     max-width: 100% !important;
-                    height: 10.5mm !important;
+                    height: 12mm !important;
+                    shape-rendering: crispEdges !important;
                 }
-                .size-57roll .sticker-barcode-wrapper svg { height: 11.5mm !important; }
+                .size-57roll .sticker-barcode-wrapper svg {
+                    height: 14mm !important;
+                    max-width: 46mm !important;
+                    shape-rendering: crispEdges !important;
+                }
                 .size-70x50 .sticker-barcode-wrapper svg { height: 18mm !important; }
                 .sticker-barcode-wrapper img, .sticker-barcode-wrapper canvas {
                     max-width: 100% !important;
@@ -1562,15 +2323,105 @@ function printLabelsViaIsolatedIframe(stickersHtmlList) {
                     margin-top: 2.5px !important;
                 }
                 .sticker-barcode-section strong {
-                    font-weight: 800 !important;
-                    font-size: 5.8pt !important;
+                    font-weight: 850 !important;
+                    font-size: 7.2pt !important;
+                    color: #000000 !important;
                 }
                 .sticker-barcode-section span {
-                    font-weight: 700 !important;
-                    font-size: 5.5pt !important;
+                    font-weight: 800 !important;
+                    font-size: 7.2pt !important;
+                    color: #000000 !important;
                 }
                 .size-57roll .sticker-barcode-wrapper svg {
-                    height: 10mm !important;
+                    height: 12mm !important;
+                    max-width: 46mm !important;
+                    shape-rendering: crispEdges !important;
+                }
+                .sticker-qr-wrapper {
+                    display: flex !important;
+                    justify-content: center !important;
+                    align-items: center !important;
+                    margin-top: 1.5px !important;
+                }
+                .sticker-qr-wrapper canvas {
+                    display: none !important;
+                }
+                .sticker-qr-wrapper img {
+                    display: block !important;
+                    margin: 0 auto !important;
+                    shape-rendering: crispEdges !important;
+                    image-rendering: pixelated !important;
+                }
+                .size-57roll .sticker-qr-wrapper img {
+                    width: 17mm !important;
+                    height: 17mm !important;
+                }
+
+                .hidden {
+                    display: none !important;
+                }
+
+                /* Middle row layout for Color, Size, Usage & Big Size Callout */
+                .sticker-middle-row {
+                    display: flex !important;
+                    flex-direction: row !important;
+                    align-items: center !important;
+                    justify-content: space-between !important;
+                    flex-wrap: nowrap !important;
+                    margin: 1px 0 !important;
+                    width: 100% !important;
+                    box-sizing: border-box !important;
+                }
+                .sticker-middle-left {
+                    flex: 1 1 auto !important;
+                    min-width: 0 !important;
+                    padding-right: 2px !important;
+                }
+                .sticker-big-size {
+                    flex: 0 0 auto !important;
+                    font-weight: 900 !important;
+                    font-family: 'Arial Black', Impact, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+                    color: #000000 !important;
+                    line-height: 0.88 !important;
+                    text-align: right !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: flex-end !important;
+                    user-select: none !important;
+                    box-sizing: border-box !important;
+                    padding-right: 0.5mm !important;
+                    font-size: 38pt !important;
+                    letter-spacing: -1px !important;
+                }
+                .size-57roll .sticker-big-size {
+                    padding-right: 0.5mm !important;
+                    font-size: 38pt !important;
+                    line-height: 0.88 !important;
+                }
+                .size-50x30 .sticker-big-size {
+                    font-size: 26pt !important;
+                    line-height: 0.88 !important;
+                }
+                .size-70x50 .sticker-big-size {
+                    font-size: 48pt !important;
+                    line-height: 0.88 !important;
+                }
+                .sticker-sku-line {
+                    text-align: center !important;
+                    font-family: 'Kanit', 'Prompt', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+                    white-space: nowrap !important;
+                    overflow: hidden !important;
+                    letter-spacing: 0px !important;
+                    font-weight: 800 !important;
+                    font-size: 7.2pt !important;
+                    color: #000000 !important;
+                    line-height: 1.3 !important;
+                }
+                .sticker-sku-line strong,
+                .sticker-sku-line #lblSkuText {
+                    font-weight: 850 !important;
+                    font-size: 7.2pt !important;
+                    color: #000000 !important;
                 }
             </style>
         </head>
@@ -1827,6 +2678,14 @@ function escapeHtml(str) {
 // ==============================================================================
 window.addEventListener('DOMContentLoaded', async () => {
     initSupabase();
+    renderLabelDistributorChips();
+
+    // Restore Big Size checkbox setting
+    const savedShowBigSize = localStorage.getItem('sgyver_label_show_big_size');
+    if (savedShowBigSize !== null && document.getElementById('chkBigSize')) {
+        document.getElementById('chkBigSize').checked = savedShowBigSize === '1';
+    }
+
     onFormInputChange();
     updateTearFeedUI();
     await loadProductsList();
@@ -1834,10 +2693,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     // Check if SKU is passed via URL query param (e.g. from Inventory app)
     const urlParams = new URLSearchParams(window.location.search);
     const skuParam = urlParams.get('sku');
-    if (skuParam && AppState.products) {
-        const found = AppState.products.find(p => p.sku && p.sku.toUpperCase() === skuParam.toUpperCase());
+    if (skuParam) {
+        const found = await findProductFromInventory(skuParam);
         if (found) {
-            selectProductForPreview(found, true);
+            populateFormFromInventoryProduct(found, false);
         }
     }
 
@@ -1845,3 +2704,380 @@ window.addEventListener('DOMContentLoaded', async () => {
         refocusScanner();
     }, 400);
 });
+
+// ==============================================================================
+// 8. GLOBAL BARCODE SCANNER AUTO-CAPTURE LISTENER
+// ==============================================================================
+let barcodeBuffer = '';
+let barcodeLastCharTime = 0;
+
+window.addEventListener('keydown', async (e) => {
+    // If user is focused on a normal textarea or other inputs (except scannerInput and formSku), let normal typing proceed
+    const target = e.target;
+    const isModalOpen = !document.getElementById('supabaseModal')?.classList.contains('hidden') ||
+                        !document.getElementById('batchPrintModal')?.classList.contains('hidden');
+    if (isModalOpen) return;
+
+    const isOtherInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') && 
+                         target.id !== 'scannerInput' && target.id !== 'formSku';
+
+    if (isOtherInput) return;
+
+    const currentTime = Date.now();
+    const timeDiff = currentTime - barcodeLastCharTime;
+    barcodeLastCharTime = currentTime;
+
+    if (e.key === 'Enter') {
+        // Fast consecutive characters ending with Enter = Barcode Scanner Gun!
+        if (barcodeBuffer.length >= 3 && timeDiff < 120) {
+            e.preventDefault();
+            const scannedSku = barcodeBuffer.trim().toUpperCase();
+            barcodeBuffer = '';
+
+            const scanInput = document.getElementById('scannerInput');
+            if (scanInput) scanInput.value = scannedSku;
+
+            await processBarcodeScan(scannedSku);
+            return;
+        }
+        barcodeBuffer = '';
+        return;
+    }
+
+    if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        if (timeDiff > 120) {
+            barcodeBuffer = '';
+        }
+        barcodeBuffer += e.key;
+    }
+}, true);
+
+// ==============================================================================
+// 9. WEB BLUETOOTH THERMAL PRINTER & NATIVE SHARE (PERIPAGE NO WATERMARK)
+// ==============================================================================
+const BluetoothThermalPrinter = {
+    device: null,
+    server: null,
+    characteristic: null,
+    isConnected: false,
+
+    async connect() {
+        if (!navigator.bluetooth) {
+            throw new Error('เบราว์เซอร์นี้ยังไม่รองรับ Web Bluetooth (แนะนำ Google Chrome / Edge บน Android/คอมพิวเตอร์ หรือเบราว์เซอร์ Bluefy บน iOS)');
+        }
+
+        const optionalServices = [
+            '0000ff00-0000-1000-8000-00805f9b34fb', // PeriPage primary
+            '000018f0-0000-1000-8000-00805f9b34fb', // Serial BLE
+            '0000ae30-0000-1000-8000-00805f9b34fb',
+            '0000fff0-0000-1000-8000-00805f9b34fb',
+            '0000ffe0-0000-1000-8000-00805f9b34fb',
+            '0000fee7-0000-1000-8000-00805f9b34fb',
+            '49535343-fe7d-4ae5-8fa9-9fafd205e455', // ISSC Transparent
+            '6e400001-b5a3-f393-e0a9-e50e24dcca9e', // Nordic UART
+            'e7810a71-73ae-499d-8c15-faa9aef0c3f2'
+        ];
+
+        try {
+            this.device = await navigator.bluetooth.requestDevice({
+                acceptAllDevices: true,
+                optionalServices: optionalServices
+            });
+
+            this.device.addEventListener('gattserverdisconnected', () => {
+                this.isConnected = false;
+                this.characteristic = null;
+                console.log('Bluetooth Printer disconnected');
+            });
+
+            this.server = await this.device.gatt.connect();
+
+            // PeriPage preferred write characteristic UUIDs
+            const preferredWriteUuids = [
+                '0000ff02-0000-1000-8000-00805f9b34fb', // PeriPage standard
+                '00002af1-0000-1000-8000-00805f9b34fb',
+                '49535343-8841-43f4-a8d4-ecbe34729bb3',
+                '6e400002-b5a3-f393-e0a9-e50e24dcca9e',
+                '0000ae01-0000-1000-8000-00805f9b34fb',
+                '0000fff2-0000-1000-8000-00805f9b34fb',
+                '0000fff1-0000-1000-8000-00805f9b34fb',
+                '0000ffe1-0000-1000-8000-00805f9b34fb'
+            ];
+
+            const ignoredServices = ['00001800', '00001801', '0000180a', '0000180f'];
+            const writableList = [];
+            const services = await this.server.getPrimaryServices();
+
+            for (const s of services) {
+                if (ignoredServices.some(ig => s.uuid.toLowerCase().includes(ig))) continue;
+                try {
+                    const chars = await s.getCharacteristics();
+                    for (const c of chars) {
+                        const canWrite = c.properties.write || c.properties.writeWithoutResponse;
+                        if (canWrite) {
+                            let score = 10;
+                            const cuuid = c.uuid.toLowerCase();
+                            const suuid = s.uuid.toLowerCase();
+
+                            if (suuid.includes('ff00') || suuid.includes('18f0') || suuid.includes('49535343') || suuid.includes('6e400001')) {
+                                score += 50;
+                            }
+                            const prefIdx = preferredWriteUuids.findIndex(u => cuuid === u.toLowerCase());
+                            if (prefIdx >= 0) {
+                                score += (100 - prefIdx * 10);
+                            }
+                            if (c.properties.writeWithoutResponse) score += 5;
+
+                            writableList.push({ c, score, uuid: c.uuid });
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Characteristic inspection skip:', e);
+                }
+            }
+
+            if (!writableList.length) {
+                throw new Error('ไม่พบช่องทางส่งข้อมูลพิมพ์ (เครื่องพิมพ์นี้อาจใช้ Bluetooth Classic SPP แนะนำให้กดปุ่ม "แชร์เข้าแอป PeriPage" เพื่อพิมพ์ผ่านแอปแท้โดยตรง)');
+            }
+
+            // Pick highest score
+            writableList.sort((a, b) => b.score - a.score);
+            this.characteristic = writableList[0].c;
+            console.log('Selected PeriPage characteristic:', this.characteristic.uuid, 'Score:', writableList[0].score);
+
+            this.isConnected = true;
+            return this.device.name || 'PeriPage Printer';
+        } catch (err) {
+            this.isConnected = false;
+            throw err;
+        }
+    },
+
+    async writeRaw(bytes) {
+        if (!this.characteristic) throw new Error('Bluetooth characteristic not ready');
+        const chunkSize = 100;
+        const noRsp = this.characteristic.properties.writeWithoutResponse;
+
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+            const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
+            let tries = 0;
+            while (true) {
+                try {
+                    if (noRsp && this.characteristic.writeValueWithoutResponse) {
+                        await this.characteristic.writeValueWithoutResponse(chunk);
+                    } else if (this.characteristic.writeValueWithResponse) {
+                        await this.characteristic.writeValueWithResponse(chunk);
+                    } else {
+                        await this.characteristic.writeValue(chunk);
+                    }
+                    break;
+                } catch (err) {
+                    tries++;
+                    if (tries > 3) throw err;
+                    await new Promise(r => setTimeout(r, 60));
+                }
+            }
+            await new Promise(r => setTimeout(r, 12));
+        }
+    },
+
+    async printRasterImage(canvas) {
+        if (!this.isConnected || !this.characteristic) {
+            await this.connect();
+        }
+
+        const width = 384;
+        const height = canvas.height;
+        const ctx = canvas.getContext('2d');
+        const imgData = ctx.getImageData(0, 0, width, height).data;
+
+        const bpr = 48; // 384 dots / 8 = 48 bytes per row
+        const packed = new Uint8Array(bpr * height);
+
+        for (let y = 0; y < height; y++) {
+            const rowOffset = y * bpr;
+            for (let bx = 0; bx < bpr; bx++) {
+                let byteVal = 0;
+                for (let bit = 0; bit < 8; bit++) {
+                    const x = bx * 8 + bit;
+                    if (x < width) {
+                        const idx = (y * width + x) * 4;
+                        const r = imgData[idx];
+                        const g = imgData[idx + 1];
+                        const b = imgData[idx + 2];
+                        const a = imgData[idx + 3];
+                        const isDark = a > 128 && (0.299 * r + 0.587 * g + 0.114 * b < 165);
+                        if (isDark) {
+                            byteVal |= (0x80 >> bit);
+                        }
+                    }
+                }
+                packed[rowOffset + bx] = byteVal;
+            }
+        }
+
+        // PeriPage Protocol Command Definitions:
+        // Reset command: 16 bytes: 10 ff fe 01 00 00 00 00 00 00 00 00 00 00 00 00
+        const cmdReset = new Uint8Array([0x10, 0xFF, 0xFE, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+        // Density command (2 = High): 10 ff 10 00 02
+        const cmdDensity = new Uint8Array([0x10, 0xFF, 0x10, 0x00, 0x02]);
+        // Feed command: 1B 4A [dots]
+        const cmdFeed = (dots) => new Uint8Array([0x1B, 0x4A, Math.max(0, Math.min(255, dots))]);
+
+        // 1. Set concentration/density
+        await this.writeRaw(cmdDensity);
+        await new Promise(r => setTimeout(r, 40));
+
+        // 2. Transmit in chunks of 48 rows with block reset (matches PeriPage internal buffer)
+        const rowsPerChunk = 48;
+        for (let y = 0; y < height; y += rowsPerChunk) {
+            const rows = Math.min(rowsPerChunk, height - y);
+
+            // PeriPage hardware requires reset immediately preceding each raster block
+            await this.writeRaw(cmdReset);
+            await new Promise(r => setTimeout(r, 20));
+
+            // ESC/POS GS v 0 raster header for this block
+            const header = new Uint8Array([
+                0x1D, 0x76, 0x30, 0x00,
+                bpr & 0xFF, (bpr >> 8) & 0xFF,
+                rows & 0xFF, (rows >> 8) & 0xFF
+            ]);
+            await this.writeRaw(header);
+
+            // Raster bytes for this chunk
+            const chunkData = packed.subarray(y * bpr, (y + rows) * bpr);
+            await this.writeRaw(chunkData);
+        }
+
+        // 3. Tear Feed: Fixed exactly 10mm (80 dots at 203 DPI) per user setting
+        await this.writeRaw(cmdFeed(80));
+    }
+};
+
+async function triggerBluetoothDirectPrint() {
+    const labelEl = document.getElementById('printableLabel');
+    if (!labelEl) return;
+
+    if (typeof html2canvas === 'undefined') {
+        alert('กรุณารอโหลดสคริปต์สักครู่ หรือรีเฟรชหน้าเว็บ');
+        return;
+    }
+
+    const btn = document.getElementById('btnBtDirectPrint');
+    const origHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<div class="inline-block animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div> <span>กำลังส่งพิมพ์บลูทูธ...</span>`;
+    }
+
+    try {
+        if (!BluetoothThermalPrinter.isConnected || !BluetoothThermalPrinter.characteristic) {
+            showInventorySyncToast(null, 'กำลังเปิดหน้าต่างเชื่อมต่อบลูทูธ...');
+            await BluetoothThermalPrinter.connect();
+        }
+
+        showInventorySyncToast(null, 'กำลังเรนเดอร์ภาพฉลากความละเอียดสูง...');
+
+        // PeriPage 57mm has 384 dots printhead width (203 DPI)
+        const targetWidth = 384;
+        const scale = targetWidth / labelEl.offsetWidth;
+
+        const canvas = await html2canvas(labelEl, {
+            scale: scale,
+            useCORS: true,
+            backgroundColor: '#ffffff',
+            logging: false
+        });
+
+        showInventorySyncToast(null, 'กำลังส่งข้อมูลพิมพ์บลูทูธ...');
+        await BluetoothThermalPrinter.printRasterImage(canvas);
+
+        showInventorySyncToast(null, '✅ พิมพ์ออกเครื่องพิมพ์บลูทูธสำเร็จ! (ไม่มีลายน้ำ 100%)');
+    } catch (err) {
+        console.error('Bluetooth Print Error:', err);
+        if (err.name === 'NotFoundError') {
+            showInventorySyncToast(null, 'ยกเลิกการเลือกเครื่องพิมพ์');
+        } else {
+            alert('ไม่สามารถพิมพ์ผ่านบลูทูธได้: ' + (err.message || err) + '\n\n💡 แนะนำ: หากต้องการพิมพ์ทันทีโดยไม่ติดลายน้ำ สามารถกดปุ่ม "แชร์เข้าแอป PeriPage" ได้เช่นกัน (แอปแท้ PeriPage ฟรี 100%)');
+        }
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+        }
+    }
+}
+
+async function shareStickerToPeriPageApp() {
+    const labelEl = document.getElementById('printableLabel');
+    if (!labelEl) return;
+
+    if (typeof html2canvas === 'undefined') {
+        alert('กำลังโหลดระบบภาพ กรุณาลองใหม่อีกครั้ง');
+        return;
+    }
+
+    const btn = document.getElementById('btnShareApp');
+    const origHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<div class="inline-block animate-spin rounded-full h-3.5 w-3.5 border-2 border-indigo-600 border-t-transparent"></div> <span>เตรียมภาพ...</span>`;
+    }
+
+    try {
+        const sku = (document.getElementById('formSku')?.value || 'STICKER').trim();
+        const canvas = await html2canvas(labelEl, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#ffffff',
+            logging: false
+        });
+
+        canvas.toBlob(async (blob) => {
+            if (!blob) {
+                alert('ไม่สามารถแปลงฉลากเป็นรูปภาพได้');
+                return;
+            }
+
+            const fileName = `Label_${sku}.png`;
+            const file = new File([blob], fileName, { type: 'image/png' });
+
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                try {
+                    await navigator.share({
+                        files: [file],
+                        title: `ฉลากสินค้า ${sku}`,
+                        text: 'พิมพ์ฉลากสินค้า S-Gyver ผ่านแอป PeriPage (ฟรี ไม่มีลายน้ำ)'
+                    });
+                    showInventorySyncToast(null, 'ส่งเข้าแอปสำเร็จ สั่งพิมพ์ได้ทันที!');
+                } catch (shareErr) {
+                    if (shareErr.name !== 'AbortError') {
+                        downloadStickerImage(canvas, fileName);
+                    }
+                }
+            } else {
+                downloadStickerImage(canvas, fileName);
+                alert('📱 บันทึกรูปภาพฉลากเรียบร้อยแล้ว!\n\nคุณสามารถเปิดรูปนี้ในแอป "PeriPage" ทางการเพื่อกดพิมพ์ได้เลย (แอปแท้ PeriPage ฟรี 100% และไม่มีลายน้ำแน่นอน)');
+            }
+        }, 'image/png');
+    } catch (err) {
+        console.error('Share Error:', err);
+        alert('เกิดข้อผิดพลาดในการแชร์: ' + err.message);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+        }
+    }
+}
+
+function downloadStickerImage(canvas, fileName) {
+    const link = document.createElement('a');
+    link.download = fileName;
+    link.href = canvas.toDataURL('image/png');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+

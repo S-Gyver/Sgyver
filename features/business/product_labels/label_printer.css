@@ -222,6 +222,7 @@ body {
     max-width: 100% !important;
     display: block;
     margin: 0 auto;
+    shape-rendering: crispEdges !important;
 }
 
 .size-50x30 .sticker-barcode-wrapper svg {
@@ -230,6 +231,46 @@ body {
 
 .size-70x50 .sticker-barcode-wrapper svg {
     height: 18mm !important;
+}
+
+.sticker-qr-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 2px;
+}
+
+.sticker-qr-wrapper canvas {
+    display: none !important;
+}
+
+.sticker-qr-wrapper img {
+    display: block !important;
+    margin: 0 auto !important;
+    shape-rendering: crispEdges !important;
+    image-rendering: -webkit-optimize-contrast !important;
+    image-rendering: pixelated !important;
+}
+
+.size-57roll .sticker-qr-wrapper img {
+    width: 17mm !important;
+    height: 17mm !important;
+    max-width: 17mm !important;
+    max-height: 17mm !important;
+}
+
+.size-50x30 .sticker-qr-wrapper img {
+    width: 11mm !important;
+    height: 11mm !important;
+    max-width: 11mm !important;
+    max-height: 11mm !important;
+}
+
+.size-70x50 .sticker-qr-wrapper img {
+    width: 20mm !important;
+    height: 20mm !important;
+    max-width: 20mm !important;
+    max-height: 20mm !important;
 }
 
 .sticker-care {
@@ -398,18 +439,40 @@ body {
 }
 
 .size-57roll .sticker-barcode-section strong {
-    font-weight: 800;
-    font-size: 5.8pt;
+    font-weight: 850;
+    font-size: 7.2pt;
+    color: #000000;
 }
 
 .size-57roll .sticker-barcode-section span {
-    font-weight: 700;
-    font-size: 5.5pt;
+    font-weight: 800;
+    font-size: 7.2pt;
+    color: #000000;
+}
+
+.sticker-sku-line {
+    text-align: center;
+    font-family: 'Kanit', 'Prompt', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-weight: 800;
+    font-size: 7.2pt;
+    color: #000000;
+    white-space: nowrap;
+    overflow: hidden;
+    letter-spacing: 0px;
+    line-height: 1.3;
+}
+
+.sticker-sku-line strong,
+.sticker-sku-line #lblSkuText {
+    font-weight: 850;
+    font-size: 7.2pt;
+    color: #000000;
 }
 
 .size-57roll .sticker-barcode-wrapper svg {
-    height: 10mm !important;
-    max-width: 44mm !important;
+    height: 14mm !important;
+    max-width: 46mm !important;
+    shape-rendering: crispEdges !important;
 }
 
 /* Tear-off feed margin (เว้นระยะตัดฉลาก 1.0 ซม. ไม่ให้ติดฟันปลาฉีกกระดาษ) */
@@ -420,6 +483,55 @@ body {
     display: block !important;
     clear: both !important;
     line-height: 5mm !important;
+}
+
+/* Middle row layout for Color, Size, Usage & Big Size Callout */
+.sticker-middle-row {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    flex-wrap: nowrap !important;
+    margin: 1px 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+.sticker-middle-left {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    padding-right: 2px !important;
+}
+
+.sticker-big-size {
+    flex: 0 0 auto !important;
+    font-weight: 900 !important;
+    font-family: 'Arial Black', Impact, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+    color: #000000 !important;
+    line-height: 0.88 !important;
+    text-align: right !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    user-select: none !important;
+    box-sizing: border-box !important;
+    padding-right: 0.5mm !important;
+    font-size: 38pt;
+    letter-spacing: -1px;
+}
+
+.size-57roll .sticker-big-size {
+    padding-right: 0.5mm !important;
+}
+
+.size-50x30 .sticker-big-size {
+    font-size: 26pt !important;
+    line-height: 0.88 !important;
+}
+
+.size-70x50 .sticker-big-size {
+    font-size: 48pt !important;
+    line-height: 0.88 !important;
 }
 
 /* ==============================================================================
@@ -511,6 +623,62 @@ body {
     .sticker-care {
         color: #000 !important;
         border-top: 0.5px solid #000 !important;
+    }
+
+    .hidden {
+        display: none !important;
+    }
+
+    .sticker-middle-row {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        flex-wrap: nowrap !important;
+        margin: 1px 0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .sticker-middle-left {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        padding-right: 2px !important;
+    }
+
+    .sticker-big-size {
+        flex: 0 0 auto !important;
+        color: #000000 !important;
+        line-height: 0.88 !important;
+    }
+
+    .size-57roll .sticker-barcode-wrapper svg {
+        height: 12mm !important;
+        max-width: 46mm !important;
+        shape-rendering: crispEdges !important;
+    }
+
+    .sticker-qr-wrapper {
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        margin-top: 1.5px !important;
+    }
+
+    .sticker-qr-wrapper canvas {
+        display: none !important;
+    }
+
+    .sticker-qr-wrapper img {
+        display: block !important;
+        margin: 0 auto !important;
+        shape-rendering: crispEdges !important;
+        image-rendering: pixelated !important;
+    }
+
+    .size-57roll .sticker-qr-wrapper img {
+        width: 17mm !important;
+        height: 17mm !important;
     }
 }
 

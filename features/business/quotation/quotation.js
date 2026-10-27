@@ -1160,15 +1160,175 @@ function deleteQuotation(docNo) {
 
 // ── 9. EXPORT, PRINT & CLIENT SHARE LINK ────────────────────────────────────
 function printQuotation() {
-    recalculateFinancials();
-    window.print();
+    try {
+        recalculateFinancials();
+    } catch (e) {
+        console.warn('recalculateFinancials before print error:', e);
+    }
+
+    if (STATE.currentTab !== 'editor') {
+        switchTab('editor');
+    }
+
+    const a4Sheet = document.getElementById('a4-sheet');
+    const q = STATE.quotation || {};
+    const docTitle = q.docNo ? `${q.docNo} - ${q.docType || 'ใบเสนอราคา'}` : 'ใบเสนอราคา';
+
+    // 1. Try Dedicated Clean Print Window (100% stable, immune to Chrome iframe/preview aborts)
+    let printWin = null;
+    try {
+        printWin = window.open('', '_blank', 'width=980,height=900,menubar=no,toolbar=no,location=no,status=no');
+    } catch (e) {
+        printWin = null;
+    }
+
+    if (printWin && a4Sheet) {
+        printWin.document.open();
+        printWin.document.write(`
+            <!DOCTYPE html>
+            <html lang="th">
+            <head>
+                <meta charset="UTF-8">
+                <title>${escapeHtml(docTitle)}</title>
+                <link rel="preconnect" href="https://fonts.googleapis.com">
+                <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500;600;700&family=Kanit:wght@300;400;500;600;700;800&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+                <link rel="stylesheet" href="quotation.css">
+                <style>
+                    @page {
+                        size: A4 portrait;
+                        margin: 0 !important;
+                    }
+                    *, *::before, *::after {
+                        box-sizing: border-box;
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
+                    html, body {
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        background: #0f172a;
+                        color: #1f2937;
+                        font-family: 'Sarabun', 'Kanit', sans-serif;
+                    }
+                    @media screen {
+                        .print-header-bar {
+                            position: sticky;
+                            top: 0;
+                            z-index: 1000;
+                            background: #1e293b;
+                            color: #f8fafc;
+                            padding: 12px 24px;
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+                            border-bottom: 1px solid #334155;
+                        }
+                        .print-canvas-area {
+                            padding: 24px 0 60px;
+                            display: flex;
+                            justify-content: center;
+                            background: #0b1120;
+                            min-height: calc(100vh - 60px);
+                        }
+                        .a4-sheet {
+                            width: 210mm !important;
+                            min-height: 297mm !important;
+                            background: #ffffff;
+                            box-shadow: 0 10px 40px rgba(0,0,0,0.6) !important;
+                        }
+                    }
+                    @media print {
+                        .print-header-bar {
+                            display: none !important;
+                        }
+                        body, html {
+                            background: #ffffff !important;
+                            padding: 0 !important;
+                            margin: 0 !important;
+                            width: 100% !important;
+                        }
+                        .print-canvas-area {
+                            padding: 0 !important;
+                            margin: 0 !important;
+                            display: block !important;
+                            background: #ffffff !important;
+                        }
+                        .a4-sheet {
+                            width: 210mm !important;
+                            min-height: 297mm !important;
+                            box-shadow: none !important;
+                            border-radius: 0 !important;
+                            margin: 0 auto !important;
+                            overflow: visible !important;
+                            page-break-after: avoid;
+                        }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="print-header-bar">
+                    <div style="font-weight: 700; font-size: 16px; display: flex; align-items: center; gap: 10px;">
+                        <span>📄 ${escapeHtml(q.docType || 'ใบเสนอราคา')}</span>
+                        <span style="font-size: 13px; color: #94a3b8; font-family: monospace;">(${escapeHtml(q.docNo || '')})</span>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button onclick="window.print()" style="padding: 9px 24px; font-size: 14px; background: #bf5728; color: #ffffff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(191,87,40,0.4);">
+                            🖨️ สั่งพิมพ์เอกสาร / บันทึกเป็น PDF
+                        </button>
+                        <button onclick="window.close()" style="padding: 9px 18px; font-size: 14px; background: #334155; color: #cbd5e1; border: 1px solid #475569; border-radius: 6px; cursor: pointer;">
+                            ✕ ปิดหน้านี้
+                        </button>
+                    </div>
+                </div>
+
+                <div class="print-canvas-area">
+                    <div class="${a4Sheet.className}" id="a4-sheet">
+                        ${a4Sheet.innerHTML}
+                    </div>
+                </div>
+
+                <script>
+                    window.addEventListener('load', function() {
+                        setTimeout(function() {
+                            try {
+                                window.focus();
+                                window.print();
+                            } catch (e) {}
+                        }, 300);
+                    });
+                </script>
+            </body>
+            </html>
+        `);
+        printWin.document.close();
+        return;
+    }
+
+    // 2. Fallback to in-page print if pop-ups are blocked
+    const wrapper = document.getElementById('a4-wrapper');
+    const currentZoom = STATE.zoomLevel || 1.0;
+
+    const restoreZoom = () => {
+        if (wrapper) wrapper.style.transform = `scale(${currentZoom})`;
+        window.removeEventListener('afterprint', restoreZoom);
+    };
+
+    window.addEventListener('afterprint', restoreZoom);
+    if (wrapper) wrapper.style.transform = 'none';
+
+    setTimeout(() => {
+        if (typeof window.focus === 'function') window.focus();
+        window.print();
+    }, 100);
 }
 
 function printQuotationDirectly(docNo) {
     loadQuotationById(docNo);
     setTimeout(() => {
-        window.print();
-    }, 300);
+        printQuotation();
+    }, 350);
 }
 
 function copyClientApprovalLink(docNo) {

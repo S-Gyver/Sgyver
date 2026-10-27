@@ -831,11 +831,21 @@ input[type="number"],
    PRINT MEDIA QUERY (EXACT A4 CLEAN PRINTING)
    ══════════════════════════════════════════════════════════════ */
 @media print {
+    *, *::before, *::after {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
     body, html {
         background: #fff !important;
         color: #000 !important;
         margin: 0 !important;
         padding: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: auto !important;
+        overflow: visible !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
     }
     .qt-topbar,
     .qt-editor-pane,
@@ -843,9 +853,11 @@ input[type="number"],
     .bg-glow-container,
     .no-print,
     .qt-topbar-actions,
-    .btn-cyber {
+    .btn-cyber,
+    #quotations-list-pane {
         display: none !important;
     }
+    #editor-layout,
     .qt-studio-container {
         display: block !important;
         height: auto !important;
@@ -855,18 +867,27 @@ input[type="number"],
         padding: 0 !important;
         background: #fff !important;
         overflow: visible !important;
+        display: block !important;
     }
     .a4-wrapper {
         transform: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
-    .a4-sheet {
+    .a4-sheet,
+    .a4-sheet.theme-terracotta,
+    .a4-sheet.theme-classic {
         box-shadow: none !important;
         border-radius: 0 !important;
-        width: 100% !important;
-        min-height: 100% !important;
+        width: 210mm !important;
+        max-width: 210mm !important;
+        min-height: 297mm !important;
         padding: 10mm 15mm !important;
-        margin: 0 !important;
+        margin: 0 auto !important;
+        overflow: visible !important;
         page-break-after: avoid;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
     }
     @page {
         size: A4 portrait;

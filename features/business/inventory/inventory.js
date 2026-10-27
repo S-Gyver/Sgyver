@@ -13,6 +13,8 @@ const InventoryApp = {
     viewMode: 'CARD', // 'CARD' (Shopee Card Grid), 'PARENT' (Shopee Grouped Table), or 'FLAT' (Flat Table)
     expandedParents: new Set(), // Keys of expanded parent products
     searchQuery: '',
+    sortBy: 'DEFAULT', // 'DEFAULT', 'PRICE_DESC', 'PRICE_ASC', 'NAME_ASC', 'NAME_DESC', 'CATEGORY', 'STOCK_DESC', 'STOCK_ASC'
+    selectedCategory: 'ALL', // 'ALL' or specific category name e.g. 'ผ้าเช็ดหน้า', 'ชุดเดรส'
     editingId: null
 };
 
@@ -168,6 +170,7 @@ async function loadInventory() {
         }
 
         calculateMetrics(InventoryApp.products);
+        renderCategoryChips();
         renderTable();
         populateMoveProductSelect();
 
@@ -181,6 +184,7 @@ async function loadInventory() {
                 if (Array.isArray(parsedCustom) && parsedCustom.length > 0) {
                     InventoryApp.products = parsedCustom;
                     calculateMetrics(InventoryApp.products);
+                    renderCategoryChips();
                     renderTable();
                     populateMoveProductSelect();
                     return;
@@ -208,44 +212,135 @@ function calculateMetrics(items) {
     let outStockCount = 0;
     let totalVal = 0;
 
+    const allCards = new Set();
+    const inStockCards = new Set();
+    const lowStockCards = new Set();
+    const outStockCards = new Set();
+
     items.forEach(p => {
         const qty = parseInt(p.stock_quantity ?? 0, 10);
         const minAlert = parseInt(p.min_stock_alert ?? 5, 10);
         const price = parseFloat(p.price ?? 0);
+        const pKey = typeof getParentGroupKey === 'function' ? getParentGroupKey(p) : (p.parent_sku || p.sku);
 
         totalStock += qty;
         totalVal += (qty * price);
+        allCards.add(pKey);
 
         if (qty <= 0) {
             outStockCount++;
-        } else if (qty <= minAlert) {
-            lowStockCount++;
+            outStockCards.add(pKey);
+        } else {
+            inStockCards.add(pKey);
+            if (qty <= minAlert) {
+                lowStockCount++;
+                lowStockCards.add(pKey);
+            }
         }
     });
 
     // Update Top 4 Metric Cards
-    document.getElementById('metricTotalSkus').innerText = items.length.toLocaleString('th-TH');
-    document.getElementById('metricTotalStock').innerText = totalStock.toLocaleString('th-TH');
-    document.getElementById('metricLowStock').innerText = lowStockCount.toLocaleString('th-TH');
-    document.getElementById('metricTotalValue').innerText = '฿' + Math.round(totalVal).toLocaleString('th-TH');
+    const elSkus = document.getElementById('metricTotalSkus');
+    const elStock = document.getElementById('metricTotalStock');
+    const elLow = document.getElementById('metricLowStock');
+    const elVal = document.getElementById('metricTotalValue');
 
-    // Update Shopee Tab Count Badges
+    if (elSkus) elSkus.innerText = items.length.toLocaleString('th-TH');
+    if (elStock) elStock.innerText = totalStock.toLocaleString('th-TH');
+    if (elLow) elLow.innerText = lowStockCount.toLocaleString('th-TH');
+    if (elVal) elVal.innerText = '฿' + Math.round(totalVal).toLocaleString('th-TH');
+
+    // Update Shopee Tab Count Badges (Sub-SKUs)
     const inStockCount = items.length - outStockCount;
     const tabCountAll = document.getElementById('tabCountAll');
     const tabCountInStock = document.getElementById('tabCountInStock');
     const tabCountLow = document.getElementById('tabCountLow');
     const tabCountOut = document.getElementById('tabCountOut');
 
-    if (tabCountAll) tabCountAll.innerText = items.length;
-    if (tabCountInStock) tabCountInStock.innerText = inStockCount;
-    if (tabCountLow) tabCountLow.innerText = lowStockCount;
-    if (tabCountOut) tabCountOut.innerText = outStockCount;
+    if (tabCountAll) tabCountAll.innerText = items.length.toLocaleString('th-TH');
+    if (tabCountInStock) tabCountInStock.innerText = inStockCount.toLocaleString('th-TH');
+    if (tabCountLow) tabCountLow.innerText = lowStockCount.toLocaleString('th-TH');
+    if (tabCountOut) tabCountOut.innerText = outStockCount.toLocaleString('th-TH');
+
+    // Update Shopee Tab Card Count Badges (Parent Cards)
+    const tabCardCountAll = document.getElementById('tabCardCountAll');
+    const tabCardCountInStock = document.getElementById('tabCardCountInStock');
+    const tabCardCountLow = document.getElementById('tabCardCountLow');
+    const tabCardCountOut = document.getElementById('tabCardCountOut');
+
+    if (tabCardCountAll) tabCardCountAll.innerText = allCards.size.toLocaleString('th-TH');
+    if (tabCardCountInStock) tabCardCountInStock.innerText = inStockCards.size.toLocaleString('th-TH');
+    if (tabCardCountLow) tabCardCountLow.innerText = lowStockCards.size.toLocaleString('th-TH');
+    if (tabCardCountOut) tabCardCountOut.innerText = outStockCards.size.toLocaleString('th-TH');
+
+    renderCategoryChips();
+}
+
+// ------------------------------------------------------------------------------
+// 🏷️ Category Extraction & Smart Tagging
+// ------------------------------------------------------------------------------
+function getProductCategory(p) {
+    if (!p) return 'สินค้าทั่วไป';
+    
+    // 1. Keyword detection from Title / Name / SKU (Highest accuracy for garment shops)
+    const name = ((p.name || '') + ' ' + (p.variant || '')).trim().toLowerCase();
+    
+    if (name.includes('ผ้าเช็ดหน้า') || name.includes('ผ้าเช็ด')) return 'ผ้าเช็ดหน้า';
+    if (name.includes('ผ้าคลุม') || name.includes('ผ้าพันคอ')) return 'ผ้าพันคอ / ผ้าคลุม';
+    if (name.includes('เดรส') || name.includes('กระโปรงชุด') || name.includes('dress')) return 'ชุดเดรส';
+    if (name.includes('เสื้อยืด') || name.includes('tee') || name.includes('t-shirt') || name.includes('สกรีน')) return 'เสื้อยืด';
+    if (name.includes('เสื้อเชิ้ต') || name.includes('shirt') || name.includes('เชิ้ต')) return 'เสื้อเชิ้ต';
+    if (name.includes('เสื้อกล้าม') || name.includes('สายเดี่ยว')) return 'เสื้อกล้าม / สายเดี่ยว';
+    if (name.includes('เสื้อคลุม') || name.includes('แจ็คเก็ต') || name.includes('คาร์ดิแกน') || name.includes('jacket')) return 'เสื้อคลุม / แจ็คเก็ต';
+    if (name.includes('จั๊มสูท') || name.includes('เอี๊ยม') || name.includes('jumpsuit')) return 'จั๊มสูท / เอี๊ยม';
+    if (name.includes('ชุดเซ็ต') || name.includes('set') || name.includes('เซ็ท')) return 'ชุดเซ็ต';
+    if (name.includes('กางเกง') || name.includes('pants') || name.includes('shorts') || name.includes('trousers') || name.includes('ขาสั้น') || name.includes('ขายาว')) return 'กางเกง';
+    if (name.includes('กระโปรง') || name.includes('skirt')) return 'กระโปรง';
+    if (name.includes('สูท') || name.includes('blazer')) return 'สูท / เบลเซอร์';
+    if (name.includes('หมวก')) return 'หมวก';
+    if (name.includes('กระเป๋า') || name.includes('bag')) return 'กระเป๋า';
+    if (name.includes('ถุงเท้า')) return 'ถุงเท้า';
+
+    // 2. Check explicit category or product_type
+    const rawType = (p.product_type || p.category || '').trim();
+    const pKey = typeof getParentGroupKey === 'function' ? getParentGroupKey(p) : (p.parent_sku || p.sku);
+    const cachedCat = localStorage.getItem('sgyver_cat_' + pKey) || '';
+    const catStr = rawType || cachedCat;
+
+    if (catStr) {
+        const parts = catStr.split(/\s*>\s*/);
+        const last = parts[parts.length - 1].trim();
+        if (last && last !== 'สินค้า Shopee' && last !== 'เสื้อผ้าแฟชั่น') {
+            return last;
+        }
+    }
+
+    // 3. Fallback from SKU prefix
+    const skuUpper = (p.sku || '').toUpperCase();
+    if (skuUpper.includes('DRS')) return 'ชุดเดรส';
+    if (skuUpper.includes('TEE') || skuUpper.includes('TS-')) return 'เสื้อยืด';
+    if (skuUpper.includes('PNT')) return 'กางเกง';
+    if (skuUpper.includes('SET')) return 'ชุดเซ็ต';
+    if (skuUpper.includes('JMP')) return 'จั๊มสูท / เอี๊ยม';
+    if (skuUpper.includes('SKT')) return 'กระโปรง';
+    if (skuUpper.includes('JKT')) return 'เสื้อคลุม / แจ็คเก็ต';
+
+    return 'สินค้าทั่วไป';
+}
+
+function compareSkus(skuA, skuB) {
+    const sA = (skuA || '').trim();
+    const sB = (skuB || '').trim();
+    if (!sA && !sB) return 0;
+    if (!sA) return 1;
+    if (!sB) return -1;
+    return sA.localeCompare(sB, undefined, { numeric: true, sensitivity: 'base' });
 }
 
 function getFilteredProducts() {
     let list = [...InventoryApp.products];
 
-    // Filter by Tab
+    // 1. Filter by Tab
     if (InventoryApp.activeTab === 'INSTOCK') {
         list = list.filter(p => parseInt(p.stock_quantity ?? 0, 10) > 0);
     } else if (InventoryApp.activeTab === 'LOW') {
@@ -258,19 +353,214 @@ function getFilteredProducts() {
         list = list.filter(p => parseInt(p.stock_quantity ?? 0, 10) <= 0);
     }
 
-    // Filter by Search Query
+    // 2. Filter by Category
+    if (InventoryApp.selectedCategory && InventoryApp.selectedCategory !== 'ALL') {
+        list = list.filter(p => getProductCategory(p) === InventoryApp.selectedCategory);
+    }
+
+    // 3. Filter by Search Query
     if (InventoryApp.searchQuery) {
         const q = InventoryApp.searchQuery.toLowerCase();
         list = list.filter(p => {
+            const cat = getProductCategory(p).toLowerCase();
             return (p.sku && p.sku.toLowerCase().includes(q)) ||
                    (p.name && p.name.toLowerCase().includes(q)) ||
                    (p.variant && p.variant.toLowerCase().includes(q)) ||
                    (p.warehouse_location && p.warehouse_location.toLowerCase().includes(q)) ||
-                   (p.distributor && p.distributor.toLowerCase().includes(q));
+                   (p.distributor && p.distributor.toLowerCase().includes(q)) ||
+                   cat.includes(q);
         });
     }
 
+    // 4. Sort Products (Flat list)
+    list.sort((a, b) => {
+        const skuComp = compareSkus(a.sku, b.sku);
+        if (!InventoryApp.sortBy || InventoryApp.sortBy === 'DEFAULT') {
+            return skuComp;
+        }
+
+        const priceA = parseFloat(a.price ?? 0);
+        const priceB = parseFloat(b.price ?? 0);
+        const qtyA = parseInt(a.stock_quantity ?? 0, 10);
+        const qtyB = parseInt(b.stock_quantity ?? 0, 10);
+        const nameA = (a.name || a.sku || '').trim();
+        const nameB = (b.name || b.sku || '').trim();
+        const catA = getProductCategory(a);
+        const catB = getProductCategory(b);
+
+        switch (InventoryApp.sortBy) {
+            case 'SKU_ASC':
+                return skuComp;
+            case 'SKU_DESC':
+                return compareSkus(b.sku, a.sku);
+            case 'PRICE_DESC':
+                return priceB !== priceA ? (priceB - priceA) : skuComp;
+            case 'PRICE_ASC':
+                return priceA !== priceB ? (priceA - priceB) : skuComp;
+            case 'NAME_ASC':
+                const nC1 = nameA.localeCompare(nameB, 'th');
+                return nC1 !== 0 ? nC1 : skuComp;
+            case 'NAME_DESC':
+                const nC2 = nameB.localeCompare(nameA, 'th');
+                return nC2 !== 0 ? nC2 : skuComp;
+            case 'CATEGORY':
+                const cComp = catA.localeCompare(catB, 'th');
+                return cComp !== 0 ? cComp : (nameA.localeCompare(nameB, 'th') || skuComp);
+            case 'STOCK_DESC':
+                return qtyB !== qtyA ? (qtyB - qtyA) : skuComp;
+            case 'STOCK_ASC':
+                return qtyA !== qtyB ? (qtyA - qtyB) : skuComp;
+            default:
+                return skuComp;
+        }
+    });
+
     return list;
+}
+
+function sortParentGroups(groups) {
+    return groups.sort((a, b) => {
+        const parentSkuA = a.parentSku || a.key || '';
+        const parentSkuB = b.parentSku || b.key || '';
+        const skuComp = compareSkus(parentSkuA, parentSkuB);
+
+        if (!InventoryApp.sortBy || InventoryApp.sortBy === 'DEFAULT') {
+            return skuComp;
+        }
+
+        let priceA = 0, priceB = 0;
+        let stockA = 0, stockB = 0;
+        a.items.forEach(c => {
+            const p = parseFloat(c.price || 0);
+            const q = parseInt(c.stock_quantity || 0, 10);
+            stockA += q;
+            if (p > priceA) priceA = p;
+        });
+        b.items.forEach(c => {
+            const p = parseFloat(c.price || 0);
+            const q = parseInt(c.stock_quantity || 0, 10);
+            stockB += q;
+            if (p > priceB) priceB = p;
+        });
+
+        const nameA = (a.name || a.parentSku || '').trim();
+        const nameB = (b.name || b.parentSku || '').trim();
+        const catA = a.category || (a.items[0] ? getProductCategory(a.items[0]) : '');
+        const catB = b.category || (b.items[0] ? getProductCategory(b.items[0]) : '');
+
+        switch (InventoryApp.sortBy) {
+            case 'SKU_ASC':
+                return skuComp;
+            case 'SKU_DESC':
+                return compareSkus(parentSkuB, parentSkuA);
+            case 'PRICE_DESC':
+                return priceB !== priceA ? (priceB - priceA) : skuComp;
+            case 'PRICE_ASC':
+                return priceA !== priceB ? (priceA - priceB) : skuComp;
+            case 'NAME_ASC':
+                const nC1 = nameA.localeCompare(nameB, 'th');
+                return nC1 !== 0 ? nC1 : skuComp;
+            case 'NAME_DESC':
+                const nC2 = nameB.localeCompare(nameA, 'th');
+                return nC2 !== 0 ? nC2 : skuComp;
+            case 'CATEGORY':
+                const cC = catA.localeCompare(catB, 'th');
+                return cC !== 0 ? cC : (nameA.localeCompare(nameB, 'th') || skuComp);
+            case 'STOCK_DESC':
+                return stockB !== stockA ? (stockB - stockA) : skuComp;
+            case 'STOCK_ASC':
+                return stockA !== stockB ? (stockA - stockB) : skuComp;
+            default:
+                return skuComp;
+        }
+    });
+}
+
+function renderCategoryChips() {
+    const container = document.getElementById('categoryChipsContainer');
+    const selectEl = document.getElementById('categoryFilterSelect');
+    if (!container && !selectEl) return;
+
+    // Count products per category
+    const categoryCounts = {};
+    const categoryCardCounts = {};
+    let totalItems = 0;
+    const allCards = new Set();
+
+    InventoryApp.products.forEach(p => {
+        const cat = getProductCategory(p);
+        const pKey = typeof getParentGroupKey === 'function' ? getParentGroupKey(p) : (p.parent_sku || p.sku);
+        categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+        totalItems++;
+        allCards.add(pKey);
+
+        if (!categoryCardCounts[cat]) categoryCardCounts[cat] = new Set();
+        categoryCardCounts[cat].add(pKey);
+    });
+
+    const sortedCats = Object.keys(categoryCounts).sort((a, b) => {
+        return (categoryCardCounts[b]?.size || 0) - (categoryCardCounts[a]?.size || 0);
+    });
+
+    // 1. Update Dropdown Select
+    if (selectEl) {
+        let selectHtml = `<option value="ALL">ทั้งหมดทุกประเภท (${allCards.size} การ์ด • ${totalItems} SKU)</option>`;
+        sortedCats.forEach(cat => {
+            const cardCount = categoryCardCounts[cat]?.size || 0;
+            const skuCount = categoryCounts[cat] || 0;
+            const isSel = InventoryApp.selectedCategory === cat ? 'selected' : '';
+            selectHtml += `<option value="${escapeHtml(cat)}" ${isSel}>${escapeHtml(cat)} (${cardCount} สินค้า • ${skuCount} SKU)</option>`;
+        });
+        selectEl.innerHTML = selectHtml;
+    }
+
+    // 2. Update Quick Chips
+    if (container) {
+        const isAllActive = !InventoryApp.selectedCategory || InventoryApp.selectedCategory === 'ALL';
+        let chipsHtml = `
+            <button type="button" onclick="setCategoryFilter('ALL')" 
+                class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer active:scale-95 flex items-center gap-1.5 ${isAllActive ? 'bg-[#ee4d2d] text-white shadow-xs' : 'bg-white hover:bg-orange-50 hover:text-[#ee4d2d] text-slate-700 border border-slate-200'}">
+                <span>ทั้งหมด</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded-lg font-mono ${isAllActive ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-600'}">${allCards.size}</span>
+            </button>
+        `;
+
+        sortedCats.forEach(cat => {
+            const isActive = InventoryApp.selectedCategory === cat;
+            const cardCount = categoryCardCounts[cat]?.size || 0;
+            chipsHtml += `
+                <button type="button" onclick="setCategoryFilter('${escapeHtml(cat)}')" 
+                    title="คลิกเพื่อกรองดูเฉพาะ '${escapeHtml(cat)}' (คลิกซ้ำเพื่อยกเลิก)"
+                    class="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 cursor-pointer active:scale-95 flex items-center gap-1.5 ${isActive ? 'bg-[#ee4d2d] text-white shadow-xs font-bold' : 'bg-white hover:bg-orange-50 hover:text-[#ee4d2d] text-slate-700 border border-slate-200/90'}">
+                    <span>${escapeHtml(cat)}</span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded-lg font-mono ${isActive ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-600'}">${cardCount}</span>
+                </button>
+            `;
+        });
+
+        container.innerHTML = chipsHtml;
+    }
+}
+
+function setCategoryFilter(category) {
+    if (InventoryApp.selectedCategory === category && category !== 'ALL') {
+        InventoryApp.selectedCategory = 'ALL';
+    } else {
+        InventoryApp.selectedCategory = category;
+    }
+    const selectEl = document.getElementById('categoryFilterSelect');
+    if (selectEl) selectEl.value = InventoryApp.selectedCategory;
+    renderCategoryChips();
+    renderTable();
+}
+
+function handleCategoryFilter(val) {
+    setCategoryFilter(val);
+}
+
+function handleSortChange(val) {
+    InventoryApp.sortBy = val;
+    renderTable();
 }
 
 function switchViewMode(mode) {
@@ -281,12 +571,24 @@ function switchViewMode(mode) {
     const cardGridContainer = document.getElementById('shopeeCardGridContainer');
     const tableContainer = document.getElementById('inventoryTableContainer');
 
-    const defaultBtnClass = 'px-2.5 py-1 rounded-lg font-medium transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1.5';
-    const activeBtnClass = 'px-2.5 py-1 rounded-lg font-bold transition-all bg-white text-[#ee4d2d] shadow-sm flex items-center gap-1.5';
+    const defaultBtnClass = 'px-2.5 py-1 rounded-lg font-medium transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1.5 cursor-pointer';
+    const activeBtnClass = 'px-2.5 py-1 rounded-lg font-bold transition-all bg-white text-[#ee4d2d] shadow-sm flex items-center gap-1.5 cursor-pointer';
 
-    if (btnCard) btnCard.className = mode === 'CARD' ? activeBtnClass : defaultBtnClass;
-    if (btnGrouped) btnGrouped.className = mode === 'PARENT' ? activeBtnClass : defaultBtnClass;
-    if (btnFlat) btnFlat.className = mode === 'FLAT' ? activeBtnClass : defaultBtnClass;
+    if (btnCard) {
+        btnCard.className = mode === 'CARD' ? activeBtnClass : defaultBtnClass;
+        const icon = btnCard.querySelector('i');
+        if (icon) icon.className = `bi bi-grid-3x3-gap-fill ${mode === 'CARD' ? 'text-[#ee4d2d]' : ''}`;
+    }
+    if (btnGrouped) {
+        btnGrouped.className = mode === 'PARENT' ? activeBtnClass : defaultBtnClass;
+        const icon = btnGrouped.querySelector('i');
+        if (icon) icon.className = `bi bi-diagram-3-fill ${mode === 'PARENT' ? 'text-[#ee4d2d]' : ''}`;
+    }
+    if (btnFlat) {
+        btnFlat.className = mode === 'FLAT' ? activeBtnClass : defaultBtnClass;
+        const icon = btnFlat.querySelector('i');
+        if (icon) icon.className = `bi bi-list-ul ${mode === 'FLAT' ? 'text-[#ee4d2d]' : ''}`;
+    }
 
     if (mode === 'CARD') {
         if (cardGridContainer) cardGridContainer.classList.remove('hidden');
@@ -600,14 +902,148 @@ function renderTable() {
     renderJunkBanner();
     renderDuplicatePostsBanner();
     const items = getFilteredProducts();
+    const tbody = document.getElementById('inventoryTableBody');
+    const showingCount = document.getElementById('showingCount');
 
     if (InventoryApp.viewMode === 'CARD') {
         renderShopeeCardGrid(items);
     } else if (InventoryApp.viewMode === 'PARENT') {
-        renderParentGroupedTable(items);
+        renderParentGroupedTable(items, tbody, showingCount);
     } else {
-        renderFlatTable(items);
+        renderFlatTable(items, tbody, showingCount);
     }
+}
+
+// ------------------------------------------------------------------------------
+// 🖼️ Shared Cover Image Helpers & Floating Hover Zoom Tooltip
+// ------------------------------------------------------------------------------
+function getParentCoverImage(parent) {
+    if (!parent) return '';
+    const cachedGallery = localStorage.getItem('sgyver_gallery_' + parent.parentSku) || localStorage.getItem('sgyver_gallery_' + parent.key);
+    let firstFromGallery = '';
+    if (cachedGallery) {
+        try {
+            const arr = JSON.parse(cachedGallery);
+            if (Array.isArray(arr) && arr.length > 0 && arr[0]) firstFromGallery = arr[0];
+        } catch(e) {}
+    }
+    const cachedImg = localStorage.getItem('sgyver_img_' + parent.parentSku) || localStorage.getItem('sgyver_img_' + parent.key);
+    let firstFromItemsImages = '';
+    if (parent.items) {
+        for (const item of parent.items) {
+            if (Array.isArray(item.images) && item.images.length > 0 && item.images[0]) {
+                firstFromItemsImages = item.images[0];
+                break;
+            }
+        }
+    }
+    return firstFromGallery || cachedImg || firstFromItemsImages || parent.items?.find(x => x.image_url)?.image_url || '';
+}
+
+function getItemCoverImage(p) {
+    if (!p) return '';
+    if (p.image_url && (p.image_url.startsWith('http') || p.image_url.startsWith('data:image/'))) return p.image_url;
+    const cachedSkuImg = localStorage.getItem('sgyver_img_' + (p.sku || ''));
+    if (cachedSkuImg) return cachedSkuImg;
+    if (Array.isArray(p.images) && p.images.length > 0 && p.images[0]) return p.images[0];
+
+    const pKey = typeof getParentGroupKey === 'function' ? getParentGroupKey(p) : (p.parent_sku || p.sku);
+    const pSku = p.parent_sku || pKey;
+    const cachedGallery = localStorage.getItem('sgyver_gallery_' + pSku) || localStorage.getItem('sgyver_gallery_' + pKey);
+    if (cachedGallery) {
+        try {
+            const arr = JSON.parse(cachedGallery);
+            if (Array.isArray(arr) && arr.length > 0 && arr[0]) return arr[0];
+        } catch(e) {}
+    }
+    const cachedParentImg = localStorage.getItem('sgyver_img_' + pSku) || localStorage.getItem('sgyver_img_' + pKey);
+    if (cachedParentImg) return cachedParentImg;
+    return '';
+}
+
+function showTableImageHoverPreview(event, imgUrl, caption) {
+    if (!imgUrl) return;
+    let tip = document.getElementById('tableImageHoverPreviewTooltip');
+    if (!tip) {
+        tip = document.createElement('div');
+        tip.id = 'tableImageHoverPreviewTooltip';
+        tip.style.position = 'fixed';
+        tip.style.pointerEvents = 'none';
+        tip.style.zIndex = '999999';
+        tip.style.background = '#ffffff';
+        tip.style.borderRadius = '16px';
+        tip.style.border = '2px solid #fb923c';
+        tip.style.boxShadow = '0 20px 40px -10px rgba(0, 0, 0, 0.35)';
+        tip.style.padding = '8px';
+        tip.style.width = '230px';
+        tip.style.transition = 'opacity 0.15s ease-out';
+        tip.style.opacity = '0';
+        tip.style.display = 'block';
+        tip.innerHTML = `
+            <div style="overflow:hidden; border-radius:12px; background:#f1f5f9; position:relative; width:100%; height:210px; display:flex; align-items:center; justify-content:center;">
+                <img id="tableImageHoverPreviewImg" src="" alt="preview" style="width:100%; height:100%; object-fit:cover; border-radius:12px;" />
+                <div style="position:absolute; bottom:6px; right:6px; padding:2px 8px; background:rgba(0,0,0,0.7); color:#ffffff; font-size:10px; border-radius:6px; font-weight:700; backdrop-filter:blur(4px); display:flex; align-items:center; gap:4px;">
+                    <i class="bi bi-arrows-fullscreen"></i> คลิกดูรูปเต็ม
+                </div>
+            </div>
+            <div id="tableImageHoverPreviewCaption" style="margin-top:8px; font-size:11px; font-weight:700; color:#1e293b; line-height:1.3; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; padding:0 2px;"></div>
+        `;
+        document.body.appendChild(tip);
+    }
+
+    const img = document.getElementById('tableImageHoverPreviewImg');
+    const cap = document.getElementById('tableImageHoverPreviewCaption');
+    if (img) img.src = imgUrl;
+    if (cap) {
+        cap.innerText = caption || '';
+        cap.style.display = caption ? '-webkit-box' : 'none';
+    }
+
+    positionTableImageHoverPreview(event, tip);
+    tip.style.display = 'block';
+    tip.style.opacity = '1';
+}
+
+function updateTableImageHoverPreview(event) {
+    const tip = document.getElementById('tableImageHoverPreviewTooltip');
+    if (tip && tip.style.opacity !== '0') {
+        positionTableImageHoverPreview(event, tip);
+    }
+}
+
+function hideTableImageHoverPreview() {
+    const tip = document.getElementById('tableImageHoverPreviewTooltip');
+    if (tip) {
+        tip.style.opacity = '0';
+        setTimeout(() => {
+            if (tip && tip.style.opacity === '0') {
+                tip.style.display = 'none';
+            }
+        }, 150);
+    }
+}
+
+function positionTableImageHoverPreview(event, tip) {
+    if (!event) return;
+    const pad = 16;
+    const tipW = 230;
+    const tipH = 280;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    let left = (event.clientX || 0) + pad;
+    let top = (event.clientY || 0) - (tipH / 2);
+
+    if (left + tipW > vw - pad) {
+        left = (event.clientX || 0) - tipW - pad;
+    }
+    if (left < pad) left = pad;
+
+    if (top < pad) top = pad;
+    if (top + tipH > vh - pad) top = vh - tipH - pad;
+
+    tip.style.left = left + 'px';
+    tip.style.top = top + 'px';
 }
 
 // ------------------------------------------------------------------------------
@@ -650,7 +1086,11 @@ function renderShopeeCardGrid(items) {
         parentMap.get(key).items.push(p);
     });
 
-    const parentGroups = Array.from(parentMap.values());
+    parentMap.forEach(group => {
+        group.items.sort((a, b) => compareSkus(a.sku, b.sku));
+    });
+
+    const parentGroups = sortParentGroups(Array.from(parentMap.values()));
     if (showingCardCount) showingCardCount.innerText = `${parentGroups.length.toLocaleString('th-TH')} สินค้าหลัก (${items.length.toLocaleString('th-TH')} SKU ย่อย)`;
     if (headerTotalItems) headerTotalItems.innerText = parentGroups.length.toLocaleString('th-TH');
 
@@ -1093,6 +1533,7 @@ function showToastNotification(msg, type = 'success') {
 function openShopeeVariationModal(parentKey) {
     const parentItems = InventoryApp.products.filter(p => getParentGroupKey(p) === parentKey);
     if (!parentItems || parentItems.length === 0) return;
+    parentItems.sort((a, b) => compareSkus(a.sku, b.sku));
 
     const modal = document.getElementById('shopeeVariationModal');
     const modalTitle = document.getElementById('varModalTitle');
@@ -1326,6 +1767,10 @@ function closeShopeeVariationModal() {
 // Shopee Parent Grouped View (จัดกลุ่มสินค้าแม่ และกางดูตัวเลือก สี/ไซส์ ย่อย)
 // ------------------------------------------------------------------------------
 function renderParentGroupedTable(items, tbody, showingCount) {
+    if (!tbody) tbody = document.getElementById('inventoryTableBody');
+    if (!showingCount) showingCount = document.getElementById('showingCount');
+    if (!tbody) return;
+
     // 1. Update Table Header for Parent View
     const thead = document.getElementById('inventoryTableHeader');
     if (thead) {
@@ -1376,7 +1821,11 @@ function renderParentGroupedTable(items, tbody, showingCount) {
         parentMap.get(key).items.push(p);
     });
 
-    const parentGroups = Array.from(parentMap.values());
+    parentMap.forEach(group => {
+        group.items.sort((a, b) => compareSkus(a.sku, b.sku));
+    });
+
+    const parentGroups = sortParentGroups(Array.from(parentMap.values()));
     if (showingCount) {
         showingCount.innerText = `${items.length.toLocaleString('th-TH')} SKU (${parentGroups.length.toLocaleString('th-TH')} สินค้าหลัก)`;
     }
@@ -1426,6 +1875,7 @@ function renderParentGroupedTable(items, tbody, showingCount) {
 
         const isAutoName = !parent.name || parent.name === '(ไม่มีชื่อสินค้าในไฟล์)';
         const displayTitle = isAutoName ? `สินค้า ${parent.parentSku}` : parent.name;
+        const coverImg = getParentCoverImage(parent);
 
         // Render Parent Row
         html += `
@@ -1436,9 +1886,21 @@ function renderParentGroupedTable(items, tbody, showingCount) {
                             class="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-orange-100 hover:text-orange-600 text-slate-500 flex items-center justify-center text-xs transition-all shrink-0">
                             <i class="bi ${isExpanded ? 'bi-chevron-down text-orange-600 font-bold' : 'bi-chevron-right'}"></i>
                         </button>
-                        <div class="w-9 h-9 rounded-xl bg-orange-100/70 border border-orange-200 text-orange-600 flex items-center justify-center font-bold text-base shrink-0">
-                            <i class="bi bi-bag-check-fill"></i>
-                        </div>
+                        ${coverImg ? `
+                            <div class="relative shrink-0">
+                                <img src="${escapeHtml(coverImg)}" alt="${escapeHtml(displayTitle)}" 
+                                    onclick="event.stopPropagation(); openImagePreview('${escapeHtml(coverImg)}', '${escapeHtml(displayTitle)} (${escapeHtml(parent.parentSku)})')"
+                                    onmouseenter="showTableImageHoverPreview(event, '${escapeHtml(coverImg)}', '${escapeHtml(displayTitle)} (${escapeHtml(parent.parentSku)})')"
+                                    onmousemove="updateTableImageHoverPreview(event)"
+                                    onmouseleave="hideTableImageHoverPreview()"
+                                    class="w-11 h-11 rounded-xl object-cover border border-slate-200 shadow-2xs cursor-pointer hover:border-[#ee4d2d] hover:scale-125 transition-transform duration-200 hover:z-20 hover:ring-2 hover:ring-orange-400 relative" 
+                                    title="คลิกดูรูปขนาดเต็ม (ชี้เพื่อขยาย)">
+                            </div>
+                        ` : `
+                            <div class="w-11 h-11 rounded-xl bg-orange-100/70 border border-orange-200 text-orange-600 flex items-center justify-center font-bold text-base shrink-0">
+                                <i class="bi bi-bag-check-fill"></i>
+                            </div>
+                        `}
                         <div class="min-w-0">
                             <div class="font-bold text-slate-900 line-clamp-1 flex items-center gap-2" title="${escapeHtml(displayTitle)}">
                                 <span>${escapeHtml(displayTitle)}</span>
@@ -1501,7 +1963,7 @@ function renderParentGroupedTable(items, tbody, showingCount) {
                                     <thead class="bg-slate-50 text-[10px] font-semibold text-slate-500 uppercase border-b border-slate-200">
                                         <tr>
                                             <th class="py-2.5 px-3 min-w-[140px]">ตัวเลือก (สี / ไซส์)</th>
-                                            <th class="py-2.5 px-3 min-w-[140px]">เลขอ้างอิง SKU ย่อย</th>
+                                            <th class="py-2.5 px-3 min-w-[200px]">เลขอ้างอิง SKU ย่อย</th>
                                             <th class="py-2.5 px-3 text-center w-24">ชั้นวาง (Rack)</th>
                                             <th class="py-2.5 px-3 text-center w-36">สต็อกคงเหลือ</th>
                                             <th class="py-2.5 px-3 text-right w-28">ราคาขาย</th>
@@ -1531,7 +1993,10 @@ function renderParentGroupedTable(items, tbody, showingCount) {
                                                         <div class="flex items-center gap-2">
                                                             ${varImg ? `
                                                                 <img src="${escapeHtml(varImg)}" alt="${escapeHtml(c.variant || '')}" 
-                                                                    onclick="event.stopPropagation(); openImagePreview('${escapeHtml(varImg)}', 'ตัวเลือก: ${escapeHtml(c.variant || c.sku)}')"
+                                                                    onclick="event.stopPropagation(); openImagePreview('${escapeHtml(varImg)}', 'ตัวเลือก: ${escapeHtml(c.variant || c.sku)} (${escapeHtml(displayTitle)})')"
+                                                                    onmouseenter="showTableImageHoverPreview(event, '${escapeHtml(varImg)}', 'ตัวเลือก: ${escapeHtml(c.variant || c.sku)} (${escapeHtml(displayTitle)})')"
+                                                                    onmousemove="updateTableImageHoverPreview(event)"
+                                                                    onmouseleave="hideTableImageHoverPreview()"
                                                                     class="w-7 h-7 rounded-lg object-cover border border-slate-200 shadow-2xs shrink-0 cursor-pointer hover:scale-105 transition-transform" 
                                                                     title="คลิกเพื่อดูรูปขนาดใหญ่ (Popup)">
                                                             ` : `
@@ -1545,8 +2010,8 @@ function renderParentGroupedTable(items, tbody, showingCount) {
                                                             </span>
                                                         </div>
                                                     </td>
-                                                    <td class="py-2.5 px-3 font-mono font-bold text-blue-600">
-                                                        <span class="bg-blue-50 border border-blue-200 px-2 py-0.5 rounded text-xs inline-block truncate max-w-[140px] align-middle" title="${escapeHtml(c.sku)}">${escapeHtml(c.sku)}</span>
+                                                    <td class="py-2.5 px-3 font-mono font-bold text-blue-600 whitespace-nowrap">
+                                                        <span class="bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-lg text-xs inline-block font-mono align-middle select-all tracking-tight whitespace-nowrap" title="${escapeHtml(c.sku)}">${escapeHtml(c.sku)}</span>
                                                     </td>
                                                     <td class="py-2.5 px-3 text-center">
                                                         <span class="font-mono text-xs bg-slate-100 border border-slate-200 px-2 py-0.5 rounded font-bold text-slate-700">
@@ -1605,12 +2070,16 @@ function renderParentGroupedTable(items, tbody, showingCount) {
 // Flat Table View (ตารางรวมทุก SKU ย่อย)
 // ------------------------------------------------------------------------------
 function renderFlatTable(items, tbody, showingCount) {
+    if (!tbody) tbody = document.getElementById('inventoryTableBody');
+    if (!showingCount) showingCount = document.getElementById('showingCount');
+    if (!tbody) return;
+
     // 1. Update Table Header for Flat View
     const thead = document.getElementById('inventoryTableHeader');
     if (thead) {
         thead.innerHTML = `
             <tr>
-                <th class="py-3 px-4 w-36 whitespace-nowrap">รหัส SKU</th>
+                <th class="py-3 px-4 min-w-[210px] whitespace-nowrap">รหัส SKU</th>
                 <th class="py-3 px-3 min-w-[240px]">ชื่อสินค้า / ไซส์ & สี</th>
                 <th class="py-3 px-3 text-center w-28 whitespace-nowrap">ชั้นวาง (Rack)</th>
                 <th class="py-3 px-3 text-center w-36 whitespace-nowrap">สต็อกคงเหลือ</th>
@@ -1660,26 +2129,46 @@ function renderFlatTable(items, tbody, showingCount) {
         const isAutoName = !p.name || p.name === '(ไม่มีชื่อสินค้าในไฟล์)';
         const displayTitle = isAutoName ? `สินค้า ${p.sku}` : p.name;
         const parentSku = p.parent_sku || (p.sku?.split(/[-_]/)[0] || '');
+        const itemImg = getItemCoverImage(p);
 
         return `
             <tr class="hover:bg-slate-50 transition-colors">
                 <td class="py-3 px-4 font-mono font-bold text-blue-600 whitespace-nowrap">
-                    <span class="bg-blue-50 border border-blue-200 px-2 py-0.5 rounded text-xs truncate max-w-[130px] inline-block font-mono align-middle" title="${escapeHtml(p.sku)}">${escapeHtml(p.sku)}</span>
+                    <span class="bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-lg text-xs inline-block font-mono align-middle select-all tracking-tight whitespace-nowrap" title="${escapeHtml(p.sku)}">${escapeHtml(p.sku)}</span>
                 </td>
                 <td class="py-3 px-3">
-                    <div class="font-bold text-slate-900 line-clamp-1 flex items-center gap-1.5" title="${escapeHtml(displayTitle)}">
-                        <span>${escapeHtml(displayTitle)}</span>
-                        ${isAutoName ? `
-                            <button type="button" onclick="editProductModal(${p.id})" 
-                                class="text-[10px] text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-1.5 py-0.2 rounded inline-flex items-center gap-1 transition-colors font-sans font-normal shrink-0" title="คลิกเพื่อแก้ไขชื่อสินค้า">
-                                <i class="bi bi-pencil-square"></i> แก้ไขชื่อ
-                            </button>
-                        ` : ''}
-                    </div>
-                    <div class="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
-                        ${p.variant ? `<span class="bg-orange-50 text-orange-700 border border-orange-200 px-1.5 py-0.2 rounded font-medium">${escapeHtml(p.variant)}</span>` : '<span class="text-slate-400">-</span>'}
-                        ${parentSku ? `<span class="font-mono text-slate-400">แม่: ${escapeHtml(parentSku)}</span>` : ''}
-                        ${p.distributor ? `<span class="text-slate-400">• ${escapeHtml(p.distributor)}</span>` : ''}
+                    <div class="flex items-center gap-3">
+                        ${itemImg ? `
+                            <div class="relative shrink-0">
+                                <img src="${escapeHtml(itemImg)}" alt="${escapeHtml(displayTitle)}" 
+                                    onclick="event.stopPropagation(); openImagePreview('${escapeHtml(itemImg)}', '${escapeHtml(displayTitle)} (${escapeHtml(p.sku)})')"
+                                    onmouseenter="showTableImageHoverPreview(event, '${escapeHtml(itemImg)}', '${escapeHtml(displayTitle)} (${escapeHtml(p.sku)})')"
+                                    onmousemove="updateTableImageHoverPreview(event)"
+                                    onmouseleave="hideTableImageHoverPreview()"
+                                    class="w-10 h-10 rounded-xl object-cover border border-slate-200 shadow-2xs cursor-pointer hover:border-[#ee4d2d] hover:scale-125 transition-transform duration-200 hover:z-20 hover:ring-2 hover:ring-orange-400 relative" 
+                                    title="คลิกดูรูปขนาดเต็ม (ชี้เพื่อขยาย)">
+                            </div>
+                        ` : `
+                            <div class="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 shrink-0 text-sm">
+                                <i class="bi bi-image"></i>
+                            </div>
+                        `}
+                        <div class="min-w-0 flex-1">
+                            <div class="font-bold text-slate-900 line-clamp-1 flex items-center gap-1.5" title="${escapeHtml(displayTitle)}">
+                                <span>${escapeHtml(displayTitle)}</span>
+                                ${isAutoName ? `
+                                    <button type="button" onclick="editProductModal(${p.id})" 
+                                        class="text-[10px] text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-1.5 py-0.2 rounded inline-flex items-center gap-1 transition-colors font-sans font-normal shrink-0" title="คลิกเพื่อแก้ไขชื่อสินค้า">
+                                        <i class="bi bi-pencil-square"></i> แก้ไขชื่อ
+                                    </button>
+                                ` : ''}
+                            </div>
+                            <div class="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
+                                ${p.variant ? `<span class="bg-orange-50 text-orange-700 border border-orange-200 px-1.5 py-0.2 rounded font-medium">${escapeHtml(p.variant)}</span>` : '<span class="text-slate-400">-</span>'}
+                                ${parentSku ? `<span class="font-mono text-slate-400">แม่: ${escapeHtml(parentSku)}</span>` : ''}
+                                ${p.distributor ? `<span class="text-slate-400">• ${escapeHtml(p.distributor)}</span>` : ''}
+                            </div>
+                        </div>
                     </div>
                 </td>
                 <td class="py-3 px-3 text-center">
@@ -1781,6 +2270,42 @@ function exportShopeeMassUpdateCSV() {
     link.click();
     document.body.removeChild(link);
 }
+
+// ------------------------------------------------------------------------------
+// 🛍️ Shopee Tools Dropdown Menu Controller
+// ------------------------------------------------------------------------------
+function toggleShopeeToolsDropdown(e) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    const menu = document.getElementById('shopeeToolsDropdownMenu');
+    const arrow = document.getElementById('shopeeToolsDropdownArrow');
+    if (!menu) return;
+    const isHidden = menu.classList.contains('hidden');
+    if (isHidden) {
+        menu.classList.remove('hidden');
+        if (arrow) arrow.classList.add('rotate-180');
+    } else {
+        menu.classList.add('hidden');
+        if (arrow) arrow.classList.remove('rotate-180');
+    }
+}
+
+function closeShopeeToolsDropdown() {
+    const menu = document.getElementById('shopeeToolsDropdownMenu');
+    const arrow = document.getElementById('shopeeToolsDropdownArrow');
+    if (menu) menu.classList.add('hidden');
+    if (arrow) arrow.classList.remove('rotate-180');
+}
+
+// Global click outside listener to close dropdown
+document.addEventListener('click', (e) => {
+    const container = document.getElementById('shopeeToolsDropdownContainer');
+    if (container && !container.contains(e.target)) {
+        closeShopeeToolsDropdown();
+    }
+});
 
 function filterByTab(tab) {
     InventoryApp.activeTab = tab;
@@ -2054,6 +2579,246 @@ function switchShopeeTab(tabName) {
 // 5.5.1 TAB 7 HELPERS: URL & WAREHOUSE LOCATION (พิกัดจัดเก็บ & คอมเมนต์ & รูปถ่าย)
 // ==============================================================================
 
+const DEFAULT_LOCATION_CHIPS = ['ชั้น 1', 'ชั้น 2', 'ชั้น 3', 'ล็อค A', 'ล็อค B', 'ราวแขวนผ้า', 'ในกล่องพลาสติก', 'โซนหน้าร้าน'];
+
+function getLocationChips() {
+    try {
+        const stored = localStorage.getItem('sgyver_location_chips');
+        if (stored !== null) {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                return parsed;
+            }
+        }
+        // Migrate custom chips from previous key if any
+        const oldCustom = localStorage.getItem('sgyver_custom_location_chips');
+        if (oldCustom) {
+            const parsedOld = JSON.parse(oldCustom);
+            if (Array.isArray(parsedOld) && parsedOld.length > 0) {
+                const combined = [...DEFAULT_LOCATION_CHIPS, ...parsedOld.filter(c => !DEFAULT_LOCATION_CHIPS.includes(c))];
+                saveLocationChips(combined);
+                return combined;
+            }
+        }
+    } catch (e) {}
+    return [...DEFAULT_LOCATION_CHIPS];
+}
+
+function saveLocationChips(chips) {
+    try {
+        localStorage.setItem('sgyver_location_chips', JSON.stringify(chips));
+    } catch (e) {
+        console.error('Failed to save location chips:', e);
+    }
+    renderLocationChips();
+}
+
+function renderLocationChips() {
+    const container = document.getElementById('locationChipsContainer');
+    if (!container) return;
+
+    const chips = getLocationChips();
+    let html = '';
+
+    chips.forEach(chip => {
+        const isCustom = !DEFAULT_LOCATION_CHIPS.includes(chip);
+        html += `
+            <button type="button" onclick="appendLocationChip('${escapeHtml(chip)}')" 
+                title="คลิกเพื่อต่อข้อความ '+ ${escapeHtml(chip)}'"
+                class="px-2.5 py-1 ${isCustom ? 'bg-amber-50/80 hover:bg-amber-100 text-amber-900 border-amber-300 font-semibold' : 'bg-slate-50 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-800 text-slate-600 font-medium'} border rounded-lg text-[11px] transition-colors cursor-pointer active:scale-95">
+                + ${escapeHtml(chip)}
+            </button>
+        `;
+    });
+
+    html += `
+        <button type="button" onclick="openManageLocationChipsModal()" 
+            class="px-2.5 py-1 bg-white hover:bg-amber-50 hover:border-amber-400 hover:text-amber-800 border border-dashed border-amber-300 text-amber-700 rounded-lg text-[11px] font-bold transition-all shadow-2xs flex items-center gap-1 cursor-pointer active:scale-95" 
+            title="เพิ่ม แก้ไข หรือลบปุ่มลัดพิกัดจัดเก็บ">
+            <i class="bi bi-pencil-square text-[10px] text-amber-600 font-bold"></i>
+            <span>+ เพิ่ม / แก้ไข</span>
+        </button>
+    `;
+
+    container.innerHTML = html;
+}
+
+// ----------------------------------------------------
+// Manage Location Chips Modal (เพิ่ม / แก้ไข / ลบ)
+// ----------------------------------------------------
+let editingLocationChipIndex = null;
+
+function openManageLocationChipsModal() {
+    const modal = document.getElementById('manageLocationChipsModal');
+    if (!modal) return;
+
+    resetLocationChipModalForm();
+
+    // If user has text in the location note textarea, pre-fill as default input
+    const textarea = document.getElementById('modalLocationNote');
+    const input = document.getElementById('inputLocationChipText');
+    if (textarea && input && textarea.value.trim() && textarea.value.trim().length <= 30) {
+        const currentChips = getLocationChips();
+        const val = textarea.value.trim();
+        if (!currentChips.includes(val)) {
+            input.value = val;
+        }
+    }
+
+    renderManageLocationChipsList();
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    if (input) input.focus();
+}
+
+function closeManageLocationChipsModal() {
+    const modal = document.getElementById('manageLocationChipsModal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    resetLocationChipModalForm();
+    renderLocationChips();
+}
+
+function resetLocationChipModalForm() {
+    editingLocationChipIndex = null;
+    const input = document.getElementById('inputLocationChipText');
+    const btnSubmit = document.getElementById('btnSubmitLocationChip');
+    const formTitle = document.getElementById('locationChipFormTitle');
+    const btnCancel = document.getElementById('btnCancelEditLocationChip');
+
+    if (input) input.value = '';
+    if (btnSubmit) {
+        btnSubmit.innerHTML = '<i class="bi bi-plus-lg"></i> <span>บันทึกปุ่มลัด</span>';
+        btnSubmit.className = 'w-full py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1 active:scale-98 cursor-pointer';
+    }
+    if (formTitle) formTitle.textContent = 'เพิ่มปุ่มลัดใหม่:';
+    if (btnCancel) btnCancel.classList.add('hidden');
+}
+
+function saveLocationChipItem() {
+    const input = document.getElementById('inputLocationChipText');
+    const text = (input?.value || '').trim();
+    if (!text) {
+        alert('กรุณากรอกคำพิกัดจัดเก็บ เช่น ฝั่งซ้าย, ลังเบอร์ 4');
+        input?.focus();
+        return;
+    }
+
+    const chips = getLocationChips();
+    if (editingLocationChipIndex !== null && editingLocationChipIndex >= 0 && editingLocationChipIndex < chips.length) {
+        // Edit existing
+        chips[editingLocationChipIndex] = text;
+    } else {
+        // Add new
+        if (chips.includes(text)) {
+            alert(`มีปุ่มลัด '${text}' อยู่แล้วครับ`);
+            input?.focus();
+            return;
+        }
+        chips.push(text);
+    }
+
+    saveLocationChips(chips);
+    resetLocationChipModalForm();
+    renderManageLocationChipsList();
+}
+
+function editLocationChipItem(idx) {
+    const chips = getLocationChips();
+    if (idx < 0 || idx >= chips.length) return;
+
+    editingLocationChipIndex = idx;
+    const val = chips[idx];
+
+    const input = document.getElementById('inputLocationChipText');
+    const btnSubmit = document.getElementById('btnSubmitLocationChip');
+    const formTitle = document.getElementById('locationChipFormTitle');
+    const btnCancel = document.getElementById('btnCancelEditLocationChip');
+
+    if (input) {
+        input.value = val;
+        input.focus();
+    }
+    if (btnSubmit) {
+        btnSubmit.innerHTML = '<i class="bi bi-check-lg text-sm"></i> <span>บันทึกการแก้ไข</span>';
+        btnSubmit.className = 'w-full py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1 active:scale-98 cursor-pointer';
+    }
+    if (formTitle) formTitle.textContent = `แก้ไขปุ่มลัดที่ ${idx + 1}: "${val}"`;
+    if (btnCancel) btnCancel.classList.remove('hidden');
+
+    renderManageLocationChipsList();
+}
+
+function deleteLocationChipItem(idx) {
+    const chips = getLocationChips();
+    if (idx < 0 || idx >= chips.length) return;
+
+    const val = chips[idx];
+    if (!confirm(`ต้องการลบปุ่มลัด '${val}' ใช่หรือไม่?`)) return;
+
+    chips.splice(idx, 1);
+    if (editingLocationChipIndex === idx) {
+        resetLocationChipModalForm();
+    } else if (editingLocationChipIndex !== null && editingLocationChipIndex > idx) {
+        editingLocationChipIndex--;
+    }
+
+    saveLocationChips(chips);
+    renderManageLocationChipsList();
+}
+
+function resetLocationChipsToDefaults() {
+    if (!confirm('ต้องการรีเซ็ตปุ่มลัดทั้งหมดกลับเป็นค่าเริ่มต้น 8 คำเดิมใช่หรือไม่?')) return;
+    saveLocationChips([...DEFAULT_LOCATION_CHIPS]);
+    resetLocationChipModalForm();
+    renderManageLocationChipsList();
+}
+
+function renderManageLocationChipsList() {
+    const list = document.getElementById('manageLocationChipsList');
+    const countEl = document.getElementById('manageLocationChipsCount');
+    if (!list) return;
+
+    const chips = getLocationChips();
+    if (countEl) countEl.textContent = `${chips.length} รายการ`;
+
+    if (chips.length === 0) {
+        list.innerHTML = `<div class="p-6 text-center text-slate-400 text-xs">ยังไม่มีปุ่มลัดพิกัดจัดเก็บ</div>`;
+        return;
+    }
+
+    list.innerHTML = chips.map((chip, idx) => {
+        const isEditing = (editingLocationChipIndex === idx);
+        const isDefault = DEFAULT_LOCATION_CHIPS.includes(chip);
+        return `
+            <div class="p-2 rounded-xl border ${isEditing ? 'border-amber-400 bg-amber-50/70 ring-2 ring-amber-300/30' : 'border-slate-200/80 bg-white hover:bg-slate-50'} flex items-center justify-between transition-colors text-xs gap-2">
+                <div class="flex items-center gap-2 min-w-0 flex-1">
+                    <span class="w-5 h-5 rounded-md ${isEditing ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-800'} text-[10px] font-bold flex items-center justify-center shrink-0">
+                        ${idx + 1}
+                    </span>
+                    <span class="font-semibold text-slate-800 truncate">+ ${escapeHtml(chip)}</span>
+                    <span class="text-[9.5px] px-1.5 py-0.2 rounded font-normal ${isDefault ? 'bg-slate-100 text-slate-500' : 'bg-amber-100 text-amber-800'}">
+                        ${isDefault ? 'ค่าเริ่มต้น' : 'กำหนดเอง'}
+                    </span>
+                </div>
+                <div class="flex items-center gap-1 shrink-0">
+                    <button type="button" onclick="editLocationChipItem(${idx})" 
+                        title="แก้ไขปุ่ม '${escapeHtml(chip)}'"
+                        class="p-1 rounded-lg text-slate-400 hover:text-amber-700 hover:bg-amber-100 transition-colors cursor-pointer">
+                        <i class="bi bi-pencil-square text-xs"></i>
+                    </button>
+                    <button type="button" onclick="deleteLocationChipItem(${idx})" 
+                        title="ลบปุ่ม '${escapeHtml(chip)}'"
+                        class="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer">
+                        <i class="bi bi-trash3 text-xs"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
 function appendLocationChip(text) {
     const textarea = document.getElementById('modalLocationNote');
     if (!textarea) return;
@@ -2234,11 +2999,12 @@ function saveCustomProductsToLocalCache() {
 // ==============================================================================
 
 const DEFAULT_DISTRIBUTOR_PRESETS = [
-    { id: 'dist_1', name: 'บริษัท ซิกเนเจอร์ แอพพาเรล จำกัด', shortName: 'บ.ซิกเนเจอร์ แอพพาเรล' },
-    { id: 'dist_2', name: 'Paperstudio (เปเปอร์สตูดิโอ)', shortName: 'Paperstudio' },
-    { id: 'dist_3', name: 'S-Gyver Official Store', shortName: 'S-Gyver Official' },
-    { id: 'dist_4', name: 'สินค้านำเข้า (Imported)', shortName: 'สินค้านำเข้า' },
-    { id: 'dist_5', name: 'ผลิตในประเทศไทย (Made in Thailand)', shortName: '🇹🇭 ผลิตในไทย' }
+    { id: 'dist_1', name: 'บริษัท ซิกเนเจอร์ แอพพาเรล จำกัด', shortName: 'บ.ซิกเนเจอร์ แอพพาเรล', brand: 'Signature Apparel', address: '25 ซอยพุทธมณฑลสาย 2 ซอย 11 แขวงบางไผ่ เขตบางแค กรุงเทพฯ 10160' },
+    { id: 'dist_2', name: 'Paperstudio (เปเปอร์สตูดิโอ)', shortName: 'Paperstudio', brand: 'Paperstudio (เปเปอร์สตูดิโอ)', address: '25 ซอยพุทธมณฑลสาย 2 ซอย 11 แขวงบางไผ่ เขตบางแค กรุงเทพฯ 10160' },
+    { id: 'dist_3', name: 'S-Gyver Official Store', shortName: 'S-Gyver Official', brand: 'S-Gyver', address: '25 ซอยพุทธมณฑลสาย 2 ซอย 11 แขวงบางไผ่ เขตบางแค กรุงเทพฯ 10160' },
+    { id: 'dist_4', name: 'Whatever_Glitters', shortName: 'Whatever_Glitters', brand: 'Whatever_Glitters', address: '25 ซอยพุทธมณฑลสาย 2 ซอย 11 แขวงบางไผ่ เขตบางแค กรุงเทพฯ 10160' },
+    { id: 'dist_5', name: 'สินค้านำเข้า (Imported)', shortName: 'สินค้านำเข้า', brand: 'No brand', address: '25 ซอยพุทธมณฑลสาย 2 ซอย 11 แขวงบางไผ่ เขตบางแค กรุงเทพฯ 10160' },
+    { id: 'dist_6', name: 'ผลิตในประเทศไทย (Made in Thailand)', shortName: '🇹🇭 ผลิตในไทย', brand: 'Signature', address: '25 ซอยพุทธมณฑลสาย 2 ซอย 11 แขวงบางไผ่ เขตบางแค กรุงเทพฯ 10160' }
 ];
 
 const DEFAULT_CARE_PRESETS = [
@@ -2258,14 +3024,18 @@ function getDistributorPresets() {
                 return parsed.map((item, idx) => ({
                     id: item.id || `dist_${idx}_${Date.now()}`,
                     name: item.name || '',
-                    shortName: item.shortName || item.name || ''
+                    shortName: item.shortName || item.name || '',
+                    brand: item.brand !== undefined ? item.brand : (item.name || ''),
+                    address: item.address || ''
                 }));
             }
         }
     } catch (e) {}
     return DEFAULT_DISTRIBUTOR_PRESETS.map((item, idx) => ({
         ...item,
-        id: item.id || `dist_${idx}`
+        id: item.id || `dist_${idx}`,
+        brand: item.brand !== undefined ? item.brand : (item.name || ''),
+        address: item.address || ''
     }));
 }
 
@@ -2306,7 +3076,7 @@ function renderDistributorPresetChips() {
     const presets = getDistributorPresets();
     const chipsHtml = presets.map((p, idx) => `
         <button type="button" onclick="selectDistributorPresetById('${p.id}', ${idx})" 
-            title="${escapeHtml(p.name)}"
+            title="${escapeHtml(p.name)}${p.brand ? ` (แบรนด์: ${escapeHtml(p.brand)})` : ''}"
             class="px-2 py-0.5 bg-slate-100 hover:bg-orange-50 hover:text-[#ee4d2d] hover:border-orange-300 text-slate-600 rounded-lg text-[10px] border border-slate-200 transition-colors flex items-center gap-1 truncate max-w-[170px]">
             <i class="bi bi-building text-[9px]"></i>
             <span class="truncate">${escapeHtml(p.shortName || p.name)}</span>
@@ -2355,6 +3125,65 @@ function selectDistributorPresetById(id, idx) {
     }
     if (item && item.name) {
         setDistributorPreset(item.name);
+        if (item.brand) {
+            setProductBrand(item.brand);
+        }
+        if (item.address) {
+            setDistributorAddress(item.address);
+        }
+    }
+}
+
+function setDistributorAddress(addr) {
+    if (!addr) return;
+    const input = document.getElementById('modalDistributorAddress');
+    if (input) {
+        input.value = addr.trim();
+    }
+}
+
+function setProductBrand(brandName) {
+    if (!brandName) return;
+    const cleanBrand = brandName.trim();
+    const modalBrand = document.getElementById('modalBrand');
+    if (modalBrand) {
+        modalBrand.value = cleanBrand;
+    }
+    const brandSelect = document.getElementById('attrBrand');
+    if (brandSelect) {
+        let found = false;
+        for (let opt of brandSelect.options) {
+            if (opt.value.toLowerCase() === cleanBrand.toLowerCase() || opt.text.toLowerCase().includes(cleanBrand.toLowerCase())) {
+                brandSelect.value = opt.value;
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            const newOpt = new Option(cleanBrand, cleanBrand, true, true);
+            brandSelect.add(newOpt);
+            brandSelect.value = cleanBrand;
+        }
+    }
+}
+
+function onModalBrandInput(val) {
+    const cleanBrand = (val || '').trim();
+    const brandSelect = document.getElementById('attrBrand');
+    if (brandSelect && cleanBrand) {
+        let found = false;
+        for (let opt of brandSelect.options) {
+            if (opt.value.toLowerCase() === cleanBrand.toLowerCase() || opt.text.toLowerCase().includes(cleanBrand.toLowerCase())) {
+                brandSelect.value = opt.value;
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            const newOpt = new Option(cleanBrand, cleanBrand, true, true);
+            brandSelect.add(newOpt);
+            brandSelect.value = cleanBrand;
+        }
     }
 }
 
@@ -2418,11 +3247,15 @@ function resetDistributorModalForm() {
     editingDistributorId = null;
     const inputName = document.getElementById('inputDistributorPresetName');
     const inputShort = document.getElementById('inputDistributorPresetShort');
+    const inputBrand = document.getElementById('inputDistributorPresetBrand');
+    const inputAddress = document.getElementById('inputDistributorPresetAddress');
     const btnSubmit = document.getElementById('btnSubmitDistributorPreset');
     const formTitle = document.getElementById('distributorPresetFormTitle');
 
     if (inputName) inputName.value = '';
     if (inputShort) inputShort.value = '';
+    if (inputBrand) inputBrand.value = '';
+    if (inputAddress) inputAddress.value = '';
     if (btnSubmit) btnSubmit.innerHTML = '<i class="bi bi-plus-lg"></i> <span>บันทึกชื่อผู้จัดจำหน่าย</span>';
     if (formTitle) formTitle.textContent = 'เพิ่มผู้จัดจำหน่าย/ผู้ผลิตใหม่:';
 }
@@ -2430,6 +3263,8 @@ function resetDistributorModalForm() {
 function saveDistributorPresetItem() {
     const inputName = document.getElementById('inputDistributorPresetName');
     const inputShort = document.getElementById('inputDistributorPresetShort');
+    const inputBrand = document.getElementById('inputDistributorPresetBrand');
+    const inputAddress = document.getElementById('inputDistributorPresetAddress');
     const name = (inputName?.value || '').trim();
     if (!name) {
         alert('กรุณากรอกชื่อผู้จัดจำหน่าย / ผู้ผลิต');
@@ -2437,6 +3272,8 @@ function saveDistributorPresetItem() {
         return;
     }
     const shortName = (inputShort?.value || '').trim() || name.slice(0, 15);
+    const brand = (inputBrand?.value || '').trim() || name;
+    const address = (inputAddress?.value || '').trim();
 
     const presets = getDistributorPresets();
     if (editingDistributorId) {
@@ -2444,12 +3281,16 @@ function saveDistributorPresetItem() {
         if (item) {
             item.name = name;
             item.shortName = shortName;
+            item.brand = brand;
+            item.address = address;
         }
     } else {
         presets.push({
             id: 'dist_' + Date.now(),
             name,
-            shortName
+            shortName,
+            brand,
+            address
         });
     }
 
@@ -2475,11 +3316,15 @@ function editDistributorPresetItem(id, idx) {
     editingDistributorId = item.id;
     const inputName = document.getElementById('inputDistributorPresetName');
     const inputShort = document.getElementById('inputDistributorPresetShort');
+    const inputBrand = document.getElementById('inputDistributorPresetBrand');
+    const inputAddress = document.getElementById('inputDistributorPresetAddress');
     const btnSubmit = document.getElementById('btnSubmitDistributorPreset');
     const formTitle = document.getElementById('distributorPresetFormTitle');
 
     if (inputName) inputName.value = item.name || '';
     if (inputShort) inputShort.value = item.shortName || item.name || '';
+    if (inputBrand) inputBrand.value = item.brand !== undefined ? item.brand : (item.name || '');
+    if (inputAddress) inputAddress.value = item.address || '';
     if (btnSubmit) btnSubmit.innerHTML = '<i class="bi bi-check-lg"></i> <span>บันทึกการแก้ไข</span>';
     if (formTitle) formTitle.textContent = 'แก้ไขชื่อผู้จัดจำหน่าย:';
     inputName?.focus();
@@ -2521,14 +3366,23 @@ function renderManageDistributorList() {
     listEl.innerHTML = presets.map((p, idx) => `
         <div class="flex items-center justify-between p-2.5 bg-slate-50 hover:bg-slate-100/80 rounded-xl transition-all border border-slate-200/80 group">
             <div class="min-w-0 flex-1 pr-2">
-                <div class="flex items-center gap-1.5 mb-0.5">
+                <div class="flex items-center gap-1.5 mb-0.5 flex-wrap">
                     <span class="text-[9px] bg-orange-100 text-[#ee4d2d] font-bold px-1.5 py-0.2 rounded border border-orange-200 shrink-0">
                         ปุ่ม: ${escapeHtml(p.shortName || p.name)}
                     </span>
+                    ${p.brand ? `
+                    <span class="text-[9px] bg-blue-50 text-blue-700 font-semibold px-1.5 py-0.2 rounded border border-blue-200 shrink-0 flex items-center gap-0.5">
+                        <i class="bi bi-tag-fill text-[8px]"></i> แบรนด์: ${escapeHtml(p.brand)}
+                    </span>` : ''}
+                    ${p.address ? `
+                    <span class="text-[9px] bg-rose-50 text-rose-700 font-medium px-1.5 py-0.2 rounded border border-rose-200 shrink-0 flex items-center gap-0.5 max-w-[200px] truncate" title="${escapeHtml(p.address)}">
+                        <i class="bi bi-geo-alt-fill text-[8px]"></i> ${escapeHtml(p.address)}
+                    </span>` : ''}
                 </div>
                 <div class="text-xs font-semibold text-slate-800 truncate" title="${escapeHtml(p.name)}">
                     ${escapeHtml(p.name)}
                 </div>
+                ${p.address ? `<div class="text-[10px] text-slate-500 truncate mt-0.5" title="${escapeHtml(p.address)}">${escapeHtml(p.address)}</div>` : ''}
             </div>
             <div class="flex items-center gap-1 shrink-0">
                 <button type="button" onclick="editDistributorPresetItem('${p.id}', ${idx})" title="แก้ไข"
@@ -2698,6 +3552,233 @@ function renderManageCareList() {
             <p class="text-[11px] text-slate-600 line-clamp-2 leading-relaxed bg-white/70 p-2 rounded-lg border border-slate-100 font-mono">
                 ${escapeHtml(p.text)}
             </p>
+        </div>
+    `).join('');
+}
+
+// ----------------------------------------------------
+// Manage Usage Instructions Preset (วิธีใช้ สำหรับพิมพ์ฉลากสินค้า สคบ.)
+// ----------------------------------------------------
+const DEFAULT_USAGE_PRESETS = [
+    { id: 'usage_1', title: '👕 สำหรับสวมใส่', text: 'สำหรับสวมใส่' },
+    { id: 'usage_2', title: '🧥 สำหรับสวมใส่ภายนอก', text: 'สำหรับสวมใส่ภายนอก' },
+    { id: 'usage_3', title: '🧣 ประดับตกแต่งร่างกาย', text: 'สำหรับสวมใส่และประดับตกแต่งร่างกาย' },
+    { id: 'usage_4', title: '✨ ของใช้ทั่วไป', text: 'สำหรับใช้งานทั่วไปและประดับตกแต่ง' },
+    { id: 'usage_5', title: '🏷️ สินค้าสำเร็จรูป', text: 'สินค้าสำเร็จรูป พร้อมใช้งาน' }
+];
+
+function getUsagePresets() {
+    try {
+        const stored = localStorage.getItem('sgyver_usage_presets');
+        if (stored !== null) {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed)) {
+                return parsed.map((item, idx) => ({
+                    id: item.id || `usage_${idx}_${Date.now()}`,
+                    title: item.title || '',
+                    text: item.text || ''
+                }));
+            }
+        }
+    } catch (e) {}
+    return DEFAULT_USAGE_PRESETS.map((item, idx) => ({
+        ...item,
+        id: item.id || `usage_${idx}`
+    }));
+}
+
+function saveUsagePresets(presets) {
+    localStorage.setItem('sgyver_usage_presets', JSON.stringify(presets));
+    renderUsagePresetChips();
+}
+
+function renderUsagePresetChips() {
+    const container = document.getElementById('usagePresetChips');
+    if (!container) return;
+
+    const presets = getUsagePresets();
+    const chipsHtml = presets.map((p, idx) => `
+        <button type="button" onclick="selectUsagePresetById('${p.id}', ${idx})" 
+            title="${escapeHtml(p.text)}"
+            class="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 text-slate-600 rounded-lg text-[10px] border border-slate-200 transition-colors flex items-center gap-1">
+            <span>${escapeHtml(p.title)}</span>
+        </button>
+    `).join('');
+
+    container.innerHTML = `
+        ${chipsHtml}
+        <button type="button" onclick="openManageUsagePresetModal()" title="เพิ่มหรือแก้ไขรายการวิธีใช้"
+            class="px-2 py-0.5 bg-white hover:bg-emerald-50 text-slate-500 hover:text-emerald-700 rounded-lg text-[10px] border border-dashed border-slate-300 hover:border-emerald-400 transition-colors flex items-center font-medium">
+            + เพิ่มเอง
+        </button>
+    `;
+}
+
+function selectUsagePresetById(id, idx) {
+    const presets = getUsagePresets();
+    let item = presets.find(p => p.id === id);
+    if (!item && typeof idx === 'number' && presets[idx]) {
+        item = presets[idx];
+    }
+    if (item && item.text) {
+        setUsagePreset(item.text);
+    }
+}
+
+function setUsagePreset(text) {
+    if (!text) return;
+    const input = document.getElementById('modalUsage');
+    if (input) {
+        input.value = text.trim();
+        input.focus();
+    }
+}
+
+let editingUsagePresetId = null;
+
+function openManageUsagePresetModal() {
+    const modal = document.getElementById('manageUsagePresetModal');
+    if (!modal) return;
+    resetUsageModalForm();
+    renderManageUsageList();
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeManageUsagePresetModal() {
+    const modal = document.getElementById('manageUsagePresetModal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    resetUsageModalForm();
+}
+
+function resetUsageModalForm() {
+    editingUsagePresetId = null;
+    const inputTitle = document.getElementById('inputUsagePresetTitle');
+    const inputText = document.getElementById('inputUsagePresetText');
+    const btnSubmit = document.getElementById('btnSubmitUsagePreset');
+    const formTitle = document.getElementById('usagePresetFormTitle');
+
+    if (inputTitle) inputTitle.value = '';
+    if (inputText) inputText.value = '';
+    if (btnSubmit) btnSubmit.innerHTML = '<i class="bi bi-plus-lg"></i> <span>บันทึกวิธีใช้</span>';
+    if (formTitle) formTitle.textContent = 'เพิ่มข้อความวิธีใช้ใหม่:';
+}
+
+function saveUsagePresetItem() {
+    const inputTitle = document.getElementById('inputUsagePresetTitle');
+    const inputText = document.getElementById('inputUsagePresetText');
+    const title = (inputTitle?.value || '').trim();
+    const text = (inputText?.value || '').trim();
+
+    if (!title) {
+        alert('กรุณากรอกชื่อหัวข้อปุ่ม');
+        inputTitle?.focus();
+        return;
+    }
+    if (!text) {
+        alert('กรุณากรอกข้อความวิธีใช้');
+        inputText?.focus();
+        return;
+    }
+
+    const presets = getUsagePresets();
+    if (editingUsagePresetId) {
+        const item = presets.find(p => p.id === editingUsagePresetId);
+        if (item) {
+            item.title = title;
+            item.text = text;
+        }
+    } else {
+        presets.push({
+            id: 'usage_' + Date.now(),
+            title,
+            text
+        });
+    }
+
+    saveUsagePresets(presets);
+    resetUsageModalForm();
+    renderManageUsageList();
+}
+
+function editUsagePresetItem(id, idx) {
+    const presets = getUsagePresets();
+    let item = null;
+    if (id && id !== 'undefined') {
+        item = presets.find(p => p.id === id);
+    }
+    if (!item && typeof idx === 'number' && idx >= 0 && idx < presets.length) {
+        item = presets[idx];
+    }
+    if (!item) return;
+
+    editingUsagePresetId = item.id;
+    const inputTitle = document.getElementById('inputUsagePresetTitle');
+    const inputText = document.getElementById('inputUsagePresetText');
+    const btnSubmit = document.getElementById('btnSubmitUsagePreset');
+    const formTitle = document.getElementById('usagePresetFormTitle');
+
+    if (inputTitle) inputTitle.value = item.title || '';
+    if (inputText) inputText.value = item.text || '';
+    if (btnSubmit) btnSubmit.innerHTML = '<i class="bi bi-check-lg"></i> <span>บันทึกการแก้ไข</span>';
+    if (formTitle) formTitle.textContent = 'แก้ไขข้อความวิธีใช้:';
+    inputTitle?.focus();
+}
+
+function deleteUsagePresetItem(id, idx) {
+    let presets = getUsagePresets();
+    let targetIndex = -1;
+    if (id && id !== 'undefined') {
+        targetIndex = presets.findIndex(p => p.id === id);
+    }
+    if (targetIndex === -1 && typeof idx === 'number' && idx >= 0 && idx < presets.length) {
+        targetIndex = idx;
+    }
+    if (targetIndex === -1) return;
+
+    presets.splice(targetIndex, 1);
+    saveUsagePresets(presets);
+    renderManageUsageList();
+    resetUsageModalForm();
+}
+
+function renderManageUsageList() {
+    const listEl = document.getElementById('manageUsageList');
+    const countEl = document.getElementById('manageUsageCount');
+    if (!listEl) return;
+
+    const presets = getUsagePresets();
+    if (countEl) countEl.textContent = `${presets.length} รายการ`;
+
+    if (presets.length === 0) {
+        listEl.innerHTML = `<div class="p-4 text-center text-slate-400 text-xs">ยังไม่มีรายการวิธีใช้</div>`;
+        return;
+    }
+
+    listEl.innerHTML = presets.map((p, idx) => `
+        <div class="flex items-center justify-between p-2.5 bg-slate-50 hover:bg-slate-100/80 rounded-xl transition-all border border-slate-200/80 group">
+            <div class="min-w-0 flex-1 pr-2">
+                <div class="flex items-center gap-1.5 mb-0.5">
+                    <span class="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded border border-emerald-200 shrink-0">
+                        ${escapeHtml(p.title)}
+                    </span>
+                </div>
+                <div class="text-xs text-slate-700 truncate" title="${escapeHtml(p.text)}">
+                    ${escapeHtml(p.text)}
+                </div>
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
+                <button type="button" onclick="editUsagePresetItem('${p.id}', ${idx})" title="แก้ไข"
+                    class="w-7 h-7 rounded-lg text-slate-400 hover:text-emerald-700 hover:bg-white flex items-center justify-center transition-colors shadow-2xs">
+                    <i class="bi bi-pencil"></i>
+                </button>
+                <button type="button" onclick="deleteUsagePresetItem('${p.id}', ${idx})" title="ลบ"
+                    class="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-white flex items-center justify-center transition-colors shadow-2xs">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
         </div>
     `).join('');
 }
@@ -5729,7 +6810,10 @@ function openProductModal() {
     document.getElementById('modalStock').value = '0';
     document.getElementById('modalMinAlert').value = '5';
     document.getElementById('modalLocation').value = 'A-01';
+    if (document.getElementById('modalBrand')) document.getElementById('modalBrand').value = 'No brand';
     document.getElementById('modalDistributor').value = 'บริษัท ซิกเนเจอร์ แอพพาเรล จำกัด';
+    if (document.getElementById('modalDistributorAddress')) document.getElementById('modalDistributorAddress').value = '25 ซอยพุทธมณฑลสาย 2 ซอย 11 แขวงบางไผ่ เขตบางแค กรุงเทพฯ 10160';
+    if (document.getElementById('modalUsage')) document.getElementById('modalUsage').value = 'สำหรับสวมใส่';
     document.getElementById('modalCare').value = 'ซักเครื่องด้วยน้ำเย็น ห้ามใช้น้ำยาฟอกขาว รีดด้วยไฟปานกลาง';
 
     // Clear description and character counters
@@ -5804,6 +6888,8 @@ function openProductModal() {
     switchProductModalMode('SINGLE');
     renderDistributorPresetChips();
     renderCarePresetChips();
+    renderUsagePresetChips();
+    renderLocationChips();
 
     // Reset video state
     InventoryApp.modalVideoUrl = '';
@@ -5834,6 +6920,7 @@ function editProductModal(id) {
     const groupItems = (typeof getParentGroupKey === 'function')
         ? InventoryApp.products.filter(p => getParentGroupKey(p) === parentKey)
         : [item];
+    groupItems.sort((a, b) => compareSkus(a.sku, b.sku));
 
     // Restore Shopee URL & Item ID
     InventoryApp.currentShopeeUrl = item.product_url || localStorage.getItem('sgyver_shopee_url_' + parentKey) || localStorage.getItem('sgyver_shopee_url_' + item.sku) || '';
@@ -5843,7 +6930,10 @@ function editProductModal(id) {
 
     document.getElementById('modalProdId').value = item.id;
     document.getElementById('modalName').value = item.name || '';
+    if (document.getElementById('modalBrand')) document.getElementById('modalBrand').value = item.brand || 'No brand';
     document.getElementById('modalDistributor').value = item.distributor || '';
+    if (document.getElementById('modalDistributorAddress')) document.getElementById('modalDistributorAddress').value = item.distributor_address || localStorage.getItem('sgyver_dist_address_' + parentKey) || localStorage.getItem('sgyver_dist_address_' + item.sku) || '25 ซอยพุทธมณฑลสาย 2 ซอย 11 แขวงบางไผ่ เขตบางแค กรุงเทพฯ 10160';
+    if (document.getElementById('modalUsage')) document.getElementById('modalUsage').value = item.usage_info || item.usage || localStorage.getItem('sgyver_usage_' + parentKey) || 'สำหรับสวมใส่';
     document.getElementById('modalCare').value = item.care_instructions || '';
 
     if (hasVariants) {
@@ -5982,7 +7072,10 @@ function editProductModal(id) {
     if (savedTab2) {
         try {
             const t2 = JSON.parse(savedTab2);
-            if (document.getElementById('attrBrand') && t2.brand) document.getElementById('attrBrand').value = t2.brand;
+            if (document.getElementById('attrBrand') && t2.brand) {
+                document.getElementById('attrBrand').value = t2.brand;
+                if (document.getElementById('modalBrand')) document.getElementById('modalBrand').value = t2.brand;
+            }
             if (document.getElementById('attrPlusSize') && t2.plusSize) document.getElementById('attrPlusSize').value = t2.plusSize;
             if (document.getElementById('attrOrigin') && t2.origin) document.getElementById('attrOrigin').value = t2.origin;
             if (document.getElementById('attrMaterial') && t2.material !== undefined) document.getElementById('attrMaterial').value = t2.material;
@@ -6050,6 +7143,8 @@ function editProductModal(id) {
     switchShopeeTab('general');
     renderDistributorPresetChips();
     renderCarePresetChips();
+    renderUsagePresetChips();
+    renderLocationChips();
 
     const modal = document.getElementById('productModal');
     if (modal) modal.classList.remove('hidden');
@@ -6123,7 +7218,8 @@ const SUPABASE_ALLOWED_COLUMNS = new Set([
     'barcode_type', 'stock_quantity', 'min_stock_alert', 'warehouse_location',
     'image_url', 'images', 'product_type', 'created_at', 'updated_at',
     // Optional schema columns (if added in Supabase):
-    'parent_sku', 'product_url', 'item_id', 'location_note', 'location_image', 'video_url'
+    'parent_sku', 'product_url', 'item_id', 'location_note', 'location_image', 'video_url',
+    'brand', 'usage_info', 'distributor_address', 'manufacturer', 'price_text'
 ]);
 
 async function safeSupabaseUpsert(data) {
@@ -6133,58 +7229,75 @@ async function safeSupabaseUpsert(data) {
     const sbUrl = InventoryApp.supabaseUrl || 'https://igiihteeeprpcxxlldkd.supabase.co';
     const sbKey = InventoryApp.supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnaWlodGVlZXBycGN4eGxsZGtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5ODkwNzksImV4cCI6MjEwMDU2NTA3OX0.fr8_ZAYKQ3D-JgEtAWGJnNvKjoUmYxs1T7tjzzsEltw';
 
-    const cleanRows = list.map(item => {
-        const cleanItem = {};
-        for (const [k, v] of Object.entries(item)) {
-            if (SUPABASE_ALLOWED_COLUMNS.has(k) && v !== undefined) {
-                // If ID is a local timestamp (not a real database integer ID < 1000000000), omit it so Supabase creates/auto-increments
-                if (k === 'id' && typeof v === 'number' && v > 1000000000) {
-                    continue;
-                }
-                cleanItem[k] = v;
-            }
-        }
-        if (!cleanItem.sku) cleanItem.sku = item.sku;
-        if (!cleanItem.name) cleanItem.name = item.name || 'สินค้า';
-        return cleanItem;
-    });
-
-    try {
-        const resp = await fetch(`${sbUrl}/rest/v1/product_labels?on_conflict=sku`, {
-            method: 'POST',
-            headers: {
-                'apikey': sbKey,
-                'Authorization': `Bearer ${sbKey}`,
-                'Content-Type': 'application/json',
-                'Accept-Profile': 'public',
-                'Content-Profile': 'public',
-                'Prefer': 'resolution=merge-duplicates,return=representation'
-            },
-            body: JSON.stringify(cleanRows)
-        });
-
-        if (resp.ok) {
-            const savedData = await resp.json();
-            console.log(`[Supabase Sync] บันทึกลง Supabase สำเร็จ ${cleanRows.length} รายการ:`, savedData);
-            if (Array.isArray(savedData)) {
-                savedData.forEach(savedItem => {
-                    const match = (InventoryApp.products || []).find(p => p.sku === savedItem.sku);
-                    if (match && savedItem.id) {
-                        match.id = savedItem.id;
+    const buildCleanRows = (allowedCols) => {
+        return list.map(item => {
+            const cleanItem = {};
+            for (const [k, v] of Object.entries(item)) {
+                if (allowedCols.has(k) && v !== undefined) {
+                    if (k === 'id' && typeof v === 'number' && v > 1000000000) {
+                        continue;
                     }
-                });
-                saveCustomProductsToLocalCache();
+                    cleanItem[k] = v;
+                }
             }
-            return { error: null, data: savedData };
-        } else {
-            const errText = await resp.text();
-            console.warn('[Supabase Sync Warning]:', errText);
-            return { error: errText };
+            if (!cleanItem.sku) cleanItem.sku = item.sku;
+            if (!cleanItem.name) cleanItem.name = item.name || 'สินค้า';
+            return cleanItem;
+        });
+    };
+
+    let activeAllowed = new Set(SUPABASE_ALLOWED_COLUMNS);
+
+    for (let attempt = 0; attempt < 5; attempt++) {
+        const cleanRows = buildCleanRows(activeAllowed);
+        try {
+            const resp = await fetch(`${sbUrl}/rest/v1/product_labels?on_conflict=sku`, {
+                method: 'POST',
+                headers: {
+                    'apikey': sbKey,
+                    'Authorization': `Bearer ${sbKey}`,
+                    'Content-Type': 'application/json',
+                    'Accept-Profile': 'public',
+                    'Content-Profile': 'public',
+                    'Prefer': 'resolution=merge-duplicates,return=representation'
+                },
+                body: JSON.stringify(cleanRows)
+            });
+
+            if (resp.ok) {
+                const savedData = await resp.json();
+                console.log(`[Supabase Sync] บันทึกลง Supabase สำเร็จ ${cleanRows.length} รายการ:`, savedData);
+                if (Array.isArray(savedData)) {
+                    savedData.forEach(savedItem => {
+                        const match = (InventoryApp.products || []).find(p => p.sku === savedItem.sku);
+                        if (match && savedItem.id) {
+                            match.id = savedItem.id;
+                        }
+                    });
+                    saveCustomProductsToLocalCache();
+                }
+                return { error: null, data: savedData };
+            } else {
+                const errText = await resp.text();
+                // Check if Supabase rejected due to a missing column in product_labels (PGRST204)
+                const colMatch = errText.match(/Could not find the '([^']+)' column/i) ||
+                                 errText.match(/column [^.]*\.?([a-zA-Z0-9_]+) does not exist/i);
+                if (colMatch && colMatch[1] && activeAllowed.has(colMatch[1])) {
+                    const missingCol = colMatch[1];
+                    console.warn(`[Supabase Sync] Schema lacks column '${missingCol}', stripping and retrying...`);
+                    activeAllowed.delete(missingCol);
+                    SUPABASE_ALLOWED_COLUMNS.delete(missingCol);
+                    continue; // Retry without the missing column
+                }
+                console.warn('[Supabase Sync Warning]:', errText);
+                return { error: errText };
+            }
+        } catch (err) {
+            console.warn('safeSupabaseUpsert caught exception (local save proceeds):', err);
+            return { error: err.message };
         }
-    } catch (err) {
-        console.warn('safeSupabaseUpsert caught exception (local save proceeds):', err);
-        return { error: err.message };
     }
+    return { error: 'Exceeded max retry attempts' };
 }
 
 async function handleSaveProductModal(event) {
@@ -6198,7 +7311,10 @@ async function handleSaveProductModal(event) {
     const parentSku = (document.getElementById('modalSku')?.value || '').trim().toUpperCase();
     const name = (document.getElementById('modalName')?.value || '').trim();
     const category = (document.getElementById('modalCategory')?.value || document.getElementById('displayModalCategory')?.textContent || 'เสื้อผ้าแฟชั่น').trim();
+    const brand = (document.getElementById('modalBrand')?.value || document.getElementById('attrBrand')?.value || 'No brand').trim();
+    const usage_info = (document.getElementById('modalUsage')?.value || 'สำหรับสวมใส่').trim();
     const distributor = (document.getElementById('modalDistributor')?.value || '').trim();
+    const distributor_address = (document.getElementById('modalDistributorAddress')?.value || '').trim();
     const care_instructions = (document.getElementById('modalCare')?.value || '').trim();
 
     if (!parentSku || !name) {
@@ -6365,7 +7481,7 @@ async function handleSaveProductModal(event) {
 
     // Collect & save Tab 2 Standard Attributes in localStorage
     const tab2Attrs = {
-        brand: document.getElementById('attrBrand')?.value || 'No brand',
+        brand: brand,
         plusSize: document.getElementById('attrPlusSize')?.value || 'no',
         origin: document.getElementById('attrOrigin')?.value || 'TH',
         material: (document.getElementById('attrMaterial')?.value || '').trim(),
@@ -6376,6 +7492,20 @@ async function handleSaveProductModal(event) {
     };
     localStorage.setItem('sgyver_tab2_attrs_' + parentSku, JSON.stringify(tab2Attrs));
     if (origParentKey) localStorage.setItem('sgyver_tab2_attrs_' + origParentKey, JSON.stringify(tab2Attrs));
+
+    // Save Brand, Usage Info, Distributor & Address in localStorage
+    localStorage.setItem('sgyver_brand_' + parentSku, brand);
+    if (origParentKey) localStorage.setItem('sgyver_brand_' + origParentKey, brand);
+    localStorage.setItem('sgyver_usage_' + parentSku, usage_info);
+    if (origParentKey) localStorage.setItem('sgyver_usage_' + origParentKey, usage_info);
+    if (distributor) {
+        localStorage.setItem('sgyver_distributor_' + parentSku, distributor);
+        if (origParentKey) localStorage.setItem('sgyver_distributor_' + origParentKey, distributor);
+    }
+    if (distributor_address) {
+        localStorage.setItem('sgyver_dist_address_' + parentSku, distributor_address);
+        if (origParentKey) localStorage.setItem('sgyver_dist_address_' + origParentKey, distributor_address);
+    }
 
     // Collect & save Shipping Info in localStorage
     const shippingData = {
@@ -6483,6 +7613,10 @@ async function handleSaveProductModal(event) {
                 localStorage.setItem('sgyver_sizechart_' + subSku, JSON.stringify(sizeChartData));
                 if (customAttrs.length > 0) localStorage.setItem('sgyver_attrs_' + subSku, JSON.stringify(customAttrs));
                 localStorage.setItem('sgyver_tab2_attrs_' + subSku, JSON.stringify(tab2Attrs));
+                localStorage.setItem('sgyver_brand_' + subSku, brand);
+                localStorage.setItem('sgyver_usage_' + subSku, usage_info);
+                if (distributor) localStorage.setItem('sgyver_distributor_' + subSku, distributor);
+                if (distributor_address) localStorage.setItem('sgyver_dist_address_' + subSku, distributor_address);
                 localStorage.setItem('sgyver_shipping_' + subSku, JSON.stringify(shippingData));
                 if (productUrl) localStorage.setItem('sgyver_product_url_' + subSku, productUrl);
                 if (locationNote) localStorage.setItem('sgyver_loc_note_' + subSku, locationNote);
@@ -6506,7 +7640,10 @@ async function handleSaveProductModal(event) {
                     stock_quantity: parseInt(v.stock_quantity ?? 0, 10),
                     min_stock_alert: parseInt(v.min_stock_alert ?? 5, 10),
                     warehouse_location: (v.warehouse_location || 'A-01').trim().toUpperCase(),
+                    brand,
+                    usage_info,
                     distributor,
+                    distributor_address,
                     care_instructions,
                     product_url: productUrl || InventoryApp.currentShopeeUrl || (v.product_url || null),
                     item_id: InventoryApp.currentShopeeItemId || (v.item_id || null),
@@ -6578,6 +7715,18 @@ async function handleSaveProductModal(event) {
             localStorage.setItem('sgyver_tab2_attrs_' + parentSku, JSON.stringify(tab2Attrs));
             localStorage.setItem('sgyver_shipping_' + parentSku, JSON.stringify(shippingData));
             if (productUrl) localStorage.setItem('sgyver_product_url_' + parentSku, productUrl);
+            localStorage.setItem('sgyver_brand_' + parentSku, brand);
+            if (origParentKey) localStorage.setItem('sgyver_brand_' + origParentKey, brand);
+            localStorage.setItem('sgyver_usage_' + parentSku, usage_info);
+            if (origParentKey) localStorage.setItem('sgyver_usage_' + origParentKey, usage_info);
+            if (distributor) {
+                localStorage.setItem('sgyver_distributor_' + parentSku, distributor);
+                if (origParentKey) localStorage.setItem('sgyver_distributor_' + origParentKey, distributor);
+            }
+            if (distributor_address) {
+                localStorage.setItem('sgyver_dist_address_' + parentSku, distributor_address);
+                if (origParentKey) localStorage.setItem('sgyver_dist_address_' + origParentKey, distributor_address);
+            }
             if (locationNote) localStorage.setItem('sgyver_loc_note_' + parentSku, locationNote);
             if (locationImage) localStorage.setItem('sgyver_loc_img_' + parentSku, locationImage);
 
@@ -6602,7 +7751,10 @@ async function handleSaveProductModal(event) {
                 stock_quantity,
                 min_stock_alert,
                 warehouse_location,
+                brand,
+                usage_info,
                 distributor,
+                distributor_address,
                 care_instructions,
                 product_url: productUrl || InventoryApp.currentShopeeUrl || (InventoryApp.editingId ? InventoryApp.products.find(p=>p.id===InventoryApp.editingId)?.product_url : null) || null,
                 item_id: InventoryApp.currentShopeeItemId || (InventoryApp.editingId ? InventoryApp.products.find(p=>p.id===InventoryApp.editingId)?.item_id : null) || null,
@@ -9018,10 +10170,14 @@ function applyShopeeExtractedData(data) {
         if (shipW) shipW.value = data.weight;
     }
 
-    // 10. Tab 6: Distributor & Care Instructions
+    // 10. Tab 6: Distributor, Address & Care Instructions
     if (data.distributor) {
         const distEl = document.getElementById('modalDistributor');
         if (distEl) distEl.value = data.distributor;
+    }
+    if (data.distributor_address) {
+        const addrEl = document.getElementById('modalDistributorAddress');
+        if (addrEl) addrEl.value = data.distributor_address;
     }
     if (data.care_instructions) {
         const careEl = document.getElementById('modalCare');
@@ -9055,6 +10211,7 @@ window.addEventListener('DOMContentLoaded', () => {
     loadSavedAttributeOptions();
     renderDistributorPresetChips();
     renderCarePresetChips();
+    renderLocationChips();
     initShopeeBookmarkletLink();
 
     // Auto open Shopee Import Modal if requested via URL query (?action=shopee_import)
