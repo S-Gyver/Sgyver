@@ -168,6 +168,9 @@ async function syncUserProfileFromGyver() {
     let syncedName = '';
     let syncedAvatar = '';
     let syncedUsername = '';
+    let userLevel = 1;
+    let userRole = 'user';
+    let isLoggedIn = false;
 
     // Step 1: Immediate sync from Parent Window DOM (when running in Workspace iframe)
     try {
@@ -177,14 +180,34 @@ async function syncUserProfileFromGyver() {
             if (pNameEl && pNameEl.innerText && pNameEl.innerText.trim() && pNameEl.innerText.trim() !== 'User') {
                 syncedName = pNameEl.innerText.trim();
                 syncedUsername = syncedName.toLowerCase().replace(/\s+/g, '_');
+                isLoggedIn = true;
             }
             if (pAvatarEl && pAvatarEl.src && !pAvatarEl.src.includes('149071.png')) {
                 syncedAvatar = pAvatarEl.src;
+            }
+
+            // Sync level from parent window if available
+            if (window.parent.currentUserRole === 'admin') {
+                userRole = 'admin';
+                userLevel = 5;
+                isLoggedIn = true;
+            } else if (typeof window.parent.currentUserLevel === 'number') {
+                userLevel = window.parent.currentUserLevel;
+                isLoggedIn = true;
             }
         }
     } catch (e) {
         console.warn('[WorkChat] Parent frame access notice:', e);
     }
+
+    // Check localStorage admin session
+    try {
+        if (sessionStorage.getItem('gyver_admin_session') || localStorage.getItem('gyver_admin_session')) {
+            userRole = 'admin';
+            userLevel = 5;
+            isLoggedIn = true;
+        }
+    } catch (_) {}
 
     // Step 2: Fallback to localStorage cache
     try {
@@ -194,6 +217,7 @@ async function syncUserProfileFromGyver() {
             if (!syncedName && parsed.displayName) syncedName = parsed.displayName;
             if (!syncedAvatar && parsed.avatar) syncedAvatar = parsed.avatar;
             if (!syncedUsername && parsed.username) syncedUsername = parsed.username;
+            if (parsed.level !== undefined && userLevel === 1) userLevel = parsed.level;
         }
     } catch (_) {}
 
@@ -213,6 +237,7 @@ async function syncUserProfileFromGyver() {
         if (client && client.auth) {
             const { data: { session } } = await client.auth.getSession();
             if (session && session.user) {
+                isLoggedIn = true;
                 const u = session.user;
                 const meta = u.user_metadata || {};
                 let dbName = meta.nickname || meta.username || meta.first_name || u.email?.split('@')[0];
@@ -221,7 +246,7 @@ async function syncUserProfileFromGyver() {
                 try {
                     const { data: prof, error } = await client
                         .from('profiles')
-                        .select('username, nickname, first_name, last_name, avatar_url')
+                        .select('username, nickname, first_name, last_name, avatar_url, role, level')
                         .eq('id', u.id)
                         .maybeSingle();
 
@@ -231,6 +256,13 @@ async function syncUserProfileFromGyver() {
                         else if (prof.username && prof.username.trim()) dbName = prof.username.trim();
 
                         if (prof.avatar_url) dbAvatar = prof.avatar_url;
+
+                        if (prof.role === 'admin' || (prof.username && prof.username.toLowerCase() === 'admin')) {
+                            userRole = 'admin';
+                            userLevel = 5;
+                        } else if (prof.level !== undefined && prof.level !== null) {
+                            userLevel = Number(prof.level);
+                        }
                     }
                 } catch (pe) {
                     console.warn('[WorkChat] Profile table fetch:', pe);
@@ -243,6 +275,8 @@ async function syncUserProfileFromGyver() {
                 if (dbAvatar) {
                     CHAT_STATE.currentUser.avatar = dbAvatar;
                 }
+                CHAT_STATE.currentUser.level = userLevel;
+                CHAT_STATE.currentUser.role = userRole;
 
                 try {
                     localStorage.setItem('gyver_workchat_user', JSON.stringify(CHAT_STATE.currentUser));
@@ -254,6 +288,44 @@ async function syncUserProfileFromGyver() {
         }
     } catch (se) {
         console.warn('[WorkChat] Supabase session sync:', se);
+    }
+
+    // 🛡️ Step 4: Access Control Gate (Requires VIP Lv.4 or Admin Lv.5)
+    enforceWorkChatAccessControl(userLevel, userRole, isLoggedIn);
+}
+
+function enforceWorkChatAccessControl(level, role, isLoggedIn) {
+    const guardEl = document.getElementById('workchat-permission-guard');
+    if (!guardEl) return;
+
+    // Admin or Level >= 4 has full access
+    if (role === 'admin' || level >= 4) {
+        guardEl.classList.add('d-none');
+        return;
+    }
+
+    // Access Denied: Show Guard Overlay
+    guardEl.classList.remove('d-none');
+    const nameEl = document.getElementById('guard-current-user-name');
+    const badgeEl = document.getElementById('guard-current-level-badge');
+
+    if (nameEl) {
+        nameEl.textContent = CHAT_STATE.currentUser.displayName || 'ผู้ใช้งานทั่วไป';
+    }
+    if (badgeEl) {
+        if (!isLoggedIn) {
+            badgeEl.className = 'badge bg-secondary font-mono';
+            badgeEl.textContent = 'ยังไม่ได้เข้าสู่ระบบ';
+        } else {
+            const levelLabels = {
+                0: 'Lv.0 Guest',
+                1: 'Lv.1 Standard',
+                2: 'Lv.2 VIP Pro',
+                3: 'Lv.3 Business'
+            };
+            badgeEl.className = 'badge bg-warning text-dark font-mono';
+            badgeEl.textContent = levelLabels[level] || `Lv.${level}`;
+        }
     }
 }
 

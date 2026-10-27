@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>S-Gyver WorkChat & Projects – แชทคุยงาน & คลังไฟล์โปรเจกต์ (VIP Lv.3)</title>
+    <title>S-Gyver WorkChat & Projects – แชทคุยงาน & คลังไฟล์โปรเจกต์ (VIP Lv.4)</title>
     <meta name="description" content="ระบบแชทคุยงานทีมแบบเรียลไทม์ พร้อมตู้เก็บไฟล์แยกโฟลเดอร์โปรเจกต์และโฟลเดอร์ย่อย">
 
     <!-- Web App PWA Manifest & Mobile Icons -->
@@ -54,7 +54,7 @@
                     <span class="d-none d-sm-inline">แชทคุยงานเรียลไทม์ & คลังไฟล์แยกโปรเจกต์</span>
                 </div>
             </div>
-            <span class="badge bg-cyan-subtle text-cyan border border-cyan-subtle ms-2 d-none d-md-inline-block">VIP Lv.3</span>
+            <span class="badge bg-cyan-subtle text-cyan border border-cyan-subtle ms-2 d-none d-md-inline-block">VIP Lv.4</span>
         </div>
 
         <!-- Mobile Switcher Tabs (Chat vs Drive) -->
@@ -439,6 +439,36 @@
                         </button>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         VIP LV.4 ACCESS GUARD OVERLAY (Displayed if user level < 4)
+         ══════════════════════════════════════════════════════════════ -->
+    <div id="workchat-permission-guard" class="permission-guard-overlay d-none">
+        <div class="permission-guard-card text-center p-4 p-md-5">
+            <div class="guard-icon-wrap mb-3">
+                <i class="bi bi-shield-lock-fill text-warning"></i>
+            </div>
+            <h3 class="fw-bold text-white mb-2 font-heading">พื้นที่เฉพาะสมาชิกทีม VIP Lv.4</h3>
+            <p class="text-white-50 small mb-3" style="max-width: 440px; margin: 0 auto; line-height: 1.6;">
+                ห้องแชทและคลังไฟล์โปรเจกต์นี้เปิดให้เฉพาะทีมงานที่ได้รับสิทธิ์ VIP Lv.4 ขึ้นไปเท่านั้น เพื่อความปลอดภัยของข้อมูลและเอกสารในโปรเจกต์
+            </p>
+            <div class="p-3 rounded-3 mb-4 d-inline-block text-start" style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255, 255, 255, 0.1);">
+                <div class="small font-mono text-muted mb-1">สถานะสิทธิ์ปัจจุบันของคุณ:</div>
+                <div class="d-flex align-items-center gap-2">
+                    <span id="guard-current-user-name" class="fw-bold text-white font-heading">ผู้ใช้งาน</span>
+                    <span id="guard-current-level-badge" class="badge bg-secondary font-mono">กำลังตรวจสอบสิทธิ์...</span>
+                </div>
+            </div>
+            <div class="d-flex justify-content-center flex-wrap gap-2">
+                <a href="../../../my_workspace.html" class="btn btn-outline-light rounded-pill px-4 py-2 font-mono small">
+                    <i class="bi bi-arrow-left me-1"></i> กลับหน้ากระดานหลัก
+                </a>
+                <button type="button" class="btn btn-warning rounded-pill px-4 py-2 font-mono small fw-bold text-dark" onclick="alert('กรุณาแจ้ง Admin คุณเอส เพื่อขอรับสิทธิ์เข้าใช้งาน VIP Lv.4 ประจำทีม')">
+                    <i class="bi bi-person-check-fill me-1"></i> ขอรับสิทธิ์จาก Admin คุณเอส
+                </button>
             </div>
         </div>
     </div>

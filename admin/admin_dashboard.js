@@ -261,8 +261,10 @@ function renderUserTable(users) {
 
         const level = u.level ?? 1;
         let levelBadge = '';
-        if (level >= 4) {
-            levelBadge = `<span class="badge-level badge-level-lv4" style="background: rgba(236, 72, 153, 0.18); border: 1px solid rgba(236, 72, 153, 0.5); color: #f472b6;"><i class="bi bi-cart-check-fill me-1"></i>Lv.4 Commerce</span>`;
+        if (level >= 5) {
+            levelBadge = `<span class="badge-level badge-level-lv5" style="background: rgba(244, 63, 94, 0.2); border: 1px solid rgba(244, 63, 94, 0.6); color: #fb7185;"><i class="bi bi-shield-lock-fill me-1"></i>Lv.5 Exclusive</span>`;
+        } else if (level === 4) {
+            levelBadge = `<span class="badge-level badge-level-lv4" style="background: rgba(6, 182, 212, 0.18); border: 1px solid rgba(6, 182, 212, 0.5); color: #22d3ee;"><i class="bi bi-chat-dots-fill me-1"></i>Lv.4 WorkChat</span>`;
         } else if (level === 3) {
             levelBadge = `<span class="badge-level badge-level-lv3" style="background: rgba(59, 130, 246, 0.18); border: 1px solid rgba(59, 130, 246, 0.5); color: #60a5fa;"><i class="bi bi-briefcase-fill me-1"></i>Lv.3 Business</span>`;
         } else if (level === 2) {
@@ -404,7 +406,8 @@ function openUserActionModal(userId) {
             1: 'Lv.1 Standard',
             2: 'Lv.2 VIP',
             3: 'Lv.3 Business',
-            4: 'Lv.4 Commerce'
+            4: 'Lv.4 WorkChat',
+            5: 'Lv.5 Exclusive'
         };
         const levelLabel = levelNames[level] || `Lv.${level}`;
         const levelColors = {
@@ -412,7 +415,8 @@ function openUserActionModal(userId) {
             1: 'text-cyan border-cyan',
             2: 'text-warning border-warning',
             3: 'text-primary border-primary',
-            4: 'text-danger border-danger'
+            4: 'text-info border-info',
+            5: 'text-danger border-danger'
         };
         const levelColorClass = levelColors[level] || 'text-warning border-warning';
 
@@ -746,6 +750,7 @@ function renderAnalyticsCharts(users) {
     const roleCanvas = document.getElementById('chart-role-distribution');
     if (roleCanvas) {
         let adminCount = 0;
+        let lv5Count = 0;
         let lv4Count = 0;
         let lv3Count = 0;
         let lv2Count = 0;
@@ -757,7 +762,8 @@ function renderAnalyticsCharts(users) {
                 adminCount++;
             } else {
                 const lvl = u.level ?? 1;
-                if (lvl >= 4) lv4Count++;
+                if (lvl >= 5) lv5Count++;
+                else if (lvl === 4) lv4Count++;
                 else if (lvl === 3) lv3Count++;
                 else if (lvl === 2) lv2Count++;
                 else if (lvl === 1) lv1Count++;
@@ -772,12 +778,13 @@ function renderAnalyticsCharts(users) {
         roleChartInstance = new Chart(roleCanvas, {
             type: 'doughnut',
             data: {
-                labels: ['Admin', 'Lv.4 Commerce', 'Lv.3 Business', 'Lv.2 VIP', 'Lv.1 Member', 'Lv.0 Guest'],
+                labels: ['Admin', 'Lv.5 Exclusive', 'Lv.4 WorkChat', 'Lv.3 Business', 'Lv.2 VIP', 'Lv.1 Member', 'Lv.0 Guest'],
                 datasets: [{
-                    data: [adminCount, lv4Count, lv3Count, lv2Count, lv1Count, guestCount],
+                    data: [adminCount, lv5Count, lv4Count, lv3Count, lv2Count, lv1Count, guestCount],
                     backgroundColor: [
+                        '#ef4444',
                         '#f43f5e',
-                        '#ec4899',
+                        '#06b6d4',
                         '#3b82f6',
                         '#f59e0b',
                         '#00f2fe',
