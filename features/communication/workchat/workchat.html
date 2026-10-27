@@ -67,9 +67,9 @@
             </button>
         </div>
 
-        <!-- Topbar Right: Current User & Actions -->
+        <!-- Topbar Right: Current User (Auto-synced from Gyver Workspace) -->
         <div class="topbar-right">
-            <div class="user-profile-badge" id="btn-user-profile" onclick="openLoginModal()" title="คลิกเพื่อเปลี่ยนชื่อผู้ใช้งาน">
+            <div class="user-profile-badge" id="btn-user-profile" onclick="handleUserProfileClick()" title="โปรไฟล์ซิงก์จากบัญชี Gyver Workspace">
                 <div class="user-avatar-circle" id="topbar-avatar">
                     <i class="bi bi-person-fill"></i>
                 </div>
@@ -77,7 +77,6 @@
                     <div class="user-name" id="topbar-username">ผู้ใช้งาน</div>
                     <div class="user-status"><span class="status-dot"></span> ออนไลน์</div>
                 </div>
-                <i class="bi bi-chevron-down text-muted small ms-1"></i>
             </div>
         </div>
     </header>
@@ -268,69 +267,24 @@
          MODALS
          ══════════════════════════════════════════════════════════════ -->
 
-    <!-- 1. Modal: User Switch / Login -->
-    <div class="modal fade" id="modalUserLogin" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content modal-cyber">
-                <div class="modal-header border-0 pb-0">
-                    <h5 class="modal-title fw-bold text-white">
-                        <i class="bi bi-person-badge-fill text-cyan me-2"></i>ระบุตัวตนของคุณในทีม
-                    </h5>
+    <!-- 1. Modal: User Profile Card (Synced from Gyver Workspace) -->
+    <div class="modal fade" id="modalUserProfileCard" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 380px;">
+            <div class="modal-content modal-cyber text-center p-3">
+                <div class="modal-header border-0 pb-0 justify-content-end">
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body py-4">
-                    <p class="text-muted small mb-3">พิมพ์ Username หรือชื่อเล่นของคุณเพื่อให้เพื่อนๆ ในกลุ่มรู้ว่าใครกำลังคุยและอัปโหลดไฟล์งาน</p>
+                <div class="modal-body pt-0 pb-3">
+                    <div class="mx-auto mb-3" style="width: 76px; height: 76px; border-radius: 50%; overflow: hidden; border: 2px solid #06b6d4; background: #1e293b; display: flex; align-items: center; justify-content: center; font-size: 2.2rem;" id="modal-card-avatar">
+                        <!-- Synced Profile Avatar -->
+                    </div>
+                    <h5 class="fw-bold text-white mb-1" id="modal-card-name">กำลังโหลดข้อมูล...</h5>
+                    <div class="text-cyan small mb-2"><span class="status-dot"></span> ออนไลน์ (บัญชี Gyver Workspace)</div>
+                    <p class="text-muted mb-3" style="font-size: 0.8rem;">ข้อมูลชื่อและรูปโปรไฟล์นี้ถูกดึงมาจากบัญชี Gyver ของคุณโดยอัตโนมัติแล้ว</p>
                     
-                    <div class="mb-3">
-                        <label class="form-label text-white small">ชื่อเล่น / Username <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control form-control-cyber" id="input-username" placeholder="เช่น jack, mook, admin, ช่างเอก">
-                    </div>
-
-                    <!-- Upload custom profile photo -->
-                    <div class="mb-3">
-                        <label class="form-label text-white small fw-bold">รูปโปรไฟล์ของคุณ</label>
-                        <div class="d-flex align-items-center gap-3 p-3 rounded" style="background: rgba(255,255,255,0.03); border: 1px dashed rgba(6, 182, 212, 0.4);">
-                            <div id="avatar-preview-box" style="width: 54px; height: 54px; border-radius: 50%; overflow: hidden; background: #1e293b; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; border: 2px solid #06b6d4; flex-shrink: 0;">
-                                <!-- Live avatar preview -->
-                            </div>
-                            <div class="flex-grow-1">
-                                <div class="text-white small fw-semibold">อัปโหลดรูปโปรไฟล์ตัวเอง</div>
-                                <div class="text-muted" style="font-size: 0.76rem;">ใช้รูปถ่ายจริงของคุณจากมือถือหรือคอมฯ</div>
-                                <div class="d-flex gap-2 mt-2">
-                                    <label class="btn btn-sm btn-outline-info mb-0" style="cursor: pointer;">
-                                        <i class="bi bi-camera-fill me-1"></i> เลือกรูปตัวเอง
-                                        <input type="file" id="input-custom-avatar-file" accept="image/*" style="display: none;" onchange="handleCustomAvatarUpload(event)">
-                                    </label>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="btn-remove-custom-avatar" onclick="removeCustomAvatar()">
-                                        <i class="bi bi-x"></i> รีเซ็ต
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label text-white small">หรือเลือกอิโมจิแทนรูป:</label>
-                        <div class="avatar-selection-row" id="avatar-selection-row">
-                            <!-- Populated avatar radio picks -->
-                        </div>
-                    </div>
-
-                    <!-- Quick member buttons -->
-                    <div class="mb-0">
-                        <label class="form-label text-muted small d-block mb-2">หรือเลือกสมาชิกตัวอย่าง:</label>
-                        <div class="d-flex flex-wrap gap-2">
-                            <button type="button" class="btn btn-sm btn-outline-light" onclick="quickSelectUser('เอส (Admin)', '👨‍💻')">👨‍💻 เอส (Admin)</button>
-                            <button type="button" class="btn btn-sm btn-outline-light" onclick="quickSelectUser('ช่างเอก', '🛠️')">🛠️ ช่างเอก</button>
-                            <button type="button" class="btn btn-sm btn-outline-light" onclick="quickSelectUser('น้องมุก (ดีไซน์)', '🎨')">🎨 น้องมุก (ดีไซน์)</button>
-                            <button type="button" class="btn btn-sm btn-outline-light" onclick="quickSelectUser('ฝ่ายจัดซื้อ', '📋')">📋 ฝ่ายจัดซื้อ</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer border-0 pt-0">
-                    <button type="button" class="btn btn-cyber-primary w-100 fw-bold" onclick="saveUserProfile()">
-                        เข้าสู่ระบบ WorkChat
-                    </button>
+                    <a href="../../../auth/profile/profile.html" class="btn btn-sm btn-outline-info w-100">
+                        <i class="bi bi-person-gear me-1"></i> จัดการโปรไฟล์ในระบบ Gyver
+                    </a>
                 </div>
             </div>
         </div>

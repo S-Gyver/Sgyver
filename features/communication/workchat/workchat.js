@@ -152,8 +152,7 @@ const DEFAULT_MESSAGES = [
 
 // ── 2. INITIALIZATION ───────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-    loadUserFromStorage();
-    renderAvatarSelectionPicks();
+    syncUserProfileFromGyver();
     loadWorkspaceData();
     initSupabaseSync();
     renderProjectDropdownList();
@@ -165,15 +164,97 @@ document.addEventListener('DOMContentLoaded', () => {
     scrollMessagesToBottom();
 });
 
-function loadUserFromStorage() {
+async function syncUserProfileFromGyver() {
+    let syncedName = '';
+    let syncedAvatar = '';
+    let syncedUsername = '';
+
+    // Step 1: Immediate sync from Parent Window DOM (when running in Workspace iframe)
+    try {
+        if (window.parent && window.parent !== window) {
+            const pNameEl = window.parent.document.getElementById('nav-user-name');
+            const pAvatarEl = window.parent.document.getElementById('nav-user-avatar');
+            if (pNameEl && pNameEl.innerText && pNameEl.innerText.trim() && pNameEl.innerText.trim() !== 'User') {
+                syncedName = pNameEl.innerText.trim();
+                syncedUsername = syncedName.toLowerCase().replace(/\s+/g, '_');
+            }
+            if (pAvatarEl && pAvatarEl.src && !pAvatarEl.src.includes('149071.png')) {
+                syncedAvatar = pAvatarEl.src;
+            }
+        }
+    } catch (e) {
+        console.warn('[WorkChat] Parent frame access notice:', e);
+    }
+
+    // Step 2: Fallback to localStorage cache
     try {
         const saved = localStorage.getItem('gyver_workchat_user');
         if (saved) {
-            CHAT_STATE.currentUser = JSON.parse(saved);
+            const parsed = JSON.parse(saved);
+            if (!syncedName && parsed.displayName) syncedName = parsed.displayName;
+            if (!syncedAvatar && parsed.avatar) syncedAvatar = parsed.avatar;
+            if (!syncedUsername && parsed.username) syncedUsername = parsed.username;
         }
     } catch (_) {}
 
+    // Apply immediate data
+    if (syncedName) {
+        CHAT_STATE.currentUser.displayName = syncedName;
+        CHAT_STATE.currentUser.username = syncedUsername || syncedName.toLowerCase().replace(/\s+/g, '_');
+    }
+    if (syncedAvatar) {
+        CHAT_STATE.currentUser.avatar = syncedAvatar;
+    }
     updateUserUI();
+
+    // Step 3: Deep sync from Supabase Auth & profiles table (covers standalone PWA and cloud refresh)
+    try {
+        const client = window.supabaseClient || (window.parent && window.parent.supabaseClient);
+        if (client && client.auth) {
+            const { data: { session } } = await client.auth.getSession();
+            if (session && session.user) {
+                const u = session.user;
+                const meta = u.user_metadata || {};
+                let dbName = meta.nickname || meta.username || meta.first_name || u.email?.split('@')[0];
+                let dbAvatar = meta.avatar_url;
+
+                try {
+                    const { data: prof, error } = await client
+                        .from('profiles')
+                        .select('username, nickname, first_name, last_name, avatar_url')
+                        .eq('id', u.id)
+                        .maybeSingle();
+
+                    if (prof && !error) {
+                        if (prof.nickname && prof.nickname.trim()) dbName = prof.nickname.trim();
+                        else if (prof.first_name && prof.first_name.trim()) dbName = prof.first_name.trim();
+                        else if (prof.username && prof.username.trim()) dbName = prof.username.trim();
+
+                        if (prof.avatar_url) dbAvatar = prof.avatar_url;
+                    }
+                } catch (pe) {
+                    console.warn('[WorkChat] Profile table fetch:', pe);
+                }
+
+                if (dbName) {
+                    CHAT_STATE.currentUser.displayName = dbName;
+                    CHAT_STATE.currentUser.username = (meta.username || dbName).toLowerCase().replace(/\s+/g, '_');
+                }
+                if (dbAvatar) {
+                    CHAT_STATE.currentUser.avatar = dbAvatar;
+                }
+
+                try {
+                    localStorage.setItem('gyver_workchat_user', JSON.stringify(CHAT_STATE.currentUser));
+                } catch (_) {}
+
+                updateUserUI();
+                renderMessages();
+            }
+        }
+    } catch (se) {
+        console.warn('[WorkChat] Supabase session sync:', se);
+    }
 }
 
 function renderAvatarDisplay(avatar) {
@@ -194,127 +275,17 @@ function updateUserUI() {
     }
 }
 
-function renderAvatarSelectionPicks() {
-    const container = document.getElementById('avatar-selection-row');
-    if (!container) return;
+function handleUserProfileClick() {
+    const u = CHAT_STATE.currentUser;
+    const nameEl = document.getElementById('modal-card-name');
+    const avatarEl = document.getElementById('modal-card-avatar');
+    if (nameEl) nameEl.textContent = u.displayName || u.username;
+    if (avatarEl) avatarEl.innerHTML = renderAvatarDisplay(u.avatar || '👨‍💻');
 
-    container.innerHTML = DEFAULT_AVATARS.map(emoji => `
-        <div class="avatar-pick-item ${CHAT_STATE.currentUser.avatar === emoji ? 'active' : ''}" onclick="selectAvatarPick('${emoji}', this)">
-            ${emoji}
-        </div>
-    `).join('');
-}
-
-function updateModalAvatarPreview() {
-    const box = document.getElementById('avatar-preview-box');
-    const btnReset = document.getElementById('btn-remove-custom-avatar');
-    const avatar = CHAT_STATE.currentUser.avatar || '👨‍💻';
-    if (box) {
-        box.innerHTML = renderAvatarDisplay(avatar);
-    }
-    if (btnReset) {
-        const isCustomImg = typeof avatar === 'string' && (avatar.startsWith('data:image/') || avatar.startsWith('http'));
-        btnReset.classList.toggle('d-none', !isCustomImg);
-    }
-}
-
-function handleCustomAvatarUpload(event) {
-    const file = event.target.files && event.target.files[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-        if (typeof showToast === 'function') showToast('warning', 'ไฟล์ไม่ถูกต้อง', 'กรุณาเลือกไฟล์รูปภาพ (JPG, PNG)', 2500);
-        return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-            // Compress & resize to 160x160 center crop
-            const canvas = document.createElement('canvas');
-            const size = 160;
-            canvas.width = size;
-            canvas.height = size;
-            const ctx = canvas.getContext('2d');
-
-            const minDim = Math.min(img.width, img.height);
-            const sx = (img.width - minDim) / 2;
-            const sy = (img.height - minDim) / 2;
-
-            ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
-            const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
-
-            CHAT_STATE.currentUser.avatar = compressedDataUrl;
-            updateModalAvatarPreview();
-            document.querySelectorAll('.avatar-pick-item').forEach(i => i.classList.remove('active'));
-
-            if (typeof showToast === 'function') {
-                showToast('info', 'เลือกรูปแล้ว', 'กด "เข้าสู่ระบบ WorkChat" ด้านล่างเพื่อบันทึก', 2500);
-            }
-        };
-        img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-}
-
-function removeCustomAvatar() {
-    CHAT_STATE.currentUser.avatar = '👨‍💻';
-    updateModalAvatarPreview();
-    renderAvatarSelectionPicks();
-    const fileInput = document.getElementById('input-custom-avatar-file');
-    if (fileInput) fileInput.value = '';
-}
-
-function selectAvatarPick(emoji, el) {
-    CHAT_STATE.currentUser.avatar = emoji;
-    updateModalAvatarPreview();
-    document.querySelectorAll('.avatar-pick-item').forEach(i => i.classList.remove('active'));
-    if (el) el.classList.add('active');
-}
-
-function openLoginModal() {
-    const input = document.getElementById('input-username');
-    if (input) input.value = CHAT_STATE.currentUser.displayName || CHAT_STATE.currentUser.username;
-    renderAvatarSelectionPicks();
-    updateModalAvatarPreview();
-    const modalEl = document.getElementById('modalUserLogin');
+    const modalEl = document.getElementById('modalUserProfileCard');
     if (modalEl) {
         const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
         bsModal.show();
-    }
-}
-
-function quickSelectUser(name, emoji) {
-    const input = document.getElementById('input-username');
-    if (input) input.value = name;
-    CHAT_STATE.currentUser.avatar = emoji;
-    renderAvatarSelectionPicks();
-    updateModalAvatarPreview();
-}
-
-function saveUserProfile() {
-    const input = document.getElementById('input-username');
-    const name = input ? input.value.trim() : '';
-    if (!name) {
-        if (typeof showToast === 'function') showToast('warning', 'กรุณาระบุชื่อ', 'โปรดพิมพ์ชื่อหรือเลือกชื่อของคุณ', 2000);
-        return;
-    }
-
-    CHAT_STATE.currentUser.displayName = name;
-    CHAT_STATE.currentUser.username = name.toLowerCase().replace(/\s+/g, '_');
-    localStorage.setItem('gyver_workchat_user', JSON.stringify(CHAT_STATE.currentUser));
-
-    updateUserUI();
-
-    const modalEl = document.getElementById('modalUserLogin');
-    if (modalEl) {
-        const bsModal = bootstrap.Modal.getInstance(modalEl);
-        if (bsModal) bsModal.hide();
-    }
-
-    if (typeof showToast === 'function') {
-        showToast('success', 'เข้าสู่ระบบแล้ว', `ยินดีต้อนรับ ${name}`, 2000);
     }
 }
 
