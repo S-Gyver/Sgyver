@@ -286,8 +286,31 @@
                         <input type="text" class="form-control form-control-cyber" id="input-username" placeholder="เช่น jack, mook, admin, ช่างเอก">
                     </div>
 
+                    <!-- Upload custom profile photo -->
                     <div class="mb-3">
-                        <label class="form-label text-white small">เลือกรูปโปรไฟล์</label>
+                        <label class="form-label text-white small fw-bold">รูปโปรไฟล์ของคุณ</label>
+                        <div class="d-flex align-items-center gap-3 p-3 rounded" style="background: rgba(255,255,255,0.03); border: 1px dashed rgba(6, 182, 212, 0.4);">
+                            <div id="avatar-preview-box" style="width: 54px; height: 54px; border-radius: 50%; overflow: hidden; background: #1e293b; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; border: 2px solid #06b6d4; flex-shrink: 0;">
+                                <!-- Live avatar preview -->
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="text-white small fw-semibold">อัปโหลดรูปโปรไฟล์ตัวเอง</div>
+                                <div class="text-muted" style="font-size: 0.76rem;">ใช้รูปถ่ายจริงของคุณจากมือถือหรือคอมฯ</div>
+                                <div class="d-flex gap-2 mt-2">
+                                    <label class="btn btn-sm btn-outline-info mb-0" style="cursor: pointer;">
+                                        <i class="bi bi-camera-fill me-1"></i> เลือกรูปตัวเอง
+                                        <input type="file" id="input-custom-avatar-file" accept="image/*" style="display: none;" onchange="handleCustomAvatarUpload(event)">
+                                    </label>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="btn-remove-custom-avatar" onclick="removeCustomAvatar()">
+                                        <i class="bi bi-x"></i> รีเซ็ต
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-white small">หรือเลือกอิโมจิแทนรูป:</label>
                         <div class="avatar-selection-row" id="avatar-selection-row">
                             <!-- Populated avatar radio picks -->
                         </div>

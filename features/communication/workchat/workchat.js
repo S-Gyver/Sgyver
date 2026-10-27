@@ -176,12 +176,22 @@ function loadUserFromStorage() {
     updateUserUI();
 }
 
+function renderAvatarDisplay(avatar) {
+    if (!avatar) return '👤';
+    if (typeof avatar === 'string' && (avatar.startsWith('data:image/') || avatar.startsWith('http://') || avatar.startsWith('https://'))) {
+        return `<img src="${avatar}" alt="Avatar" class="avatar-img-fit">`;
+    }
+    return avatar;
+}
+
 function updateUserUI() {
     const u = CHAT_STATE.currentUser;
     const nameEl = document.getElementById('topbar-username');
     const avatarEl = document.getElementById('topbar-avatar');
     if (nameEl) nameEl.textContent = u.displayName || u.username;
-    if (avatarEl) avatarEl.textContent = u.avatar || '👨‍💻';
+    if (avatarEl) {
+        avatarEl.innerHTML = renderAvatarDisplay(u.avatar || '👨‍💻');
+    }
 }
 
 function renderAvatarSelectionPicks() {
@@ -195,8 +205,70 @@ function renderAvatarSelectionPicks() {
     `).join('');
 }
 
+function updateModalAvatarPreview() {
+    const box = document.getElementById('avatar-preview-box');
+    const btnReset = document.getElementById('btn-remove-custom-avatar');
+    const avatar = CHAT_STATE.currentUser.avatar || '👨‍💻';
+    if (box) {
+        box.innerHTML = renderAvatarDisplay(avatar);
+    }
+    if (btnReset) {
+        const isCustomImg = typeof avatar === 'string' && (avatar.startsWith('data:image/') || avatar.startsWith('http'));
+        btnReset.classList.toggle('d-none', !isCustomImg);
+    }
+}
+
+function handleCustomAvatarUpload(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+        if (typeof showToast === 'function') showToast('warning', 'ไฟล์ไม่ถูกต้อง', 'กรุณาเลือกไฟล์รูปภาพ (JPG, PNG)', 2500);
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+            // Compress & resize to 160x160 center crop
+            const canvas = document.createElement('canvas');
+            const size = 160;
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            const minDim = Math.min(img.width, img.height);
+            const sx = (img.width - minDim) / 2;
+            const sy = (img.height - minDim) / 2;
+
+            ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
+            const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+            CHAT_STATE.currentUser.avatar = compressedDataUrl;
+            updateModalAvatarPreview();
+            document.querySelectorAll('.avatar-pick-item').forEach(i => i.classList.remove('active'));
+
+            if (typeof showToast === 'function') {
+                showToast('info', 'เลือกรูปแล้ว', 'กด "เข้าสู่ระบบ WorkChat" ด้านล่างเพื่อบันทึก', 2500);
+            }
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function removeCustomAvatar() {
+    CHAT_STATE.currentUser.avatar = '👨‍💻';
+    updateModalAvatarPreview();
+    renderAvatarSelectionPicks();
+    const fileInput = document.getElementById('input-custom-avatar-file');
+    if (fileInput) fileInput.value = '';
+}
+
 function selectAvatarPick(emoji, el) {
     CHAT_STATE.currentUser.avatar = emoji;
+    updateModalAvatarPreview();
     document.querySelectorAll('.avatar-pick-item').forEach(i => i.classList.remove('active'));
     if (el) el.classList.add('active');
 }
@@ -205,6 +277,7 @@ function openLoginModal() {
     const input = document.getElementById('input-username');
     if (input) input.value = CHAT_STATE.currentUser.displayName || CHAT_STATE.currentUser.username;
     renderAvatarSelectionPicks();
+    updateModalAvatarPreview();
     const modalEl = document.getElementById('modalUserLogin');
     if (modalEl) {
         const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
@@ -217,6 +290,7 @@ function quickSelectUser(name, emoji) {
     if (input) input.value = name;
     CHAT_STATE.currentUser.avatar = emoji;
     renderAvatarSelectionPicks();
+    updateModalAvatarPreview();
 }
 
 function saveUserProfile() {
@@ -400,7 +474,7 @@ function renderMessages() {
         return `
             <div class="msg-group ${isMe ? 'my-msg' : 'other-msg'}">
                 <div class="msg-avatar" style="${isMe ? 'background: linear-gradient(135deg, #0891b2, #0284c7);' : ''}">
-                    ${msg.avatar || '👤'}
+                    ${renderAvatarDisplay(msg.avatar)}
                 </div>
                 <div class="msg-body-wrapper">
                     ${!isMe ? `<div class="msg-sender-info"><strong>${escapeHtml(msg.sender_name)}</strong> <span>${timeStr}</span></div>` : ''}
