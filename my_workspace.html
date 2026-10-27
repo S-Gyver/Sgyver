@@ -32,6 +32,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="S-Gyver">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="apple-touch-icon" href="features/communication/workchat/icon.svg">
 
     <style>
@@ -2989,8 +2990,13 @@
         }
 
         if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then((registrations) => {
+                for (const reg of registrations) {
+                    reg.update();
+                }
+            }).catch(() => {});
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js').catch(() => {});
+                navigator.serviceWorker.register('./sw.js?v=3').catch(() => {});
             });
         }
     </script>
