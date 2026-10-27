@@ -965,3 +965,54 @@ body {
     margin: 2px;
 }
 
+/* ══════════════════════════════════════════════════════════════
+   📱 MOBILE & TABLET RESPONSIVE STYLES
+   ══════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    .shopee-topbar {
+        padding: 0.65rem 1rem !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 0.75rem !important;
+    }
+    .shopee-topbar-actions {
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .shopee-topbar-actions .btn {
+        flex: 1 1 auto;
+        font-size: 0.8rem;
+        padding: 0.4rem 0.65rem;
+    }
+    .stats-container {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+    }
+    .orders-table-card {
+        padding: 0.75rem !important;
+    }
+    .table-orders {
+        font-size: 0.82rem;
+    }
+    .table-orders th, .table-orders td {
+        padding: 8px 6px;
+    }
+    .filter-bar {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+    }
+    .filter-bar .search-input {
+        width: 100% !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .stats-container {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+

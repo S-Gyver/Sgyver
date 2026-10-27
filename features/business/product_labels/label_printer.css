@@ -682,3 +682,25 @@ body {
     }
 }
 
+/* ══════════════════════════════════════════════════════════════
+   📱 MOBILE & TABLET RESPONSIVE STYLES
+   ══════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    .scanner-card {
+        padding: 1rem !important;
+    }
+    .scanner-input {
+        font-size: 1.15rem !important;
+        letter-spacing: 0.04em !important;
+    }
+    .label-preview-container {
+        overflow-x: auto !important;
+        padding: 10px 0;
+    }
+    .btn-action-mobile {
+        width: 100% !important;
+        margin-bottom: 0.5rem;
+    }
+}
+
+

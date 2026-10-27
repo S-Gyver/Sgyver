@@ -1752,27 +1752,119 @@ body.in-app-view #cs-widget-canvas {
     .wheel-canvas-container {
         max-height: 200px !important;
     }
+
+    /* 📱 Launchpad Drawer Mobile Full Screen */
+    #teacherMenuDrawer.offcanvas-start {
+        width: 100vw !important;
+        max-width: 100vw !important;
+        border-radius: 0 !important;
+    }
+
+    .drawer-view-grid .launchpad-grid {
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 12px 6px !important;
+    }
+
+    .drawer-view-grid .launchpad-icon {
+        width: 58px !important;
+        height: 58px !important;
+        border-radius: 16px !important;
+        font-size: 1.65rem !important;
+    }
+
+    .drawer-view-grid .launchpad-title {
+        font-size: 0.74rem !important;
+        max-width: 90px !important;
+    }
+
+    .launchpad-category-title {
+        font-size: 0.74rem !important;
+        padding-bottom: 0.25rem !important;
+        margin-bottom: 0.6rem !important;
+    }
+
+    /* 📱 App Viewport on Mobile */
+    .cs-app-viewport {
+        top: 54px !important;
+        height: calc(100vh - 54px) !important;
+        height: calc(100dvh - 54px) !important;
+    }
+
+    /* 📱 Modal Dialogs on Mobile */
+    .modal-dialog {
+        margin: 0.5rem auto !important;
+        max-width: calc(100vw - 1rem) !important;
+    }
+
+    .modal-content {
+        border-radius: 16px !important;
+    }
+
+    .modal-body {
+        max-height: calc(100dvh - 130px) !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+@media (max-width: 600px) {
+    /* Hide screen title input on phones to ensure clean spacing for User / Login buttons */
+    .cs-title-box {
+        display: none !important;
+    }
+
+    .cs-brand-name {
+        font-size: 0.92rem !important;
+    }
+
+    .cs-header-actions {
+        gap: 4px !important;
+    }
+
+    /* Collapse label text on header action buttons, leaving beautiful touch icons */
+    .cs-header-actions .cs-btn-text span:not(.badge) {
+        display: none !important;
+    }
+
+    .cs-header-actions .cs-btn-text {
+        padding: 0.35rem 0.5rem !important;
+        border-radius: 8px !important;
+        min-width: 36px;
+        min-height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    #btn-pwa-install-global {
+        padding: 0.35rem 0.5rem !important;
+        border-radius: 8px !important;
+    }
+
+    /* Profile button on small mobile */
+    .cs-profile-dropdown .btn {
+        padding: 0.25rem 0.5rem !important;
+    }
+    .cs-profile-dropdown .dropdown-toggle::after {
+        display: none;
+    }
 }
 
 @media (max-width: 480px) {
     .cs-header {
         padding: 0 0.4rem;
         gap: 4px;
+        height: 50px;
     }
 
-    .cs-brand span {
+    .cs-brand span.cs-brand-name {
         display: none;
     }
 
-    .cs-title-box {
-        flex: 0 1 85px;
-        max-width: 90px;
-        padding: 0.2rem 0.4rem;
-    }
-
-    .cs-title-box input {
-        width: 55px;
-        font-size: 0.75rem;
+    .cs-app-viewport {
+        top: 50px !important;
+        height: calc(100vh - 50px) !important;
+        height: calc(100dvh - 50px) !important;
     }
 
     .cs-tool-btn {
@@ -1787,6 +1879,18 @@ body.in-app-view #cs-widget-canvas {
 
     .cs-tool-btn span {
         font-size: 0.52rem;
+    }
+
+    .drawer-view-grid .launchpad-icon {
+        width: 52px !important;
+        height: 52px !important;
+        border-radius: 14px !important;
+        font-size: 1.5rem !important;
+    }
+
+    .drawer-view-grid .launchpad-title {
+        font-size: 0.68rem !important;
+        max-width: 80px !important;
     }
 }
 

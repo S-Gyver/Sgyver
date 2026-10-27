@@ -979,6 +979,47 @@ body {
     .msg-group {
         max-width: 90%;
     }
+
+    .chat-input-area {
+        padding: 8px 12px max(10px, env(safe-area-inset-bottom, 10px));
+    }
+}
+
+@media (max-width: 600px) {
+    .chat-topbar {
+        height: 52px;
+        padding: 0 10px;
+    }
+    .chat-brand-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 1rem;
+    }
+    .chat-brand-text h1 {
+        font-size: 0.92rem;
+    }
+    .chat-mobile-tabs {
+        padding: 2px;
+        gap: 3px;
+    }
+    .mobile-tab-btn {
+        padding: 4px 10px;
+        font-size: 0.78rem;
+    }
+    .chat-messages-container {
+        padding: 10px;
+    }
+    .msg-bubble {
+        padding: 8px 12px;
+        font-size: 0.88rem;
+    }
+    .permission-guard-card {
+        padding: 1.25rem !important;
+        max-width: calc(100vw - 24px) !important;
+    }
+    .permission-guard-card h3 {
+        font-size: 1.15rem;
+    }
 }
 
 /* ══════════════════════════════════════════════════════════════

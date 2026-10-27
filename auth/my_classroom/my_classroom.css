@@ -754,3 +754,30 @@
     color: #2563eb;
     font-weight: 600;
 }
+
+/* ====================================================
+   📱 MOBILE RESPONSIVE STYLES
+   ==================================================== */
+@media (max-width: 768px) {
+    .section-switcher-container {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding-bottom: 6px;
+    }
+    .section-switcher-container::-webkit-scrollbar {
+        display: none;
+    }
+    .section-card {
+        min-width: 140px !important;
+        padding: 8px 12px !important;
+    }
+    .table-container-responsive {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+    .classroom-header-title {
+        font-size: 1.25rem !important;
+    }
+}
+

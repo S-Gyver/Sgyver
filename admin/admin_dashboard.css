@@ -972,3 +972,66 @@ body.cyber-body {
     color: #fff;
     transform: translateX(4px);
 }
+
+/* ==============================================================================
+   📱 MOBILE & TABLET RESPONSIVE STYLES
+   ============================================================================== */
+@media (max-width: 768px) {
+    .command-header-card {
+        padding: 1rem !important;
+    }
+    .command-title {
+        font-size: 1.15rem !important;
+        letter-spacing: -0.01em;
+    }
+    .command-logo-icon {
+        width: 40px !important;
+        height: 40px !important;
+        font-size: 1.25rem !important;
+    }
+    .nav-cyber-tabs {
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding-bottom: 6px;
+        gap: 6px;
+    }
+    .nav-cyber-tabs::-webkit-scrollbar {
+        display: none;
+    }
+    .nav-cyber-tab {
+        white-space: nowrap;
+        flex-shrink: 0;
+        font-size: 0.84rem;
+        padding: 0.55rem 0.85rem;
+    }
+    .metric-card {
+        padding: 0.85rem !important;
+    }
+    .metric-value {
+        font-size: 1.5rem !important;
+    }
+    .metric-title {
+        font-size: 0.75rem !important;
+    }
+    .search-control-wrap {
+        width: 100% !important;
+        min-width: 100% !important;
+    }
+    .search-input-cyber {
+        width: 100% !important;
+    }
+    .table-cyber th, .table-cyber td {
+        padding: 0.6rem 0.5rem;
+        font-size: 0.82rem;
+    }
+    .user-action-dialog .modal-dialog {
+        margin: 0.5rem auto !important;
+        max-width: calc(100vw - 1rem) !important;
+    }
+    .action-opt-btn {
+        padding: 0.6rem 0.75rem;
+        font-size: 0.82rem;
+    }
+}
