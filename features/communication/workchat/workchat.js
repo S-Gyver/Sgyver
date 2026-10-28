@@ -2448,14 +2448,29 @@ function toggleEmojiPicker(forceStateOrEvent) {
     const popover = document.getElementById('emoji-picker-popover');
     if (!popover) return;
     if (typeof forceStateOrEvent === 'boolean') {
-        if (forceStateOrEvent) popover.classList.remove('d-none');
-        else popover.classList.add('d-none');
+        if (forceStateOrEvent) {
+            initEmojiPicker();
+            popover.classList.remove('d-none');
+        } else {
+            popover.classList.add('d-none');
+        }
         return;
     }
-    if (forceStateOrEvent && forceStateOrEvent.stopPropagation) {
-        forceStateOrEvent.stopPropagation();
+    if (forceStateOrEvent) {
+        if (typeof forceStateOrEvent.stopPropagation === 'function') {
+            forceStateOrEvent.stopPropagation();
+        }
+        if (typeof forceStateOrEvent.preventDefault === 'function') {
+            forceStateOrEvent.preventDefault();
+        }
     }
-    popover.classList.toggle('d-none');
+    const isHidden = popover.classList.contains('d-none');
+    if (isHidden) {
+        initEmojiPicker();
+        popover.classList.remove('d-none');
+    } else {
+        popover.classList.add('d-none');
+    }
 }
 window.toggleEmojiPicker = toggleEmojiPicker;
 
@@ -2476,11 +2491,13 @@ window.insertEmoji = insertEmoji;
 // Close emoji picker when clicking outside
 document.addEventListener('click', (e) => {
     const popover = document.getElementById('emoji-picker-popover');
-    const btnEmoji = document.getElementById('btn-capsule-emoji');
-    if (popover && !popover.classList.contains('d-none')) {
-        if (!popover.contains(e.target) && (!btnEmoji || !btnEmoji.contains(e.target))) {
-            popover.classList.add('d-none');
-        }
+    if (!popover || popover.classList.contains('d-none')) return;
+
+    const isInsidePopover = popover.contains(e.target);
+    const isTriggerBtn = e.target.closest && e.target.closest('#btn-capsule-emoji, [onclick*="toggleEmojiPicker"]');
+
+    if (!isInsidePopover && !isTriggerBtn) {
+        popover.classList.add('d-none');
     }
 });
 

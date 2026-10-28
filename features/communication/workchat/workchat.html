@@ -244,6 +244,17 @@
                 </div>
             </div>
 
+            <!-- Floating Quick Emoji Picker Popover -->
+            <div class="emoji-picker-popover shadow-lg d-none" id="emoji-picker-popover">
+                <div class="emoji-picker-header">
+                    <span>อิโมจิยอดนิยม</span>
+                    <button type="button" class="btn-close-emoji" onclick="toggleEmojiPicker(false)">✕</button>
+                </div>
+                <div class="emoji-grid" id="emoji-grid">
+                    <!-- Popular Emojis injected by JS -->
+                </div>
+            </div>
+
             <!-- Modern Bottom Input Bar (Messenger / Instagram Adaptive Reference) -->
             <div class="chat-area-input-bar" id="chat-area-input-bar">
                 <!-- 1. Left Action A: Blue Plus Button (Shown when typing has-text - Image 2) -->
@@ -282,16 +293,7 @@
                 <div class="chat-input-capsule">
                     <textarea class="input-capsule-textarea" id="chat-message-input" rows="1" placeholder="Aa" onkeydown="handleInputKeyDown(event)" oninput="handleMessageInputChange(this)"></textarea>
                     
-                    <!-- Floating Quick Emoji Picker Popover -->
-                    <div class="emoji-picker-popover shadow-lg d-none" id="emoji-picker-popover">
-                        <div class="emoji-picker-header">
-                            <span>อิโมจิยอดนิยม</span>
-                            <button type="button" class="btn-close-emoji" onclick="toggleEmojiPicker(false)">✕</button>
-                        </div>
-                        <div class="emoji-grid" id="emoji-grid">
-                            <!-- Popular Emojis injected by JS -->
-                        </div>
-                    </div>
+
 
                     <!-- Blue Emoji Smiley Button inside capsule -->
                     <button type="button" class="btn-capsule-emoji" id="btn-capsule-emoji" onclick="toggleEmojiPicker(event)" title="เลือกอิโมจิ">
