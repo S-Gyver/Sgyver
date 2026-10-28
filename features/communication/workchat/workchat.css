@@ -945,6 +945,39 @@ body {
     letter-spacing: 0.5px;
 }
 
+/* Quick Media Action Circle Buttons (Camera, Gallery, Audio, Attachment) */
+.input-media-quick-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.input-quick-circle-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: #f0f4f9;
+    border: none;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    line-height: 1;
+}
+.input-quick-circle-btn:hover {
+    background: #e2e8f0;
+    color: #0084ff;
+    transform: scale(1.08);
+}
+.input-quick-circle-btn:active {
+    transform: scale(0.92);
+}
+
 /* Capsule Pill Input Container */
 .chat-input-capsule {
     flex: 1;
@@ -1770,29 +1803,39 @@ body {
     /* Input Bar on Mobile */
     .chat-area-input-bar {
         padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
-        gap: 8px;
+        gap: 6px;
     }
 
     .btn-input-plus i {
-        font-size: 1.7rem;
+        font-size: 1.6rem;
+    }
+
+    .input-media-quick-actions {
+        gap: 4px;
+    }
+
+    .input-quick-circle-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 0.98rem;
     }
 
     .chat-input-capsule {
-        padding: 2px 4px 2px 12px;
+        padding: 2px 4px 2px 10px;
     }
 
     .input-capsule-textarea {
-        font-size: 0.9rem;
+        font-size: 0.88rem;
         padding: 4px 0;
         max-height: 80px;
     }
 
     .btn-capsule-emoji i {
-        font-size: 1.35rem;
+        font-size: 1.25rem;
     }
 
     .btn-input-send-plane i {
-        font-size: 1.35rem;
+        font-size: 1.25rem;
     }
 
     .emoji-picker-popover {
@@ -1823,6 +1866,21 @@ body {
 
     .chat-area-input-bar {
         padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
+        gap: 4px;
+    }
+
+    .btn-input-plus i {
+        font-size: 1.45rem;
+    }
+
+    .input-media-quick-actions {
+        gap: 3px;
+    }
+
+    .input-quick-circle-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 0.88rem;
     }
 
     .msg-bubble-box {

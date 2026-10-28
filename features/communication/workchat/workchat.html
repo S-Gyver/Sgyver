@@ -248,19 +248,33 @@
             <div class="chat-area-input-bar">
                 <!-- 1. Left Action: Blue Plus Circle Button with Dropup Menu -->
                 <div class="dropup d-inline-block">
-                    <button type="button" class="btn-input-plus" data-bs-toggle="dropdown" id="btn-input-plus" title="แนบไฟล์ & สื่อ">
+                    <button type="button" class="btn-input-plus" data-bs-toggle="dropdown" id="btn-input-plus" title="เมนูเพิ่มเติม & เลือกโฟลเดอร์โปรเจกต์">
                         <i class="bi bi-plus-circle-fill"></i>
                     </button>
                     <ul class="dropdown-menu shadow-lg border-0 input-plus-menu" id="tag-project-dropdown-list">
-                        <li><h6 class="dropdown-header">แนบไฟล์และสื่อ</h6></li>
-                        <li><a class="dropdown-item d-flex align-items-center gap-2" href="javascript:void(0)" onclick="triggerPhotoCapture()"><i class="bi bi-camera-fill text-primary"></i> ถ่ายรูป</a></li>
-                        <li><a class="dropdown-item d-flex align-items-center gap-2" href="javascript:void(0)" onclick="triggerPhotoCapture()"><i class="bi bi-image-fill text-success"></i> รูปภาพและวิดีโอ</a></li>
-                        <li><a class="dropdown-item d-flex align-items-center gap-2" href="javascript:void(0)" onclick="triggerFileInput()"><i class="bi bi-file-earmark-arrow-up-fill text-info"></i> แนบเอกสาร</a></li>
-                        <li><a class="dropdown-item d-flex align-items-center gap-2" href="javascript:void(0)" onclick="showModernToast('บันทึกเสียงข้อความ...')"><i class="bi bi-mic-fill text-danger"></i> ข้อความเสียง</a></li>
-                        <li><hr class="dropdown-divider"></li>
                         <li><h6 class="dropdown-header">เลือกโปรเจกต์ที่กำลังคุย</h6></li>
                         <li><a class="dropdown-item active d-flex align-items-center gap-2" href="javascript:void(0)" onclick="selectTagProject('', 'ทั่วไป (General)')"><i class="bi bi-folder2-open text-warning"></i> ทั่วไป (General)</a></li>
                     </ul>
+                </div>
+
+                <!-- 4 Quick Media Action Buttons (Camera, Gallery, Audio, Attachment) -->
+                <div class="input-media-quick-actions" id="input-media-quick-actions">
+                    <!-- Camera -->
+                    <button type="button" class="input-quick-circle-btn" onclick="triggerPhotoCapture()" title="ถ่ายภาพ">
+                        <i class="bi bi-camera"></i>
+                    </button>
+                    <!-- Gallery -->
+                    <button type="button" class="input-quick-circle-btn" onclick="triggerPhotoCapture()" title="เลือกรูปภาพ">
+                        <i class="bi bi-image"></i>
+                    </button>
+                    <!-- Audio / Voice memo -->
+                    <button type="button" class="input-quick-circle-btn" onclick="showModernToast('บันทึกเสียงข้อความ...')" title="ส่งข้อความเสียง">
+                        <i class="bi bi-soundwave"></i>
+                    </button>
+                    <!-- File / Doc attachment -->
+                    <button type="button" class="input-quick-circle-btn" onclick="triggerFileInput()" title="แนบไฟล์ / เอกสาร">
+                        <i class="bi bi-paperclip"></i>
+                    </button>
                 </div>
                 <input type="file" id="chat-file-input" class="d-none" onchange="handleFileSelected(event)">
 
