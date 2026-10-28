@@ -955,9 +955,6 @@ body {
 .chat-area-input-bar:not(.has-text) .btn-input-thumbs-up {
     display: flex !important;
 }
-.chat-area-input-bar:not(.has-text) .btn-input-send-plane {
-    display: none !important;
-}
 
 .chat-area-input-bar.has-text .btn-input-plus-wrap {
     display: inline-block !important;
@@ -967,9 +964,6 @@ body {
 }
 .chat-area-input-bar.has-text .btn-input-thumbs-up {
     display: none !important;
-}
-.chat-area-input-bar.has-text .btn-input-send-plane {
-    display: flex !important;
 }
 
 /* Image 1: 4 Blue Media Icons Row */
@@ -1111,30 +1105,39 @@ body {
     transform: scale(0.92);
 }
 
-/* Blue Send Airplane Button */
-.btn-input-send-plane {
-    background: transparent;
+/* Circular Blue Send Button inside Capsule (Matching User's Screenshot) */
+.btn-capsule-send {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #0084ff;
     border: none;
-    padding: 4px 8px;
-    display: flex;
+    color: #ffffff;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
+    font-size: 1.05rem;
     cursor: pointer;
     flex-shrink: 0;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 4px 14px rgba(0, 132, 255, 0.38);
+    margin-left: 6px;
+    padding: 0;
+    line-height: 1;
+    -webkit-tap-highlight-color: transparent;
+}
+.btn-capsule-send i {
+    transform: rotate(0deg) translate(-1px, 1px);
+    display: inline-block;
     line-height: 1;
 }
-.btn-input-send-plane i {
-    font-size: 1.45rem;
-    color: #0084ff;
-    transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), color 0.18s;
-    line-height: 1;
+.btn-capsule-send:hover {
+    background: #0070f3;
+    transform: scale(1.08);
+    box-shadow: 0 6px 18px rgba(0, 132, 255, 0.48);
 }
-.btn-input-send-plane:hover i {
-    transform: scale(1.15);
-    color: #0066ff;
-}
-.btn-input-send-plane:active i {
-    transform: scale(0.9);
+.btn-capsule-send:active {
+    transform: scale(0.92);
 }
 
 /* Emoji Popover */
@@ -1916,8 +1919,11 @@ body {
         font-size: 1.25rem;
     }
 
-    .btn-input-send-plane i {
-        font-size: 1.25rem;
+    .btn-capsule-send {
+        width: 32px;
+        height: 32px;
+        font-size: 0.95rem;
+        margin-left: 4px;
     }
 
     .emoji-picker-popover {
@@ -1968,6 +1974,13 @@ body {
     .messenger-gif-badge {
         font-size: 0.52rem;
         padding: 1px 2px;
+    }
+
+    .btn-capsule-send {
+        width: 28px;
+        height: 28px;
+        font-size: 0.85rem;
+        margin-left: 2px;
     }
 
     .btn-input-thumbs-up {

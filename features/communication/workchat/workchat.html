@@ -278,7 +278,7 @@
                 </div>
                 <input type="file" id="chat-file-input" class="d-none" onchange="handleFileSelected(event)">
 
-                <!-- 2. Center: Rounded Pill Capsule with "Aa" Placeholder & Emoji Smiley Face -->
+                <!-- 2. Center: Rounded Pill Capsule with "Aa" Placeholder & Emoji Smiley Face & Circular Blue Send Button -->
                 <div class="chat-input-capsule">
                     <textarea class="input-capsule-textarea" id="chat-message-input" rows="1" placeholder="Aa" onkeydown="handleInputKeyDown(event)" oninput="handleMessageInputChange(this)"></textarea>
                     
@@ -297,16 +297,16 @@
                     <button type="button" class="btn-capsule-emoji" id="btn-capsule-emoji" onclick="toggleEmojiPicker(event)" title="เลือกอิโมจิ">
                         <i class="bi bi-emoji-smile-fill"></i>
                     </button>
+
+                    <!-- Circular Blue Send Button with White Paper Airplane (Matching User's Image) -->
+                    <button type="button" class="btn-capsule-send" id="btn-send-message" onclick="sendMessage()" title="ส่งข้อความ">
+                        <i class="bi bi-send-fill"></i>
+                    </button>
                 </div>
 
-                <!-- 3. Right Action A: Blue Thumbs Up 👍 (Shown when NOT typing - Image 1) -->
+                <!-- 3. Right Action: Blue Thumbs Up 👍 (Shown when NOT typing - Image 1) -->
                 <button type="button" class="btn-input-thumbs-up" id="btn-thumbs-up" onclick="sendQuickLike()" title="ส่งถูกใจ">
                     <i class="bi bi-hand-thumbs-up-fill"></i>
-                </button>
-
-                <!-- 3. Right Action B: Blue Send Airplane ✈️ (Shown when typing - Image 2) -->
-                <button type="button" class="btn-input-send-plane" id="btn-send-message" onclick="sendMessage()" title="ส่งข้อความ">
-                    <i class="bi bi-send-fill"></i>
                 </button>
             </div>
         </section>

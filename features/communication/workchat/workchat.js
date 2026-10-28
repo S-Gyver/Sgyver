@@ -1603,7 +1603,10 @@ async function sendMessage() {
     const text = input.value.trim();
     const hasAttachment = !!CHAT_STATE.stagedAttachment;
 
-    if (!text && !hasAttachment) return;
+    if (!text && !hasAttachment) {
+        sendQuickLike();
+        return;
+    }
 
     const u = CHAT_STATE.currentUser;
     const msgId = 'msg_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
