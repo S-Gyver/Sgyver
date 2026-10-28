@@ -812,23 +812,66 @@ function syncWorkchatToCloud() {
     _syncCloudTimer = setTimeout(async () => {
         try {
             const payload = {
-                room_code: 'WORKCHAT',
-                status: 'LIVE',
                 quiz_settings: {
-                    messages: (CHAT_STATE.messages || []).slice(-150),
+                    messages: (CHAT_STATE.messages || []).slice(-200),
                     files: (CHAT_STATE.files || []).slice(-100),
                     folders: CHAT_STATE.folders || [],
                     projects: CHAT_STATE.projects || [],
                     updated_at: new Date().toISOString()
                 }
             };
-            await window.supabaseClient.from('lobbies').upsert([payload]);
+            // 1. Try update by room_code = 'WORKCHAT'
+            const { error: updErr, data: updData } = await window.supabaseClient
+                .from('lobbies')
+                .update(payload)
+                .eq('room_code', 'WORKCHAT')
+                .select();
+
+            if (updErr || !updData || updData.length === 0) {
+                // If row didn't exist yet, insert it
+                await window.supabaseClient
+                    .from('lobbies')
+                    .insert([{ room_code: 'WORKCHAT', status: 'LIVE', ...payload }]);
+            }
         } catch (err) {
             console.warn('Sync cloud store notice:', err);
         }
-    }, 400);
+    }, 300);
 }
 window.syncWorkchatToCloud = syncWorkchatToCloud;
+
+async function fetchCloudStore() {
+    if (!window.supabaseClient) return;
+    try {
+        const { data: cloudStore } = await window.supabaseClient
+            .from('lobbies')
+            .select('quiz_settings')
+            .eq('room_code', 'WORKCHAT')
+            .maybeSingle();
+
+        if (cloudStore && cloudStore.quiz_settings) {
+            mergeCloudStore(cloudStore.quiz_settings);
+        }
+    } catch (_) {}
+}
+window.fetchCloudStore = fetchCloudStore;
+
+// Auto-sync when user switches back to tab or unlocks mobile phone screen
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+        fetchCloudStore();
+    }
+});
+window.addEventListener('focus', () => {
+    fetchCloudStore();
+});
+
+// Periodic lightweight sync heartbeat every 5 seconds (ensures mobile syncs even if carrier drops WebSocket)
+if (!window._workchatSyncInterval) {
+    window._workchatSyncInterval = setInterval(() => {
+        fetchCloudStore();
+    }, 5000);
+}
 
 function mergeCloudStore(cloudSettings) {
     if (!cloudSettings) return;
