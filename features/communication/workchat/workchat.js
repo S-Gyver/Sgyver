@@ -1912,23 +1912,36 @@ function renderMessages() {
         }
 
         let attachedHtml = '';
+        const isImageAttachment = Boolean(msg.file_data && (
+            (msg.file_data.type && (msg.file_data.type.startsWith('image/') || msg.file_data.type === 'image')) ||
+            (msg.file_data.url && (msg.file_data.url.startsWith('data:image/') || /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i.test(msg.file_data.url))) ||
+            (msg.file_data.name && /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(msg.file_data.name))
+        ));
+
         if (msg.file_data) {
             const f = msg.file_data;
-            const isImg = f.type && (f.type.startsWith('image/') || f.type === 'image');
-            attachedHtml = `
-                <div class="msg-file-card">
-                    <div class="msg-file-thumb" onclick="previewFileDirectly('${escapeHtml(f.name)}', '${escapeHtml(f.url)}')">
-                        ${isImg ? `<img src="${f.url}" class="w-100 h-100 object-fit-cover rounded" alt="thumb">` : `<i class="bi bi-file-earmark-arrow-down-fill"></i>`}
+            if (isImageAttachment && f.url) {
+                attachedHtml = `
+                    <div class="msg-image-attachment my-1" onclick="previewFileDirectly('${escapeHtml(f.name)}', '${escapeHtml(f.url)}')" style="cursor: pointer;">
+                        <img src="${f.url}" alt="${escapeHtml(f.name)}" class="rounded-3 shadow-sm d-block" style="max-width: 100%; max-height: 260px; object-fit: cover;">
                     </div>
-                    <div class="msg-file-info">
-                        <div class="msg-file-name" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</div>
-                        <div class="msg-file-meta">${f.size || 'ไฟล์แนบ'} ${project ? `• ${escapeHtml(project.code || project.name)}` : ''}</div>
+                `;
+            } else {
+                attachedHtml = `
+                    <div class="msg-file-card">
+                        <div class="msg-file-thumb" onclick="previewFileDirectly('${escapeHtml(f.name)}', '${escapeHtml(f.url)}')">
+                            <i class="bi bi-file-earmark-arrow-down-fill"></i>
+                        </div>
+                        <div class="msg-file-info">
+                            <div class="msg-file-name" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</div>
+                            <div class="msg-file-meta">${f.size || 'ไฟล์แนบ'} ${project ? `• ${escapeHtml(project.code || project.name)}` : ''}</div>
+                        </div>
+                        <a href="${f.url}" download="${escapeHtml(f.name)}" class="msg-file-dl-btn" title="ดาวน์โหลด">
+                            <i class="bi bi-download"></i>
+                        </a>
                     </div>
-                    <a href="${f.url}" download="${escapeHtml(f.name)}" class="msg-file-dl-btn" title="ดาวน์โหลด">
-                        <i class="bi bi-download"></i>
-                    </a>
-                </div>
-            `;
+                `;
+            }
         }
 
         const avatarMarkup = isMe 
@@ -1947,7 +1960,8 @@ function renderMessages() {
             timeLabelContent = formatMessageTime(msg.created_at);
         }
 
-        const projectMarkup = project 
+        // Project folder chip: ONLY shown if message is an image (not on plain text messages)
+        const projectMarkup = (project && isImageAttachment) 
             ? `<div class="msg-project-chip" onclick="selectProjectFilter('${project.id}')" title="คลิกเปิดดูไฟล์โปรเจกต์นี้"><i class="bi bi-folder-fill" style="color: ${project.color || '#f59e0b'};"></i><span>${escapeHtml(project.code || project.name)}</span></div>` 
             : '';
         const textMarkup = msg.message_text 
@@ -1992,6 +2006,7 @@ window.handleMessageInputChange = handleMessageInputChange;
 function sendQuickLike() {
     const u = CHAT_STATE.currentUser;
     const activeChatId = CHAT_STATE.activeChatId || 'general';
+    const isProjectChannel = CHAT_STATE.projects.some(p => p.id === activeChatId);
     const newMsg = {
         id: 'msg_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
         chat_id: activeChatId,
@@ -1999,7 +2014,7 @@ function sendQuickLike() {
         sender_name: u.displayName || u.username,
         avatar: u.avatar || 'user_boy',
         message_text: '👍',
-        project_id: CHAT_STATE.selectedTagProjectId || null,
+        project_id: isProjectChannel ? activeChatId : null,
         folder_id: null,
         file_data: null,
         created_at: new Date().toISOString()
@@ -2205,7 +2220,7 @@ async function sendMessage() {
         sender_name: u.displayName || u.username,
         avatar: u.avatar || 'user_boy',
         message_text: text,
-        project_id: targetProjectId,
+        project_id: hasAttachment ? targetProjectId : (CHAT_STATE.projects.some(p => p.id === activeChatId) ? activeChatId : null),
         folder_id: targetFolderId,
         file_data: fileData,
         created_at: new Date().toISOString()
