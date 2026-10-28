@@ -1791,36 +1791,24 @@ function selectChatConversation(chatId) {
 
     // 1. Group Conversations
     const group = (CHAT_STATE.groups || []).find(g => g.id === chatId);
+    // 2. Direct 1-on-1 Friend Conversations (Dynamic for all friends including custom & added ones)
+    const friend = (typeof TEAM_FRIENDS !== 'undefined' ? TEAM_FRIENDS : []).find(f => f.id === chatId);
+
     if (group) {
         if (titleEl) titleEl.textContent = group.name;
         if (avatarEl) avatarEl.innerHTML = getIllustratedAvatar('group', group.name);
         const memberCount = (group.members && group.members.length) || 1;
         if (statusEl) statusEl.innerHTML = `<span class="status-dot-green"></span> กลุ่มแชท • สมาชิก ${memberCount} คน`;
         CHAT_STATE.activeProjectId = 'all';
-    } else if (chatId === 'general') {
-        if (titleEl) titleEl.textContent = 'Lilly Jr.';
-        if (avatarEl) avatarEl.innerHTML = getIllustratedAvatar('lilly', 'Lilly Jr.');
-        if (statusEl) statusEl.innerHTML = '<span class="status-dot-green"></span> ออนไลน์ • ฝ่ายดีไซน์ (Design Lead)';
-        CHAT_STATE.activeProjectId = 'all';
-    } else if (chatId === 'dm_rihanna') {
-        if (titleEl) titleEl.textContent = 'Rihanna Goldberg';
-        if (avatarEl) avatarEl.innerHTML = getIllustratedAvatar('rihanna', 'Rihanna Goldberg');
-        if (statusEl) statusEl.innerHTML = '<span class="status-dot-green"></span> ออนไลน์ • ฝ่ายจัดซื้อและผลิต';
-        CHAT_STATE.activeProjectId = 'all';
-    } else if (chatId === 'dm_gregory') {
-        if (titleEl) titleEl.textContent = 'Gregory Portman';
-        if (avatarEl) avatarEl.innerHTML = getIllustratedAvatar('gregory', 'Gregory Portman');
-        if (statusEl) statusEl.innerHTML = '<span class="status-dot-green"></span> ออนไลน์ • วิศวกรโครงสร้าง & หุ่นยนต์';
-        CHAT_STATE.activeProjectId = 'all';
-    } else if (chatId === 'dm_marry') {
-        if (titleEl) titleEl.textContent = 'Marry Adams';
-        if (avatarEl) avatarEl.innerHTML = getIllustratedAvatar('marry', 'Marry Adams');
-        if (statusEl) statusEl.innerHTML = '<span class="text-muted">●</span> ออฟไลน์ • ผู้ประสานงานโครงการ';
-        CHAT_STATE.activeProjectId = 'all';
-    } else if (chatId === 'dm_callie') {
-        if (titleEl) titleEl.textContent = 'Callie Goodman (ฉัน)';
-        if (avatarEl) avatarEl.innerHTML = getIllustratedAvatar('user_boy', 'Callie Goodman');
-        if (statusEl) statusEl.innerHTML = '<span class="status-dot-green"></span> บันทึกส่วนตัว (Note to self)';
+    } else if (friend) {
+        if (titleEl) titleEl.textContent = friend.name;
+        if (avatarEl) avatarEl.innerHTML = getIllustratedAvatar(friend.avatarType, friend.name);
+        const isOnline = friend.status === 'online';
+        if (statusEl) {
+            statusEl.innerHTML = isOnline 
+                ? `<span class="status-dot-green"></span> ออนไลน์ • ${escapeHtml(friend.role || 'สมาชิกในระบบ')}`
+                : `<span class="text-muted">●</span> ออฟไลน์ • ${escapeHtml(friend.role || 'สมาชิกในระบบ')}`;
+        }
         CHAT_STATE.activeProjectId = 'all';
     } else {
         const project = CHAT_STATE.projects.find(p => p.id === chatId);
