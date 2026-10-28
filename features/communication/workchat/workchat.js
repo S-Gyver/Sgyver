@@ -1732,6 +1732,32 @@ function renderProjectDropdownList() {
     if (!list) return;
 
     let html = `
+        <li><h6 class="dropdown-header">เครื่องมือด่วน</h6></li>
+        <li>
+            <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="javascript:void(0)" onclick="triggerPhotoCapture()">
+                <i class="bi bi-camera-fill text-primary fs-5"></i>
+                <span class="fw-semibold">ถ่ายภาพ</span>
+            </a>
+        </li>
+        <li>
+            <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="javascript:void(0)" onclick="triggerImageSelect()">
+                <i class="bi bi-image-fill text-success fs-5"></i>
+                <span class="fw-semibold">รูปภาพจากคลัง</span>
+            </a>
+        </li>
+        <li>
+            <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="javascript:void(0)" onclick="showModernToast('บันทึกเสียงข้อความ...')">
+                <i class="bi bi-mic-fill text-danger fs-5"></i>
+                <span class="fw-semibold">ข้อความเสียง</span>
+            </a>
+        </li>
+        <li>
+            <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="javascript:void(0)" onclick="triggerFileInput()">
+                <i class="bi bi-paperclip text-info fs-5"></i>
+                <span class="fw-semibold">แนบไฟล์เอกสาร</span>
+            </a>
+        </li>
+        <li><hr class="dropdown-divider my-1"></li>
         <li><h6 class="dropdown-header">เลือกโปรเจกต์ที่กำลังคุย</h6></li>
         <li><a class="dropdown-item ${!CHAT_STATE.selectedTagProjectId ? 'active' : ''}" href="javascript:void(0)" onclick="selectTagProject('', 'ทั่วไป (General)')">ทั่วไป (General)</a></li>
     `;

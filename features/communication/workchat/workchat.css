@@ -957,10 +957,18 @@ body {
     letter-spacing: 0.5px;
 }
 
-/* Dynamic Input States: Image 1 (Not typing) vs Image 2 (Typing) */
-.chat-area-input-bar:not(.has-text) .btn-input-plus-wrap {
-    display: none !important;
+/* Dynamic Input States:
+   - When NOT typing (:not(.has-text)):
+     Show: [+] + [Mic] [Gallery] [Camera] + [Aa capsule] + [👍]
+   - When typing (.has-text):
+     Hide: [Mic] [Gallery] [Camera] (they hide inside [+])
+     Hide: [👍]
+     Show: [+] + [Aa capsule] + [Send Airplane button]
+*/
+.chat-area-input-bar .btn-input-plus-wrap {
+    display: inline-block !important;
 }
+
 .chat-area-input-bar:not(.has-text) .input-media-icons-row {
     display: flex !important;
 }
@@ -971,9 +979,6 @@ body {
     display: none !important;
 }
 
-.chat-area-input-bar.has-text .btn-input-plus-wrap {
-    display: inline-block !important;
-}
 .chat-area-input-bar.has-text .input-media-icons-row {
     display: none !important;
 }
