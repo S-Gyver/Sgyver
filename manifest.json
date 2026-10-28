@@ -1,8 +1,10 @@
 {
   "name": "S-Gyver Workspace",
   "short_name": "S-Gyver",
+  "id": "sgyver-workspace-main-app",
   "description": "ศูนย์รวมเครื่องมือธุรกิจ คลังสินค้า ใบเสนอราคา และ WorkChat สื่อสารทีม",
   "start_url": "./my_workspace.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#0b1120",
   "theme_color": "#06b6d4",

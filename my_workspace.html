@@ -2344,6 +2344,14 @@
                 }
             }
 
+            // 📱 Mobile Standalone WorkChat App Routing:
+            // On mobile (<= 768px), navigate directly to workchat.html
+            // so the browser installs WorkChat as its own separate app on the home screen!
+            if (toolId === 'app_workchat' && window.innerWidth <= 768) {
+                window.location.href = url;
+                return;
+            }
+
             const vp = document.getElementById('cs-app-viewport');
             const frame = document.getElementById('cs-app-frame');
             const backBtn = document.getElementById('cs-app-back-btn');

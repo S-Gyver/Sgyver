@@ -1,7 +1,8 @@
 {
-  "name": "S-Gyver WorkChat",
+  "name": "WorkChat - Gyver Messenger",
   "short_name": "WorkChat",
-  "description": "แชทคุยงานเรียลไทม์ สไตล์ Messenger",
+  "id": "sgyver-workchat-app",
+  "description": "แชทคุยงานเรียลไทม์ สไตล์ Messenger แยกเฉพาะห้องแชท",
   "start_url": "./workchat.html",
   "scope": "./",
   "display": "standalone",
