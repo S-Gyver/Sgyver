@@ -295,6 +295,39 @@ body {
     color: var(--text-light);
 }
 
+/* Chat Filter Tabs: ทั้งหมด, แชท, กลุ่ม */
+.chats-filter-tabs {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+}
+
+.chats-filter-pill {
+    padding: 5px 14px;
+    border-radius: var(--radius-pill);
+    border: 1px solid transparent;
+    background: var(--bg-subtle);
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    white-space: nowrap;
+    line-height: 1.2;
+}
+
+.chats-filter-pill:hover {
+    background: #e2e8f0;
+    color: var(--text-dark);
+}
+
+.chats-filter-pill.active {
+    background: var(--primary-blue);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.35);
+}
+
 /* Chats Stream */
 .chats-list-stream {
     flex: 1;

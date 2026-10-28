@@ -140,6 +140,19 @@
                     <i class="bi bi-search chats-search-icon"></i>
                     <input type="text" class="chats-search-input" id="chats-search-input" placeholder="Search messenger..." oninput="handleChatsSearch(this.value)">
                 </div>
+
+                <!-- Chat Filter Tabs: ทั้งหมด, แชท, กลุ่ม -->
+                <div class="chats-filter-tabs" id="chats-filter-tabs">
+                    <button type="button" class="chats-filter-pill active" data-filter="all" onclick="setChatsFilter('all')">
+                        ทั้งหมด
+                    </button>
+                    <button type="button" class="chats-filter-pill" data-filter="direct" onclick="setChatsFilter('direct')">
+                        แชท
+                    </button>
+                    <button type="button" class="chats-filter-pill" data-filter="group" onclick="setChatsFilter('group')">
+                        กลุ่ม
+                    </button>
+                </div>
             </div>
 
             <!-- Conversations Stream -->

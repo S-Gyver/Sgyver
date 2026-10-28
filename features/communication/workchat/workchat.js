@@ -16,6 +16,7 @@ const CHAT_STATE = {
     selectedTagProjectId: '',
     chatsSearchQuery: '',
     currentRailTab: 'chat',
+    chatFilter: 'all',
     stagedAttachment: null,
 
     projects: [],
@@ -863,17 +864,28 @@ async function reloadFilesFromCloud() {
 }
 
 // ── 4. CHATS COLUMN (MIDDLE COLUMN CONVERSATION LIST) ───────────────────────
+function setChatsFilter(filterType) {
+    CHAT_STATE.chatFilter = filterType;
+    document.querySelectorAll('.chats-filter-pill').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.filter === filterType);
+    });
+    renderChatsList();
+}
+window.setChatsFilter = setChatsFilter;
+
 function renderChatsList() {
     const container = document.getElementById('chats-list-stream');
     if (!container) return;
 
     const query = (CHAT_STATE.chatsSearchQuery || '').toLowerCase();
+    const currentFilter = CHAT_STATE.chatFilter || 'all';
 
     // 1. Group Conversations (Built-in + Custom Created)
     const groupChannels = (CHAT_STATE.groups || []).map(g => ({
         id: g.id,
         name: g.name,
         isGroup: true,
+        type: 'group',
         memberCount: (g.members && g.members.length) || 1,
         subtitleDefault: `กลุ่มแชท (${(g.members && g.members.length) || 1} คน)`,
         avatarType: 'group',
@@ -888,7 +900,8 @@ function renderChatsList() {
             subtitleDefault: 'Good idea! I like this.',
             avatarType: 'lilly',
             status: 'ออนไลน์ • ฝ่ายดีไซน์',
-            isDirect: true
+            isDirect: true,
+            type: 'direct'
         },
         {
             id: 'dm_rihanna',
@@ -896,7 +909,8 @@ function renderChatsList() {
             subtitleDefault: 'Great, Thanks!',
             avatarType: 'rihanna',
             status: 'ออนไลน์ • จัดซื้อและผลิต',
-            isDirect: true
+            isDirect: true,
+            type: 'direct'
         },
         {
             id: 'dm_gregory',
@@ -904,7 +918,8 @@ function renderChatsList() {
             subtitleDefault: 'This is so good man. Will do Remix.',
             avatarType: 'gregory',
             status: 'ออนไลน์ • วิศวกรโครงสร้าง',
-            isDirect: true
+            isDirect: true,
+            type: 'direct'
         },
         {
             id: 'dm_marry',
@@ -912,7 +927,8 @@ function renderChatsList() {
             subtitleDefault: 'Cool. We can help Lilly.',
             avatarType: 'marry',
             status: 'ออฟไลน์ • ประสานงาน',
-            isDirect: true
+            isDirect: true,
+            type: 'direct'
         },
         {
             id: 'dm_callie',
@@ -920,7 +936,8 @@ function renderChatsList() {
             subtitleDefault: 'You: Call me today. We have a new project.',
             avatarType: 'user_boy',
             status: 'บันทึกส่วนตัว (Note to self)',
-            isDirect: true
+            isDirect: true,
+            type: 'direct'
         }
     ];
 
@@ -933,10 +950,20 @@ function renderChatsList() {
         avatarType: (p.code && p.code.includes('PIM')) ? 'lilly' : 'gregory',
         status: `โปรเจกต์ ${p.code || ''}`,
         projectId: p.id,
-        isProject: true
+        isProject: true,
+        type: 'project'
     }));
 
-    const allChannels = [...groupChannels, ...directChannels, ...projectChannels];
+    let allChannels = [];
+    if (currentFilter === 'direct') {
+        allChannels = directChannels;
+    } else if (currentFilter === 'group') {
+        allChannels = groupChannels;
+    } else {
+        // 'all' includes Groups, Direct chats, and Projects
+        allChannels = [...groupChannels, ...directChannels, ...projectChannels];
+    }
+
     const filtered = allChannels.filter(c => 
         !query || 
         c.name.toLowerCase().includes(query) || 
@@ -944,6 +971,20 @@ function renderChatsList() {
     );
 
     if (filtered.length === 0) {
+        if (currentFilter === 'group') {
+            container.innerHTML = `
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-people fs-1 d-block mb-2 text-primary opacity-50"></i>
+                    <div class="fw-bold">ไม่พบกลุ่มคุยงาน</div>
+                    <div class="small mb-3">คุณสามารถสร้างกลุ่มคุยงานใหม่เพื่อคุยหลายคนได้เลยครับ</div>
+                    <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold" onclick="openNewGroupModal()">
+                        <i class="bi bi-plus-lg me-1"></i> สร้างกลุ่มคุยงาน
+                    </button>
+                </div>
+            `;
+            return;
+        }
+
         container.innerHTML = `
             <div class="text-center py-5 text-muted">
                 <i class="bi bi-chat-left-dots fs-1 d-block mb-2 text-primary opacity-50"></i>
@@ -2193,6 +2234,7 @@ function switchRailTab(tabName) {
             `;
         }
         if (searchInput) searchInput.placeholder = 'Search messenger...';
+        document.getElementById('chats-filter-tabs')?.classList.remove('d-none');
         renderChatsList();
 
     } else if (tabName === 'people') {
@@ -2210,6 +2252,7 @@ function switchRailTab(tabName) {
             `;
         }
         if (searchInput) searchInput.placeholder = 'Search people... (ค้นหารายชื่อเพื่อน)';
+        document.getElementById('chats-filter-tabs')?.classList.add('d-none');
         renderPeopleList();
 
     } else if (tabName === 'vault') {
