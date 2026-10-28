@@ -1,19 +1,21 @@
 /**
- * S-GYVER WORKCHAT & PROJECT FILE VAULT (VIP Lv.3)
- * Real-time Team Chat with Nested Project Folders & File Hub
+ * S-GYVER WORKCHAT & PROJECT FILE VAULT
+ * Modern Messenger Aesthetics – 3-Column Clean & Minimal Design
  */
 
 // ── 1. GLOBAL STATE & DEFAULT DATA ──────────────────────────────────────────
 const CHAT_STATE = {
     currentUser: {
-        username: 'user_' + Math.floor(1000 + Math.random() * 9000),
-        displayName: 'สมาชิก Gyver',
-        avatar: '👨‍💻'
+        username: 'callie_goodman',
+        displayName: 'Callie Goodman',
+        avatar: 'user_boy'
     },
-    activeProjectId: 'all', // 'all' or specific project id
-    activeFolderId: null,   // null (root) or specific folder id
+    activeChatId: 'general',
+    activeProjectId: 'all',
+    activeFolderId: null,
     selectedTagProjectId: '',
-    stagedAttachment: null, // { file, name, size, type, dataUrl }
+    chatsSearchQuery: '',
+    stagedAttachment: null,
 
     projects: [],
     folders: [],
@@ -21,11 +23,122 @@ const CHAT_STATE = {
     messages: [],
 
     activePreviewFile: null,
-    mobileView: 'chat', // 'chat' | 'drive'
+    mobileView: 'chat',
     realtimeChannel: null
 };
 
-const DEFAULT_AVATARS = ['👨‍💻', '🛠️', '🎨', '📋', '🚀', '🤖', '⭐', '👩‍💼', '💡', '📦'];
+// ── 🎨 ILLUSTRATED AVATARS (Matching Modern Cartoon Reference Screenshot) ──
+function getIllustratedAvatar(avatarTypeOrName, fallbackName) {
+    const key = String(avatarTypeOrName || fallbackName || '').toLowerCase();
+    
+    // 1. Lilly Jr. (Cute blonde girl with blue/yellow headband & side buns)
+    if (key.includes('lilly') || key.includes('มุก') || key.includes('design') || key.includes('pim')) {
+        return `
+            <svg viewBox="0 0 100 100" fill="none" class="w-100 h-100">
+                <rect width="100" height="100" fill="#FED7AA"/>
+                <!-- Hair Back -->
+                <circle cx="50" cy="46" r="32" fill="#FBBF24"/>
+                <!-- Headband -->
+                <path d="M22 42C22 28 34 20 50 20C66 20 78 28 78 42" stroke="#3B82F6" stroke-width="8" stroke-linecap="round"/>
+                <!-- Side buns -->
+                <circle cx="20" cy="40" r="9" fill="#F59E0B"/>
+                <circle cx="80" cy="40" r="9" fill="#F59E0B"/>
+                <!-- Face -->
+                <circle cx="50" cy="50" r="22" fill="#FFEDD5"/>
+                <!-- Hair Bangs -->
+                <path d="M36 40C40 44 48 44 50 42C52 44 60 44 64 40" stroke="#F59E0B" stroke-width="4" stroke-linecap="round"/>
+                <!-- Eyes -->
+                <circle cx="43" cy="48" r="2.5" fill="#1E293B"/>
+                <circle cx="57" cy="48" r="2.5" fill="#1E293B"/>
+                <!-- Smile -->
+                <path d="M46 56C48 59 52 59 54 56" stroke="#1E293B" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        `;
+    }
+    
+    // 2. Rihanna Goldberg (Curly dark hair girl with green headband)
+    if (key.includes('rihanna') || key.includes('goldberg')) {
+        return `
+            <svg viewBox="0 0 100 100" fill="none" class="w-100 h-100">
+                <rect width="100" height="100" fill="#FED7AA"/>
+                <!-- Big Curly Hair -->
+                <circle cx="34" cy="36" r="16" fill="#1E293B"/>
+                <circle cx="66" cy="36" r="16" fill="#1E293B"/>
+                <circle cx="50" cy="28" r="18" fill="#1E293B"/>
+                <circle cx="28" cy="50" r="14" fill="#1E293B"/>
+                <circle cx="72" cy="50" r="14" fill="#1E293B"/>
+                <!-- Headband -->
+                <path d="M28 46C28 36 38 32 50 32C62 32 72 36 72 46" stroke="#10B981" stroke-width="7" stroke-linecap="round"/>
+                <!-- Face -->
+                <circle cx="50" cy="52" r="20" fill="#FDBA74"/>
+                <!-- Eyes -->
+                <circle cx="44" cy="50" r="2.5" fill="#1E293B"/>
+                <circle cx="56" cy="50" r="2.5" fill="#1E293B"/>
+                <!-- Smile -->
+                <path d="M46 58C48 61 52 61 54 58" stroke="#1E293B" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        `;
+    }
+
+    // 3. Gregory Portman (Cool guy with blonde hair & cyber cyan eye lens)
+    if (key.includes('gregory') || key.includes('portman') || key.includes('เอก') || key.includes('robot') || key.includes('ช่าง')) {
+        return `
+            <svg viewBox="0 0 100 100" fill="none" class="w-100 h-100">
+                <rect width="100" height="100" fill="#E2E8F0"/>
+                <!-- Blonde Hair -->
+                <path d="M30 42C30 26 38 18 52 18C66 18 70 26 70 38" fill="#FBBF24"/>
+                <circle cx="50" cy="48" r="21" fill="#FFEDD5"/>
+                <!-- Left Eye -->
+                <circle cx="43" cy="46" r="2.5" fill="#1E293B"/>
+                <!-- Right Cyber Lens -->
+                <circle cx="57" cy="46" r="6" fill="#06B6D4" opacity="0.3"/>
+                <circle cx="57" cy="46" r="3.5" fill="#06B6D4"/>
+                <circle cx="57" cy="46" r="1.5" fill="#FFFFFF"/>
+                <path d="M51 46H63" stroke="#06B6D4" stroke-width="1.5"/>
+                <path d="M46 54C48 56 52 56 54 54" stroke="#0F172A" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        `;
+    }
+
+    // 4. Marry Adams (Dark hair bob girl with subtle pink tint)
+    if (key.includes('marry') || key.includes('adams') || key.includes('จัดซื้อ')) {
+        return `
+            <svg viewBox="0 0 100 100" fill="none" class="w-100 h-100">
+                <rect width="100" height="100" fill="#FEE2E2"/>
+                <!-- Bob Hair -->
+                <path d="M26 44C26 28 36 20 50 20C64 20 74 28 74 44V60C74 60 70 54 66 54C62 54 58 60 50 60C42 60 38 54 34 54C30 54 26 60 26 60V44Z" fill="#334155"/>
+                <circle cx="50" cy="48" r="19" fill="#FFEDD5"/>
+                <circle cx="44" cy="47" r="2.5" fill="#1E293B"/>
+                <circle cx="56" cy="47" r="2.5" fill="#1E293B"/>
+                <path d="M46 54C48 56 52 56 54 54" stroke="#1E293B" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        `;
+    }
+
+    // 5. Default User / Boy with dark swept hair (like user screenshot bottom left & outgoing msg)
+    return `
+        <svg viewBox="0 0 100 100" fill="none" class="w-100 h-100">
+            <rect width="100" height="100" fill="#E2E8F0"/>
+            <path d="M35 75C35 68 42 62 50 62C58 62 65 68 65 75V100H35V75Z" fill="#F1F5F9"/>
+            <circle cx="50" cy="48" r="21" fill="#FFEDD5"/>
+            <!-- Dark swept hair -->
+            <path d="M28 42C28 26 38 18 54 18C68 18 74 26 74 38C74 44 70 48 64 48C58 48 56 42 50 42C44 42 38 48 34 48C30 48 28 46 28 42Z" fill="#1E293B"/>
+            <circle cx="45" cy="47" r="2" fill="#0F172A"/>
+            <circle cx="57" cy="47" r="2" fill="#0F172A"/>
+            <path d="M42 42C45 41 48 42 48 42" stroke="#0F172A" stroke-width="2" stroke-linecap="round"/>
+            <path d="M54 42C57 41 60 42 60 42" stroke="#0F172A" stroke-width="2" stroke-linecap="round"/>
+            <path d="M47 54C49 56 52 56 54 54" stroke="#0F172A" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+    `;
+}
+
+function renderAvatarDisplay(avatar) {
+    if (!avatar) return getIllustratedAvatar('callie');
+    if (typeof avatar === 'string' && (avatar.startsWith('data:image/') || avatar.startsWith('http://') || avatar.startsWith('https://'))) {
+        return `<img src="${avatar}" alt="Avatar" class="w-100 h-100 object-fit-cover">`;
+    }
+    return getIllustratedAvatar(avatar);
+}
 
 // Starter Mock Data for Instant Demonstration
 const DEFAULT_PROJECTS = [
@@ -33,7 +146,7 @@ const DEFAULT_PROJECTS = [
         id: 'proj_pim_2026',
         name: 'โปรเจกต์ A - นิทรรศการ 10 ปีสาธิต PIM',
         code: 'PIM-2026',
-        color: '#06b6d4',
+        color: '#3b82f6',
         description: 'งานผลิตฉาก Backdrop ไม้และแท่นวางโมเดลนิทรรศการ',
         created_by: 'เอส (Admin)',
         created_at: new Date(Date.now() - 86400000 * 2).toISOString()
@@ -112,32 +225,54 @@ const DEFAULT_FILES = [
 const DEFAULT_MESSAGES = [
     {
         id: 'msg_1',
-        sender_username: 'เอส (Admin)',
-        sender_name: 'เอส (Admin)',
-        avatar: '👨‍💻',
-        message_text: 'สวัสดีทีมงานทุกคนครับ! วันนี้เราเริ่มคุยเรื่อง "โปรเจกต์ A - นิทรรศการ PIM" นะครับ ผมสร้างโฟลเดอร์เก็บแบบ 3D และใบเสนอราคาไว้ในคลังไฟล์ฝั่งขวาแล้ว เข้าไปดูได้เลย',
-        project_id: 'proj_pim_2026',
-        folder_id: 'fld_pim_drawings',
+        sender_username: 'callie_goodman',
+        sender_name: 'Callie Goodman',
+        avatar: 'user_boy',
+        message_text: 'Hi, Mrs. Lilly',
+        project_id: null,
+        folder_id: null,
         file_data: null,
         created_at: new Date(Date.now() - 72000000).toISOString()
     },
     {
         id: 'msg_2',
-        sender_username: 'น้องมุก (ดีไซน์)',
-        sender_name: 'น้องมุก (ดีไซน์)',
-        avatar: '🎨',
-        message_text: 'รับทราบค่ะพี่เอส หนูกำลังขึ้นรูปขาตั้งไม้ทดสอบหน้างาน เดี๋ยวถ่ายรูปส่งเข้าโฟลเดอร์รูปภาพให้นะคะ',
-        project_id: 'proj_pim_2026',
+        sender_username: 'lilly_jr',
+        sender_name: 'Lilly Jr.',
+        avatar: 'lilly',
+        message_text: 'Hey',
+        project_id: null,
         folder_id: null,
         file_data: null,
         created_at: new Date(Date.now() - 54000000).toISOString()
     },
     {
         id: 'msg_3',
-        sender_username: 'ช่างเอก',
-        sender_name: 'ช่างเอก',
-        avatar: '🛠️',
-        message_text: 'ส่งรูปชิ้นงานจริงเข้าไปในโฟลเดอร์รูปหน้างานแล้วครับ กดดูจากในแชทนี้ได้เลยครับผม',
+        sender_username: 'callie_goodman',
+        sender_name: 'Callie Goodman',
+        avatar: 'user_boy',
+        message_text: 'Hello. Mrs. Lilly, i have a good idea how to create a music with help of our team. Can we meet up tomorrow near the bar to talk?',
+        project_id: 'proj_pim_2026',
+        folder_id: null,
+        file_data: null,
+        created_at: new Date(Date.now() - 36000000).toISOString()
+    },
+    {
+        id: 'msg_4',
+        sender_username: 'lilly_jr',
+        sender_name: 'Lilly Jr.',
+        avatar: 'lilly',
+        message_text: 'Good idea! i like this',
+        project_id: 'proj_pim_2026',
+        folder_id: null,
+        file_data: null,
+        created_at: new Date(Date.now() - 18000000).toISOString()
+    },
+    {
+        id: 'msg_5',
+        sender_username: 'callie_goodman',
+        sender_name: 'Callie Goodman',
+        avatar: 'user_boy',
+        message_text: 'แนบแบบแปลนโครงสร้างไม้และตัวอย่างชิ้นงานประกอบจริงไว้ในโฟลเดอร์โปรเจกต์ PIM ให้เรียบร้อยแล้วครับ',
         project_id: 'proj_pim_2026',
         folder_id: 'fld_pim_photos',
         file_data: {
@@ -146,7 +281,7 @@ const DEFAULT_MESSAGES = [
             type: 'image',
             size: '1.1 MB'
         },
-        created_at: new Date(Date.now() - 36000000).toISOString()
+        created_at: new Date(Date.now() - 6000000).toISOString()
     }
 ];
 
@@ -158,9 +293,8 @@ document.addEventListener('DOMContentLoaded', () => {
     renderProjectDropdownList();
     renderProjectPills();
     renderExplorer();
+    renderChatsList();
     renderMessages();
-
-    // Auto-scroll messages to bottom
     scrollMessagesToBottom();
 });
 
@@ -172,7 +306,7 @@ async function syncUserProfileFromGyver() {
     let userRole = 'user';
     let isLoggedIn = false;
 
-    // Step 1: Immediate sync from Parent Window DOM (when running in Workspace iframe)
+    // Step 1: Sync from Parent Window DOM (when in iframe)
     try {
         if (window.parent && window.parent !== window) {
             const pNameEl = window.parent.document.getElementById('nav-user-name');
@@ -185,8 +319,6 @@ async function syncUserProfileFromGyver() {
             if (pAvatarEl && pAvatarEl.src && !pAvatarEl.src.includes('149071.png')) {
                 syncedAvatar = pAvatarEl.src;
             }
-
-            // Sync level from parent window if available
             if (window.parent.currentUserRole === 'admin') {
                 userRole = 'admin';
                 userLevel = 5;
@@ -196,9 +328,7 @@ async function syncUserProfileFromGyver() {
                 isLoggedIn = true;
             }
         }
-    } catch (e) {
-        console.warn('[WorkChat] Parent frame access notice:', e);
-    }
+    } catch (_) {}
 
     // Check localStorage admin session
     try {
@@ -209,7 +339,7 @@ async function syncUserProfileFromGyver() {
         }
     } catch (_) {}
 
-    // Step 2: Fallback to localStorage cache
+    // Fallback to localStorage cache
     try {
         const saved = localStorage.getItem('gyver_workchat_user');
         if (saved) {
@@ -218,132 +348,73 @@ async function syncUserProfileFromGyver() {
             if (!syncedAvatar && parsed.avatar) syncedAvatar = parsed.avatar;
             if (!syncedUsername && parsed.username) syncedUsername = parsed.username;
             if (parsed.level !== undefined && userLevel === 1) userLevel = parsed.level;
+            if (parsed.role && userRole === 'user') userRole = parsed.role;
+            if (parsed.isLoggedIn) isLoggedIn = true;
         }
     } catch (_) {}
 
-    // Apply immediate data
+    // Step 3: Check Supabase session
+    if (window.supabaseClient && !isLoggedIn) {
+        try {
+            const { data: { session } } = await window.supabaseClient.auth.getSession();
+            if (session && session.user) {
+                const u = session.user;
+                syncedUsername = u.email ? u.email.split('@')[0] : 'user';
+                syncedName = u.user_metadata?.full_name || u.user_metadata?.name || syncedUsername;
+                syncedAvatar = u.user_metadata?.avatar_url || '';
+                isLoggedIn = true;
+                userLevel = u.user_metadata?.level || 1;
+            }
+        } catch (_) {}
+    }
+
     if (syncedName) {
         CHAT_STATE.currentUser.displayName = syncedName;
         CHAT_STATE.currentUser.username = syncedUsername || syncedName.toLowerCase().replace(/\s+/g, '_');
+        CHAT_STATE.currentUser.avatar = syncedAvatar || 'user_boy';
+        CHAT_STATE.currentUser.level = userLevel;
+        CHAT_STATE.currentUser.role = userRole;
+
+        try {
+            localStorage.setItem('gyver_workchat_user', JSON.stringify({
+                displayName: syncedName,
+                username: CHAT_STATE.currentUser.username,
+                avatar: CHAT_STATE.currentUser.avatar,
+                level: userLevel,
+                role: userRole,
+                isLoggedIn: true
+            }));
+        } catch (_) {}
     }
-    if (syncedAvatar) {
-        CHAT_STATE.currentUser.avatar = syncedAvatar;
-    }
+
     updateUserUI();
-
-    // Step 3: Deep sync from Supabase Auth & profiles table (covers standalone PWA and cloud refresh)
-    try {
-        const client = window.supabaseClient || (window.parent && window.parent.supabaseClient);
-        if (client && client.auth) {
-            const { data: { session } } = await client.auth.getSession();
-            if (session && session.user) {
-                isLoggedIn = true;
-                const u = session.user;
-                const meta = u.user_metadata || {};
-                let dbName = meta.nickname || meta.username || meta.first_name || u.email?.split('@')[0];
-                let dbAvatar = meta.avatar_url;
-
-                try {
-                    const { data: prof, error } = await client
-                        .from('profiles')
-                        .select('username, nickname, first_name, last_name, avatar_url, role, level')
-                        .eq('id', u.id)
-                        .maybeSingle();
-
-                    if (prof && !error) {
-                        if (prof.nickname && prof.nickname.trim()) dbName = prof.nickname.trim();
-                        else if (prof.first_name && prof.first_name.trim()) dbName = prof.first_name.trim();
-                        else if (prof.username && prof.username.trim()) dbName = prof.username.trim();
-
-                        if (prof.avatar_url) dbAvatar = prof.avatar_url;
-
-                        if (prof.role === 'admin' || (prof.username && prof.username.toLowerCase() === 'admin')) {
-                            userRole = 'admin';
-                            userLevel = 5;
-                        } else if (prof.level !== undefined && prof.level !== null) {
-                            userLevel = Number(prof.level);
-                        }
-                    }
-                } catch (pe) {
-                    console.warn('[WorkChat] Profile table fetch:', pe);
-                }
-
-                if (dbName) {
-                    CHAT_STATE.currentUser.displayName = dbName;
-                    CHAT_STATE.currentUser.username = (meta.username || dbName).toLowerCase().replace(/\s+/g, '_');
-                }
-                if (dbAvatar) {
-                    CHAT_STATE.currentUser.avatar = dbAvatar;
-                }
-                CHAT_STATE.currentUser.level = userLevel;
-                CHAT_STATE.currentUser.role = userRole;
-
-                try {
-                    localStorage.setItem('gyver_workchat_user', JSON.stringify(CHAT_STATE.currentUser));
-                } catch (_) {}
-
-                updateUserUI();
-                renderMessages();
-            }
-        }
-    } catch (se) {
-        console.warn('[WorkChat] Supabase session sync:', se);
-    }
-
-    // 🛡️ Step 4: Access Control Gate (Requires VIP Lv.4 or Admin Lv.5)
-    enforceWorkChatAccessControl(userLevel, userRole, isLoggedIn);
+    enforcePermissionGuard(userLevel, userRole);
 }
 
-function enforceWorkChatAccessControl(level, role, isLoggedIn) {
-    const guardEl = document.getElementById('workchat-permission-guard');
-    if (!guardEl) return;
+function enforcePermissionGuard(level, role) {
+    const isVipOrAdmin = (level >= 4 || role === 'admin');
+    const guardOverlay = document.getElementById('workchat-permission-guard');
+    if (!guardOverlay) return;
 
-    // Admin or Level >= 4 has full access
-    if (role === 'admin' || level >= 4) {
-        guardEl.classList.add('d-none');
-        return;
-    }
-
-    // Access Denied: Show Guard Overlay
-    guardEl.classList.remove('d-none');
-    const nameEl = document.getElementById('guard-current-user-name');
-    const badgeEl = document.getElementById('guard-current-level-badge');
-
-    if (nameEl) {
-        nameEl.textContent = CHAT_STATE.currentUser.displayName || 'ผู้ใช้งานทั่วไป';
-    }
-    if (badgeEl) {
-        if (!isLoggedIn) {
+    if (isVipOrAdmin) {
+        guardOverlay.classList.add('d-none');
+    } else {
+        guardOverlay.classList.remove('d-none');
+        const nameEl = document.getElementById('guard-current-user-name');
+        const badgeEl = document.getElementById('guard-current-level-badge');
+        if (nameEl) nameEl.textContent = CHAT_STATE.currentUser.displayName || 'ผู้ใช้งาน';
+        if (badgeEl) {
             badgeEl.className = 'badge bg-secondary font-mono';
-            badgeEl.textContent = 'ยังไม่ได้เข้าสู่ระบบ';
-        } else {
-            const levelLabels = {
-                0: 'Lv.0 Guest',
-                1: 'Lv.1 Standard',
-                2: 'Lv.2 VIP Pro',
-                3: 'Lv.3 Business'
-            };
-            badgeEl.className = 'badge bg-warning text-dark font-mono';
-            badgeEl.textContent = levelLabels[level] || `Lv.${level}`;
+            badgeEl.textContent = `Lv.${level}`;
         }
     }
-}
-
-function renderAvatarDisplay(avatar) {
-    if (!avatar) return '👤';
-    if (typeof avatar === 'string' && (avatar.startsWith('data:image/') || avatar.startsWith('http://') || avatar.startsWith('https://'))) {
-        return `<img src="${avatar}" alt="Avatar" class="avatar-img-fit">`;
-    }
-    return avatar;
 }
 
 function updateUserUI() {
     const u = CHAT_STATE.currentUser;
-    const nameEl = document.getElementById('topbar-username');
-    const avatarEl = document.getElementById('topbar-avatar');
-    if (nameEl) nameEl.textContent = u.displayName || u.username;
-    if (avatarEl) {
-        avatarEl.innerHTML = renderAvatarDisplay(u.avatar || '👨‍💻');
+    const railAvatar = document.getElementById('rail-user-avatar');
+    if (railAvatar) {
+        railAvatar.innerHTML = renderAvatarDisplay(u.avatar || 'user_boy');
     }
 }
 
@@ -352,12 +423,11 @@ function handleUserProfileClick() {
     const nameEl = document.getElementById('modal-card-name');
     const avatarEl = document.getElementById('modal-card-avatar');
     if (nameEl) nameEl.textContent = u.displayName || u.username;
-    if (avatarEl) avatarEl.innerHTML = renderAvatarDisplay(u.avatar || '👨‍💻');
+    if (avatarEl) avatarEl.innerHTML = renderAvatarDisplay(u.avatar || 'user_boy');
 
     const modalEl = document.getElementById('modalUserProfileCard');
     if (modalEl) {
-        const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
-        bsModal.show();
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
     }
 }
 
@@ -375,8 +445,7 @@ function loadWorkspaceData() {
 
         const savedMessages = localStorage.getItem('sgyver_workchat_messages');
         CHAT_STATE.messages = savedMessages ? JSON.parse(savedMessages) : DEFAULT_MESSAGES;
-    } catch (e) {
-        console.warn('Storage read error, using defaults:', e);
+    } catch (_) {
         CHAT_STATE.projects = DEFAULT_PROJECTS;
         CHAT_STATE.folders = DEFAULT_FOLDERS;
         CHAT_STATE.files = DEFAULT_FILES;
@@ -397,43 +466,33 @@ async function initSupabaseSync() {
     if (!window.supabaseClient) return;
 
     try {
-        // Fetch Cloud Projects
         const { data: dbProjects } = await window.supabaseClient.from('workchat_projects').select('*').order('created_at', { ascending: false });
-        if (dbProjects && dbProjects.length > 0) {
-            CHAT_STATE.projects = dbProjects;
-        }
+        if (dbProjects && dbProjects.length > 0) CHAT_STATE.projects = dbProjects;
 
-        // Fetch Cloud Folders
         const { data: dbFolders } = await window.supabaseClient.from('workchat_folders').select('*').order('created_at', { ascending: true });
-        if (dbFolders && dbFolders.length > 0) {
-            CHAT_STATE.folders = dbFolders;
-        }
+        if (dbFolders && dbFolders.length > 0) CHAT_STATE.folders = dbFolders;
 
-        // Fetch Cloud Files
         const { data: dbFiles } = await window.supabaseClient.from('workchat_files').select('*').order('created_at', { ascending: false });
-        if (dbFiles && dbFiles.length > 0) {
-            CHAT_STATE.files = dbFiles;
-        }
+        if (dbFiles && dbFiles.length > 0) CHAT_STATE.files = dbFiles;
 
-        // Fetch Cloud Messages
         const { data: dbMessages } = await window.supabaseClient.from('workchat_messages').select('*').order('created_at', { ascending: true }).limit(100);
-        if (dbMessages && dbMessages.length > 0) {
-            CHAT_STATE.messages = dbMessages;
-        }
+        if (dbMessages && dbMessages.length > 0) CHAT_STATE.messages = dbMessages;
 
         saveWorkspaceData();
         renderProjectDropdownList();
         renderProjectPills();
         renderExplorer();
+        renderChatsList();
         renderMessages();
         scrollMessagesToBottom();
 
-        // Subscribe to Realtime Messages
+        // Realtime Subscription
         CHAT_STATE.realtimeChannel = window.supabaseClient.channel('workchat_channel')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'workchat_messages' }, payload => {
                 if (payload.new && !CHAT_STATE.messages.find(m => m.id === payload.new.id)) {
                     CHAT_STATE.messages.push(payload.new);
                     saveWorkspaceData();
+                    renderChatsList();
                     renderMessages();
                     scrollMessagesToBottom();
                     playIncomingChime();
@@ -448,7 +507,7 @@ async function initSupabaseSync() {
             .subscribe();
 
     } catch (err) {
-        console.warn('Supabase Realtime not configured yet, running in instant local mode:', err);
+        console.warn('Supabase local sync notice:', err);
     }
 }
 
@@ -460,6 +519,7 @@ async function reloadProjectsFromCloud() {
         saveWorkspaceData();
         renderProjectDropdownList();
         renderProjectPills();
+        renderChatsList();
     }
 }
 
@@ -473,7 +533,148 @@ async function reloadFilesFromCloud() {
     }
 }
 
-// ── 4. CHAT MESSAGING ENGINE ────────────────────────────────────────────────
+// ── 4. CHATS COLUMN (MIDDLE COLUMN CONVERSATION LIST) ───────────────────────
+function renderChatsList() {
+    const container = document.getElementById('chats-list-stream');
+    if (!container) return;
+
+    const query = (CHAT_STATE.chatsSearchQuery || '').toLowerCase();
+
+    // Built-in conversations
+    const channels = [
+        {
+            id: 'general',
+            name: 'Lilly Jr.',
+            subtitleDefault: 'Good idea! I like this.',
+            avatarType: 'lilly',
+            status: 'ออนไลน์ • ทีมงาน 3 คน'
+        },
+        {
+            id: 'dm_rihanna',
+            name: 'Rihanna Goldberg',
+            subtitleDefault: 'Great, Thanks!',
+            avatarType: 'rihanna',
+            status: 'ออนไลน์'
+        },
+        {
+            id: 'dm_gregory',
+            name: 'Gregory Portman',
+            subtitleDefault: 'This is so good man. Will do Remix.',
+            avatarType: 'gregory',
+            status: 'ออนไลน์'
+        },
+        {
+            id: 'dm_marry',
+            name: 'Marry Adams',
+            subtitleDefault: 'Cool. We can help Lilly.',
+            avatarType: 'marry',
+            status: 'ออฟไลน์'
+        },
+        {
+            id: 'dm_callie',
+            name: 'Callie Goodman',
+            subtitleDefault: 'You: Call me today. We have a new project.',
+            avatarType: 'user_boy',
+            status: 'ออนไลน์'
+        },
+        // Dynamic Projects
+        ...CHAT_STATE.projects.map(p => ({
+            id: p.id,
+            name: p.name,
+            code: p.code,
+            subtitleDefault: p.description || 'โฟลเดอร์ไฟล์โปรเจกต์',
+            avatarType: (p.code && p.code.includes('PIM')) ? 'lilly' : 'gregory',
+            status: `โปรเจกต์ ${p.code || ''}`,
+            projectId: p.id
+        }))
+    ];
+
+    const filtered = channels.filter(c => !query || c.name.toLowerCase().includes(query) || (c.code && c.code.toLowerCase().includes(query)));
+
+    container.innerHTML = filtered.map(item => {
+        const isActive = (CHAT_STATE.activeChatId === item.id) || (!CHAT_STATE.activeChatId && item.id === 'general');
+        
+        // Find latest message snippet
+        let snippet = item.subtitleDefault;
+        let lastTime = '';
+        if (item.id === 'general') {
+            const m = CHAT_STATE.messages[CHAT_STATE.messages.length - 1];
+            if (m) {
+                snippet = m.message_text;
+                lastTime = formatMessageTime(m.created_at);
+            }
+        }
+
+        return `
+            <div class="chat-conversation-item ${isActive ? 'active' : ''}" onclick="selectChatConversation('${item.id}')">
+                <div class="item-avatar-circle">
+                    ${getIllustratedAvatar(item.avatarType, item.name)}
+                </div>
+                <div class="item-info">
+                    <div class="item-title-row">
+                        <span class="item-name">${escapeHtml(item.name)}</span>
+                        ${lastTime ? `<span class="item-time">${lastTime}</span>` : ''}
+                    </div>
+                    <div class="item-snippet">${escapeHtml(snippet)}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function handleChatsSearch(query) {
+    CHAT_STATE.chatsSearchQuery = query;
+    renderChatsList();
+}
+window.handleChatsSearch = handleChatsSearch;
+
+function selectChatConversation(chatId) {
+    CHAT_STATE.activeChatId = chatId;
+
+    const titleEl = document.getElementById('active-chat-name');
+    const avatarEl = document.getElementById('active-chat-avatar');
+    const statusEl = document.getElementById('active-chat-status');
+
+    if (chatId === 'general') {
+        if (titleEl) titleEl.textContent = 'Lilly Jr.';
+        if (avatarEl) avatarEl.innerHTML = getIllustratedAvatar('lilly', 'Lilly Jr.');
+        if (statusEl) statusEl.innerHTML = '<span class="status-dot-green"></span> ออนไลน์ • ทีมงาน 3 คน';
+        CHAT_STATE.activeProjectId = 'all';
+    } else if (chatId === 'dm_rihanna') {
+        if (titleEl) titleEl.textContent = 'Rihanna Goldberg';
+        if (avatarEl) avatarEl.innerHTML = getIllustratedAvatar('rihanna', 'Rihanna Goldberg');
+        if (statusEl) statusEl.innerHTML = '<span class="status-dot-green"></span> ออนไลน์';
+    } else if (chatId === 'dm_gregory') {
+        if (titleEl) titleEl.textContent = 'Gregory Portman';
+        if (avatarEl) avatarEl.innerHTML = getIllustratedAvatar('gregory', 'Gregory Portman');
+        if (statusEl) statusEl.innerHTML = '<span class="status-dot-green"></span> ออนไลน์';
+    } else if (chatId === 'dm_marry') {
+        if (titleEl) titleEl.textContent = 'Marry Adams';
+        if (avatarEl) avatarEl.innerHTML = getIllustratedAvatar('marry', 'Marry Adams');
+        if (statusEl) statusEl.innerHTML = '<span class="text-muted">●</span> ออฟไลน์';
+    } else {
+        const project = CHAT_STATE.projects.find(p => p.id === chatId);
+        if (project) {
+            CHAT_STATE.activeProjectId = project.id;
+            CHAT_STATE.selectedTagProjectId = project.id;
+            if (titleEl) titleEl.textContent = project.name;
+            if (avatarEl) avatarEl.innerHTML = getIllustratedAvatar(project.code?.includes('PIM') ? 'lilly' : 'gregory', project.name);
+            if (statusEl) statusEl.innerHTML = `<span class="status-dot-green"></span> โปรเจกต์: ${escapeHtml(project.code || '')}`;
+        }
+    }
+
+    renderChatsList();
+    renderMessages();
+    scrollMessagesToBottom();
+
+    // Mobile: Switch view to chat
+    if (window.innerWidth <= 768) {
+        document.body.classList.add('mobile-view-chat');
+    }
+}
+window.selectChatConversation = selectChatConversation;
+
+// ── 5. CHAT MESSAGING ENGINE (MODERN BUBBLES) ───────────────────────────────
 function renderMessages() {
     const container = document.getElementById('messages-stream');
     if (!container) return;
@@ -481,7 +682,7 @@ function renderMessages() {
     if (CHAT_STATE.messages.length === 0) {
         container.innerHTML = `
             <div class="text-center py-5 text-muted">
-                <i class="bi bi-chat-dots fs-1 d-block mb-2 text-cyan opacity-50"></i>
+                <i class="bi bi-chat-dots fs-1 d-block mb-2 text-primary opacity-50"></i>
                 <div class="fw-bold">ยังไม่มีข้อความ</div>
                 <div class="small">พิมพ์ข้อความแรกเพื่อเริ่มคุยงานกับทีมของคุณได้เลยครับ</div>
             </div>
@@ -490,7 +691,7 @@ function renderMessages() {
     }
 
     container.innerHTML = CHAT_STATE.messages.map(msg => {
-        const isMe = (msg.sender_username === CHAT_STATE.currentUser.username || msg.sender_name === CHAT_STATE.currentUser.displayName);
+        const isMe = (msg.sender_username === CHAT_STATE.currentUser.username || msg.sender_name === CHAT_STATE.currentUser.displayName || msg.sender_username === 'callie_goodman');
         const timeStr = formatMessageTime(msg.created_at);
         const project = CHAT_STATE.projects.find(p => p.id === msg.project_id);
 
@@ -499,42 +700,45 @@ function renderMessages() {
             const f = msg.file_data;
             const isImg = f.type && (f.type.startsWith('image/') || f.type === 'image');
             attachedHtml = `
-                <div class="msg-attached-card">
-                    <div class="msg-attached-thumb" onclick="previewFileDirectly('${escapeHtml(f.name)}', '${escapeHtml(f.url)}')">
-                        ${isImg ? `<img src="${f.url}" class="w-100 h-100 rounded object-fit-cover" alt="thumb">` : `<i class="bi bi-file-earmark-arrow-down-fill"></i>`}
+                <div class="msg-file-card">
+                    <div class="msg-file-thumb" onclick="previewFileDirectly('${escapeHtml(f.name)}', '${escapeHtml(f.url)}')">
+                        ${isImg ? `<img src="${f.url}" class="w-100 h-100 object-fit-cover rounded" alt="thumb">` : `<i class="bi bi-file-earmark-arrow-down-fill"></i>`}
                     </div>
-                    <div class="msg-attached-info">
-                        <div class="msg-attached-name" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</div>
-                        <div class="msg-attached-meta">${f.size || 'ไฟล์แนบ'} ${project ? `• โฟลเดอร์ ${escapeHtml(project.name)}` : ''}</div>
+                    <div class="msg-file-info">
+                        <div class="msg-file-name" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</div>
+                        <div class="msg-file-meta">${f.size || 'ไฟล์แนบ'} ${project ? `• ${escapeHtml(project.code || project.name)}` : ''}</div>
                     </div>
-                    <a href="${f.url}" download="${escapeHtml(f.name)}" class="btn btn-sm btn-outline-light py-0 px-2" title="ดาวน์โหลด">
+                    <a href="${f.url}" download="${escapeHtml(f.name)}" class="msg-file-dl-btn" title="ดาวน์โหลด">
                         <i class="bi bi-download"></i>
                     </a>
                 </div>
             `;
         }
 
+        const avatarMarkup = isMe 
+            ? getIllustratedAvatar('user_boy', 'Callie Goodman') 
+            : getIllustratedAvatar(msg.avatar || 'lilly', msg.sender_name);
+
         return `
-            <div class="msg-group ${isMe ? 'my-msg' : 'other-msg'}">
-                <div class="msg-avatar" style="${isMe ? 'background: linear-gradient(135deg, #0891b2, #0284c7);' : ''}">
-                    ${renderAvatarDisplay(msg.avatar)}
+            <div class="msg-row ${isMe ? 'outbound' : 'inbound'}">
+                <div class="msg-avatar-circle">
+                    ${avatarMarkup}
                 </div>
-                <div class="msg-body-wrapper">
-                    ${!isMe ? `<div class="msg-sender-info"><strong>${escapeHtml(msg.sender_name)}</strong> <span>${timeStr}</span></div>` : ''}
-                    
-                    <div class="msg-bubble">
+                <div class="msg-content-wrapper">
+                    ${!isMe ? `<div class="msg-sender-name">${escapeHtml(msg.sender_name)}</div>` : ''}
+                    <div class="msg-bubble-box">
                         ${project ? `
-                            <div class="msg-project-tag" style="border-left: 3px solid ${project.color || '#06b6d4'};" onclick="selectProjectFilter('${project.id}')" title="คลิกเพื่อเปิดดูไฟล์โปรเจกต์นี้">
-                                <i class="bi bi-folder-fill" style="color: ${project.color || '#06b6d4'};"></i>
+                            <div class="msg-project-chip" onclick="selectProjectFilter('${project.id}')" title="คลิกเปิดดูไฟล์โปรเจกต์นี้">
+                                <i class="bi bi-folder-fill" style="color: ${project.color || '#f59e0b'};"></i>
                                 <span>${escapeHtml(project.code || project.name)}</span>
                             </div>
                         ` : ''}
-                        
                         <div>${escapeHtml(msg.message_text)}</div>
                         ${attachedHtml}
                     </div>
-
-                    ${isMe ? `<div class="msg-time-status"><span>${timeStr}</span> <i class="bi bi-check2-all text-cyan"></i></div>` : ''}
+                    <div class="msg-time-label">
+                        ${timeStr} ${isMe ? '<i class="bi bi-check2-all text-primary ms-1"></i>' : ''}
+                    </div>
                 </div>
             </div>
         `;
@@ -551,7 +755,7 @@ function handleInputKeyDown(e) {
 function autoGrowTextarea(el) {
     if (!el) return;
     el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+    el.style.height = Math.min(el.scrollHeight, 100) + 'px';
 }
 
 function triggerFileInput() {
@@ -570,7 +774,6 @@ function triggerPhotoCapture() {
 function handleFileSelected(e) {
     const file = e.target.files[0];
     if (!file) return;
-
     stageFileAttachment(file);
     e.target.value = '';
 }
@@ -598,7 +801,7 @@ function stageFileAttachment(file) {
             if (file.type.startsWith('image/')) {
                 thumbWrap.innerHTML = `<img src="${evt.target.result}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px;">`;
             } else {
-                thumbWrap.innerHTML = `<i class="bi bi-file-earmark-arrow-up fs-3 text-cyan"></i>`;
+                thumbWrap.innerHTML = `<i class="bi bi-file-earmark-arrow-up fs-3 text-primary"></i>`;
             }
         }
 
@@ -648,7 +851,6 @@ async function sendMessage() {
     let targetProjectId = CHAT_STATE.selectedTagProjectId || null;
     let targetFolderId = null;
 
-    // Process attachment if staged
     if (hasAttachment) {
         const att = CHAT_STATE.stagedAttachment;
         const select = document.getElementById('staging-folder-select');
@@ -658,7 +860,6 @@ async function sendMessage() {
             targetFolderId = (parts[1] !== 'root') ? parts[1] : null;
         }
 
-        // Save file record to Project Drive
         const fileId = 'file_' + Date.now();
         const newFileRecord = {
             id: fileId,
@@ -673,8 +874,6 @@ async function sendMessage() {
         };
 
         CHAT_STATE.files.unshift(newFileRecord);
-
-        // Upload to Supabase if connected
         if (window.supabaseClient) {
             window.supabaseClient.from('workchat_files').insert([newFileRecord]).then(() => {});
         }
@@ -694,7 +893,7 @@ async function sendMessage() {
         id: msgId,
         sender_username: u.username,
         sender_name: u.displayName || u.username,
-        avatar: u.avatar || '👨‍💻',
+        avatar: u.avatar || 'user_boy',
         message_text: text,
         project_id: targetProjectId,
         folder_id: targetFolderId,
@@ -702,24 +901,20 @@ async function sendMessage() {
         created_at: new Date().toISOString()
     };
 
-    // Add locally immediately
     CHAT_STATE.messages.push(newMsg);
     saveWorkspaceData();
 
-    // Reset input
     input.value = '';
     input.style.height = 'auto';
 
+    renderChatsList();
     renderMessages();
     scrollMessagesToBottom();
 
-    // Sync to Supabase Cloud
     if (window.supabaseClient) {
         try {
             await window.supabaseClient.from('workchat_messages').insert([newMsg]);
-        } catch (err) {
-            console.warn('Message send to cloud error:', err);
-        }
+        } catch (_) {}
     }
 }
 
@@ -740,7 +935,7 @@ function playIncomingChime() {
     }
 }
 
-// ── 5. PROJECT DRIVE & FOLDER EXPLORER ───────────────────────────────────────
+// ── 6. PROJECT DRIVE & FOLDER EXPLORER ───────────────────────────────────────
 function renderProjectDropdownList() {
     const list = document.getElementById('tag-project-dropdown-list');
     if (!list) return;
@@ -754,7 +949,7 @@ function renderProjectDropdownList() {
         html += `
             <li>
                 <a class="dropdown-item ${CHAT_STATE.selectedTagProjectId === p.id ? 'active' : ''}" href="javascript:void(0)" onclick="selectTagProject('${p.id}', '${escapeHtml(p.code || p.name)}')">
-                    <span class="pill-color-dot d-inline-block me-1" style="background: ${p.color || '#06b6d4'};"></span>
+                    <span class="d-inline-block rounded-circle me-1" style="width: 8px; height: 8px; background: ${p.color || '#3b82f6'};"></span>
                     ${escapeHtml(p.name)}
                 </a>
             </li>
@@ -766,8 +961,6 @@ function renderProjectDropdownList() {
 
 function selectTagProject(projId, label) {
     CHAT_STATE.selectedTagProjectId = projId;
-    const labelEl = document.getElementById('tag-project-label');
-    if (labelEl) labelEl.textContent = label;
     renderProjectDropdownList();
 }
 
@@ -784,7 +977,7 @@ function renderProjectPills() {
     CHAT_STATE.projects.forEach(p => {
         html += `
             <button class="project-pill-btn ${CHAT_STATE.activeProjectId === p.id ? 'active' : ''}" onclick="selectProjectFilter('${p.id}')">
-                <span class="pill-color-dot" style="background: ${p.color || '#06b6d4'};"></span>
+                <span class="d-inline-block rounded-circle" style="width: 7px; height: 7px; background: ${p.color || '#3b82f6'};"></span>
                 <span>${escapeHtml(p.code || p.name)}</span>
             </button>
         `;
@@ -795,16 +988,10 @@ function renderProjectPills() {
 
 function selectProjectFilter(projId) {
     CHAT_STATE.activeProjectId = projId;
-    CHAT_STATE.activeFolderId = null; // Reset to root of selected project
+    CHAT_STATE.activeFolderId = null;
     renderProjectPills();
     renderExplorer();
-
-    // Open drive view to inspect
-    if (window.innerWidth <= 992) {
-        switchMobileView('drive');
-    } else {
-        toggleDrivePane(true);
-    }
+    toggleDrivePane(true);
 }
 
 function navigateToFolder(folderId) {
@@ -821,7 +1008,6 @@ function renderExplorer() {
     const filesCountEl = document.getElementById('files-count');
     const vaultBtnCount = document.getElementById('vault-btn-count');
 
-    // 1. Filter Folders for current scope
     let activeFolders = CHAT_STATE.folders.filter(f => {
         if (CHAT_STATE.activeProjectId !== 'all' && f.project_id !== CHAT_STATE.activeProjectId) {
             return false;
@@ -829,7 +1015,6 @@ function renderExplorer() {
         return f.parent_id === CHAT_STATE.activeFolderId;
     });
 
-    // 2. Filter Files for current scope
     let activeFiles = CHAT_STATE.files.filter(f => {
         if (CHAT_STATE.activeProjectId !== 'all' && f.project_id !== CHAT_STATE.activeProjectId) {
             return false;
@@ -841,7 +1026,6 @@ function renderExplorer() {
     if (filesCountEl) filesCountEl.textContent = activeFiles.length;
     if (vaultBtnCount) vaultBtnCount.textContent = (CHAT_STATE.folders || []).length;
 
-    // Render Folders
     if (foldersGrid) {
         if (activeFolders.length === 0) {
             foldersGrid.innerHTML = `<div class="text-muted small py-2 col-span-2">ไม่มีโฟลเดอร์ในระดับนี้</div>`;
@@ -862,7 +1046,6 @@ function renderExplorer() {
         }
     }
 
-    // Render Files
     if (filesGrid) {
         if (activeFiles.length === 0) {
             filesGrid.innerHTML = `<div class="text-muted small py-2 col-span-2">ไม่มีไฟล์ในโฟลเดอร์นี้ (ลากไฟล์มาวางหรือกดอัปโหลดได้เลย)</div>`;
@@ -875,7 +1058,7 @@ function renderExplorer() {
                             ${isImg ? `
                                 <img src="${file.file_url}" class="file-thumb-img" alt="${escapeHtml(file.name)}">
                             ` : `
-                                <i class="bi ${getFileTypeIcon(file.name)} fs-1 text-cyan opacity-75"></i>
+                                <i class="bi ${getFileTypeIcon(file.name)} fs-1 text-primary opacity-75"></i>
                             `}
                         </div>
                         <div class="file-card-name" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</div>
@@ -907,7 +1090,7 @@ function renderBreadcrumbs() {
 
     let html = `
         <span class="breadcrumb-item ${!CHAT_STATE.activeFolderId ? 'active' : ''}" onclick="navigateToFolder(null)">
-            <i class="bi bi-house-door-fill text-cyan"></i> หน้าแรก
+            <i class="bi bi-house-door-fill text-primary"></i> หน้าแรก
         </span>
     `;
 
@@ -969,12 +1152,12 @@ function getFileTypeIcon(filename) {
         case 'docx': return 'bi-file-earmark-word-fill text-primary';
         case 'xls':
         case 'xlsx': return 'bi-file-earmark-excel-fill text-success';
-        default: return 'bi-file-earmark-text-fill text-cyan';
+        default: return 'bi-file-earmark-text-fill text-primary';
     }
 }
 
-// ── 6. CREATE PROJECTS, FOLDERS & DIRECT UPLOADS ─────────────────────────────
-let selectedProjectColorHex = '#06b6d4';
+// ── 7. CREATE PROJECTS, FOLDERS & DIRECT UPLOADS ─────────────────────────────
+let selectedProjectColorHex = '#3b82f6';
 
 function openNewProjectModal() {
     const input = document.getElementById('input-project-name');
@@ -1015,18 +1198,17 @@ async function createNewProject() {
     CHAT_STATE.projects.unshift(newProj);
     saveWorkspaceData();
 
-    // Sync to Supabase
     if (window.supabaseClient) {
         window.supabaseClient.from('workchat_projects').insert([newProj]).then(() => {});
     }
 
-    // Automatically select the new project
     CHAT_STATE.activeProjectId = newProj.id;
     CHAT_STATE.activeFolderId = null;
 
     renderProjectDropdownList();
     renderProjectPills();
     renderExplorer();
+    renderChatsList();
 
     const modalEl = document.getElementById('modalNewProject');
     if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
@@ -1141,7 +1323,7 @@ function saveFileDirectly(file, projectId, folderId) {
     reader.readAsDataURL(file);
 }
 
-// Drag & Drop File Handling
+// Drag & Drop
 function handleDragOver(e) {
     e.preventDefault();
     const area = document.getElementById('drive-explorer-area');
@@ -1166,7 +1348,7 @@ function handleDropFile(e) {
     });
 }
 
-// ── 7. FILE PREVIEWS & SHARING TO CHAT ───────────────────────────────────────
+// ── 8. FILE PREVIEWS & SHARING TO CHAT ───────────────────────────────────────
 function previewFile(fileId) {
     const file = CHAT_STATE.files.find(f => f.id === fileId);
     if (!file) return;
@@ -1192,11 +1374,11 @@ function previewFileDirectly(filename, url) {
             bodyEl.innerHTML = `<img src="${url}" class="img-fluid" style="max-height: 75vh; object-fit: contain;">`;
         } else {
             bodyEl.innerHTML = `
-                <div class="p-5 text-white">
-                    <i class="bi ${getFileTypeIcon(filename)} fs-1 text-cyan mb-3 d-block"></i>
+                <div class="p-5 text-dark">
+                    <i class="bi ${getFileTypeIcon(filename)} fs-1 text-primary mb-3 d-block"></i>
                     <h5>${escapeHtml(filename)}</h5>
                     <p class="text-muted small">ไฟล์นี้รองรับการดาวน์โหลดเพื่อเปิดด้วยโปรแกรมในเครื่องของคุณ</p>
-                    <a href="${url}" download="${escapeHtml(filename)}" class="btn btn-primary mt-2">
+                    <a href="${url}" download="${escapeHtml(filename)}" class="btn btn-primary rounded-pill mt-2">
                         <i class="bi bi-download me-1"></i> ดาวน์โหลดทันที
                     </a>
                 </div>
@@ -1229,7 +1411,7 @@ function shareFileToChat(fileId) {
         id: msgId,
         sender_username: u.username,
         sender_name: u.displayName || u.username,
-        avatar: u.avatar || '👨‍💻',
+        avatar: u.avatar || 'user_boy',
         message_text: `แชร์ไฟล์งาน: ${file.name}`,
         project_id: file.project_id,
         folder_id: file.folder_id,
@@ -1249,12 +1431,9 @@ function shareFileToChat(fileId) {
         window.supabaseClient.from('workchat_messages').insert([newMsg]).then(() => {});
     }
 
+    renderChatsList();
     renderMessages();
     scrollMessagesToBottom();
-
-    if (window.innerWidth <= 992) {
-        switchMobileView('chat');
-    }
 
     if (typeof showToast === 'function') {
         showToast('success', 'แชร์ไฟล์แล้ว', `ส่ง ${file.name} เข้าห้องแชทแล้ว`, 2000);
@@ -1277,70 +1456,58 @@ function deleteFile(fileId) {
     }
 }
 
-// ── 8. MOBILE VIEWPORT SWITCHER ─────────────────────────────────────────────
-function switchMobileView(viewName) {
-    CHAT_STATE.mobileView = viewName;
-
-    const btnChat = document.getElementById('tab-mobile-chat');
-    const btnDrive = document.getElementById('tab-mobile-drive');
-
-    if (viewName === 'drive') {
-        document.body.classList.add('view-drive');
-        if (btnChat) btnChat.classList.remove('active');
-        if (btnDrive) btnDrive.classList.add('active');
-    } else {
-        document.body.classList.remove('view-drive');
-        if (btnChat) btnChat.classList.add('active');
-        if (btnDrive) btnDrive.classList.remove('active');
-    }
-}
-
-// ── 8.1 TOGGLE PROJECT FILE VAULT DRAWER (SLIDE-OUT DRAWER) ────────────────
+// ── 9. DRAWER TOGGLE & NAVIGATION ───────────────────────────────────────────
 function toggleDrivePane(forceState) {
-    const container = document.getElementById('chat-main-container') || document.querySelector('.chat-main-container');
-    const btnToggle = document.getElementById('btn-toggle-drive-panel');
+    const container = document.getElementById('chat-main-container');
     const sideTab = document.getElementById('drive-side-tab');
     if (!container) return;
-
-    // Mobile viewport delegation
-    if (window.innerWidth <= 992) {
-        if (forceState === false) {
-            switchMobileView('chat');
-        } else if (forceState === true) {
-            switchMobileView('drive');
-        } else {
-            const isCurrentlyDrive = document.body.classList.contains('view-drive');
-            switchMobileView(isCurrentlyDrive ? 'chat' : 'drive');
-        }
-        return;
-    }
 
     const isOpen = (typeof forceState === 'boolean') ? forceState : !container.classList.contains('drive-open');
 
     if (isOpen) {
         container.classList.add('drive-open');
-        if (btnToggle) btnToggle.classList.add('active');
         if (sideTab) sideTab.style.display = 'none';
         renderExplorer();
     } else {
         container.classList.remove('drive-open');
-        if (btnToggle) btnToggle.classList.remove('active');
         if (sideTab) sideTab.style.display = 'flex';
     }
 }
 window.toggleDrivePane = toggleDrivePane;
 
+function switchRailTab(tabName) {
+    document.querySelectorAll('.rail-nav-item').forEach(b => b.classList.remove('active'));
+    const target = document.getElementById(`rail-tab-${tabName}`);
+    if (target) target.classList.add('active');
+
+    if (tabName === 'chat') {
+        toggleDrivePane(false);
+    } else if (tabName === 'vault') {
+        toggleDrivePane(true);
+    }
+}
+window.switchRailTab = switchRailTab;
+
+function switchMobileView(viewName) {
+    if (viewName === 'chat') {
+        document.body.classList.add('mobile-view-chat');
+    } else {
+        document.body.classList.remove('mobile-view-chat');
+    }
+}
+window.switchMobileView = switchMobileView;
+
 // Keyboard shortcut: Esc to close Project Vault drawer
 window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-        const container = document.getElementById('chat-main-container') || document.querySelector('.chat-main-container');
+        const container = document.getElementById('chat-main-container');
         if (container && container.classList.contains('drive-open')) {
             toggleDrivePane(false);
         }
     }
 });
 
-// ── 9. HELPERS ──────────────────────────────────────────────────────────────
+// ── 10. HELPERS ─────────────────────────────────────────────────────────────
 function formatMessageTime(isoStr) {
     if (!isoStr) return '';
     try {
@@ -1369,17 +1536,12 @@ function escapeHtml(text) {
         .replace(/'/g, '&#039;');
 }
 
-// ── 10. PWA INSTALLATION ENGINE ───────────────────────────────────────────
+// ── 11. PWA INSTALLATION ENGINE ───────────────────────────────────────────
 let deferredPwaPrompt = null;
 
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPwaPrompt = e;
-    const btn = document.getElementById('btn-pwa-install-workchat');
-    if (btn) {
-        btn.classList.remove('btn-outline-info');
-        btn.classList.add('btn-info', 'text-dark', 'fw-bold');
-    }
 });
 
 window.addEventListener('appinstalled', () => {
@@ -1390,13 +1552,11 @@ window.addEventListener('appinstalled', () => {
 });
 
 function triggerWorkChatPwaInstall() {
-    // If native prompt is available (Chrome/Android), trigger it directly!
     if (deferredPwaPrompt) {
         executeNativeInstallPrompt();
         return;
     }
 
-    // Otherwise show the guided modal with QR code & platform instructions
     const currentUrl = window.location.href.split('#')[0];
     const qrImg = document.getElementById('pwa-install-qrcode');
     if (qrImg) {
@@ -1405,8 +1565,7 @@ function triggerWorkChatPwaInstall() {
 
     const modalEl = document.getElementById('modalPwaInstallGuide');
     if (modalEl) {
-        const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
-        bsModal.show();
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
     }
 }
 
@@ -1436,4 +1595,3 @@ function copyAppUrl() {
         prompt('คัดลอกลิงก์นี้ไปเปิดในมือถือ:', url);
     });
 }
-

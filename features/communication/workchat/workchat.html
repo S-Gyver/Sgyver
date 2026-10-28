@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>S-Gyver WorkChat & Projects – แชทคุยงาน & คลังไฟล์โปรเจกต์ (VIP Lv.4)</title>
-    <meta name="description" content="ระบบแชทคุยงานทีมแบบเรียลไทม์ พร้อมตู้เก็บไฟล์แยกโฟลเดอร์โปรเจกต์และโฟลเดอร์ย่อย">
+    <title>S-Gyver WorkChat & Projects – แชทคุยงานสไตล์โมเดิร์น & คลังไฟล์โปรเจกต์</title>
+    <meta name="description" content="ระบบแชทคุยงานทีมสไตล์โมเดิร์น เรียบหรู สะอาดตา พร้อมคลังไฟล์แยกโปรเจกต์">
 
     <!-- Web App PWA Manifest & Mobile Icons -->
     <link rel="manifest" href="manifest.json">
@@ -12,13 +12,15 @@
     <link rel="apple-touch-icon" href="icon.svg">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="WorkChat">
 
-    <!-- Bootstrap 5 CSS, Bootstrap Icons & Fonts -->
+    <!-- Bootstrap 5 CSS, Bootstrap Icons & Modern Fonts -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500;600&family=Kanit:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Kanit:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
 
     <!-- Shared Modules -->
     <link rel="stylesheet" href="../../../assets/css/toast_shared.css">
@@ -26,130 +28,184 @@
     <script src="../../../assets/js/supabaseClient.js"></script>
     <script src="../../../assets/js/toast_shared.js"></script>
 
-    <!-- App Styles -->
+    <!-- Modern WorkChat Stylesheet -->
     <link rel="stylesheet" href="workchat.css">
 </head>
 <body>
 
-    <!-- Ambient Glowing Orbs -->
-    <div class="bg-glow-container">
-        <div class="bg-glow-1"></div>
-        <div class="bg-glow-2"></div>
-    </div>
-
     <!-- ══════════════════════════════════════════════════════════════
-         TOP NAVIGATION BAR
+         MODERN 3-COLUMN MESSENGER LAYOUT
+         1. Left Navigation Rail (Icons & Profile)
+         2. Middle Chats Sidebar (Conversation List & Search)
+         3. Main Chat View (Active Conversation & Messages)
+         4. Slide-out Project File Vault Drawer
          ══════════════════════════════════════════════════════════════ -->
-    <header class="chat-topbar">
-        <div class="topbar-left">
-            <a href="../../../my_workspace.html" class="btn btn-sm btn-outline-secondary text-white border-0 me-2" title="กลับหน้ากระดาน">
-                <i class="bi bi-arrow-left fs-5"></i>
-            </a>
-            <div class="chat-brand">
-                <div class="chat-brand-icon">
-                    <i class="bi bi-chat-square-text-fill"></i>
+    <div class="messenger-layout" id="chat-main-container">
+
+        <!-- ── 1. LEFT ICON NAVIGATION RAIL ── -->
+        <aside class="messenger-nav-rail">
+            <div class="rail-top">
+                <!-- Messenger-Style Gradient Logo -->
+                <a href="../../../my_workspace.html" class="rail-logo-btn" title="กลับหน้ากระดาน Gyver Workspace">
+                    <div class="rail-logo-gradient">
+                        <svg width="28" height="28" viewBox="0 0 40 40" fill="none">
+                            <defs>
+                                <linearGradient id="msgLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="#9333ea"/>
+                                    <stop offset="50%" stop-color="#3b82f6"/>
+                                    <stop offset="100%" stop-color="#06b6d4"/>
+                                </linearGradient>
+                            </defs>
+                            <circle cx="20" cy="20" r="19" fill="url(#msgLogoGrad)"/>
+                            <path d="M20 9C13.925 9 9 13.568 9 19.2C9 22.42 10.562 25.264 13 27.098V31L16.744 28.948C17.78 29.236 18.87 29.4 20 29.4C26.075 29.4 31 24.832 31 19.2C31 13.568 26.075 9 20 9ZM21.36 22.8L18.44 19.68L12.72 22.8L19 16.2L21.92 19.32L27.64 16.2L21.36 22.8Z" fill="white"/>
+                        </svg>
+                    </div>
+                </a>
+
+                <!-- Nav Menu Items (Matching Reference Screenshot) -->
+                <nav class="rail-nav-menu">
+                    <button type="button" class="rail-nav-item active" id="rail-tab-chat" onclick="switchRailTab('chat')" title="Chat (ข้อความแชท)">
+                        <i class="bi bi-chat-dots-fill"></i>
+                        <span class="rail-label">Chat</span>
+                    </button>
+                    <button type="button" class="rail-nav-item" id="rail-tab-people" onclick="handleUserProfileClick()" title="People (สมาชิกทีม)">
+                        <i class="bi bi-people"></i>
+                        <span class="rail-label">People</span>
+                    </button>
+                    <button type="button" class="rail-nav-item" id="rail-tab-shop" onclick="openNewProjectModal()" title="Shop (โปรเจกต์ & รายการสั่งซื้อ)">
+                        <i class="bi bi-shop-window"></i>
+                        <span class="rail-label">Shop</span>
+                    </button>
+                    <button type="button" class="rail-nav-item" id="rail-tab-request" onclick="toggleDrivePane(true)" title="Request (คำขอ & สเปกงาน)">
+                        <i class="bi bi-box-arrow-in-right"></i>
+                        <span class="rail-label">Request</span>
+                    </button>
+                    <button type="button" class="rail-nav-item" id="rail-tab-archive" onclick="toggleDrivePane(true)" title="Archive (คลังไฟล์ & เอกสาร)">
+                        <i class="bi bi-archive"></i>
+                        <span class="rail-label">Archive</span>
+                    </button>
+                </nav>
+            </div>
+
+            <div class="rail-bottom">
+                <!-- User Profile Avatar -->
+                <div class="rail-user-profile-wrap" id="btn-user-profile" onclick="handleUserProfileClick()" title="โปรไฟล์ผู้ใช้ (Gyver Workspace)">
+                    <div class="rail-user-avatar" id="rail-user-avatar">
+                        <!-- Populated by JS -->
+                    </div>
+                    <span class="user-online-dot"></span>
                 </div>
-                <div class="chat-brand-text">
-                    <h1>WORKCHAT & PROJECTS</h1>
-                    <span class="d-none d-sm-inline">แชทคุยงานเรียลไทม์ & คลังไฟล์แยกโปรเจกต์</span>
+
+                <!-- Back to Board Button -->
+                <a href="../../../my_workspace.html" class="rail-exit-btn" title="กลับหน้ากระดานหลัก">
+                    <i class="bi bi-box-arrow-right"></i>
+                </a>
+            </div>
+        </aside>
+
+        <!-- ── 2. MIDDLE CHATS CONVERSATION LIST ("Chats") ── -->
+        <section class="messenger-chats-col" id="messenger-chats-col">
+            <!-- Chats Header -->
+            <div class="chats-col-header">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h1 class="chats-main-title">Chats</h1>
+                    <div class="chats-header-actions">
+                        <button type="button" class="chats-action-circle" onclick="showModernToast('เริ่มวิดีโอคอลคุยงานกลุ่ม...')" title="วิดีโอคอล">
+                            <i class="bi bi-camera-video"></i>
+                        </button>
+                        <button type="button" class="chats-action-circle" onclick="openNewProjectModal()" title="สร้างโปรเจกต์ / แชทใหม่">
+                            <i class="bi bi-plus-lg"></i>
+                        </button>
+                        <button type="button" class="chats-action-circle d-lg-none" onclick="toggleDrivePane(true)" title="คลังไฟล์โปรเจกต์">
+                            <i class="bi bi-folder-fill text-warning"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Rounded Pill Search Bar -->
+                <div class="chats-search-wrapper">
+                    <i class="bi bi-search chats-search-icon"></i>
+                    <input type="text" class="chats-search-input" id="chats-search-input" placeholder="Search messenger..." oninput="handleChatsSearch(this.value)">
                 </div>
             </div>
-            <span class="badge bg-cyan-subtle text-cyan border border-cyan-subtle ms-2 d-none d-md-inline-block">VIP Lv.4</span>
-        </div>
 
-        <!-- Mobile Switcher Tabs (Chat vs Drive) -->
-        <div class="chat-mobile-tabs d-flex d-lg-none">
-            <button class="mobile-tab-btn active" id="tab-mobile-chat" onclick="switchMobileView('chat')">
-                <i class="bi bi-chat-dots-fill me-1"></i> แชท
-                <span class="badge bg-danger rounded-pill ms-1 d-none" id="mobile-unread-badge">0</span>
-            </button>
-            <button class="mobile-tab-btn" id="tab-mobile-drive" onclick="switchMobileView('drive')">
-                <i class="bi bi-folder-fill me-1"></i> ไฟล์โปรเจกต์
-            </button>
-        </div>
-
-        <!-- Topbar Right: Current User & Actions -->
-        <div class="topbar-right d-flex align-items-center gap-2">
-            <!-- 📲 Install Mobile App Button -->
-            <button type="button" class="btn btn-sm btn-outline-info rounded-pill px-2 px-sm-3 py-1 d-flex align-items-center gap-1 shadow-sm" id="btn-pwa-install-workchat" onclick="triggerWorkChatPwaInstall()" title="กดติดตั้งลงมือถือหรือคอมพิวเตอร์">
-                <i class="bi bi-phone-arrow-down-fill text-warning"></i>
-                <span class="d-none d-sm-inline fw-semibold">ติดตั้งลงมือถือ</span>
-            </button>
-
-            <div class="user-profile-badge" id="btn-user-profile" onclick="handleUserProfileClick()" title="โปรไฟล์ซิงก์จากบัญชี Gyver Workspace">
-                <div class="user-avatar-circle" id="topbar-avatar">
-                    <i class="bi bi-person-fill"></i>
-                </div>
-                <div class="user-info-text d-none d-sm-block">
-                    <div class="user-name" id="topbar-username">ผู้ใช้งาน</div>
-                    <div class="user-status"><span class="status-dot"></span> ออนไลน์</div>
-                </div>
+            <!-- Conversations Stream -->
+            <div class="chats-list-stream" id="chats-list-stream">
+                <!-- Dynamically populated conversations: General, Project A, Project B, etc. -->
             </div>
-        </div>
-    </header>
+        </section>
 
-    <!-- ══════════════════════════════════════════════════════════════
-         MAIN SPLIT WORKSPACE: CHAT (LEFT) & PROJECT DRIVE (RIGHT)
-         ══════════════════════════════════════════════════════════════ -->
-    <main class="chat-main-container" id="chat-main-container">
+        <!-- ── 3. MAIN CHAT AREA (Active Conversation) ── -->
+        <section class="messenger-chat-area" id="pane-chat">
 
-        <!-- ── 1. LEFT PANEL: REALTIME CHAT CHANNEL ── -->
-        <section class="chat-pane" id="pane-chat">
+            <!-- Active Chat Topbar -->
+            <div class="chat-area-header">
+                <div class="d-flex align-items-center gap-3">
+                    <!-- Back button on Mobile -->
+                    <button type="button" class="btn-back-to-chats d-md-none" onclick="switchMobileView('list')" title="กลับหน้ารายการแชท">
+                        <i class="bi bi-chevron-left"></i>
+                    </button>
 
-            <!-- Active Project Banner / Filter -->
-            <div class="chat-channel-header">
-                <div class="d-flex align-items-center gap-2">
-                    <div class="channel-icon">
-                        <i class="bi bi-hash"></i>
+                    <div class="active-chat-avatar-wrap" id="active-chat-avatar">
+                        <!-- Illustrated Avatar Injected by JS -->
                     </div>
                     <div>
-                        <div class="channel-title" id="current-channel-title">ห้องแชทหลัก (General Chat)</div>
-                        <div class="channel-subtitle" id="current-channel-desc">คุยงาน 3-5 คน ส่งข้อความและแนบไฟล์ลงโฟลเดอร์โปรเจกต์ได้ทันที</div>
+                        <h2 class="active-chat-title" id="active-chat-name">Lilly Jr.</h2>
+                        <div class="active-chat-status" id="active-chat-status">
+                            <span class="status-dot-green"></span> ออนไลน์ • ทีมงาน 3 คน
+                        </div>
                     </div>
                 </div>
-                <div class="d-flex align-items-center gap-2">
-                    <!-- Online Members Count -->
-                    <div class="members-pill" id="members-count-pill" title="สมาชิกในทีม">
-                        <i class="bi bi-people-fill text-info me-1"></i>
-                        <span id="members-count-text">3 คน</span>
-                    </div>
 
-                    <!-- 📁 Toggle Project Vault Button -->
-                    <button type="button" class="btn-toggle-vault" id="btn-toggle-drive-panel" onclick="toggleDrivePane()" title="เปิด/ปิด คลังไฟล์โปรเจกต์ (Vault)">
+                <div class="chat-area-header-actions">
+                    <!-- Phone Call Button -->
+                    <button type="button" class="header-action-circle" onclick="showModernToast('กำลังโทรหาทีมงาน...')" title="โทรด้วยเสียง">
+                        <i class="bi bi-telephone"></i>
+                    </button>
+                    <!-- Video Call Button -->
+                    <button type="button" class="header-action-circle" onclick="showModernToast('กำลังเชื่อมต่อห้องวิดีโอคอล...')" title="เริ่มวิดีโอคอล">
+                        <i class="bi bi-camera-video"></i>
+                    </button>
+                    <!-- Toggle Project Vault Drawer Button -->
+                    <button type="button" class="btn-header-vault-pill" id="btn-toggle-drive-panel" onclick="toggleDrivePane()" title="เปิด/ปิด คลังไฟล์โปรเจกต์">
                         <i class="bi bi-folder-fill text-warning"></i>
-                        <span class="btn-text d-none d-sm-inline">คลังไฟล์โปรเจกต์</span>
-                        <span class="vault-count-badge" id="vault-btn-count">0</span>
+                        <span class="d-none d-sm-inline">คลังไฟล์</span>
+                        <span class="vault-mini-count" id="vault-btn-count">4</span>
+                    </button>
+                    <!-- Info Button -->
+                    <button type="button" class="header-action-circle" onclick="handleUserProfileClick()" title="ข้อมูลและสมาชิก">
+                        <i class="bi bi-info-circle"></i>
                     </button>
                 </div>
             </div>
 
             <!-- Messages Stream Area -->
-            <div class="chat-messages-stream" id="messages-stream">
+            <div class="chat-area-messages" id="messages-stream">
                 <div class="text-center py-5 text-muted">
-                    <div class="spinner-border spinner-border-sm text-info mb-2" role="status"></div>
-                    <div>กำลังโหลดประวัติการแชท...</div>
+                    <div class="spinner-border spinner-border-sm text-primary mb-2" role="status"></div>
+                    <div>กำลังโหลดข้อความ...</div>
                 </div>
             </div>
 
             <!-- Typing Indicator -->
-            <div class="typing-bar d-none" id="typing-indicator-bar">
-                <div class="typing-dots">
-                    <span></span><span></span><span></span>
+            <div class="typing-bubble-bar d-none" id="typing-indicator-bar">
+                <div class="typing-bubble">
+                    <span class="dot"></span><span class="dot"></span><span class="dot"></span>
                 </div>
-                <span id="typing-user-text">มีคนกำลังพิมพ์...</span>
+                <span class="typing-text" id="typing-user-text">มีคนกำลังพิมพ์...</span>
             </div>
 
-            <!-- File Attachment Staging Preview (When user selects a file before sending) -->
+            <!-- Attachment Staging Box -->
             <div class="attachment-staging-box d-none" id="attachment-staging-box">
                 <div class="d-flex align-items-center gap-3">
                     <div class="staging-thumb-wrap" id="staging-thumb-preview">
-                        <i class="bi bi-file-earmark-arrow-up fs-3 text-info"></i>
+                        <i class="bi bi-file-earmark-arrow-up fs-3 text-primary"></i>
                     </div>
-                    <div class="staging-info flex-grow-1">
-                        <div class="staging-filename text-truncate" id="staging-filename">sample_file.pdf</div>
-                        <div class="staging-meta" id="staging-filesize">2.4 MB</div>
+                    <div class="staging-info flex-grow-1 text-truncate">
+                        <div class="staging-filename text-truncate fw-bold" id="staging-filename">sample_file.pdf</div>
+                        <div class="staging-meta text-muted small" id="staging-filesize">2.4 MB</div>
                     </div>
-                    <!-- Select Destination Project & Folder for this attachment -->
+                    <!-- Select Destination Project & Folder -->
                     <div class="staging-destination">
                         <label class="small text-muted d-block mb-1">บันทึกเข้าโฟลเดอร์:</label>
                         <select class="form-select form-select-sm staging-folder-select" id="staging-folder-select">
@@ -162,55 +218,60 @@
                 </div>
             </div>
 
-            <!-- Chat Bottom Input Bar -->
-            <div class="chat-input-bar">
-                <!-- Action Buttons: Attach File, Photo, Tag Project -->
-                <div class="chat-input-actions">
-                    <button type="button" class="action-circle-btn" onclick="triggerFileInput()" title="แนบไฟล์ / เอกสาร / รูปภาพ">
-                        <i class="bi bi-paperclip"></i>
-                    </button>
-                    <button type="button" class="action-circle-btn" onclick="triggerPhotoCapture()" title="ถ่ายภาพ / แนบรูปภาพ">
-                        <i class="bi bi-camera-fill"></i>
-                    </button>
-                    <!-- Quick Tag Project dropdown -->
+            <!-- Modern Bottom Input Bar (Matching Messenger Reference) -->
+            <div class="chat-area-input-bar">
+                <div class="input-media-buttons">
+                    <!-- More options / Project tagging -->
                     <div class="dropdown d-inline-block">
-                        <button type="button" class="action-pill-btn dropdown-toggle" data-bs-toggle="dropdown" id="btn-tag-project-dropdown">
-                            <i class="bi bi-folder2-open text-warning me-1"></i>
-                            <span id="tag-project-label">แท็กโปรเจกต์</span>
+                        <button type="button" class="input-media-btn" data-bs-toggle="dropdown" id="btn-tag-project-dropdown" title="เมนูเพิ่มเติม & เลือกโฟลเดอร์โปรเจกต์">
+                            <i class="bi bi-grid-3x3-gap"></i>
                         </button>
-                        <ul class="dropdown-menu dropdown-menu-dark project-dropdown-menu" id="tag-project-dropdown-list">
+                        <ul class="dropdown-menu shadow-lg border-0" id="tag-project-dropdown-list">
                             <li><h6 class="dropdown-header">เลือกโปรเจกต์ที่กำลังคุย</h6></li>
                             <li><a class="dropdown-item active" href="javascript:void(0)" onclick="selectTagProject('', 'ทั่วไป (General)')">ทั่วไป (General)</a></li>
                         </ul>
                     </div>
+                    <!-- Camera -->
+                    <button type="button" class="input-media-btn" onclick="triggerPhotoCapture()" title="ถ่ายภาพ / แนบรูปภาพ">
+                        <i class="bi bi-camera"></i>
+                    </button>
+                    <!-- Gallery -->
+                    <button type="button" class="input-media-btn" onclick="triggerPhotoCapture()" title="เลือกรูปภาพ">
+                        <i class="bi bi-image"></i>
+                    </button>
+                    <!-- Audio / Voice memo -->
+                    <button type="button" class="input-media-btn" onclick="showModernToast('บันทึกเสียงข้อความ...')" title="ส่งข้อความเสียง">
+                        <i class="bi bi-soundwave"></i>
+                    </button>
+                    <!-- File / Doc attachment -->
+                    <button type="button" class="input-media-btn" onclick="triggerFileInput()" title="แนบไฟล์ / เอกสาร">
+                        <i class="bi bi-paperclip"></i>
+                    </button>
                     <input type="file" id="chat-file-input" class="d-none" onchange="handleFileSelected(event)">
                 </div>
 
-                <!-- Input Textarea & Send Button -->
-                <div class="chat-input-row">
-                    <textarea class="chat-textarea" id="chat-message-input" rows="1" placeholder="พิมพ์ข้อความคุยงาน... (กด Shift+Enter ขึ้นบรรทัดใหม่)" onkeydown="handleInputKeyDown(event)" oninput="autoGrowTextarea(this)"></textarea>
-                    <button type="button" class="btn-send-message" id="btn-send-message" onclick="sendMessage()" title="ส่งข้อความ">
+                <!-- Modern Rounded Pill Message Input Field -->
+                <div class="input-pill-field-wrap">
+                    <textarea class="input-pill-textarea" id="chat-message-input" rows="1" placeholder="Message..." onkeydown="handleInputKeyDown(event)" oninput="autoGrowTextarea(this)"></textarea>
+                    <button type="button" class="input-pill-send-btn" id="btn-send-message" onclick="sendMessage()" title="ส่งข้อความ">
                         <i class="bi bi-send-fill"></i>
                     </button>
                 </div>
             </div>
 
-            <!-- Floating Side Tab to open Project Vault (Quick Access) -->
+            <!-- Floating Side Tab for Vault (Right Edge) -->
             <button type="button" class="drive-side-tab-pill" id="drive-side-tab" onclick="toggleDrivePane(true)" title="เปิดคลังไฟล์โปรเจกต์ (Vault)">
                 <i class="bi bi-folder-fill text-warning"></i>
                 <span class="side-tab-text">คลังไฟล์</span>
                 <i class="bi bi-chevron-left side-tab-arrow"></i>
             </button>
-
         </section>
 
-        <!-- Backdrop Overlay for Slide-out Vault on Desktop & Tablet -->
+        <!-- ── 4. PROJECT FILE VAULT (Slide-out Modern Drawer) ── -->
         <div class="drive-backdrop" id="drive-backdrop" onclick="toggleDrivePane(false)" title="คลิกเพื่อปิดคลังไฟล์"></div>
+        <aside class="drive-pane" id="pane-drive">
 
-        <!-- ── 2. RIGHT PANEL: PROJECT DRIVE & FOLDER VAULT (Slide-out Drawer) ── -->
-        <section class="drive-pane" id="pane-drive">
-
-            <!-- Drive Header & Project Switcher -->
+            <!-- Vault Header -->
             <div class="drive-header">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <div class="d-flex align-items-center gap-2">
@@ -221,7 +282,7 @@
                         </div>
                     </div>
                     <div class="d-flex align-items-center gap-2">
-                        <button type="button" class="btn btn-sm btn-primary d-flex align-items-center gap-1 fw-bold" onclick="openNewProjectModal()">
+                        <button type="button" class="btn btn-sm btn-primary d-flex align-items-center gap-1 rounded-pill px-3 fw-bold shadow-sm" onclick="openNewProjectModal()">
                             <i class="bi bi-plus-lg"></i> โปรเจกต์ใหม่
                         </button>
                         <button type="button" class="btn-close-vault" onclick="toggleDrivePane(false)" title="ปิดคลังไฟล์ (ย่อเก็บ)">
@@ -243,14 +304,14 @@
             <div class="drive-subbar">
                 <div class="breadcrumb-trail" id="drive-breadcrumbs">
                     <span class="breadcrumb-item" onclick="navigateToFolder(null)">
-                        <i class="bi bi-house-door-fill text-cyan"></i> หน้าแรก
+                        <i class="bi bi-house-door-fill text-primary"></i> หน้าแรก
                     </span>
                 </div>
                 <div class="drive-quick-actions">
-                    <button type="button" class="btn btn-sm btn-outline-info py-1 px-2" onclick="openNewFolderModal()" title="สร้างโฟลเดอร์ย่อยในที่นี้">
-                        <i class="bi bi-folder-plus me-1"></i> โฟลเดอร์ย่อย
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2.5 rounded-pill" onclick="openNewFolderModal()" title="สร้างโฟลเดอร์ย่อยในที่นี้">
+                        <i class="bi bi-folder-plus me-1 text-primary"></i> โฟลเดอร์ย่อย
                     </button>
-                    <button type="button" class="btn btn-sm btn-outline-warning py-1 px-2" onclick="triggerDirectUpload()" title="อัปโหลดไฟล์เข้าโฟลเดอร์นี้">
+                    <button type="button" class="btn btn-sm btn-outline-warning py-1 px-2.5 rounded-pill" onclick="triggerDirectUpload()" title="อัปโหลดไฟล์เข้าโฟลเดอร์นี้">
                         <i class="bi bi-cloud-arrow-up-fill me-1"></i> อัปโหลดไฟล์
                     </button>
                     <input type="file" id="direct-upload-input" class="d-none" multiple onchange="handleDirectUpload(event)">
@@ -273,7 +334,7 @@
                 <!-- Files Grid Section -->
                 <div class="explorer-section mt-3" id="section-files">
                     <div class="section-label">
-                        <i class="bi bi-file-earmark-text text-info me-1"></i> ไฟล์งาน & เอกสาร (<span id="files-count">0</span>)
+                        <i class="bi bi-file-earmark-text text-primary me-1"></i> ไฟล์งาน & เอกสาร (<span id="files-count">0</span>)
                     </div>
                     <div class="files-grid" id="files-grid">
                         <!-- Dynamically populated files -->
@@ -282,36 +343,36 @@
 
                 <!-- Drag & Drop Overlay Indicator -->
                 <div class="drag-drop-overlay" id="drag-drop-overlay">
-                    <i class="bi bi-cloud-arrow-up fs-1 text-cyan mb-2"></i>
+                    <i class="bi bi-cloud-arrow-up fs-1 text-primary mb-2"></i>
                     <div class="fw-bold fs-5">วางไฟล์ตรงนี้เพื่ออัปโหลดเข้าโฟลเดอร์</div>
                     <div class="small text-muted">รองรับไฟล์รูปภาพ, เอกสาร, PDF, CAD และไฟล์ทุกชนิด</div>
                 </div>
             </div>
 
-        </section>
+        </aside>
 
-    </main>
+    </div>
 
     <!-- ══════════════════════════════════════════════════════════════
-         MODALS
+         MODALS & OVERLAYS (PRESERVED & MODERNIZED)
          ══════════════════════════════════════════════════════════════ -->
 
-    <!-- 1. Modal: User Profile Card (Synced from Gyver Workspace) -->
+    <!-- 1. Modal: User Profile Card -->
     <div class="modal fade" id="modalUserProfileCard" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered" style="max-width: 380px;">
-            <div class="modal-content modal-cyber text-center p-3">
+            <div class="modal-content modal-modern text-center p-3">
                 <div class="modal-header border-0 pb-0 justify-content-end">
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body pt-0 pb-3">
-                    <div class="mx-auto mb-3" style="width: 76px; height: 76px; border-radius: 50%; overflow: hidden; border: 2px solid #06b6d4; background: #1e293b; display: flex; align-items: center; justify-content: center; font-size: 2.2rem;" id="modal-card-avatar">
+                    <div class="mx-auto mb-3" style="width: 80px; height: 80px; border-radius: 50%; overflow: hidden; border: 3px solid #3b82f6; background: #eff6ff; display: flex; align-items: center; justify-content: center;" id="modal-card-avatar">
                         <!-- Synced Profile Avatar -->
                     </div>
-                    <h5 class="fw-bold text-white mb-1" id="modal-card-name">กำลังโหลดข้อมูล...</h5>
-                    <div class="text-cyan small mb-2"><span class="status-dot"></span> ออนไลน์ (บัญชี Gyver Workspace)</div>
-                    <p class="text-muted mb-3" style="font-size: 0.8rem;">ข้อมูลชื่อและรูปโปรไฟล์นี้ถูกดึงมาจากบัญชี Gyver ของคุณโดยอัตโนมัติแล้ว</p>
+                    <h5 class="fw-bold text-dark mb-1" id="modal-card-name">กำลังโหลดข้อมูล...</h5>
+                    <div class="text-primary small mb-2"><span class="status-dot-green"></span> ออนไลน์ (บัญชี Gyver Workspace)</div>
+                    <p class="text-muted mb-3" style="font-size: 0.82rem;">ข้อมูลชื่อและรูปโปรไฟล์นี้ถูกดึงมาจากบัญชี Gyver ของคุณโดยอัตโนมัติแล้ว</p>
                     
-                    <a href="../../../auth/profile/profile.html" class="btn btn-sm btn-outline-info w-100">
+                    <a href="../../../auth/profile/profile.html" class="btn btn-sm btn-outline-primary w-100 rounded-pill">
                         <i class="bi bi-person-gear me-1"></i> จัดการโปรไฟล์ในระบบ Gyver
                     </a>
                 </div>
@@ -322,41 +383,41 @@
     <!-- 2. Modal: Create New Project -->
     <div class="modal fade" id="modalNewProject" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content modal-cyber">
+            <div class="modal-content modal-modern">
                 <div class="modal-header border-0 pb-0">
-                    <h5 class="modal-title fw-bold text-white">
+                    <h5 class="modal-title fw-bold text-dark">
                         <i class="bi bi-folder-plus text-warning me-2"></i>สร้างโปรเจกต์ใหม่
                     </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body py-4">
                     <div class="mb-3">
-                        <label class="form-label text-white small">ชื่อโปรเจกต์ <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control form-control-cyber" id="input-project-name" placeholder="เช่น โปรเจกต์ A - นิทรรศการ PIM, งานสร้างหุ่นยนต์">
+                        <label class="form-label text-dark small fw-bold">ชื่อโปรเจกต์ <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-modern" id="input-project-name" placeholder="เช่น โปรเจกต์ A - นิทรรศการ PIM, งานสร้างหุ่นยนต์">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label text-white small">รหัสโปรเจกต์ (Project Code)</label>
-                        <input type="text" class="form-control form-control-cyber font-mono" id="input-project-code" placeholder="เช่น PIM-2026, ROBOT-01">
+                        <label class="form-label text-dark small fw-bold">รหัสโปรเจกต์ (Project Code)</label>
+                        <input type="text" class="form-control form-control-modern font-mono" id="input-project-code" placeholder="เช่น PIM-2026, ROBOT-01">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label text-white small">สีประจำโปรเจกต์</label>
+                        <label class="form-label text-dark small fw-bold">สีประจำโปรเจกต์</label>
                         <div class="d-flex gap-2" id="project-color-picks">
-                            <span class="color-dot active" style="background:#06b6d4;" onclick="selectProjectColor(this, '#06b6d4')"></span>
+                            <span class="color-dot active" style="background:#3b82f6;" onclick="selectProjectColor(this, '#3b82f6')"></span>
                             <span class="color-dot" style="background:#f59e0b;" onclick="selectProjectColor(this, '#f59e0b')"></span>
                             <span class="color-dot" style="background:#10b981;" onclick="selectProjectColor(this, '#10b981')"></span>
                             <span class="color-dot" style="background:#8b5cf6;" onclick="selectProjectColor(this, '#8b5cf6')"></span>
                             <span class="color-dot" style="background:#ec4899;" onclick="selectProjectColor(this, '#ec4899')"></span>
-                            <span class="color-dot" style="background:#3b82f6;" onclick="selectProjectColor(this, '#3b82f6')"></span>
+                            <span class="color-dot" style="background:#06b6d4;" onclick="selectProjectColor(this, '#06b6d4')"></span>
                         </div>
                     </div>
                     <div class="mb-0">
-                        <label class="form-label text-white small">รายละเอียดงานสั้นๆ</label>
-                        <textarea class="form-control form-control-cyber" id="input-project-desc" rows="2" placeholder="รายละเอียดหรือเป้าหมายของโปรเจกต์นี้"></textarea>
+                        <label class="form-label text-dark small fw-bold">รายละเอียดงานสั้นๆ</label>
+                        <textarea class="form-control form-control-modern" id="input-project-desc" rows="2" placeholder="รายละเอียดหรือเป้าหมายของโปรเจกต์นี้"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer border-0 pt-0">
-                    <button type="button" class="btn btn-outline-secondary text-white" data-bs-dismiss="modal">ยกเลิก</button>
-                    <button type="button" class="btn btn-warning px-4 fw-bold" onclick="createNewProject()">บันทึกโปรเจกต์</button>
+                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold" onclick="createNewProject()">บันทึกโปรเจกต์</button>
                 </div>
             </div>
         </div>
@@ -365,25 +426,25 @@
     <!-- 3. Modal: Create New Subfolder -->
     <div class="modal fade" id="modalNewFolder" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content modal-cyber">
+            <div class="modal-content modal-modern">
                 <div class="modal-header border-0 pb-0">
-                    <h5 class="modal-title fw-bold text-white">
-                        <i class="bi bi-folder-plus text-info me-2"></i>สร้างโฟลเดอร์ย่อย
+                    <h5 class="modal-title fw-bold text-dark">
+                        <i class="bi bi-folder-plus text-primary me-2"></i>สร้างโฟลเดอร์ย่อย
                     </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body py-4">
                     <div class="text-muted small mb-3" id="new-folder-parent-label">
                         สร้างอยู่ภายใต้: <strong>หน้าแรก</strong>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label text-white small">ชื่อโฟลเดอร์ <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control form-control-cyber" id="input-folder-name" placeholder="เช่น 01_แบบแปลน, รูปหน้างาน, ใบเสนอราคา">
+                        <label class="form-label text-dark small fw-bold">ชื่อโฟลเดอร์ <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-modern" id="input-folder-name" placeholder="เช่น 01_แบบแปลน, รูปหน้างาน, ใบเสนอราคา">
                     </div>
                 </div>
                 <div class="modal-footer border-0 pt-0">
-                    <button type="button" class="btn btn-outline-secondary text-white" data-bs-dismiss="modal">ยกเลิก</button>
-                    <button type="button" class="btn btn-cyan px-4 fw-bold text-dark" onclick="createNewFolder()">สร้างโฟลเดอร์</button>
+                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold" onclick="createNewFolder()">สร้างโฟลเดอร์</button>
                 </div>
             </div>
         </div>
@@ -392,71 +453,73 @@
     <!-- 4. Modal: File Preview Lightbox -->
     <div class="modal fade" id="modalFilePreview" tabindex="-1">
         <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content modal-cyber">
+            <div class="modal-content modal-modern overflow-hidden">
                 <div class="modal-header border-0 py-3">
                     <div class="d-flex align-items-center gap-2 text-truncate">
-                        <i class="bi bi-file-earmark-check-fill text-cyan fs-5"></i>
-                        <h6 class="modal-title fw-bold text-white text-truncate" id="preview-modal-filename">filename.png</h6>
+                        <i class="bi bi-file-earmark-check-fill text-primary fs-5"></i>
+                        <h6 class="modal-title fw-bold text-dark text-truncate" id="preview-modal-filename">filename.png</h6>
                     </div>
                     <div class="d-flex align-items-center gap-2">
-                        <button type="button" class="btn btn-sm btn-outline-cyan" id="btn-preview-share-chat" onclick="shareCurrentPreviewToChat()" title="แชร์ไฟล์นี้เข้าห้องแชท">
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" id="btn-preview-share-chat" onclick="shareCurrentPreviewToChat()" title="แชร์ไฟล์นี้เข้าห้องแชท">
                             <i class="bi bi-chat-right-quote-fill me-1"></i> แชร์เข้าแชท
                         </button>
-                        <a href="#" target="_blank" class="btn btn-sm btn-primary" id="btn-preview-download" download title="ดาวน์โหลดไฟล์">
+                        <a href="#" target="_blank" class="btn btn-sm btn-primary rounded-pill" id="btn-preview-download" download title="ดาวน์โหลดไฟล์">
                             <i class="bi bi-download me-1"></i> ดาวน์โหลด
                         </a>
-                        <button type="button" class="btn-close btn-close-white ms-2" data-bs-dismiss="modal"></button>
+                        <button type="button" class="btn-close ms-2" data-bs-dismiss="modal"></button>
                     </div>
                 </div>
-                <div class="modal-body p-0 text-center bg-black rounded-bottom overflow-hidden d-flex justify-content-center align-items-center" style="min-height: 420px; max-height: 80vh;" id="preview-modal-body">
+                <div class="modal-body p-0 text-center bg-light rounded-bottom overflow-hidden d-flex justify-content-center align-items-center" style="min-height: 420px; max-height: 80vh;" id="preview-modal-body">
                     <!-- Image or Document frame injected here -->
                 </div>
             </div>
         </div>
+    </div>
+
     <!-- 5. Modal: PWA Mobile Install Guide & QR Code -->
     <div class="modal fade" id="modalPwaInstallGuide" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
-            <div class="modal-content modal-cyber">
+            <div class="modal-content modal-modern">
                 <div class="modal-header border-0 pb-0">
-                    <h5 class="modal-title fw-bold text-white d-flex align-items-center gap-2">
+                    <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2">
                         <i class="bi bi-phone-arrow-down-fill text-warning"></i> ติดตั้งลงมือถือ (Mobile App)
                     </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body py-3">
                     <div class="text-center mb-3">
                         <p class="text-muted small mb-2">ติดตั้งเป็นไอคอนแอปบนหน้าจอมือถือ เปิดเต็มจอ ใช้งานลื่นไหล ไม่ต้องโหลดจาก Store</p>
-                        <div class="p-2 d-inline-block rounded-3 bg-white shadow-sm mb-2">
+                        <div class="p-2 d-inline-block rounded-3 bg-white shadow-sm mb-2 border">
                             <img id="pwa-install-qrcode" src="" alt="QR Code" style="width: 140px; height: 140px; display: block;">
                         </div>
-                        <div class="text-white small fw-bold">ใช้มือถือสแกน QR Code นี้เพื่อเปิดและติดตั้ง</div>
+                        <div class="text-dark small fw-bold">ใช้มือถือสแกน QR Code นี้เพื่อเปิดและติดตั้ง</div>
                     </div>
 
                     <!-- Android Guide -->
                     <div class="p-3 rounded-3 mb-2" style="background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.25);">
                         <div class="fw-bold text-success small mb-1"><i class="bi bi-android2 me-1"></i> สำหรับมือถือ Android (Chrome):</div>
-                        <ol class="small text-white-50 mb-0 ps-3" style="font-size: 0.8rem; line-height: 1.5;">
+                        <ol class="small text-muted mb-0 ps-3" style="font-size: 0.8rem; line-height: 1.5;">
                             <li>เปิดลิงก์ในเบราว์เซอร์ Chrome</li>
-                            <li>กดปุ่มจุดสามจุด <strong class="text-white">(⋮)</strong> มุมบนขวา</li>
-                            <li>เลือก <strong class="text-white">"ติดตั้งแอป (Install App)"</strong> หรือ "เพิ่มลงหน้าจอหลัก"</li>
+                            <li>กดปุ่มจุดสามจุด <strong>(⋮)</strong> มุมบนขวา</li>
+                            <li>เลือก <strong>"ติดตั้งแอป (Install App)"</strong> หรือ "เพิ่มลงหน้าจอหลัก"</li>
                         </ol>
                     </div>
 
                     <!-- iOS Guide -->
                     <div class="p-3 rounded-3 mb-3" style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25);">
-                        <div class="fw-bold text-info small mb-1"><i class="bi bi-apple me-1"></i> สำหรับ iPhone / iPad (Safari):</div>
-                        <ol class="small text-white-50 mb-0 ps-3" style="font-size: 0.8rem; line-height: 1.5;">
+                        <div class="fw-bold text-primary small mb-1"><i class="bi bi-apple me-1"></i> สำหรับ iPhone / iPad (Safari):</div>
+                        <ol class="small text-muted mb-0 ps-3" style="font-size: 0.8rem; line-height: 1.5;">
                             <li>เปิดลิงก์ด้วยเบราว์เซอร์ Safari</li>
-                            <li>กดปุ่มแชร์ <strong class="text-white">⎋ (สี่เหลี่ยมลูกศรชี้ขึ้น)</strong> แถบล่าง</li>
-                            <li>เลื่อนลงแล้วเลือก <strong class="text-white">"เพิ่มไปยังหน้าจอโฮม (Add to Home Screen)"</strong></li>
+                            <li>กดปุ่มแชร์ <strong>⎋ (สี่เหลี่ยมลูกศรชี้ขึ้น)</strong> แถบล่าง</li>
+                            <li>เลื่อนลงแล้วเลือก <strong>"เพิ่มไปยังหน้าจอโฮม (Add to Home Screen)"</strong></li>
                         </ol>
                     </div>
 
                     <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-sm btn-outline-light flex-grow-1" onclick="copyAppUrl()">
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill flex-grow-1" onclick="copyAppUrl()">
                             <i class="bi bi-clipboard-check me-1"></i> คัดลอกลิงก์
                         </button>
-                        <button type="button" class="btn btn-sm btn-cyan flex-grow-1 text-dark fw-bold" id="btn-trigger-native-install" onclick="executeNativeInstallPrompt()">
+                        <button type="button" class="btn btn-sm btn-primary rounded-pill flex-grow-1 fw-bold" id="btn-trigger-native-install" onclick="executeNativeInstallPrompt()">
                             <i class="bi bi-download me-1"></i> ติดตั้งทันที
                         </button>
                     </div>
@@ -473,22 +536,22 @@
             <div class="guard-icon-wrap mb-3">
                 <i class="bi bi-shield-lock-fill text-warning"></i>
             </div>
-            <h3 class="fw-bold text-white mb-2 font-heading">พื้นที่เฉพาะสมาชิกทีม VIP Lv.4</h3>
-            <p class="text-white-50 small mb-3" style="max-width: 440px; margin: 0 auto; line-height: 1.6;">
+            <h3 class="fw-bold text-dark mb-2">พื้นที่เฉพาะสมาชิกทีม VIP Lv.4</h3>
+            <p class="text-muted small mb-3" style="max-width: 440px; margin: 0 auto; line-height: 1.6;">
                 ห้องแชทและคลังไฟล์โปรเจกต์นี้เปิดให้เฉพาะทีมงานที่ได้รับสิทธิ์ VIP Lv.4 ขึ้นไปเท่านั้น เพื่อความปลอดภัยของข้อมูลและเอกสารในโปรเจกต์
             </p>
-            <div class="p-3 rounded-3 mb-4 d-inline-block text-start" style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255, 255, 255, 0.1);">
+            <div class="p-3 rounded-3 mb-4 d-inline-block text-start" style="background: #f8fafc; border: 1px solid #e2e8f0;">
                 <div class="small font-mono text-muted mb-1">สถานะสิทธิ์ปัจจุบันของคุณ:</div>
                 <div class="d-flex align-items-center gap-2">
-                    <span id="guard-current-user-name" class="fw-bold text-white font-heading">ผู้ใช้งาน</span>
+                    <span id="guard-current-user-name" class="fw-bold text-dark">ผู้ใช้งาน</span>
                     <span id="guard-current-level-badge" class="badge bg-secondary font-mono">กำลังตรวจสอบสิทธิ์...</span>
                 </div>
             </div>
             <div class="d-flex justify-content-center flex-wrap gap-2">
-                <a href="../../../my_workspace.html" class="btn btn-outline-light rounded-pill px-4 py-2 font-mono small">
+                <a href="../../../my_workspace.html" class="btn btn-outline-secondary rounded-pill px-4 py-2 small">
                     <i class="bi bi-arrow-left me-1"></i> กลับหน้ากระดานหลัก
                 </a>
-                <button type="button" class="btn btn-warning rounded-pill px-4 py-2 font-mono small fw-bold text-dark" onclick="alert('กรุณาแจ้ง Admin คุณเอส เพื่อขอรับสิทธิ์เข้าใช้งาน VIP Lv.4 ประจำทีม')">
+                <button type="button" class="btn btn-warning rounded-pill px-4 py-2 small fw-bold text-dark" onclick="alert('กรุณาแจ้ง Admin คุณเอส เพื่อขอรับสิทธิ์เข้าใช้งาน VIP Lv.4 ประจำทีม')">
                     <i class="bi bi-person-check-fill me-1"></i> ขอรับสิทธิ์จาก Admin คุณเอส
                 </button>
             </div>
