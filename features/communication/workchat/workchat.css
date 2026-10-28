@@ -1610,6 +1610,8 @@ body.drive-open .drive-pane {
     gap: 12px;
     cursor: pointer;
     transition: all 0.2s ease;
+    user-select: none;
+    position: relative;
 }
 .folder-card:hover {
     border-color: #f59e0b;
@@ -1631,6 +1633,96 @@ body.drive-open .drive-pane {
 .folder-count {
     font-size: 0.72rem;
     color: var(--text-light);
+}
+.folder-more-btn {
+    opacity: 0.45;
+    transition: all 0.15s ease;
+    border-radius: 6px;
+    padding: 2px 6px;
+    margin-left: auto;
+}
+.folder-card:hover .folder-more-btn,
+.folder-more-btn:hover {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--text-dark) !important;
+}
+
+/* Floating Vault Context Menu (Right Click) */
+.vault-context-menu {
+    position: fixed;
+    z-index: 10050;
+    min-width: 200px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 6px;
+    box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.2), 0 8px 10px -6px rgba(15, 23, 42, 0.1);
+    animation: contextFadeIn 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes contextFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.vault-context-header {
+    padding: 6px 10px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #64748b;
+    border-bottom: 1px solid #f1f5f9;
+    margin-bottom: 4px;
+    max-width: 240px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.vault-context-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.vault-context-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #1e293b;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.12s ease;
+    text-decoration: none;
+}
+
+.vault-context-item:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+}
+
+.vault-context-item.danger {
+    color: #dc2626;
+}
+
+.vault-context-item.danger:hover {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.vault-context-divider {
+    height: 1px;
+    background: #f1f5f9;
+    margin: 4px 0;
 }
 
 .files-grid {

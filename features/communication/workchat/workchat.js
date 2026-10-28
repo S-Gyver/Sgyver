@@ -2055,13 +2055,18 @@ function renderExplorer() {
             foldersGrid.innerHTML = activeFolders.map(f => {
                 const subfilesCount = CHAT_STATE.files.filter(file => file.folder_id === f.id).length;
                 return `
-                    <div class="folder-card" onclick="navigateToFolder('${f.id}')" title="คลิกเพื่อเปิดโฟลเดอร์">
+                    <div class="folder-card" 
+                         onclick="navigateToFolder('${f.id}')" 
+                         oncontextmenu="openVaultContextMenu(event, 'folder', '${f.id}')" 
+                         title="คลิกเพื่อเปิดโฟลเดอร์ (คลิกขวาเพื่อลบ/เปลี่ยนชื่อ)">
                         <i class="bi bi-folder-fill folder-icon"></i>
                         <div style="flex:1; min-width:0;">
                             <div class="folder-name">${escapeHtml(f.name)}</div>
                             <div class="folder-count">${subfilesCount} ไฟล์</div>
                         </div>
-                        <i class="bi bi-chevron-right text-muted small"></i>
+                        <button type="button" class="btn btn-sm btn-link text-muted p-1 border-0 folder-more-btn" onclick="openVaultContextMenu(event, 'folder', '${f.id}')" title="ตัวเลือก & ลบโฟลเดอร์">
+                            <i class="bi bi-three-dots-vertical"></i>
+                        </button>
                     </div>
                 `;
             }).join('');
@@ -2075,7 +2080,7 @@ function renderExplorer() {
             filesGrid.innerHTML = activeFiles.map(file => {
                 const isImg = file.file_type && file.file_type.startsWith('image');
                 return `
-                    <div class="file-card">
+                    <div class="file-card" oncontextmenu="openVaultContextMenu(event, 'file', '${file.id}')" title="คลิกขวาเพื่อลบ/จัดการไฟล์">
                         <div class="file-preview-wrap" onclick="previewFile('${file.id}')" title="คลิกเพื่อดูตัวอย่าง">
                             ${isImg ? `
                                 <img src="${file.file_url}" class="file-thumb-img" alt="${escapeHtml(file.name)}">
@@ -2463,7 +2468,10 @@ function shareFileToChat(fileId) {
 }
 
 function deleteFile(fileId) {
-    if (!confirm('คุณต้องการลบไฟล์นี้ใช่หรือไม่?')) return;
+    const file = CHAT_STATE.files.find(f => f.id === fileId);
+    if (!file) return;
+
+    if (!confirm(`คุณต้องการลบไฟล์ "${file.name}" ใช่หรือไม่?`)) return;
 
     CHAT_STATE.files = CHAT_STATE.files.filter(f => f.id !== fileId);
     saveWorkspaceData();
@@ -2473,10 +2481,206 @@ function deleteFile(fileId) {
     }
 
     renderExplorer();
-    if (typeof showToast === 'function') {
-        showToast('info', 'ลบไฟล์แล้ว', 'นำไฟล์ออกจากคลังเรียบร้อย', 2000);
+    updateHeaderVaultUI();
+    showModernToast(`🗑️ ลบไฟล์ "${file.name}" เรียบร้อยแล้ว`);
+}
+window.deleteFile = deleteFile;
+
+function deleteFolder(folderId) {
+    const folder = CHAT_STATE.folders.find(f => f.id === folderId);
+    if (!folder) return;
+
+    const subfiles = CHAT_STATE.files.filter(f => f.folder_id === folderId);
+    const confirmMsg = subfiles.length > 0
+        ? `คุณต้องการลบโฟลเดอร์ "${folder.name}" ใช่หรือไม่?\n⚠️ ไฟล์ภายในโฟลเดอร์นี้จำนวน ${subfiles.length} ไฟล์จะถูกลบไปด้วย`
+        : `คุณต้องการลบโฟลเดอร์ "${folder.name}" ใช่หรือไม่?`;
+
+    if (!confirm(confirmMsg)) return;
+
+    // Delete subfiles inside this folder
+    CHAT_STATE.files = CHAT_STATE.files.filter(f => f.folder_id !== folderId);
+    // Delete the folder itself
+    CHAT_STATE.folders = CHAT_STATE.folders.filter(f => f.id !== folderId);
+
+    // If active folder is this one, return to root
+    if (CHAT_STATE.activeFolderId === folderId) {
+        CHAT_STATE.activeFolderId = null;
+    }
+
+    saveWorkspaceData();
+
+    if (window.supabaseClient) {
+        window.supabaseClient.from('workchat_folders').delete().eq('id', folderId).then(() => {});
+        window.supabaseClient.from('workchat_files').delete().eq('folder_id', folderId).then(() => {});
+    }
+
+    renderExplorer();
+    updateHeaderVaultUI();
+    populateStagingFolderDropdown();
+
+    showModernToast(`🗑️ ลบโฟลเดอร์ "${folder.name}" เรียบร้อยแล้ว`);
+}
+window.deleteFolder = deleteFolder;
+
+function renameFolder(folderId) {
+    const folder = CHAT_STATE.folders.find(f => f.id === folderId);
+    if (!folder) return;
+
+    const newName = prompt('ระบุชื่อโฟลเดอร์ใหม่:', folder.name);
+    if (!newName || !newName.trim() || newName.trim() === folder.name) return;
+
+    folder.name = newName.trim();
+    saveWorkspaceData();
+
+    if (window.supabaseClient) {
+        window.supabaseClient.from('workchat_folders').update({ name: folder.name }).eq('id', folderId).then(() => {});
+    }
+
+    renderExplorer();
+    populateStagingFolderDropdown();
+    showModernToast(`✏️ เปลี่ยนชื่อโฟลเดอร์เป็น "${folder.name}" เรียบร้อยแล้ว`);
+}
+window.renameFolder = renameFolder;
+
+function renameFile(fileId) {
+    const file = CHAT_STATE.files.find(f => f.id === fileId);
+    if (!file) return;
+
+    const newName = prompt('ระบุชื่อไฟล์ใหม่:', file.name);
+    if (!newName || !newName.trim() || newName.trim() === file.name) return;
+
+    file.name = newName.trim();
+    saveWorkspaceData();
+
+    if (window.supabaseClient) {
+        window.supabaseClient.from('workchat_files').update({ name: file.name }).eq('id', fileId).then(() => {});
+    }
+
+    renderExplorer();
+    showModernToast(`✏️ เปลี่ยนชื่อไฟล์เป็น "${file.name}" เรียบร้อยแล้ว`);
+}
+window.renameFile = renameFile;
+
+// ── 8.1 VAULT CUSTOM CONTEXT MENU (RIGHT-CLICK) ──────────────────────────────
+function openVaultContextMenu(e, type, id) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    const menu = document.getElementById('vault-context-menu');
+    if (!menu) return;
+
+    let titleHtml = '';
+    let itemsHtml = '';
+
+    if (type === 'folder') {
+        const folder = CHAT_STATE.folders.find(f => f.id === id);
+        if (!folder) return;
+
+        titleHtml = `<i class="bi bi-folder-fill me-1 text-warning"></i> ${escapeHtml(folder.name)}`;
+        itemsHtml = `
+            <li class="vault-context-item" onclick="handleContextAction('open-folder', '${id}')">
+                <i class="bi bi-folder2-open text-primary"></i> <span>เปิดโฟลเดอร์</span>
+            </li>
+            <li class="vault-context-item" onclick="handleContextAction('rename-folder', '${id}')">
+                <i class="bi bi-pencil text-muted"></i> <span>เปลี่ยนชื่อโฟลเดอร์</span>
+            </li>
+            <div class="vault-context-divider"></div>
+            <li class="vault-context-item danger" onclick="handleContextAction('delete-folder', '${id}')">
+                <i class="bi bi-trash3-fill"></i> <span>ลบโฟลเดอร์นี้</span>
+            </li>
+        `;
+    } else if (type === 'file') {
+        const file = CHAT_STATE.files.find(f => f.id === id);
+        if (!file) return;
+
+        titleHtml = `<i class="bi bi-file-earmark-text-fill me-1 text-primary"></i> ${escapeHtml(file.name)}`;
+        itemsHtml = `
+            <li class="vault-context-item" onclick="handleContextAction('preview-file', '${id}')">
+                <i class="bi bi-eye text-primary"></i> <span>ดูตัวอย่างไฟล์</span>
+            </li>
+            <li class="vault-context-item" onclick="handleContextAction('share-file', '${id}')">
+                <i class="bi bi-chat-dots-fill text-info"></i> <span>ส่งเข้าห้องแชท</span>
+            </li>
+            <a href="${file.file_url}" download="${escapeHtml(file.name)}" class="vault-context-item" onclick="closeVaultContextMenu()">
+                <i class="bi bi-download text-success"></i> <span>ดาวน์โหลดไฟล์</span>
+            </a>
+            <li class="vault-context-item" onclick="handleContextAction('rename-file', '${id}')">
+                <i class="bi bi-pencil text-muted"></i> <span>เปลี่ยนชื่อไฟล์</span>
+            </li>
+            <div class="vault-context-divider"></div>
+            <li class="vault-context-item danger" onclick="handleContextAction('delete-file', '${id}')">
+                <i class="bi bi-trash3-fill"></i> <span>ลบไฟล์นี้</span>
+            </li>
+        `;
+    }
+
+    const titleEl = document.getElementById('vault-context-title');
+    const itemsEl = document.getElementById('vault-context-items');
+    if (titleEl) titleEl.innerHTML = titleHtml;
+    if (itemsEl) itemsEl.innerHTML = itemsHtml;
+
+    menu.classList.remove('d-none');
+
+    // Positioning
+    const menuWidth = 220;
+    const menuHeight = 180;
+    let posX = (e && typeof e.clientX === 'number') ? e.clientX : window.innerWidth / 2;
+    let posY = (e && typeof e.clientY === 'number') ? e.clientY : window.innerHeight / 2;
+
+    if (posX + menuWidth > window.innerWidth) {
+        posX = window.innerWidth - menuWidth - 12;
+    }
+    if (posY + menuHeight > window.innerHeight) {
+        posY = window.innerHeight - menuHeight - 12;
+    }
+
+    menu.style.left = `${Math.max(10, posX)}px`;
+    menu.style.top = `${Math.max(10, posY)}px`;
+}
+window.openVaultContextMenu = openVaultContextMenu;
+
+function closeVaultContextMenu() {
+    const menu = document.getElementById('vault-context-menu');
+    if (menu) menu.classList.add('d-none');
+}
+window.closeVaultContextMenu = closeVaultContextMenu;
+
+function handleContextAction(action, id) {
+    closeVaultContextMenu();
+    if (action === 'open-folder') {
+        navigateToFolder(id);
+    } else if (action === 'rename-folder') {
+        renameFolder(id);
+    } else if (action === 'delete-folder') {
+        deleteFolder(id);
+    } else if (action === 'preview-file') {
+        previewFile(id);
+    } else if (action === 'share-file') {
+        shareFileToChat(id);
+    } else if (action === 'rename-file') {
+        renameFile(id);
+    } else if (action === 'delete-file') {
+        deleteFile(id);
     }
 }
+window.handleContextAction = handleContextAction;
+
+// Global listener for closing context menu
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('#vault-context-menu') && !e.target.closest('.folder-more-btn')) {
+        closeVaultContextMenu();
+    }
+});
+document.addEventListener('contextmenu', (e) => {
+    if (!e.target.closest('.folder-card') && !e.target.closest('.file-card')) {
+        closeVaultContextMenu();
+    }
+});
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeVaultContextMenu();
+});
 
 // ── 9. DRAWER TOGGLE & NAVIGATION ───────────────────────────────────────────
 function returnToWorkspace() {
