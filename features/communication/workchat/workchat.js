@@ -1509,6 +1509,21 @@ function deleteFile(fileId) {
 }
 
 // ── 9. DRAWER TOGGLE & NAVIGATION ───────────────────────────────────────────
+function returnToWorkspace() {
+    if (window.parent && window.parent !== window) {
+        if (typeof window.parent.closeAppInWorkspace === 'function') {
+            window.parent.closeAppInWorkspace();
+            return;
+        }
+        try {
+            window.parent.postMessage({ action: 'closeWorkspaceApp' }, '*');
+            return;
+        } catch (_) {}
+    }
+    window.location.href = '../../../my_workspace.html';
+}
+window.returnToWorkspace = returnToWorkspace;
+
 function toggleDrivePane(forceState) {
     const container = document.getElementById('chat-main-container');
     const sideTab = document.getElementById('drive-side-tab');
@@ -1519,23 +1534,29 @@ function toggleDrivePane(forceState) {
     if (isOpen) {
         container.classList.add('drive-open');
         if (sideTab) sideTab.style.display = 'none';
+        document.querySelectorAll('.rail-nav-item').forEach(b => b.classList.remove('active'));
+        document.getElementById('rail-tab-vault')?.classList.add('active');
         renderExplorer();
     } else {
         container.classList.remove('drive-open');
         if (sideTab) sideTab.style.display = 'flex';
+        document.querySelectorAll('.rail-nav-item').forEach(b => b.classList.remove('active'));
+        document.getElementById('rail-tab-chat')?.classList.add('active');
     }
 }
 window.toggleDrivePane = toggleDrivePane;
 
 function switchRailTab(tabName) {
-    document.querySelectorAll('.rail-nav-item').forEach(b => b.classList.remove('active'));
-    const target = document.getElementById(`rail-tab-${tabName}`);
-    if (target) target.classList.add('active');
-
     if (tabName === 'chat') {
         toggleDrivePane(false);
     } else if (tabName === 'vault') {
-        toggleDrivePane(true);
+        const container = document.getElementById('chat-main-container');
+        const isAlreadyOpen = container && container.classList.contains('drive-open');
+        if (isAlreadyOpen) {
+            toggleDrivePane(false);
+        } else {
+            toggleDrivePane(true);
+        }
     }
 }
 window.switchRailTab = switchRailTab;

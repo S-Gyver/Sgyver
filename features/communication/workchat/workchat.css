@@ -89,6 +89,9 @@ body {
 .rail-logo-btn {
     display: block;
     text-decoration: none;
+    border: none;
+    background: transparent;
+    cursor: pointer;
     transition: transform 0.2s ease;
 }
 .rail-logo-btn:hover {

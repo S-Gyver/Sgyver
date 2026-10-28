@@ -1303,6 +1303,19 @@
 
     <!-- Supabase Auth & PIN Script -->
     <script>
+        // 🛡️ Anti-nesting: Prevent Gyver Workspace from ever loading inside an iframe (resolves double/stacked topbars)
+        if (window.top !== window) {
+            try {
+                if (window.parent && typeof window.parent.closeAppInWorkspace === 'function') {
+                    window.parent.closeAppInWorkspace();
+                } else {
+                    window.top.location.href = window.location.href;
+                }
+            } catch (_) {
+                window.top.location.href = window.location.href;
+            }
+        }
+
         function getClient() {
             return window.supabaseClient || window._supabase;
         }
@@ -2387,11 +2400,16 @@
 
         function closeAppInWorkspace(pushHistory = true) {
             const vp = document.getElementById('cs-app-viewport');
+            const frame = document.getElementById('cs-app-frame');
             const backBtn = document.getElementById('cs-app-back-btn');
             if (!vp) return;
 
             vp.style.display = 'none';
             document.body.classList.remove('in-app-view');
+
+            if (frame) {
+                frame.src = 'about:blank';
+            }
 
             if (backBtn) {
                 backBtn.classList.add('d-none');

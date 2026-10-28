@@ -46,7 +46,7 @@
         <aside class="messenger-nav-rail">
             <div class="rail-top">
                 <!-- Messenger-Style Gradient Logo -->
-                <a href="../../../my_workspace.html" class="rail-logo-btn" title="กลับหน้ากระดาน Gyver Workspace">
+                <button type="button" class="rail-logo-btn border-0 bg-transparent p-0" onclick="returnToWorkspace()" title="กลับหน้ากระดาน Gyver Workspace">
                     <div class="rail-logo-gradient">
                         <svg width="28" height="28" viewBox="0 0 40 40" fill="none">
                             <defs>
@@ -60,29 +60,22 @@
                             <path d="M20 9C13.925 9 9 13.568 9 19.2C9 22.42 10.562 25.264 13 27.098V31L16.744 28.948C17.78 29.236 18.87 29.4 20 29.4C26.075 29.4 31 24.832 31 19.2C31 13.568 26.075 9 20 9ZM21.36 22.8L18.44 19.68L12.72 22.8L19 16.2L21.92 19.32L27.64 16.2L21.36 22.8Z" fill="white"/>
                         </svg>
                     </div>
-                </a>
+                </button>
 
-                <!-- Nav Menu Items (Matching Reference Screenshot) -->
+                <!-- Nav Menu Items (Clean Messenger Rail with Dedicated Project Vault) -->
                 <nav class="rail-nav-menu">
-                    <button type="button" class="rail-nav-item active" id="rail-tab-chat" onclick="switchRailTab('chat')" title="Chat (ข้อความแชท)">
+                    <button type="button" class="rail-nav-item active" id="rail-tab-chat" onclick="switchRailTab('chat')" title="ข้อความแชท (Chat)">
                         <i class="bi bi-chat-dots-fill"></i>
                         <span class="rail-label">Chat</span>
                     </button>
-                    <button type="button" class="rail-nav-item" id="rail-tab-people" onclick="handleUserProfileClick()" title="People (สมาชิกทีม)">
+                    <button type="button" class="rail-nav-item" id="rail-tab-people" onclick="handleUserProfileClick()" title="สมาชิกในทีม (People)">
                         <i class="bi bi-people"></i>
                         <span class="rail-label">People</span>
                     </button>
-                    <button type="button" class="rail-nav-item" id="rail-tab-shop" onclick="openNewProjectModal()" title="Shop (โปรเจกต์ & รายการสั่งซื้อ)">
-                        <i class="bi bi-shop-window"></i>
-                        <span class="rail-label">Shop</span>
-                    </button>
-                    <button type="button" class="rail-nav-item" id="rail-tab-request" onclick="toggleDrivePane(true)" title="Request (คำขอ & สเปกงาน)">
-                        <i class="bi bi-box-arrow-in-right"></i>
-                        <span class="rail-label">Request</span>
-                    </button>
-                    <button type="button" class="rail-nav-item" id="rail-tab-archive" onclick="toggleDrivePane(true)" title="Archive (คลังไฟล์ & เอกสาร)">
-                        <i class="bi bi-archive"></i>
-                        <span class="rail-label">Archive</span>
+                    <!-- Replaced Shop, Request, Archive with Single Dedicated Vault -->
+                    <button type="button" class="rail-nav-item" id="rail-tab-vault" onclick="switchRailTab('vault')" title="คลังไฟล์โปรเจกต์ (Files & Vault)">
+                        <i class="bi bi-folder-fill text-warning"></i>
+                        <span class="rail-label">คลังไฟล์</span>
                     </button>
                 </nav>
             </div>
@@ -97,9 +90,9 @@
                 </div>
 
                 <!-- Back to Board Button -->
-                <a href="../../../my_workspace.html" class="rail-exit-btn" title="กลับหน้ากระดานหลัก">
+                <button type="button" class="rail-exit-btn border-0" onclick="returnToWorkspace()" title="กลับหน้ากระดานหลัก Gyver Workspace">
                     <i class="bi bi-box-arrow-right"></i>
-                </a>
+                </button>
             </div>
         </aside>
 
@@ -548,9 +541,9 @@
                 </div>
             </div>
             <div class="d-flex justify-content-center flex-wrap gap-2">
-                <a href="../../../my_workspace.html" class="btn btn-outline-secondary rounded-pill px-4 py-2 small">
+                <button type="button" class="btn btn-outline-secondary rounded-pill px-4 py-2 small" onclick="returnToWorkspace()">
                     <i class="bi bi-arrow-left me-1"></i> กลับหน้ากระดานหลัก
-                </a>
+                </button>
                 <button type="button" class="btn btn-primary rounded-pill px-4 py-2 small fw-bold" onclick="document.getElementById('workchat-permission-guard')?.classList.add('d-none'); showModernToast('เข้าสู่ระบบห้องแชทเรียบร้อยแล้ว');">
                     <i class="bi bi-box-arrow-in-right me-1"></i> เข้าสู่ห้องแชท
                 </button>
