@@ -2291,17 +2291,19 @@ window.returnToWorkspace = returnToWorkspace;
 
 function toggleDrivePane(forceState) {
     const container = document.getElementById('chat-main-container');
-    if (!container) return;
-
-    const isOpen = (typeof forceState === 'boolean') ? forceState : !container.classList.contains('drive-open');
+    const isOpen = (typeof forceState === 'boolean') 
+        ? forceState 
+        : !(container?.classList.contains('drive-open') || document.body.classList.contains('drive-open'));
 
     if (isOpen) {
-        container.classList.add('drive-open');
+        if (container) container.classList.add('drive-open');
+        document.body.classList.add('drive-open');
         document.querySelectorAll('.rail-nav-item').forEach(b => b.classList.remove('active'));
         document.getElementById('rail-tab-vault')?.classList.add('active');
         renderExplorer();
     } else {
-        container.classList.remove('drive-open');
+        if (container) container.classList.remove('drive-open');
+        document.body.classList.remove('drive-open');
         document.querySelectorAll('.rail-nav-item').forEach(b => b.classList.remove('active'));
         const activeTabId = (CHAT_STATE.currentRailTab === 'people') ? 'rail-tab-people' : 'rail-tab-chat';
         document.getElementById(activeTabId)?.classList.add('active');

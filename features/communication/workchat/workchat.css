@@ -1318,7 +1318,9 @@ body {
     color: #b45309;
     box-shadow: -6px 0 20px rgba(245, 158, 11, 0.2);
 }
-.chat-main-container.drive-open .drive-side-tab-pill {
+#chat-main-container.drive-open .drive-side-tab-pill,
+.chat-main-container.drive-open .drive-side-tab-pill,
+body.drive-open .drive-side-tab-pill {
     opacity: 0;
     pointer-events: none;
     transform: translateY(-50%) translateX(100%);
@@ -1330,15 +1332,17 @@ body {
 .drive-backdrop {
     position: absolute;
     inset: 0;
-    background: rgba(15, 23, 42, 0.35);
+    background: rgba(15, 23, 42, 0.45);
     backdrop-filter: blur(3px);
     -webkit-backdrop-filter: blur(3px);
-    z-index: 80;
+    z-index: 140;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.3s ease;
 }
-.chat-main-container.drive-open .drive-backdrop {
+#chat-main-container.drive-open .drive-backdrop,
+.chat-main-container.drive-open .drive-backdrop,
+body.drive-open .drive-backdrop {
     opacity: 1;
     pointer-events: auto;
 }
@@ -1353,19 +1357,21 @@ body {
     display: flex;
     flex-direction: column;
     background: #ffffff;
-    box-shadow: -15px 0 45px rgba(0, 0, 0, 0.15);
+    box-shadow: -15px 0 45px rgba(0, 0, 0, 0.2);
     border-left: 1px solid var(--border-subtle);
-    z-index: 90;
+    z-index: 150;
     transform: translateX(105%);
     transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
     visibility: hidden;
     pointer-events: none;
     height: 100%;
 }
-.chat-main-container.drive-open .drive-pane {
-    transform: translateX(0);
-    visibility: visible;
-    pointer-events: auto;
+#chat-main-container.drive-open .drive-pane,
+.chat-main-container.drive-open .drive-pane,
+body.drive-open .drive-pane {
+    transform: translateX(0) !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
 }
 
 .drive-header {
@@ -1986,10 +1992,19 @@ body {
     }
 
     /* Slide-out File Vault Drawer on Mobile */
+    .drive-backdrop {
+        position: fixed;
+        z-index: 140;
+    }
+
     .drive-pane {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
         width: 100%;
         max-width: 100%;
-        z-index: 130;
+        z-index: 150;
     }
 
     .drive-header {
