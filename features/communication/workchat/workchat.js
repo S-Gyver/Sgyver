@@ -475,18 +475,18 @@ const DEFAULT_MESSAGES = [
         created_at: new Date(Date.now() - 10000000).toISOString()
     },
 
-    // ── 6. Direct Chat: Callie Goodman (dm_callie - Note to self) ──
+    // ── 6. Direct Chat: Callie Goodman (dm_callie - Note to self / Sample) ──
     {
         id: 'msg_callie_1',
         chat_id: 'dm_callie',
         sender_username: 'callie_goodman',
         sender_name: 'Callie Goodman',
         avatar: 'user_boy',
-        message_text: 'บันทึก: นัดประชุมสรุปแบบแปลนโปรเจกต์สาธิต PIM บ่าย 2 พรุ่งนี้',
+        message_text: `รับมอบหมาย\n5.สามารถปฏิบัติตามกติกาของ\nชุมนุม ใช้อุปกรณ์คอมพิวเตอร์\nอย่างเหมาะสม และเคารพ\nความคิดเห็นของผู้อื่น\n6.มีความพร้อมในการลงมือ\nปฏิบัติ สร้างผลงาน และนำ\nเสนอผลงานของตนเองตาม\nความเหมาะสม`,
         project_id: null,
         folder_id: null,
         file_data: null,
-        created_at: new Date(Date.now() - 8000000).toISOString()
+        created_at: new Date(Date.now() - 50400000).toISOString()
     },
     {
         id: 'msg_callie_2',
@@ -494,11 +494,11 @@ const DEFAULT_MESSAGES = [
         sender_username: 'callie_goodman',
         sender_name: 'Callie Goodman',
         avatar: 'user_boy',
-        message_text: 'Call me today. We have a new project.',
+        message_text: 'https://www.instagram.com/reel/De-1LKppLWm/?obrf=MW5mMzc5OXVjOHN0ZA==',
         project_id: null,
         folder_id: null,
         file_data: null,
-        created_at: new Date(Date.now() - 4000000).toISOString()
+        created_at: new Date(Date.now() - 50000000).toISOString()
     },
 
     // ── 7. Project Room: proj_pim_2026 ──
@@ -547,6 +547,7 @@ document.addEventListener('DOMContentLoaded', () => {
     syncUserProfileFromGyver();
     loadWorkspaceData();
     initSupabaseSync();
+    initEmojiPicker();
     renderProjectDropdownList();
     renderProjectPills();
     renderExplorer();
@@ -1368,10 +1369,34 @@ function renderMessages() {
         return;
     }
 
-    container.innerHTML = currentMessages.map(msg => {
+    // Determine which outbound messages are purple vs blue (Instagram / Messenger aesthetic)
+    const outboundIndices = [];
+    currentMessages.forEach((m, idx) => {
+        const isMe = (m.sender_username === CHAT_STATE.currentUser.username || m.sender_name === CHAT_STATE.currentUser.displayName || m.sender_username === 'callie_goodman');
+        if (isMe) outboundIndices.push(idx);
+    });
+    const lastOutboundIdx = outboundIndices.length > 0 ? outboundIndices[outboundIndices.length - 1] : -1;
+
+    let html = '';
+    let lastDateDividerKey = null;
+
+    currentMessages.forEach((msg, idx) => {
         const isMe = (msg.sender_username === CHAT_STATE.currentUser.username || msg.sender_name === CHAT_STATE.currentUser.displayName || msg.sender_username === 'callie_goodman');
-        const timeStr = formatMessageTime(msg.created_at);
         const project = CHAT_STATE.projects.find(p => p.id === msg.project_id);
+
+        // Check if we should insert a centered date divider (like "อ. 21:43 น.")
+        const msgTime = new Date(msg.created_at || Date.now()).getTime();
+        const dividerSlot = Math.floor(msgTime / (20 * 60 * 1000)); // Every 20 mins or new day
+        if (dividerSlot !== lastDateDividerKey) {
+            lastDateDividerKey = dividerSlot;
+            html += `<div class="msg-date-divider">${formatChatDividerDate(msg.created_at)}</div>`;
+        }
+
+        // Outbound color theme: Latest is electric blue (#0066ff), previous is vibrant purple (#7818eb)
+        let bubbleThemeClass = '';
+        if (isMe) {
+            bubbleThemeClass = (idx === lastOutboundIdx) ? 'bubble-blue' : 'bubble-purple';
+        }
 
         let attachedHtml = '';
         if (msg.file_data) {
@@ -1394,14 +1419,28 @@ function renderMessages() {
         }
 
         const avatarMarkup = isMe 
-            ? getIllustratedAvatar('user_boy', 'Callie Goodman') 
+            ? '' 
             : getIllustratedAvatar(msg.avatar || 'lilly', msg.sender_name);
 
-        return `
-            <div class="msg-row ${isMe ? 'outbound' : 'inbound'}">
-                <div class="msg-avatar-circle">
-                    ${avatarMarkup}
-                </div>
+        // Status / time label below message
+        let timeLabelContent = '';
+        if (isMe) {
+            if (idx === lastOutboundIdx) {
+                timeLabelContent = `${formatMessageStatusRelative(msg.created_at)}`;
+            } else {
+                timeLabelContent = `${formatMessageTime(msg.created_at)}`;
+            }
+        } else {
+            timeLabelContent = formatMessageTime(msg.created_at);
+        }
+
+        html += `
+            <div class="msg-row ${isMe ? 'outbound ' + bubbleThemeClass : 'inbound'}">
+                ${!isMe ? `
+                    <div class="msg-avatar-circle">
+                        ${avatarMarkup}
+                    </div>
+                ` : ''}
                 <div class="msg-content-wrapper">
                     ${!isMe ? `<div class="msg-sender-name">${escapeHtml(msg.sender_name)}</div>` : ''}
                     <div class="msg-bubble-box">
@@ -1411,16 +1450,18 @@ function renderMessages() {
                                 <span>${escapeHtml(project.code || project.name)}</span>
                             </div>
                         ` : ''}
-                        <div>${escapeHtml(msg.message_text)}</div>
+                        <div>${formatMessageTextWithLinks(msg.message_text)}</div>
                         ${attachedHtml}
                     </div>
                     <div class="msg-time-label">
-                        ${timeStr} ${isMe ? '<i class="bi bi-check2-all text-primary ms-1"></i>' : ''}
+                        ${timeLabelContent}
                     </div>
                 </div>
             </div>
         `;
-    }).join('');
+    });
+
+    container.innerHTML = html;
 }
 
 function handleInputKeyDown(e) {
@@ -1590,6 +1631,7 @@ async function sendMessage() {
 
     input.value = '';
     input.style.height = 'auto';
+    toggleEmojiPicker(false);
 
     renderChatsList();
     renderMessages();
@@ -2293,7 +2335,7 @@ window.addEventListener('keydown', (e) => {
     }
 });
 
-// ── 10. HELPERS ─────────────────────────────────────────────────────────────
+// ── 10. HELPERS & EMOJI PICKER ─────────────────────────────────────────────
 function formatMessageTime(isoStr) {
     if (!isoStr) return '';
     try {
@@ -2303,6 +2345,96 @@ function formatMessageTime(isoStr) {
         return '';
     }
 }
+
+function formatChatDividerDate(isoStr) {
+    if (!isoStr) return '';
+    try {
+        const d = new Date(isoStr);
+        const dayNames = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
+        const dayStr = dayNames[d.getDay()];
+        const timeStr = d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+        return `${dayStr} ${timeStr} น.`;
+    } catch (_) {
+        return '';
+    }
+}
+
+function formatMessageStatusRelative(isoStr) {
+    if (!isoStr) return 'ส่งแล้ว';
+    try {
+        const diffMs = Date.now() - new Date(isoStr).getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+        if (diffMins < 1) return 'ส่งแล้ว';
+        if (diffMins < 60) return `ส่งเมื่อ ${diffMins} นาทีที่แล้ว`;
+        const diffHours = Math.floor(diffMins / 60);
+        if (diffHours < 24) return `ส่งเมื่อ ${diffHours} ชั่วโมงที่แล้ว`;
+        const diffDays = Math.floor(diffHours / 24);
+        return `ส่งเมื่อ ${diffDays} วันที่แล้ว`;
+    } catch (_) {
+        return 'ส่งแล้ว';
+    }
+}
+
+function formatMessageTextWithLinks(text) {
+    if (!text) return '';
+    const safeText = escapeHtml(text);
+    const urlPattern = /(https?:\/\/[^\s<]+[^<.,:;"')\]\s])/g;
+    return safeText.replace(urlPattern, (url) => {
+        return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="msg-inline-link">${url}</a>`;
+    });
+}
+
+const POPULAR_EMOJIS = ['❤️', '👍', '😂', '😮', '😢', '🙏', '🔥', '✨', '🎉', '😊', '👏', '💯', '🚀', '💡', '😍', '😎', '🥳', '👋', '💬', '📌', '🎯', '✌️', '🤝', '🤍'];
+
+function initEmojiPicker() {
+    const grid = document.getElementById('emoji-grid');
+    if (!grid) return;
+    grid.innerHTML = POPULAR_EMOJIS.map(emoji => `
+        <button type="button" class="emoji-item-btn" onclick="insertEmoji('${emoji}')" title="${emoji}">
+            ${emoji}
+        </button>
+    `).join('');
+}
+
+function toggleEmojiPicker(forceStateOrEvent) {
+    const popover = document.getElementById('emoji-picker-popover');
+    if (!popover) return;
+    if (typeof forceStateOrEvent === 'boolean') {
+        if (forceStateOrEvent) popover.classList.remove('d-none');
+        else popover.classList.add('d-none');
+        return;
+    }
+    if (forceStateOrEvent && forceStateOrEvent.stopPropagation) {
+        forceStateOrEvent.stopPropagation();
+    }
+    popover.classList.toggle('d-none');
+}
+window.toggleEmojiPicker = toggleEmojiPicker;
+
+function insertEmoji(emoji) {
+    const input = document.getElementById('chat-message-input');
+    if (!input) return;
+    const start = input.selectionStart || input.value.length;
+    const end = input.selectionEnd || input.value.length;
+    const val = input.value;
+    input.value = val.substring(0, start) + emoji + val.substring(end);
+    input.selectionStart = input.selectionEnd = start + emoji.length;
+    input.focus();
+    autoGrowTextarea(input);
+    toggleEmojiPicker(false);
+}
+window.insertEmoji = insertEmoji;
+
+// Close emoji picker when clicking outside
+document.addEventListener('click', (e) => {
+    const popover = document.getElementById('emoji-picker-popover');
+    const btnEmoji = document.getElementById('btn-capsule-emoji');
+    if (popover && !popover.classList.contains('d-none')) {
+        if (!popover.contains(e.target) && (!btnEmoji || !btnEmoji.contains(e.target))) {
+            popover.classList.add('d-none');
+        }
+    }
+});
 
 function formatBytes(bytes) {
     if (!bytes || bytes === 0) return '0 B';

@@ -244,45 +244,51 @@
                 </div>
             </div>
 
-            <!-- Modern Bottom Input Bar (Matching Messenger Reference) -->
+            <!-- Modern Bottom Input Bar (Matching Messenger/Instagram Reference) -->
             <div class="chat-area-input-bar">
-                <div class="input-media-buttons">
-                    <!-- More options / Project tagging -->
-                    <div class="dropdown d-inline-block">
-                        <button type="button" class="input-media-btn" data-bs-toggle="dropdown" id="btn-tag-project-dropdown" title="เมนูเพิ่มเติม & เลือกโฟลเดอร์โปรเจกต์">
-                            <i class="bi bi-grid-3x3-gap"></i>
-                        </button>
-                        <ul class="dropdown-menu shadow-lg border-0" id="tag-project-dropdown-list">
-                            <li><h6 class="dropdown-header">เลือกโปรเจกต์ที่กำลังคุย</h6></li>
-                            <li><a class="dropdown-item active" href="javascript:void(0)" onclick="selectTagProject('', 'ทั่วไป (General)')">ทั่วไป (General)</a></li>
-                        </ul>
+                <!-- 1. Left Action: Blue Plus Circle Button with Dropup Menu -->
+                <div class="dropup d-inline-block">
+                    <button type="button" class="btn-input-plus" data-bs-toggle="dropdown" id="btn-input-plus" title="แนบไฟล์ & สื่อ">
+                        <i class="bi bi-plus-circle-fill"></i>
+                    </button>
+                    <ul class="dropdown-menu shadow-lg border-0 input-plus-menu" id="tag-project-dropdown-list">
+                        <li><h6 class="dropdown-header">แนบไฟล์และสื่อ</h6></li>
+                        <li><a class="dropdown-item d-flex align-items-center gap-2" href="javascript:void(0)" onclick="triggerPhotoCapture()"><i class="bi bi-camera-fill text-primary"></i> ถ่ายรูป</a></li>
+                        <li><a class="dropdown-item d-flex align-items-center gap-2" href="javascript:void(0)" onclick="triggerPhotoCapture()"><i class="bi bi-image-fill text-success"></i> รูปภาพและวิดีโอ</a></li>
+                        <li><a class="dropdown-item d-flex align-items-center gap-2" href="javascript:void(0)" onclick="triggerFileInput()"><i class="bi bi-file-earmark-arrow-up-fill text-info"></i> แนบเอกสาร</a></li>
+                        <li><a class="dropdown-item d-flex align-items-center gap-2" href="javascript:void(0)" onclick="showModernToast('บันทึกเสียงข้อความ...')"><i class="bi bi-mic-fill text-danger"></i> ข้อความเสียง</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header">เลือกโปรเจกต์ที่กำลังคุย</h6></li>
+                        <li><a class="dropdown-item active d-flex align-items-center gap-2" href="javascript:void(0)" onclick="selectTagProject('', 'ทั่วไป (General)')"><i class="bi bi-folder2-open text-warning"></i> ทั่วไป (General)</a></li>
+                    </ul>
+                </div>
+                <input type="file" id="chat-file-input" class="d-none" onchange="handleFileSelected(event)">
+
+                <!-- 2. Center: Rounded Pill Capsule with Input & Emoji Smiley Face -->
+                <div class="chat-input-capsule">
+                    <textarea class="input-capsule-textarea" id="chat-message-input" rows="1" placeholder="ส่งข้อความ..." onkeydown="handleInputKeyDown(event)" oninput="autoGrowTextarea(this)"></textarea>
+                    
+                    <!-- Floating Quick Emoji Picker Popover -->
+                    <div class="emoji-picker-popover shadow-lg d-none" id="emoji-picker-popover">
+                        <div class="emoji-picker-header">
+                            <span>อิโมจิยอดนิยม</span>
+                            <button type="button" class="btn-close-emoji" onclick="toggleEmojiPicker(false)">✕</button>
+                        </div>
+                        <div class="emoji-grid" id="emoji-grid">
+                            <!-- Popular Emojis injected by JS -->
+                        </div>
                     </div>
-                    <!-- Camera -->
-                    <button type="button" class="input-media-btn" onclick="triggerPhotoCapture()" title="ถ่ายภาพ / แนบรูปภาพ">
-                        <i class="bi bi-camera"></i>
+
+                    <!-- Blue Emoji Smiley Button inside capsule -->
+                    <button type="button" class="btn-capsule-emoji" id="btn-capsule-emoji" onclick="toggleEmojiPicker(event)" title="เลือกอิโมจิ">
+                        <i class="bi bi-emoji-smile-fill"></i>
                     </button>
-                    <!-- Gallery -->
-                    <button type="button" class="input-media-btn" onclick="triggerPhotoCapture()" title="เลือกรูปภาพ">
-                        <i class="bi bi-image"></i>
-                    </button>
-                    <!-- Audio / Voice memo -->
-                    <button type="button" class="input-media-btn" onclick="showModernToast('บันทึกเสียงข้อความ...')" title="ส่งข้อความเสียง">
-                        <i class="bi bi-soundwave"></i>
-                    </button>
-                    <!-- File / Doc attachment -->
-                    <button type="button" class="input-media-btn" onclick="triggerFileInput()" title="แนบไฟล์ / เอกสาร">
-                        <i class="bi bi-paperclip"></i>
-                    </button>
-                    <input type="file" id="chat-file-input" class="d-none" onchange="handleFileSelected(event)">
                 </div>
 
-                <!-- Modern Rounded Pill Message Input Field -->
-                <div class="input-pill-field-wrap">
-                    <textarea class="input-pill-textarea" id="chat-message-input" rows="1" placeholder="Message..." onkeydown="handleInputKeyDown(event)" oninput="autoGrowTextarea(this)"></textarea>
-                    <button type="button" class="input-pill-send-btn" id="btn-send-message" onclick="sendMessage()" title="ส่งข้อความ">
-                        <i class="bi bi-send-fill"></i>
-                    </button>
-                </div>
+                <!-- 3. Right: Blue Paper Airplane Send Button -->
+                <button type="button" class="btn-input-send-plane" id="btn-send-message" onclick="sendMessage()" title="ส่งข้อความ">
+                    <i class="bi bi-send-fill"></i>
+                </button>
             </div>
         </section>
 
