@@ -804,34 +804,178 @@ function saveWorkspaceData() {
     } catch (_) {}
 }
 
+// ── 3.1 CLOUD STORE & REALTIME SYNC ENGINE (PC <-> MOBILE) ───────────────────
+let _syncCloudTimer = null;
+function syncWorkchatToCloud() {
+    if (!window.supabaseClient) return;
+    clearTimeout(_syncCloudTimer);
+    _syncCloudTimer = setTimeout(async () => {
+        try {
+            const payload = {
+                room_code: 'WORKCHAT',
+                status: 'LIVE',
+                quiz_settings: {
+                    messages: (CHAT_STATE.messages || []).slice(-150),
+                    files: (CHAT_STATE.files || []).slice(-100),
+                    folders: CHAT_STATE.folders || [],
+                    projects: CHAT_STATE.projects || [],
+                    updated_at: new Date().toISOString()
+                }
+            };
+            await window.supabaseClient.from('lobbies').upsert([payload]);
+        } catch (err) {
+            console.warn('Sync cloud store notice:', err);
+        }
+    }, 400);
+}
+window.syncWorkchatToCloud = syncWorkchatToCloud;
+
+function mergeCloudStore(cloudSettings) {
+    if (!cloudSettings) return;
+
+    let changed = false;
+
+    if (Array.isArray(cloudSettings.messages) && cloudSettings.messages.length > 0) {
+        const existingIds = new Set((CHAT_STATE.messages || []).map(m => m.id));
+        let newCount = 0;
+        cloudSettings.messages.forEach(m => {
+            if (m && m.id && !existingIds.has(m.id)) {
+                CHAT_STATE.messages.push(m);
+                existingIds.add(m.id);
+                newCount++;
+            }
+        });
+        if (newCount > 0) {
+            CHAT_STATE.messages.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+            changed = true;
+            playIncomingChime();
+        }
+    }
+
+    if (Array.isArray(cloudSettings.folders) && cloudSettings.folders.length > 0) {
+        const existingFldIds = new Set((CHAT_STATE.folders || []).map(f => f.id));
+        cloudSettings.folders.forEach(f => {
+            if (f && f.id && !existingFldIds.has(f.id)) {
+                CHAT_STATE.folders.push(f);
+                existingFldIds.add(f.id);
+                changed = true;
+            }
+        });
+    }
+
+    if (Array.isArray(cloudSettings.files) && cloudSettings.files.length > 0) {
+        const existingFileIds = new Set((CHAT_STATE.files || []).map(f => f.id));
+        cloudSettings.files.forEach(f => {
+            if (f && f.id && !existingFileIds.has(f.id)) {
+                CHAT_STATE.files.push(f);
+                existingFileIds.add(f.id);
+                changed = true;
+            }
+        });
+    }
+
+    if (changed) {
+        saveWorkspaceData();
+        renderExplorer();
+        updateHeaderVaultUI();
+        renderChatsList();
+        renderMessages();
+        scrollMessagesToBottom();
+    }
+}
+
 async function initSupabaseSync() {
     if (!window.supabaseClient) return;
 
     try {
-        const { data: dbProjects } = await window.supabaseClient.from('workchat_projects').select('*').order('created_at', { ascending: false });
-        if (dbProjects && dbProjects.length > 0) CHAT_STATE.projects = dbProjects;
+        // 1. Fetch Cloud Store from Supabase (Persistent across PC & Mobile)
+        try {
+            const { data: cloudStore } = await window.supabaseClient
+                .from('lobbies')
+                .select('quiz_settings')
+                .eq('room_code', 'WORKCHAT')
+                .maybeSingle();
 
-        const { data: dbFolders } = await window.supabaseClient.from('workchat_folders').select('*').order('created_at', { ascending: true });
-        if (dbFolders && dbFolders.length > 0) CHAT_STATE.folders = dbFolders;
+            if (cloudStore && cloudStore.quiz_settings) {
+                mergeCloudStore(cloudStore.quiz_settings);
+            } else {
+                syncWorkchatToCloud();
+            }
+        } catch (_) {}
 
-        const { data: dbFiles } = await window.supabaseClient.from('workchat_files').select('*').order('created_at', { ascending: false });
-        if (dbFiles && dbFiles.length > 0) CHAT_STATE.files = dbFiles;
+        // 2. Fetch from dedicated tables if available
+        try {
+            const { data: dbProjects } = await window.supabaseClient.from('workchat_projects').select('*').order('created_at', { ascending: false });
+            if (dbProjects && dbProjects.length > 0) CHAT_STATE.projects = dbProjects;
 
-        const { data: dbMessages } = await window.supabaseClient.from('workchat_messages').select('*').order('created_at', { ascending: true }).limit(100);
-        if (dbMessages && dbMessages.length > 0) CHAT_STATE.messages = dbMessages;
+            const { data: dbFolders } = await window.supabaseClient.from('workchat_folders').select('*').order('created_at', { ascending: true });
+            if (dbFolders && dbFolders.length > 0) CHAT_STATE.folders = dbFolders;
+
+            const { data: dbFiles } = await window.supabaseClient.from('workchat_files').select('*').order('created_at', { ascending: false });
+            if (dbFiles && dbFiles.length > 0) CHAT_STATE.files = dbFiles;
+
+            const { data: dbMessages } = await window.supabaseClient.from('workchat_messages').select('*').order('created_at', { ascending: true }).limit(100);
+            if (dbMessages && dbMessages.length > 0) {
+                const existingIds = new Set(CHAT_STATE.messages.map(m => m.id));
+                dbMessages.forEach(m => {
+                    if (!existingIds.has(m.id)) {
+                        CHAT_STATE.messages.push(m);
+                        existingIds.add(m.id);
+                    }
+                });
+                CHAT_STATE.messages.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+            }
+        } catch (_) {}
 
         saveWorkspaceData();
         renderProjectDropdownList();
+        renderHeaderProjectSelector();
+        updateHeaderVaultUI();
         renderProjectPills();
         renderExplorer();
         renderChatsList();
         renderMessages();
         scrollMessagesToBottom();
 
-        // Realtime Subscription
-        CHAT_STATE.realtimeChannel = window.supabaseClient.channel('workchat_channel')
+        // 3. Connect Realtime Channel (WebSocket across PC & Mobile)
+        if (CHAT_STATE.realtimeChannel) {
+            try { window.supabaseClient.removeChannel(CHAT_STATE.realtimeChannel); } catch (_) {}
+        }
+
+        CHAT_STATE.realtimeChannel = window.supabaseClient.channel('gyver_workchat_realtime', {
+            config: { broadcast: { self: false } }
+        });
+
+        CHAT_STATE.realtimeChannel
+            // A. Realtime Broadcast event (Instant delivery <100ms)
+            .on('broadcast', { event: 'new_message' }, ({ payload }) => {
+                if (payload && !CHAT_STATE.messages.some(m => m.id === payload.id)) {
+                    CHAT_STATE.messages.push(payload);
+                    saveWorkspaceData();
+                    renderChatsList();
+                    renderMessages();
+                    scrollMessagesToBottom();
+                    playIncomingChime();
+                }
+            })
+            .on('broadcast', { event: 'sync_vault' }, ({ payload }) => {
+                if (payload) {
+                    if (payload.folders) CHAT_STATE.folders = payload.folders;
+                    if (payload.files) CHAT_STATE.files = payload.files;
+                    saveWorkspaceData();
+                    renderExplorer();
+                    updateHeaderVaultUI();
+                }
+            })
+            // B. Postgres changes on cloud store
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'lobbies', filter: 'room_code=eq.WORKCHAT' }, payload => {
+                if (payload.new && payload.new.quiz_settings) {
+                    mergeCloudStore(payload.new.quiz_settings);
+                }
+            })
+            // C. Postgres changes on workchat_messages if table exists
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'workchat_messages' }, payload => {
-                if (payload.new && !CHAT_STATE.messages.find(m => m.id === payload.new.id)) {
+                if (payload.new && !CHAT_STATE.messages.some(m => m.id === payload.new.id)) {
                     CHAT_STATE.messages.push(payload.new);
                     saveWorkspaceData();
                     renderChatsList();
@@ -840,13 +984,9 @@ async function initSupabaseSync() {
                     playIncomingChime();
                 }
             })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'workchat_projects' }, () => {
-                reloadProjectsFromCloud();
-            })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'workchat_files' }, () => {
-                reloadFilesFromCloud();
-            })
-            .subscribe();
+            .subscribe((status) => {
+                console.log('WorkChat Realtime WebSocket status:', status);
+            });
 
     } catch (err) {
         console.warn('Supabase local sync notice:', err);
@@ -1733,9 +1873,24 @@ async function sendMessage() {
     renderMessages();
     scrollMessagesToBottom();
 
+    // 1. Broadcast immediately to all connected devices (PC, Mobile, Tablet) via WebSocket
+    if (CHAT_STATE.realtimeChannel) {
+        try {
+            CHAT_STATE.realtimeChannel.send({
+                type: 'broadcast',
+                event: 'new_message',
+                payload: newMsg
+            });
+        } catch (_) {}
+    }
+
+    // 2. Persist to Supabase Cloud Store (Available when devices reconnect/reload)
+    syncWorkchatToCloud();
+
+    // 3. Also insert to workchat_messages table if configured
     if (window.supabaseClient) {
         try {
-            await window.supabaseClient.from('workchat_messages').insert([newMsg]);
+            window.supabaseClient.from('workchat_messages').insert([newMsg]).catch(() => {});
         } catch (_) {}
     }
 }
@@ -2454,8 +2609,19 @@ function shareFileToChat(fileId) {
     CHAT_STATE.messages.push(newMsg);
     saveWorkspaceData();
 
+    if (CHAT_STATE.realtimeChannel) {
+        try {
+            CHAT_STATE.realtimeChannel.send({
+                type: 'broadcast',
+                event: 'new_message',
+                payload: newMsg
+            });
+        } catch (_) {}
+    }
+    syncWorkchatToCloud();
+
     if (window.supabaseClient) {
-        window.supabaseClient.from('workchat_messages').insert([newMsg]).then(() => {});
+        window.supabaseClient.from('workchat_messages').insert([newMsg]).catch(() => {});
     }
 
     renderChatsList();
@@ -2475,6 +2641,7 @@ function deleteFile(fileId) {
 
     CHAT_STATE.files = CHAT_STATE.files.filter(f => f.id !== fileId);
     saveWorkspaceData();
+    syncWorkchatToCloud();
 
     if (window.supabaseClient) {
         window.supabaseClient.from('workchat_files').delete().eq('id', fileId).then(() => {});
@@ -2508,6 +2675,7 @@ function deleteFolder(folderId) {
     }
 
     saveWorkspaceData();
+    syncWorkchatToCloud();
 
     if (window.supabaseClient) {
         window.supabaseClient.from('workchat_folders').delete().eq('id', folderId).then(() => {});
