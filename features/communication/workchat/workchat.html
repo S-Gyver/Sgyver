@@ -106,9 +106,32 @@
                         <button type="button" class="chats-action-circle" onclick="showModernToast('เริ่มวิดีโอคอลคุยงานกลุ่ม...')" title="วิดีโอคอล">
                             <i class="bi bi-camera-video"></i>
                         </button>
-                        <button type="button" class="chats-action-circle" onclick="openNewProjectModal()" title="สร้างโปรเจกต์ / แชทใหม่">
-                            <i class="bi bi-plus-lg"></i>
-                        </button>
+                        <div class="dropdown d-inline-block">
+                            <button type="button" class="chats-action-circle" data-bs-toggle="dropdown" title="สร้างห้องแชทใหม่ / สร้างกลุ่มคุยงาน">
+                                <i class="bi bi-plus-lg"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-2" style="border-radius: 18px; min-width: 240px;">
+                                <li>
+                                    <a class="dropdown-item d-flex align-items-center gap-2 py-2 rounded-3 fw-semibold" href="javascript:void(0)" onclick="openNewGroupModal()">
+                                        <i class="bi bi-people-fill text-primary fs-5"></i>
+                                        <div>
+                                            <div>สร้างกลุ่มคุยงานใหม่</div>
+                                            <div class="small text-muted fw-normal" style="font-size: 0.72rem;">รวมเพื่อนร่วมทีมคุยงานหลายคน</div>
+                                        </div>
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider my-1"></li>
+                                <li>
+                                    <a class="dropdown-item d-flex align-items-center gap-2 py-2 rounded-3 fw-semibold" href="javascript:void(0)" onclick="openNewProjectModal()">
+                                        <i class="bi bi-folder-plus text-warning fs-5"></i>
+                                        <div>
+                                            <div>สร้างโฟลเดอร์โปรเจกต์</div>
+                                            <div class="small text-muted fw-normal" style="font-size: 0.72rem;">เปิดห้องแชทและคลังไฟล์โปรเจกต์</div>
+                                        </div>
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
 
@@ -506,6 +529,50 @@
                             <i class="bi bi-download me-1"></i> ติดตั้งทันที
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── MODAL: CREATE NEW GROUP CHAT (สร้างกลุ่มคุยงาน) ── -->
+    <div class="modal fade" id="modalCreateGroup" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 480px;">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 24px;">
+                <div class="modal-header border-0 pb-0 pt-4 px-4">
+                    <div>
+                        <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2">
+                            <i class="bi bi-people-fill text-primary fs-4"></i> สร้างกลุ่มคุยงานใหม่
+                        </h5>
+                        <p class="text-muted small mb-0">รวมเพื่อนร่วมทีมคุยงานหลายคนในห้องเดียว</p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body px-4 py-3">
+                    <!-- Group Name Input -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-dark">ชื่อกลุ่มแชท:</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-0"><i class="bi bi-chat-quote-fill text-primary"></i></span>
+                            <input type="text" class="form-control bg-light border-0 py-2" id="input-new-group-name" placeholder="เช่น ทีมช่างและโครงสร้าง, นิทรรศการ PIM">
+                        </div>
+                    </div>
+
+                    <!-- Member Selection -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="form-label small fw-bold text-dark mb-0">เลือกเพื่อนเข้ากลุ่ม:</label>
+                            <span class="small text-muted font-mono" id="group-selected-count" style="font-size: 0.75rem;">เลือกแล้ว 0 คน</span>
+                        </div>
+                        <div class="group-members-picker" id="group-members-picker-list" style="max-height: 220px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 16px; padding: 6px; background: #f8fafc;">
+                            <!-- Populated dynamically by openNewGroupModal() -->
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0 pb-4 px-4 d-flex justify-content-between">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" onclick="submitCreateNewGroup()">
+                        <i class="bi bi-plus-circle-fill me-1"></i> สร้างกลุ่มแชท
+                    </button>
                 </div>
             </div>
         </div>

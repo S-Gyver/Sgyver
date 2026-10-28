@@ -21,6 +21,7 @@ const CHAT_STATE = {
     projects: [],
     folders: [],
     files: [],
+    groups: [],
     messages: [],
 
     activePreviewFile: null,
@@ -32,6 +33,26 @@ const CHAT_STATE = {
 function getIllustratedAvatar(avatarTypeOrName, fallbackName) {
     const key = String(avatarTypeOrName || fallbackName || '').toLowerCase();
     
+    // 0. Group Avatar (Multiple Persons on Gradient)
+    if (key.includes('group') || key.includes('team') || key.includes('กลุ่ม')) {
+        return `
+            <svg viewBox="0 0 100 100" fill="none" class="w-100 h-100">
+                <defs>
+                    <linearGradient id="grpGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#3B82F6"/>
+                        <stop offset="100%" stop-color="#8B5CF6"/>
+                    </linearGradient>
+                </defs>
+                <rect width="100" height="100" fill="url(#grpGrad)"/>
+                <circle cx="34" cy="38" r="14" fill="#FDE047"/>
+                <circle cx="66" cy="38" r="14" fill="#FED7AA"/>
+                <circle cx="50" cy="44" r="15" fill="#FFFFFF"/>
+                <path d="M24 82C24 68 36 62 50 62C64 62 76 68 76 82V90H24V82Z" fill="#FFFFFF"/>
+                <path d="M50 74C40 74 32 78 30 86H70C68 78 60 74 50 74Z" fill="#3B82F6" opacity="0.25"/>
+            </svg>
+        `;
+    }
+
     // 1. Lilly Jr. (Cute blonde girl with blue/yellow headband & side buns)
     if (key.includes('lilly') || key.includes('มุก') || key.includes('design') || key.includes('pim')) {
         return `
@@ -223,9 +244,59 @@ const DEFAULT_FILES = [
     }
 ];
 
-const DEFAULT_MESSAGES = [
+const DEFAULT_GROUPS = [
     {
-        id: 'msg_1',
+        id: 'grp_gyver_team',
+        name: 'กลุ่มทีมหลัก Gyver Core Team',
+        members: ['callie_goodman', 'lilly_jr', 'rihanna_goldberg', 'gregory_portman', 'marry_adams'],
+        created_by: 'Callie Goodman',
+        created_at: new Date(Date.now() - 86400000 * 3).toISOString()
+    }
+];
+
+const DEFAULT_MESSAGES = [
+    // ── 1. Group Chat: grp_gyver_team ──
+    {
+        id: 'msg_grp_1',
+        chat_id: 'grp_gyver_team',
+        sender_username: 'callie_goodman',
+        sender_name: 'Callie Goodman',
+        avatar: 'user_boy',
+        message_text: 'สวัสดีทีม Gyver ทุกคนครับ! ห้องนี้เป็นกลุ่มแชทหลักสำหรับประสานงานโครงการทั้งหมด 🚀',
+        project_id: null,
+        folder_id: null,
+        file_data: null,
+        created_at: new Date(Date.now() - 72000000).toISOString()
+    },
+    {
+        id: 'msg_grp_2',
+        chat_id: 'grp_gyver_team',
+        sender_username: 'lilly_jr',
+        sender_name: 'Lilly Jr.',
+        avatar: 'lilly',
+        message_text: 'ยินดีค่ะทุกคน! ทีมดีไซน์เตรียมแบบงานชุดใหม่พร้อมส่งเข้าคลังไฟล์แล้ว',
+        project_id: null,
+        folder_id: null,
+        file_data: null,
+        created_at: new Date(Date.now() - 65000000).toISOString()
+    },
+    {
+        id: 'msg_grp_3',
+        chat_id: 'grp_gyver_team',
+        sender_username: 'gregory_portman',
+        sender_name: 'Gregory Portman',
+        avatar: 'gregory',
+        message_text: 'ทีมวิศวกรรมพร้อมลุยครับ บอร์ดควบคุมชุดใหม่เริ่มทดสอบแล้ว',
+        project_id: null,
+        folder_id: null,
+        file_data: null,
+        created_at: new Date(Date.now() - 50000000).toISOString()
+    },
+
+    // ── 2. Direct Chat: Lilly Jr. (general) ──
+    {
+        id: 'msg_lilly_1',
+        chat_id: 'general',
         sender_username: 'callie_goodman',
         sender_name: 'Callie Goodman',
         avatar: 'user_boy',
@@ -233,32 +304,35 @@ const DEFAULT_MESSAGES = [
         project_id: null,
         folder_id: null,
         file_data: null,
-        created_at: new Date(Date.now() - 72000000).toISOString()
+        created_at: new Date(Date.now() - 45000000).toISOString()
     },
     {
-        id: 'msg_2',
+        id: 'msg_lilly_2',
+        chat_id: 'general',
         sender_username: 'lilly_jr',
         sender_name: 'Lilly Jr.',
         avatar: 'lilly',
-        message_text: 'Hey',
+        message_text: 'Hey Callie! How is the exhibition project going?',
         project_id: null,
         folder_id: null,
         file_data: null,
-        created_at: new Date(Date.now() - 54000000).toISOString()
+        created_at: new Date(Date.now() - 40000000).toISOString()
     },
     {
-        id: 'msg_3',
+        id: 'msg_lilly_3',
+        chat_id: 'general',
         sender_username: 'callie_goodman',
         sender_name: 'Callie Goodman',
         avatar: 'user_boy',
-        message_text: 'Hello. Mrs. Lilly, i have a good idea how to create a music with help of our team. Can we meet up tomorrow near the bar to talk?',
+        message_text: 'Hello Mrs. Lilly, i have a good idea how to create the backdrop with help of our team. Can we meet up tomorrow near the bar to talk?',
         project_id: 'proj_pim_2026',
         folder_id: null,
         file_data: null,
         created_at: new Date(Date.now() - 36000000).toISOString()
     },
     {
-        id: 'msg_4',
+        id: 'msg_lilly_4',
+        chat_id: 'general',
         sender_username: 'lilly_jr',
         sender_name: 'Lilly Jr.',
         avatar: 'lilly',
@@ -269,7 +343,8 @@ const DEFAULT_MESSAGES = [
         created_at: new Date(Date.now() - 18000000).toISOString()
     },
     {
-        id: 'msg_5',
+        id: 'msg_lilly_5',
+        chat_id: 'general',
         sender_username: 'callie_goodman',
         sender_name: 'Callie Goodman',
         avatar: 'user_boy',
@@ -283,6 +358,186 @@ const DEFAULT_MESSAGES = [
             size: '1.1 MB'
         },
         created_at: new Date(Date.now() - 6000000).toISOString()
+    },
+
+    // ── 3. Direct Chat: Rihanna Goldberg (dm_rihanna) ──
+    {
+        id: 'msg_rihanna_1',
+        chat_id: 'dm_rihanna',
+        sender_username: 'callie_goodman',
+        sender_name: 'Callie Goodman',
+        avatar: 'user_boy',
+        message_text: 'สวัสดีครับคุณริฮานน่า ราคาไม้อัดเกรดเฟอร์นิเจอร์และบานพับสำหรับโปรเจกต์ PIM ได้ราคาหรือยังครับ',
+        project_id: null,
+        folder_id: null,
+        file_data: null,
+        created_at: new Date(Date.now() - 30000000).toISOString()
+    },
+    {
+        id: 'msg_rihanna_2',
+        chat_id: 'dm_rihanna',
+        sender_username: 'rihanna_goldberg',
+        sender_name: 'Rihanna Goldberg',
+        avatar: 'rihanna',
+        message_text: 'เช็คราคาโรงงานให้แล้วค่ะ สั่งไม้อัด 15mm ได้ส่วนลด 12% เดี๋ยวสรุปยอดให้นะคะ',
+        project_id: null,
+        folder_id: null,
+        file_data: null,
+        created_at: new Date(Date.now() - 25000000).toISOString()
+    },
+    {
+        id: 'msg_rihanna_3',
+        chat_id: 'dm_rihanna',
+        sender_username: 'callie_goodman',
+        sender_name: 'Callie Goodman',
+        avatar: 'user_boy',
+        message_text: 'ยอดเยี่ยมเลยครับ ขอบคุณมากครับ!',
+        project_id: null,
+        folder_id: null,
+        file_data: null,
+        created_at: new Date(Date.now() - 20000000).toISOString()
+    },
+    {
+        id: 'msg_rihanna_4',
+        chat_id: 'dm_rihanna',
+        sender_username: 'rihanna_goldberg',
+        sender_name: 'Rihanna Goldberg',
+        avatar: 'rihanna',
+        message_text: 'Great, Thanks! ยินดีเสมอค่ะ',
+        project_id: null,
+        folder_id: null,
+        file_data: null,
+        created_at: new Date(Date.now() - 15000000).toISOString()
+    },
+
+    // ── 4. Direct Chat: Gregory Portman (dm_gregory) ──
+    {
+        id: 'msg_greg_1',
+        chat_id: 'dm_gregory',
+        sender_username: 'callie_goodman',
+        sender_name: 'Callie Goodman',
+        avatar: 'user_boy',
+        message_text: 'คุณเกรกอรี่ ตัวบอร์ด ESP32 คุมแขนกล 4-DOF เขียนโค้ด Servo ถึงไหนแล้วครับ',
+        project_id: 'proj_robot_arm',
+        folder_id: null,
+        file_data: null,
+        created_at: new Date(Date.now() - 28000000).toISOString()
+    },
+    {
+        id: 'msg_greg_2',
+        chat_id: 'dm_gregory',
+        sender_username: 'gregory_portman',
+        sender_name: 'Gregory Portman',
+        avatar: 'gregory',
+        message_text: 'ทดสอบการเคลื่อนที่และกริปเปอร์ผ่านเว็บเรียบร้อยแล้วครับ เสถียรดีมาก',
+        project_id: 'proj_robot_arm',
+        folder_id: null,
+        file_data: null,
+        created_at: new Date(Date.now() - 22000000).toISOString()
+    },
+    {
+        id: 'msg_greg_3',
+        chat_id: 'dm_gregory',
+        sender_username: 'gregory_portman',
+        sender_name: 'Gregory Portman',
+        avatar: 'gregory',
+        message_text: 'This is so good man. Will do Remix & อัปเกรดเฟิร์มแวร์ให้อีกนิดนะ',
+        project_id: 'proj_robot_arm',
+        folder_id: null,
+        file_data: null,
+        created_at: new Date(Date.now() - 12000000).toISOString()
+    },
+
+    // ── 5. Direct Chat: Marry Adams (dm_marry) ──
+    {
+        id: 'msg_marry_1',
+        chat_id: 'dm_marry',
+        sender_username: 'callie_goodman',
+        sender_name: 'Callie Goodman',
+        avatar: 'user_boy',
+        message_text: 'คุณแมรี่ รบกวนช่วยตรวจเอกสารสัญญาจ้างและใบเสนอราคาของงาน PIM ให้หน่อยนะครับ',
+        project_id: null,
+        folder_id: null,
+        file_data: null,
+        created_at: new Date(Date.now() - 19000000).toISOString()
+    },
+    {
+        id: 'msg_marry_2',
+        chat_id: 'dm_marry',
+        sender_username: 'marry_adams',
+        sender_name: 'Marry Adams',
+        avatar: 'marry',
+        message_text: 'Cool. We can help Lilly & ทีมงาน กำลังเร่งทำเอกสารให้ค่ะ',
+        project_id: null,
+        folder_id: null,
+        file_data: null,
+        created_at: new Date(Date.now() - 10000000).toISOString()
+    },
+
+    // ── 6. Direct Chat: Callie Goodman (dm_callie - Note to self) ──
+    {
+        id: 'msg_callie_1',
+        chat_id: 'dm_callie',
+        sender_username: 'callie_goodman',
+        sender_name: 'Callie Goodman',
+        avatar: 'user_boy',
+        message_text: 'บันทึก: นัดประชุมสรุปแบบแปลนโปรเจกต์สาธิต PIM บ่าย 2 พรุ่งนี้',
+        project_id: null,
+        folder_id: null,
+        file_data: null,
+        created_at: new Date(Date.now() - 8000000).toISOString()
+    },
+    {
+        id: 'msg_callie_2',
+        chat_id: 'dm_callie',
+        sender_username: 'callie_goodman',
+        sender_name: 'Callie Goodman',
+        avatar: 'user_boy',
+        message_text: 'Call me today. We have a new project.',
+        project_id: null,
+        folder_id: null,
+        file_data: null,
+        created_at: new Date(Date.now() - 4000000).toISOString()
+    },
+
+    // ── 7. Project Room: proj_pim_2026 ──
+    {
+        id: 'msg_proj_pim_1',
+        chat_id: 'proj_pim_2026',
+        sender_username: 'callie_goodman',
+        sender_name: 'Callie Goodman',
+        avatar: 'user_boy',
+        message_text: 'ห้องแชทกลางสำหรับติดตามแบบและไฟล์โปรเจกต์ PIM-2026',
+        project_id: 'proj_pim_2026',
+        folder_id: null,
+        file_data: null,
+        created_at: new Date(Date.now() - 36000000).toISOString()
+    },
+    {
+        id: 'msg_proj_pim_2',
+        chat_id: 'proj_pim_2026',
+        sender_username: 'lilly_jr',
+        sender_name: 'Lilly Jr.',
+        avatar: 'lilly',
+        message_text: 'อัปโหลดแบบแปลน 3D และตัวอย่างฉากลงโฟลเดอร์เรียบร้อยแล้วค่ะ',
+        project_id: 'proj_pim_2026',
+        folder_id: 'fld_pim_drawings',
+        file_data: null,
+        created_at: new Date(Date.now() - 18000000).toISOString()
+    },
+
+    // ── 8. Project Room: proj_robot_arm ──
+    {
+        id: 'msg_proj_rob_1',
+        chat_id: 'proj_robot_arm',
+        sender_username: 'gregory_portman',
+        sender_name: 'Gregory Portman',
+        avatar: 'gregory',
+        message_text: 'ห้องงานหุ่นยนต์แขนกล ROBOT-01 โค้ดและวงจรทั้งหมดอัปขึ้นโฟลเดอร์เรียบร้อยครับ',
+        project_id: 'proj_robot_arm',
+        folder_id: 'fld_robot_schematics',
+        file_data: null,
+        created_at: new Date(Date.now() - 14000000).toISOString()
     }
 ];
 
@@ -496,12 +751,32 @@ function loadWorkspaceData() {
         const savedFiles = localStorage.getItem('sgyver_workchat_files');
         CHAT_STATE.files = savedFiles ? JSON.parse(savedFiles) : DEFAULT_FILES;
 
+        const savedGroups = localStorage.getItem('sgyver_workchat_groups');
+        CHAT_STATE.groups = savedGroups ? JSON.parse(savedGroups) : DEFAULT_GROUPS;
+
         const savedMessages = localStorage.getItem('sgyver_workchat_messages');
-        CHAT_STATE.messages = savedMessages ? JSON.parse(savedMessages) : DEFAULT_MESSAGES;
+        if (savedMessages) {
+            const parsed = JSON.parse(savedMessages);
+            CHAT_STATE.messages = parsed.map(m => {
+                if (!m.chat_id) {
+                    m.chat_id = m.project_id || 'general';
+                }
+                return m;
+            });
+            // Backfill default channels if user's local storage lacks them
+            DEFAULT_MESSAGES.forEach(dm => {
+                if (!CHAT_STATE.messages.some(m => m.chat_id === dm.chat_id)) {
+                    CHAT_STATE.messages.push(dm);
+                }
+            });
+        } else {
+            CHAT_STATE.messages = DEFAULT_MESSAGES;
+        }
     } catch (_) {
         CHAT_STATE.projects = DEFAULT_PROJECTS;
         CHAT_STATE.folders = DEFAULT_FOLDERS;
         CHAT_STATE.files = DEFAULT_FILES;
+        CHAT_STATE.groups = DEFAULT_GROUPS;
         CHAT_STATE.messages = DEFAULT_MESSAGES;
     }
 }
@@ -511,6 +786,7 @@ function saveWorkspaceData() {
         localStorage.setItem('sgyver_workchat_projects', JSON.stringify(CHAT_STATE.projects));
         localStorage.setItem('sgyver_workchat_folders', JSON.stringify(CHAT_STATE.folders));
         localStorage.setItem('sgyver_workchat_files', JSON.stringify(CHAT_STATE.files));
+        localStorage.setItem('sgyver_workchat_groups', JSON.stringify(CHAT_STATE.groups));
         localStorage.setItem('sgyver_workchat_messages', JSON.stringify(CHAT_STATE.messages));
     } catch (_) {}
 }
@@ -593,69 +869,104 @@ function renderChatsList() {
 
     const query = (CHAT_STATE.chatsSearchQuery || '').toLowerCase();
 
-    // Built-in conversations
-    const channels = [
+    // 1. Group Conversations (Built-in + Custom Created)
+    const groupChannels = (CHAT_STATE.groups || []).map(g => ({
+        id: g.id,
+        name: g.name,
+        isGroup: true,
+        memberCount: (g.members && g.members.length) || 1,
+        subtitleDefault: `กลุ่มแชท (${(g.members && g.members.length) || 1} คน)`,
+        avatarType: 'group',
+        status: `กลุ่มแชท • สมาชิก ${(g.members && g.members.length) || 1} คน`
+    }));
+
+    // 2. 1-on-1 Direct Chats
+    const directChannels = [
         {
             id: 'general',
             name: 'Lilly Jr.',
             subtitleDefault: 'Good idea! I like this.',
             avatarType: 'lilly',
-            status: 'ออนไลน์ • ทีมงาน 3 คน'
+            status: 'ออนไลน์ • ฝ่ายดีไซน์',
+            isDirect: true
         },
         {
             id: 'dm_rihanna',
             name: 'Rihanna Goldberg',
             subtitleDefault: 'Great, Thanks!',
             avatarType: 'rihanna',
-            status: 'ออนไลน์'
+            status: 'ออนไลน์ • จัดซื้อและผลิต',
+            isDirect: true
         },
         {
             id: 'dm_gregory',
             name: 'Gregory Portman',
             subtitleDefault: 'This is so good man. Will do Remix.',
             avatarType: 'gregory',
-            status: 'ออนไลน์'
+            status: 'ออนไลน์ • วิศวกรโครงสร้าง',
+            isDirect: true
         },
         {
             id: 'dm_marry',
             name: 'Marry Adams',
             subtitleDefault: 'Cool. We can help Lilly.',
             avatarType: 'marry',
-            status: 'ออฟไลน์'
+            status: 'ออฟไลน์ • ประสานงาน',
+            isDirect: true
         },
         {
             id: 'dm_callie',
             name: 'Callie Goodman',
             subtitleDefault: 'You: Call me today. We have a new project.',
             avatarType: 'user_boy',
-            status: 'ออนไลน์'
-        },
-        // Dynamic Projects
-        ...CHAT_STATE.projects.map(p => ({
-            id: p.id,
-            name: p.name,
-            code: p.code,
-            subtitleDefault: p.description || 'โฟลเดอร์ไฟล์โปรเจกต์',
-            avatarType: (p.code && p.code.includes('PIM')) ? 'lilly' : 'gregory',
-            status: `โปรเจกต์ ${p.code || ''}`,
-            projectId: p.id
-        }))
+            status: 'บันทึกส่วนตัว (Note to self)',
+            isDirect: true
+        }
     ];
 
-    const filtered = channels.filter(c => !query || c.name.toLowerCase().includes(query) || (c.code && c.code.toLowerCase().includes(query)));
+    // 3. Dynamic Projects
+    const projectChannels = CHAT_STATE.projects.map(p => ({
+        id: p.id,
+        name: p.name,
+        code: p.code,
+        subtitleDefault: p.description || 'โฟลเดอร์ไฟล์โปรเจกต์',
+        avatarType: (p.code && p.code.includes('PIM')) ? 'lilly' : 'gregory',
+        status: `โปรเจกต์ ${p.code || ''}`,
+        projectId: p.id,
+        isProject: true
+    }));
+
+    const allChannels = [...groupChannels, ...directChannels, ...projectChannels];
+    const filtered = allChannels.filter(c => 
+        !query || 
+        c.name.toLowerCase().includes(query) || 
+        (c.code && c.code.toLowerCase().includes(query))
+    );
+
+    if (filtered.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-chat-left-dots fs-1 d-block mb-2 text-primary opacity-50"></i>
+                <div class="fw-bold">ไม่พบการสนทนา</div>
+                <div class="small">ค้นหาด้วยชื่ออื่น หรือกดปุ่ม + เพื่อสร้างกลุ่มแชทใหม่</div>
+            </div>
+        `;
+        return;
+    }
 
     container.innerHTML = filtered.map(item => {
         const isActive = (CHAT_STATE.activeChatId === item.id) || (!CHAT_STATE.activeChatId && item.id === 'general');
         
-        // Find latest message snippet
+        // Find latest message snippet for this specific chat
         let snippet = item.subtitleDefault;
         let lastTime = '';
-        if (item.id === 'general') {
-            const m = CHAT_STATE.messages[CHAT_STATE.messages.length - 1];
-            if (m) {
-                snippet = m.message_text;
-                lastTime = formatMessageTime(m.created_at);
-            }
+        const chatMsgs = CHAT_STATE.messages.filter(m => m.chat_id === item.id || (!m.chat_id && item.id === 'general'));
+        if (chatMsgs.length > 0) {
+            const lastM = chatMsgs[chatMsgs.length - 1];
+            const isMe = (lastM.sender_username === CHAT_STATE.currentUser.username || lastM.sender_name === CHAT_STATE.currentUser.displayName);
+            const prefix = isMe ? 'คุณ: ' : (item.isGroup ? `${lastM.sender_name.split(' ')[0]}: ` : '');
+            snippet = prefix + (lastM.file_data ? `[ไฟล์] ${lastM.file_data.name}` : lastM.message_text);
+            lastTime = formatMessageTime(lastM.created_at);
         }
 
         return `
@@ -666,7 +977,8 @@ function renderChatsList() {
                 <div class="item-info">
                     <div class="item-title-row">
                         <span class="item-name">${escapeHtml(item.name)}</span>
-                        ${lastTime ? `<span class="item-time">${lastTime}</span>` : ''}
+                        ${item.isGroup ? '<span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: 0.65rem; padding: 2px 6px; border-radius: 6px;">กลุ่ม</span>' : ''}
+                        ${lastTime ? `<span class="item-time ms-auto">${lastTime}</span>` : ''}
                     </div>
                     <div class="item-snippet">${escapeHtml(snippet)}</div>
                 </div>
@@ -810,6 +1122,112 @@ function handleAddFriendSubmit() {
 }
 window.handleAddFriendSubmit = handleAddFriendSubmit;
 
+// ── 4.6 GROUP CHAT ENGINE (สร้างกลุ่มคุยงาน) ────────────────────────────────
+function openNewGroupModal() {
+    const input = document.getElementById('input-new-group-name');
+    if (input) input.value = '';
+
+    const listEl = document.getElementById('group-members-picker-list');
+    if (listEl) {
+        listEl.innerHTML = TEAM_FRIENDS.map(friend => {
+            const isMe = (friend.username === CHAT_STATE.currentUser.username);
+            return `
+                <label class="d-flex align-items-center gap-2 p-2 rounded-3 mb-1 bg-white border border-light-subtle user-select-none" style="cursor: pointer;">
+                    <input type="checkbox" class="form-check-input group-member-checkbox m-0" value="${friend.username}" data-name="${escapeHtml(friend.name)}" onchange="updateGroupSelectedCount()" ${isMe ? 'checked disabled' : ''}>
+                    <div style="width: 34px; height: 34px; border-radius: 50%; overflow: hidden; flex-shrink: 0;">
+                        ${getIllustratedAvatar(friend.avatarType, friend.name)}
+                    </div>
+                    <div class="flex-grow-1 min-w-0">
+                        <div class="fw-semibold text-dark small text-truncate">
+                            ${escapeHtml(friend.name)} ${isMe ? '<span class="badge bg-secondary-subtle text-secondary" style="font-size: 0.65rem;">คุณ</span>' : ''}
+                        </div>
+                        <div class="text-muted" style="font-size: 0.72rem;">${escapeHtml(friend.role)}</div>
+                    </div>
+                </label>
+            `;
+        }).join('');
+    }
+
+    updateGroupSelectedCount();
+
+    const modalEl = document.getElementById('modalCreateGroup');
+    if (modalEl) {
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+}
+window.openNewGroupModal = openNewGroupModal;
+
+function updateGroupSelectedCount() {
+    const checked = document.querySelectorAll('.group-member-checkbox:checked');
+    const countEl = document.getElementById('group-selected-count');
+    if (countEl) {
+        countEl.textContent = `เลือกแล้ว ${checked.length} คน`;
+    }
+}
+window.updateGroupSelectedCount = updateGroupSelectedCount;
+
+function submitCreateNewGroup() {
+    const input = document.getElementById('input-new-group-name');
+    const groupName = input ? input.value.trim() : '';
+
+    if (!groupName) {
+        showModernToast('กรุณาระบุชื่อกลุ่มแชทก่อนสร้างครับ');
+        if (input) input.focus();
+        return;
+    }
+
+    const checkedBoxes = document.querySelectorAll('.group-member-checkbox:checked');
+    const members = Array.from(checkedBoxes).map(cb => cb.value);
+
+    // Ensure current user is in members
+    if (!members.includes(CHAT_STATE.currentUser.username)) {
+        members.push(CHAT_STATE.currentUser.username);
+    }
+
+    const groupId = 'grp_' + Date.now();
+    const newGroup = {
+        id: groupId,
+        name: groupName,
+        members: members,
+        created_by: CHAT_STATE.currentUser.displayName || CHAT_STATE.currentUser.username,
+        created_at: new Date().toISOString()
+    };
+
+    CHAT_STATE.groups.unshift(newGroup);
+
+    // Initial greeting message in the new group
+    const welcomeMsg = {
+        id: 'msg_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+        chat_id: groupId,
+        sender_username: CHAT_STATE.currentUser.username,
+        sender_name: CHAT_STATE.currentUser.displayName || CHAT_STATE.currentUser.username,
+        avatar: CHAT_STATE.currentUser.avatar || 'user_boy',
+        message_text: `สร้างกลุ่ม "${groupName}" เรียบร้อยแล้ว (สมาชิก ${members.length} คน) เริ่มพูดคุยงานได้ทันทีครับ! 🎉`,
+        project_id: null,
+        folder_id: null,
+        file_data: null,
+        created_at: new Date().toISOString()
+    };
+    CHAT_STATE.messages.push(welcomeMsg);
+
+    saveWorkspaceData();
+
+    // Close modal
+    const modalEl = document.getElementById('modalCreateGroup');
+    if (modalEl) {
+        bootstrap.Modal.getInstance(modalEl)?.hide();
+    }
+
+    // Switch rail tab to 'chat' if currently on another tab
+    if (CHAT_STATE.currentRailTab !== 'chat') {
+        switchRailTab('chat');
+    }
+
+    selectChatConversation(groupId);
+    showModernToast(`สร้างกลุ่ม "${groupName}" สำเร็จแล้ว!`);
+}
+window.submitCreateNewGroup = submitCreateNewGroup;
+
 function handleChatsSearch(query) {
     CHAT_STATE.chatsSearchQuery = query;
     if (CHAT_STATE.currentRailTab === 'people') {
@@ -827,23 +1245,39 @@ function selectChatConversation(chatId) {
     const avatarEl = document.getElementById('active-chat-avatar');
     const statusEl = document.getElementById('active-chat-status');
 
-    if (chatId === 'general') {
+    // 1. Group Conversations
+    const group = (CHAT_STATE.groups || []).find(g => g.id === chatId);
+    if (group) {
+        if (titleEl) titleEl.textContent = group.name;
+        if (avatarEl) avatarEl.innerHTML = getIllustratedAvatar('group', group.name);
+        const memberCount = (group.members && group.members.length) || 1;
+        if (statusEl) statusEl.innerHTML = `<span class="status-dot-green"></span> กลุ่มแชท • สมาชิก ${memberCount} คน`;
+        CHAT_STATE.activeProjectId = 'all';
+    } else if (chatId === 'general') {
         if (titleEl) titleEl.textContent = 'Lilly Jr.';
         if (avatarEl) avatarEl.innerHTML = getIllustratedAvatar('lilly', 'Lilly Jr.');
-        if (statusEl) statusEl.innerHTML = '<span class="status-dot-green"></span> ออนไลน์ • ทีมงาน 3 คน';
+        if (statusEl) statusEl.innerHTML = '<span class="status-dot-green"></span> ออนไลน์ • ฝ่ายดีไซน์ (Design Lead)';
         CHAT_STATE.activeProjectId = 'all';
     } else if (chatId === 'dm_rihanna') {
         if (titleEl) titleEl.textContent = 'Rihanna Goldberg';
         if (avatarEl) avatarEl.innerHTML = getIllustratedAvatar('rihanna', 'Rihanna Goldberg');
-        if (statusEl) statusEl.innerHTML = '<span class="status-dot-green"></span> ออนไลน์';
+        if (statusEl) statusEl.innerHTML = '<span class="status-dot-green"></span> ออนไลน์ • ฝ่ายจัดซื้อและผลิต';
+        CHAT_STATE.activeProjectId = 'all';
     } else if (chatId === 'dm_gregory') {
         if (titleEl) titleEl.textContent = 'Gregory Portman';
         if (avatarEl) avatarEl.innerHTML = getIllustratedAvatar('gregory', 'Gregory Portman');
-        if (statusEl) statusEl.innerHTML = '<span class="status-dot-green"></span> ออนไลน์';
+        if (statusEl) statusEl.innerHTML = '<span class="status-dot-green"></span> ออนไลน์ • วิศวกรโครงสร้าง & หุ่นยนต์';
+        CHAT_STATE.activeProjectId = 'all';
     } else if (chatId === 'dm_marry') {
         if (titleEl) titleEl.textContent = 'Marry Adams';
         if (avatarEl) avatarEl.innerHTML = getIllustratedAvatar('marry', 'Marry Adams');
-        if (statusEl) statusEl.innerHTML = '<span class="text-muted">●</span> ออฟไลน์';
+        if (statusEl) statusEl.innerHTML = '<span class="text-muted">●</span> ออฟไลน์ • ผู้ประสานงานโครงการ';
+        CHAT_STATE.activeProjectId = 'all';
+    } else if (chatId === 'dm_callie') {
+        if (titleEl) titleEl.textContent = 'Callie Goodman (ฉัน)';
+        if (avatarEl) avatarEl.innerHTML = getIllustratedAvatar('user_boy', 'Callie Goodman');
+        if (statusEl) statusEl.innerHTML = '<span class="status-dot-green"></span> บันทึกส่วนตัว (Note to self)';
+        CHAT_STATE.activeProjectId = 'all';
     } else {
         const project = CHAT_STATE.projects.find(p => p.id === chatId);
         if (project) {
@@ -851,7 +1285,7 @@ function selectChatConversation(chatId) {
             CHAT_STATE.selectedTagProjectId = project.id;
             if (titleEl) titleEl.textContent = project.name;
             if (avatarEl) avatarEl.innerHTML = getIllustratedAvatar(project.code?.includes('PIM') ? 'lilly' : 'gregory', project.name);
-            if (statusEl) statusEl.innerHTML = `<span class="status-dot-green"></span> โปรเจกต์: ${escapeHtml(project.code || '')}`;
+            if (statusEl) statusEl.innerHTML = `<span class="status-dot-green"></span> โฟลเดอร์โปรเจกต์: ${escapeHtml(project.code || '')}`;
         }
     }
 
@@ -871,18 +1305,29 @@ function renderMessages() {
     const container = document.getElementById('messages-stream');
     if (!container) return;
 
-    if (CHAT_STATE.messages.length === 0) {
+    const activeChatId = CHAT_STATE.activeChatId || 'general';
+    const currentMessages = CHAT_STATE.messages.filter(msg => {
+        if (msg.chat_id) {
+            return msg.chat_id === activeChatId;
+        }
+        // Legacy fallback
+        if (activeChatId === 'general') return !msg.project_id;
+        if (msg.project_id && msg.project_id === activeChatId) return true;
+        return false;
+    });
+
+    if (currentMessages.length === 0) {
         container.innerHTML = `
             <div class="text-center py-5 text-muted">
                 <i class="bi bi-chat-dots fs-1 d-block mb-2 text-primary opacity-50"></i>
-                <div class="fw-bold">ยังไม่มีข้อความ</div>
-                <div class="small">พิมพ์ข้อความแรกเพื่อเริ่มคุยงานกับทีมของคุณได้เลยครับ</div>
+                <div class="fw-bold">ยังไม่มีข้อความในการสนทนานี้</div>
+                <div class="small">พิมพ์ข้อความด้านล่างเพื่อเริ่มการสนทนาได้เลยครับ</div>
             </div>
         `;
         return;
     }
 
-    container.innerHTML = CHAT_STATE.messages.map(msg => {
+    container.innerHTML = currentMessages.map(msg => {
         const isMe = (msg.sender_username === CHAT_STATE.currentUser.username || msg.sender_name === CHAT_STATE.currentUser.displayName || msg.sender_username === 'callie_goodman');
         const timeStr = formatMessageTime(msg.created_at);
         const project = CHAT_STATE.projects.find(p => p.id === msg.project_id);
@@ -1081,8 +1526,14 @@ async function sendMessage() {
         renderExplorer();
     }
 
+    const activeChatId = CHAT_STATE.activeChatId || 'general';
+    if (!targetProjectId && CHAT_STATE.projects.some(p => p.id === activeChatId)) {
+        targetProjectId = activeChatId;
+    }
+
     const newMsg = {
         id: msgId,
+        chat_id: activeChatId,
         sender_username: u.username,
         sender_name: u.displayName || u.username,
         avatar: u.avatar || 'user_boy',
@@ -1700,9 +2151,32 @@ function switchRailTab(tabName) {
                 <button type="button" class="chats-action-circle" onclick="showModernToast('เริ่มวิดีโอคอลคุยงานกลุ่ม...')" title="วิดีโอคอล">
                     <i class="bi bi-camera-video"></i>
                 </button>
-                <button type="button" class="chats-action-circle" onclick="openNewProjectModal()" title="สร้างโปรเจกต์ / แชทใหม่">
-                    <i class="bi bi-plus-lg"></i>
-                </button>
+                <div class="dropdown d-inline-block">
+                    <button type="button" class="chats-action-circle" data-bs-toggle="dropdown" title="สร้างห้องแชทใหม่ / สร้างกลุ่มคุยงาน">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-2" style="border-radius: 18px; min-width: 240px;">
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center gap-2 py-2 rounded-3 fw-semibold" href="javascript:void(0)" onclick="openNewGroupModal()">
+                                <i class="bi bi-people-fill text-primary fs-5"></i>
+                                <div>
+                                    <div>สร้างกลุ่มคุยงานใหม่</div>
+                                    <div class="small text-muted fw-normal" style="font-size: 0.72rem;">รวมเพื่อนร่วมทีมคุยงานหลายคน</div>
+                                </div>
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider my-1"></li>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center gap-2 py-2 rounded-3 fw-semibold" href="javascript:void(0)" onclick="openNewProjectModal()">
+                                <i class="bi bi-folder-plus text-warning fs-5"></i>
+                                <div>
+                                    <div>สร้างโฟลเดอร์โปรเจกต์</div>
+                                    <div class="small text-muted fw-normal" style="font-size: 0.72rem;">เปิดห้องแชทและคลังไฟล์โปรเจกต์</div>
+                                </div>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
             `;
         }
         if (searchInput) searchInput.placeholder = 'Search messenger...';
