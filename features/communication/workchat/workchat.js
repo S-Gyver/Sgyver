@@ -1526,20 +1526,17 @@ window.returnToWorkspace = returnToWorkspace;
 
 function toggleDrivePane(forceState) {
     const container = document.getElementById('chat-main-container');
-    const sideTab = document.getElementById('drive-side-tab');
     if (!container) return;
 
     const isOpen = (typeof forceState === 'boolean') ? forceState : !container.classList.contains('drive-open');
 
     if (isOpen) {
         container.classList.add('drive-open');
-        if (sideTab) sideTab.style.display = 'none';
         document.querySelectorAll('.rail-nav-item').forEach(b => b.classList.remove('active'));
         document.getElementById('rail-tab-vault')?.classList.add('active');
         renderExplorer();
     } else {
         container.classList.remove('drive-open');
-        if (sideTab) sideTab.style.display = 'flex';
         document.querySelectorAll('.rail-nav-item').forEach(b => b.classList.remove('active'));
         document.getElementById('rail-tab-chat')?.classList.add('active');
     }
