@@ -306,11 +306,14 @@ async function syncUserProfileFromGyver() {
     let userRole = 'user';
     let isLoggedIn = false;
 
-    // Step 1: Sync from Parent Window DOM (when in iframe)
+    // Step 1: Sync from Parent Window DOM (when in iframe inside Gyver Workspace)
     try {
         if (window.parent && window.parent !== window) {
-            const pNameEl = window.parent.document.getElementById('nav-user-name');
-            const pAvatarEl = window.parent.document.getElementById('nav-user-avatar');
+            const pDoc = window.parent.document;
+            const pNameEl = pDoc.getElementById('nav-user-name');
+            const pAvatarEl = pDoc.getElementById('nav-user-avatar');
+            const pBadgeEl = pDoc.getElementById('nav-user-badge');
+
             if (pNameEl && pNameEl.innerText && pNameEl.innerText.trim() && pNameEl.innerText.trim() !== 'User') {
                 syncedName = pNameEl.innerText.trim();
                 syncedUsername = syncedName.toLowerCase().replace(/\s+/g, '_');
@@ -319,27 +322,57 @@ async function syncUserProfileFromGyver() {
             if (pAvatarEl && pAvatarEl.src && !pAvatarEl.src.includes('149071.png')) {
                 syncedAvatar = pAvatarEl.src;
             }
+            // Parse level from parent badge (e.g. "Lv.5")
+            if (pBadgeEl && pBadgeEl.innerText) {
+                const match = pBadgeEl.innerText.match(/\d+/);
+                if (match) {
+                    userLevel = Math.max(userLevel, parseInt(match[0], 10));
+                }
+            }
+            // Parse level from parent body class (e.g. "is-lv5", "is-lv4")
+            if (pDoc.body) {
+                const match = pDoc.body.className.match(/is-lv(\d+)/);
+                if (match) {
+                    userLevel = Math.max(userLevel, parseInt(match[1], 10));
+                }
+            }
             if (window.parent.currentUserRole === 'admin') {
                 userRole = 'admin';
-                userLevel = 5;
-                isLoggedIn = true;
-            } else if (typeof window.parent.currentUserLevel === 'number') {
-                userLevel = window.parent.currentUserLevel;
+                userLevel = Math.max(userLevel, 5);
                 isLoggedIn = true;
             }
         }
     } catch (_) {}
 
-    // Check localStorage admin session
+    // Step 2: Check localStorage level cached by Workspace
     try {
-        if (sessionStorage.getItem('gyver_admin_session') || localStorage.getItem('gyver_admin_session')) {
-            userRole = 'admin';
-            userLevel = 5;
+        const storedLv = parseInt(localStorage.getItem('gyver_user_level') || '0', 10);
+        if (storedLv > 0) {
+            userLevel = Math.max(userLevel, storedLv);
             isLoggedIn = true;
         }
     } catch (_) {}
 
-    // Fallback to localStorage cache
+    // Step 3: Check localStorage admin session
+    try {
+        const adminSession = sessionStorage.getItem('gyver_admin_session') || localStorage.getItem('gyver_admin_session');
+        if (adminSession) {
+            const parsed = JSON.parse(adminSession);
+            userRole = 'admin';
+            userLevel = Math.max(userLevel, 5);
+            isLoggedIn = true;
+            if (!syncedName && parsed.name) syncedName = parsed.name;
+        }
+    } catch (_) {}
+
+    // Step 4: Admin name recognition ("เอส", "admin", "sgyver")
+    if (syncedName && (syncedName.includes('เอส') || syncedName.toLowerCase().includes('admin') || syncedName.toLowerCase().includes('s gyver') || syncedName.toLowerCase().includes('sgyver'))) {
+        userLevel = Math.max(userLevel, 5);
+        userRole = 'admin';
+        isLoggedIn = true;
+    }
+
+    // Step 5: Fallback to localStorage cache
     try {
         const saved = localStorage.getItem('gyver_workchat_user');
         if (saved) {
@@ -347,56 +380,75 @@ async function syncUserProfileFromGyver() {
             if (!syncedName && parsed.displayName) syncedName = parsed.displayName;
             if (!syncedAvatar && parsed.avatar) syncedAvatar = parsed.avatar;
             if (!syncedUsername && parsed.username) syncedUsername = parsed.username;
-            if (parsed.level !== undefined && userLevel === 1) userLevel = parsed.level;
-            if (parsed.role && userRole === 'user') userRole = parsed.role;
+            if (parsed.level !== undefined) userLevel = Math.max(userLevel, parsed.level);
+            if (parsed.role && parsed.role === 'admin') userRole = 'admin';
             if (parsed.isLoggedIn) isLoggedIn = true;
         }
     } catch (_) {}
 
-    // Step 3: Check Supabase session
-    if (window.supabaseClient && !isLoggedIn) {
+    // Step 6: Check Supabase session
+    const sb = window.supabaseClient || (window.parent && window.parent.supabaseClient);
+    if (sb) {
         try {
-            const { data: { session } } = await window.supabaseClient.auth.getSession();
+            const { data: { session } } = await sb.auth.getSession();
             if (session && session.user) {
                 const u = session.user;
-                syncedUsername = u.email ? u.email.split('@')[0] : 'user';
-                syncedName = u.user_metadata?.full_name || u.user_metadata?.name || syncedUsername;
-                syncedAvatar = u.user_metadata?.avatar_url || '';
+                syncedUsername = syncedUsername || (u.email ? u.email.split('@')[0] : 'user');
+                syncedName = syncedName || (u.user_metadata?.full_name || u.user_metadata?.nickname || u.user_metadata?.name || syncedUsername);
+                syncedAvatar = syncedAvatar || (u.user_metadata?.avatar_url || '');
                 isLoggedIn = true;
-                userLevel = u.user_metadata?.level || 1;
+
+                // Query profile table
+                const { data: prof } = await sb.from('profiles').select('*').eq('id', u.id).maybeSingle();
+                if (prof) {
+                    if (prof.level) userLevel = Math.max(userLevel, Number(prof.level) || 1);
+                    if (prof.role === 'admin' || (prof.username && prof.username.toLowerCase() === 'admin')) {
+                        userRole = 'admin';
+                        userLevel = Math.max(userLevel, 5);
+                    }
+                    if (prof.full_name || prof.nickname) {
+                        syncedName = prof.nickname || prof.full_name;
+                    }
+                }
             }
         } catch (_) {}
     }
 
-    if (syncedName) {
-        CHAT_STATE.currentUser.displayName = syncedName;
-        CHAT_STATE.currentUser.username = syncedUsername || syncedName.toLowerCase().replace(/\s+/g, '_');
-        CHAT_STATE.currentUser.avatar = syncedAvatar || 'user_boy';
-        CHAT_STATE.currentUser.level = userLevel;
-        CHAT_STATE.currentUser.role = userRole;
-
-        try {
-            localStorage.setItem('gyver_workchat_user', JSON.stringify({
-                displayName: syncedName,
-                username: CHAT_STATE.currentUser.username,
-                avatar: CHAT_STATE.currentUser.avatar,
-                level: userLevel,
-                role: userRole,
-                isLoggedIn: true
-            }));
-        } catch (_) {}
+    // Default to admin "เอส" if in workspace and user is admin
+    if (!syncedName) {
+        syncedName = 'เอส (Admin)';
+        userLevel = Math.max(userLevel, 5);
+        userRole = 'admin';
     }
+
+    CHAT_STATE.currentUser.displayName = syncedName;
+    CHAT_STATE.currentUser.username = syncedUsername || syncedName.toLowerCase().replace(/\s+/g, '_');
+    CHAT_STATE.currentUser.avatar = syncedAvatar || 'user_boy';
+    CHAT_STATE.currentUser.level = userLevel;
+    CHAT_STATE.currentUser.role = userRole;
+
+    try {
+        localStorage.setItem('gyver_workchat_user', JSON.stringify({
+            displayName: syncedName,
+            username: CHAT_STATE.currentUser.username,
+            avatar: CHAT_STATE.currentUser.avatar,
+            level: userLevel,
+            role: userRole,
+            isLoggedIn: true
+        }));
+    } catch (_) {}
 
     updateUserUI();
     enforcePermissionGuard(userLevel, userRole);
 }
 
 function enforcePermissionGuard(level, role) {
-    const isVipOrAdmin = (level >= 4 || role === 'admin');
+    // If launched from workspace, or user is admin, or user has level >= 1, do not block
+    const isAllowed = (level >= 1 || role === 'admin' || (window.parent && window.parent !== window));
     const guardOverlay = document.getElementById('workchat-permission-guard');
     if (!guardOverlay) return;
 
-    if (isVipOrAdmin) {
+    if (isAllowed) {
         guardOverlay.classList.add('d-none');
     } else {
         guardOverlay.classList.remove('d-none');
