@@ -2946,6 +2946,11 @@ function switchRailTab(tabName) {
         container.classList.remove('drive-open');
     }
 
+    // On mobile, switching tabs always returns from inner chat room to list view
+    if (tabName !== 'vault' && window.innerWidth <= 768) {
+        switchMobileView('list');
+    }
+
     // Clear active state across all rail buttons
     document.querySelectorAll('.rail-nav-item').forEach(b => b.classList.remove('active'));
 
