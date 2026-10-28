@@ -2129,7 +2129,8 @@ function toggleDrivePane(forceState) {
     } else {
         container.classList.remove('drive-open');
         document.querySelectorAll('.rail-nav-item').forEach(b => b.classList.remove('active'));
-        document.getElementById('rail-tab-chat')?.classList.add('active');
+        const activeTabId = (CHAT_STATE.currentRailTab === 'people') ? 'rail-tab-people' : 'rail-tab-chat';
+        document.getElementById(activeTabId)?.classList.add('active');
     }
 }
 window.toggleDrivePane = toggleDrivePane;
@@ -2138,12 +2139,24 @@ function switchRailTab(tabName) {
     const titleEl = document.getElementById('middle-col-title');
     const actionsEl = document.getElementById('middle-col-actions');
     const searchInput = document.getElementById('chats-search-input');
+    const container = document.getElementById('chat-main-container');
+
+    // Close drive pane if open when switching to chat or people
+    if (tabName !== 'vault' && container) {
+        container.classList.remove('drive-open');
+    }
+
+    // Clear active state across all rail buttons
+    document.querySelectorAll('.rail-nav-item').forEach(b => b.classList.remove('active'));
+
+    const chatIcon = document.querySelector('#rail-tab-chat i');
+    const peopleIcon = document.querySelector('#rail-tab-people i');
 
     if (tabName === 'chat') {
         CHAT_STATE.currentRailTab = 'chat';
-        document.querySelectorAll('.rail-nav-item').forEach(b => b.classList.remove('active'));
         document.getElementById('rail-tab-chat')?.classList.add('active');
-        toggleDrivePane(false);
+        if (chatIcon) chatIcon.className = 'bi bi-chat-dots-fill';
+        if (peopleIcon) peopleIcon.className = 'bi bi-people';
 
         if (titleEl) titleEl.textContent = 'Chats';
         if (actionsEl) {
@@ -2184,9 +2197,9 @@ function switchRailTab(tabName) {
 
     } else if (tabName === 'people') {
         CHAT_STATE.currentRailTab = 'people';
-        document.querySelectorAll('.rail-nav-item').forEach(b => b.classList.remove('active'));
         document.getElementById('rail-tab-people')?.classList.add('active');
-        toggleDrivePane(false);
+        if (chatIcon) chatIcon.className = 'bi bi-chat-dots';
+        if (peopleIcon) peopleIcon.className = 'bi bi-people-fill';
 
         if (titleEl) titleEl.textContent = 'People';
         if (actionsEl) {
@@ -2200,7 +2213,6 @@ function switchRailTab(tabName) {
         renderPeopleList();
 
     } else if (tabName === 'vault') {
-        const container = document.getElementById('chat-main-container');
         const isAlreadyOpen = container && container.classList.contains('drive-open');
         if (isAlreadyOpen) {
             toggleDrivePane(false);
