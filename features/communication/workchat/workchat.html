@@ -8,12 +8,14 @@
 
     <!-- Web App PWA Manifest & Mobile Icons -->
     <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
     <link rel="icon" type="image/svg+xml" href="icon.svg">
-    <link rel="apple-touch-icon" href="icon.svg">
+    <link rel="apple-touch-icon" sizes="192x192" href="apple-touch-icon.png">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="WorkChat">
+    <meta name="theme-color" content="#0084ff">
 
     <!-- Bootstrap 5 CSS, Bootstrap Icons & Modern Fonts -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -29,7 +31,7 @@
     <script src="../../../assets/js/toast_shared.js"></script>
 
     <!-- Modern WorkChat Stylesheet -->
-    <link rel="stylesheet" href="workchat.css?v=2.3">
+    <link rel="stylesheet" href="workchat.css?v=2.4">
 </head>
 <body>
 
@@ -127,11 +129,11 @@
                                 </li>
                                 <li><hr class="dropdown-divider my-1"></li>
                                 <li>
-                                    <a class="dropdown-item d-flex align-items-center gap-2 py-2 rounded-3 fw-semibold" href="javascript:void(0)" onclick="openNewProjectModal()">
-                                        <i class="bi bi-folder-plus text-warning fs-5"></i>
+                                    <a class="dropdown-item d-flex align-items-center gap-2 py-2 rounded-3 fw-semibold text-primary" href="javascript:void(0)" onclick="triggerWorkChatPwaInstall()">
+                                        <i class="bi bi-phone-fill text-primary fs-5"></i>
                                         <div>
-                                            <div>สร้างโฟลเดอร์โปรเจกต์</div>
-                                            <div class="small text-muted fw-normal" style="font-size: 0.72rem;">เปิดห้องแชทและคลังไฟล์โปรเจกต์</div>
+                                            <div>เพิ่มไอคอนลงหน้าจอมือถือ</div>
+                                            <div class="small text-muted fw-normal" style="font-size: 0.72rem;">ติดตั้งเป็นแอป กดเข้าแชทได้ทันที</div>
                                         </div>
                                     </a>
                                 </li>
@@ -144,6 +146,18 @@
                 <div class="chats-search-wrapper">
                     <i class="bi bi-search chats-search-icon"></i>
                     <input type="text" class="chats-search-input" id="chats-search-input" placeholder="Search messenger..." oninput="handleChatsSearch(this.value)">
+                </div>
+
+                <!-- Mobile Install App Action Pill -->
+                <div class="pwa-install-banner-pill d-md-none" id="pwa-install-banner-pill" onclick="triggerWorkChatPwaInstall()" style="cursor: pointer; background: linear-gradient(135deg, #eff6ff, #f0fdf4); border: 1px solid #bfdbfe; border-radius: 14px; padding: 7px 12px; margin: 0 0 10px 0; display: flex; align-items: center; justify-content: space-between;">
+                    <div class="d-flex align-items-center gap-2">
+                        <img src="icon-192.png" style="width: 26px; height: 26px; border-radius: 7px;" alt="WorkChat" />
+                        <div>
+                            <div style="font-size: 0.8rem; font-weight: 700; color: #1e3a8a; line-height: 1.2;">เพิ่มไอคอน WorkChat ลงมือถือ</div>
+                            <div style="font-size: 0.68rem; color: #64748b;">กดเข้าแชทได้ทันทีเหมือนแอป Messenger</div>
+                        </div>
+                    </div>
+                    <span class="badge bg-primary text-white rounded-pill px-2 py-1" style="font-size: 0.7rem; font-weight: 600;">ติดตั้ง</span>
                 </div>
 
                 <!-- Chat Filter Tabs: ทั้งหมด, แชท, กลุ่ม -->
@@ -667,6 +681,103 @@
         </div>
     </div>
 
+    <!-- ── MODAL: PWA INSTALL GUIDE (Mobile App Icon Setup) ── -->
+    <div class="modal fade" id="modalPwaInstallGuide" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 460px;">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 26px; overflow: hidden;">
+                <div class="modal-header border-0 pb-0 pt-4 px-4 align-items-start">
+                    <div class="d-flex align-items-center gap-3">
+                        <img src="icon-192.png" alt="WorkChat" style="width: 52px; height: 52px; border-radius: 14px; box-shadow: 0 4px 12px rgba(0, 132, 255, 0.25);" />
+                        <div>
+                            <h5 class="modal-title fw-bold text-dark mb-1">ติดตั้ง WorkChat ลงหน้าจอมือถือ</h5>
+                            <p class="text-muted small mb-0">กดเข้าแชทคุยงานได้ทันทีจากหน้าจอโฮม</p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body px-4 py-3">
+                    <!-- Native Install Button for Android / Chrome -->
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-primary w-100 py-2 rounded-pill fw-bold d-flex align-items-center justify-content-center gap-2 shadow-sm" onclick="executeNativeInstallPrompt()">
+                            <i class="bi bi-download fs-5"></i> ติดตั้งแอปลงมือถือทันที
+                        </button>
+                    </div>
+
+                    <!-- Step-by-step Tabs: iOS vs Android -->
+                    <ul class="nav nav-pills nav-fill mb-3 bg-light p-1 rounded-pill" id="pwa-guide-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active rounded-pill py-2 small fw-bold" id="tab-ios-guide" data-bs-toggle="pill" data-bs-target="#content-ios-guide" type="button" role="tab">
+                                <i class="bi bi-apple me-1"></i> iPhone / iPad (iOS)
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link rounded-pill py-2 small fw-bold" id="tab-android-guide" data-bs-toggle="pill" data-bs-target="#content-android-guide" type="button" role="tab">
+                                <i class="bi bi-android2 me-1"></i> Android
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="pwa-guide-tab-content">
+                        <!-- iOS Instructions -->
+                        <div class="tab-pane fade show active" id="content-ios-guide" role="tabpanel">
+                            <div class="d-flex flex-column gap-2 small">
+                                <div class="d-flex align-items-center gap-3 p-2 rounded-3 bg-light">
+                                    <div class="badge bg-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 26px; height: 26px;">1</div>
+                                    <div>เปิดหน้านี้ด้วย <strong>Safari</strong> แล้วกดปุ่ม <strong>แชร์ (Share)</strong> <i class="bi bi-box-arrow-up text-primary fs-5 ms-1"></i> ที่แถบล่าง</div>
+                                </div>
+                                <div class="d-flex align-items-center gap-3 p-2 rounded-3 bg-light">
+                                    <div class="badge bg-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 26px; height: 26px;">2</div>
+                                    <div>เลื่อนลงมาแล้วเลือกเมนู <strong>"เพิ่มไปยังหน้าจอโฮม" (Add to Home Screen)</strong> <i class="bi bi-plus-square text-dark fs-6 ms-1"></i></div>
+                                </div>
+                                <div class="d-flex align-items-center gap-3 p-2 rounded-3 bg-light">
+                                    <div class="badge bg-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 26px; height: 26px;">3</div>
+                                    <div>กด <strong>"เพิ่ม" (Add)</strong> มุมบนขวา คุณจะได้ไอคอน WorkChat บนหน้าจอมือถือทันที!</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Android Instructions -->
+                        <div class="tab-pane fade" id="content-android-guide" role="tabpanel">
+                            <div class="d-flex flex-column gap-2 small">
+                                <div class="d-flex align-items-center gap-3 p-2 rounded-3 bg-light">
+                                    <div class="badge bg-success rounded-circle d-flex align-items-center justify-content-center" style="width: 26px; height: 26px;">1</div>
+                                    <div>กดปุ่ม <strong>จุดสามจุด [ ⋮ ]</strong> ที่มุมขวาบนของเบราว์เซอร์ Chrome</div>
+                                </div>
+                                <div class="d-flex align-items-center gap-3 p-2 rounded-3 bg-light">
+                                    <div class="badge bg-success rounded-circle d-flex align-items-center justify-content-center" style="width: 26px; height: 26px;">2</div>
+                                    <div>เลือกเมนู <strong>"ติดตั้งแอป" (Install app)</strong> หรือ <strong>"เพิ่มลงในหน้าจอหลัก"</strong></div>
+                                </div>
+                                <div class="d-flex align-items-center gap-3 p-2 rounded-3 bg-light">
+                                    <div class="badge bg-success rounded-circle d-flex align-items-center justify-content-center" style="width: 26px; height: 26px;">3</div>
+                                    <div>กดยืนยัน ไอคอน WorkChat จะถูกสร้างลงบนหน้าจอมือถือเหมือนแอปจริง</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- QR Code & Link Sharing for Desktop Users -->
+                    <div class="mt-3 p-3 rounded-4 bg-light d-flex align-items-center justify-content-between gap-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <img id="pwa-install-qrcode" src="" alt="QR Code" style="width: 54px; height: 54px; border-radius: 8px; background: #fff; padding: 2px;" />
+                            <div class="small">
+                                <div class="fw-bold text-dark">เปิดบนมือถือด้วย QR Code</div>
+                                <div class="text-muted" style="font-size: 0.72rem;">หรือคัดลอกลิงก์ส่งเข้า LINE แล้วเปิด</div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fw-bold text-nowrap" onclick="copyAppUrl()">
+                            <i class="bi bi-clipboard me-1"></i> คัดลอกลิงก์
+                        </button>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-0 pt-0 pb-4 px-4">
+                    <button type="button" class="btn btn-secondary w-100 rounded-pill py-2 fw-bold" data-bs-dismiss="modal">เข้าใจแล้ว</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ══════════════════════════════════════════════════════════════
          VIP LV.4 ACCESS GUARD OVERLAY (Displayed if user level < 4)
          ══════════════════════════════════════════════════════════════ -->
@@ -715,7 +826,7 @@
     <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- App Script -->
-    <script src="workchat.js?v=2.3"></script>
+    <script src="workchat.js?v=2.4"></script>
     <!-- Register PWA Service Worker for Mobile Installation -->
     <script>
         if ('serviceWorker' in navigator) {
