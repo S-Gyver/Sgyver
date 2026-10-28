@@ -31,7 +31,7 @@
     <script src="../../../assets/js/toast_shared.js"></script>
 
     <!-- Modern WorkChat Stylesheet -->
-    <link rel="stylesheet" href="workchat.css?v=2.6">
+    <link rel="stylesheet" href="workchat.css?v=3.2">
 </head>
 <body>
 
@@ -226,10 +226,32 @@
                             <!-- Populated dynamically by renderHeaderProjectSelector() -->
                         </ul>
                     </div>
-                    <!-- Info Button -->
-                    <button type="button" class="header-action-circle" onclick="handleUserProfileClick()" title="ข้อมูลและสมาชิก">
-                        <i class="bi bi-info-circle-fill"></i>
-                    </button>
+                    <!-- Notification Bell Button (Friend Requests) -->
+                    <div class="dropdown d-inline-block position-relative" id="friend-notif-dropdown-wrap">
+                        <button type="button" class="header-action-circle position-relative" id="btn-friend-notif-bell" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" onclick="renderFriendRequestsPopover()" title="แจ้งเตือนคำขอเป็นเพื่อน">
+                            <i class="bi bi-bell-fill" id="friend-notif-bell-icon"></i>
+                            <span class="friend-notif-badge d-none" id="friend-notif-badge">0</span>
+                        </button>
+
+                        <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 friend-notif-menu p-0" aria-labelledby="btn-friend-notif-bell">
+                            <div class="friend-notif-header d-flex align-items-center justify-content-between px-3 py-2.5 border-bottom">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="friend-notif-header-icon">
+                                        <i class="bi bi-bell-fill"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold text-dark" style="font-size: 0.88rem; line-height: 1.2;">คำขอเป็นเพื่อน</div>
+                                        <div class="text-muted" style="font-size: 0.7rem;">ตอบรับเพื่อเริ่มแชทคุยงาน</div>
+                                    </div>
+                                </div>
+                                <span class="badge bg-primary-subtle text-primary rounded-pill font-mono" id="friend-notif-header-count" style="font-size: 0.7rem;">0 รายการ</span>
+                            </div>
+
+                            <div class="friend-notif-body" id="friend-notif-list-stream">
+                                <!-- Populated dynamically by renderFriendRequestsPopover() -->
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -781,7 +803,7 @@
     <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- App Script -->
-    <script src="workchat.js?v=2.9"></script>
+    <script src="workchat.js?v=3.2"></script>
     <!-- Register PWA Service Worker for Mobile Installation -->
     <script>
         if ('serviceWorker' in navigator) {

@@ -528,6 +528,36 @@ body {
     color: #ffffff;
     transform: scale(1.1);
 }
+.btn-people-delete,
+.btn-chat-item-delete {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(239, 68, 68, 0.08);
+    color: #ef4444;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+.btn-people-delete:hover,
+.btn-chat-item-delete:hover {
+    background: #ef4444;
+    color: #ffffff;
+    transform: scale(1.1);
+}
+.chat-conversation-item.active .btn-chat-item-delete {
+    background: rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+}
+.chat-conversation-item.active .btn-chat-item-delete:hover {
+    background: #ef4444;
+    color: #ffffff;
+}
 
 /* ─────────────────────────────────────────────────────────────
    3. MAIN CHAT AREA (Active Conversation View)
@@ -775,6 +805,130 @@ body {
 .header-action-circle:hover {
     background: var(--bg-hover);
     color: var(--primary-blue);
+}
+
+/* Friend Request Notification Bell & Popover */
+#btn-friend-notif-bell {
+    color: var(--primary-blue);
+    background: #eff6ff;
+}
+#btn-friend-notif-bell:hover,
+#btn-friend-notif-bell.show {
+    background: #dbeafe;
+    color: #1d4ed8;
+    transform: translateY(-1px);
+}
+#btn-friend-notif-bell.has-pending #friend-notif-bell-icon {
+    animation: bellRingShake 2.2s ease-in-out infinite;
+    display: inline-block;
+    transform-origin: top center;
+}
+@keyframes bellRingShake {
+    0%, 100% { transform: rotate(0deg); }
+    10% { transform: rotate(16deg); }
+    20% { transform: rotate(-14deg); }
+    30% { transform: rotate(12deg); }
+    40% { transform: rotate(-10deg); }
+    50% { transform: rotate(6deg); }
+    60% { transform: rotate(0deg); }
+}
+.friend-notif-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 19px;
+    height: 19px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #ef4444;
+    color: #ffffff;
+    font-size: 0.68rem;
+    font-weight: 800;
+    line-height: 17px;
+    text-align: center;
+    border: 2px solid #ffffff;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
+}
+.friend-notif-menu {
+    width: 350px;
+    max-width: calc(100vw - 24px);
+    border-radius: 18px !important;
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.16) !important;
+    border: 1px solid #e2e8f0 !important;
+    overflow: hidden;
+    z-index: 1070;
+    margin-top: 8px !important;
+}
+.friend-notif-header {
+    background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
+}
+.friend-notif-header-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: #dbeafe;
+    color: #2563eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+}
+.friend-notif-body {
+    max-height: 390px;
+    overflow-y: auto;
+    background: #ffffff;
+}
+.friend-req-card {
+    padding: 12px 14px;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background 0.15s ease;
+}
+.friend-req-card:last-child {
+    border-bottom: none;
+}
+.friend-req-card:hover {
+    background: #f8fafc;
+}
+.friend-req-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: #e2e8f0;
+    border: 2px solid #ffffff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+.btn-req-accept {
+    background: #2563eb;
+    color: #ffffff;
+    border: none;
+    border-radius: 999px;
+    padding: 5px 14px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    transition: all 0.15s ease;
+}
+.btn-req-accept:hover {
+    background: #1d4ed8;
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
+}
+.btn-req-decline {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    border-radius: 999px;
+    padding: 5px 13px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    transition: all 0.15s ease;
+}
+.btn-req-decline:hover {
+    background: #fee2e2;
+    color: #dc2626;
+    border-color: #fecaca;
 }
 
 /* Messages Stream */

@@ -169,6 +169,7 @@ function renderAvatarDisplay(avatar) {
 // Starter Data & Purge Registry
 const MOCK_ITEM_IDS = new Set([
     'general',
+    'dm_lilly',
     'dm_rihanna',
     'dm_gregory',
     'dm_marry',
@@ -184,6 +185,61 @@ const MOCK_ITEM_IDS = new Set([
     'file_photo_stand'
 ]);
 
+const MOCK_FRIEND_USERNAMES = new Set([
+    'lilly_jr',
+    'rihanna_goldberg',
+    'gregory_portman',
+    'marry_adams',
+    'callie_goodman'
+]);
+
+const MOCK_FRIEND_NAMES = new Set([
+    'lilly jr.',
+    'lilly jr',
+    'rihanna goldberg',
+    'gregory portman',
+    'marry adams',
+    'callie goodman'
+]);
+
+function isMockFriend(f) {
+    if (!f) return true;
+    if (f.id && MOCK_ITEM_IDS.has(f.id)) return true;
+    if (f.username && MOCK_FRIEND_USERNAMES.has(String(f.username).trim().toLowerCase())) return true;
+    if (f.name && MOCK_FRIEND_NAMES.has(String(f.name).trim().toLowerCase())) return true;
+    return false;
+}
+
+function getDeletedFriendIds() {
+    try {
+        const raw = localStorage.getItem('sgyver_workchat_deleted_friends');
+        const arr = raw ? JSON.parse(raw) : [];
+        return new Set(Array.isArray(arr) ? arr : []);
+    } catch (_) {
+        return new Set();
+    }
+}
+
+function markFriendIdDeleted(friendId) {
+    if (!friendId) return;
+    try {
+        const set = getDeletedFriendIds();
+        set.add(friendId);
+        localStorage.setItem('sgyver_workchat_deleted_friends', JSON.stringify([...set]));
+    } catch (_) {}
+}
+
+function unmarkFriendIdDeleted(friendId) {
+    if (!friendId) return;
+    try {
+        const set = getDeletedFriendIds();
+        if (set.has(friendId)) {
+            set.delete(friendId);
+            localStorage.setItem('sgyver_workchat_deleted_friends', JSON.stringify([...set]));
+        }
+    } catch (_) {}
+}
+
 const DEFAULT_PROJECTS = [];
 const DEFAULT_FOLDERS = [];
 const DEFAULT_FILES = [];
@@ -197,6 +253,9 @@ document.addEventListener('DOMContentLoaded', () => {
     loadWorkspaceData();
     TEAM_FRIENDS = loadFriendsData();
     saveFriendsData();
+    FRIEND_REQUESTS = loadFriendRequestsData();
+    updateFriendNotifBadge();
+    renderFriendRequestsPopover();
     initSupabaseSync();
     initEmojiPicker();
     renderProjectDropdownList();
@@ -331,6 +390,7 @@ async function syncUserProfileFromGyver() {
             const { data: { session } } = await sb.auth.getSession();
             if (session && session.user) {
                 const u = session.user;
+                CHAT_STATE.currentUser.id = u.id;
                 syncedUsername = syncedUsername || (u.email ? u.email.split('@')[0] : 'user');
                 syncedName = syncedName || (u.user_metadata?.full_name || u.user_metadata?.nickname || u.user_metadata?.name || syncedUsername);
                 syncedAvatar = syncedAvatar || (u.user_metadata?.avatar_url || '');
@@ -377,6 +437,8 @@ async function syncUserProfileFromGyver() {
     } catch (_) {}
 
     updateUserUI();
+    updateFriendNotifBadge();
+    renderFriendRequestsPopover();
     enforcePermissionGuard(userLevel, userRole);
 }
 
@@ -498,6 +560,7 @@ function syncWorkchatToCloud() {
                     folders: CHAT_STATE.folders || [],
                     projects: CHAT_STATE.projects || [],
                     friends: (typeof TEAM_FRIENDS !== 'undefined' ? TEAM_FRIENDS : []),
+                    friend_requests: (typeof FRIEND_REQUESTS !== 'undefined' ? FRIEND_REQUESTS : []),
                     updated_at: new Date().toISOString()
                 }
             };
@@ -563,11 +626,12 @@ function mergeCloudStore(cloudSettings) {
         const existingIds = new Set((CHAT_STATE.messages || []).map(m => m.id));
         let newCount = 0;
         cloudSettings.messages.forEach(m => {
-            if (m && m.id && !existingIds.has(m.id)) {
-                CHAT_STATE.messages.push(m);
-                existingIds.add(m.id);
-                newCount++;
-            }
+            if (!m || !m.id || existingIds.has(m.id)) return;
+            if (MOCK_ITEM_IDS.has(m.chat_id) || MOCK_ITEM_IDS.has(m.project_id)) return;
+            if (m.sender_username && MOCK_FRIEND_USERNAMES.has(String(m.sender_username).toLowerCase())) return;
+            CHAT_STATE.messages.push(m);
+            existingIds.add(m.id);
+            newCount++;
         });
         if (newCount > 0) {
             CHAT_STATE.messages.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
@@ -598,24 +662,39 @@ function mergeCloudStore(cloudSettings) {
         });
     }
 
-    if (Array.isArray(cloudSettings.friends) && cloudSettings.friends.length > 0 && typeof TEAM_FRIENDS !== 'undefined') {
+    if (Array.isArray(cloudSettings.friends) && typeof TEAM_FRIENDS !== 'undefined') {
+        const deletedIds = getDeletedFriendIds();
+        const hadCloudMocks = cloudSettings.friends.some(fr => isMockFriend(fr) || (fr && deletedIds.has(fr.id)));
+
+        // Purge any mock or deleted friends currently in TEAM_FRIENDS
+        const beforeLen = TEAM_FRIENDS.length;
+        TEAM_FRIENDS = TEAM_FRIENDS.filter(fr => !isMockFriend(fr) && !deletedIds.has(fr.id));
+        let friendsChanged = (TEAM_FRIENDS.length !== beforeLen);
+
         const existingFriendIds = new Set(TEAM_FRIENDS.map(fr => fr.id));
-        let friendsChanged = false;
         cloudSettings.friends.forEach(fr => {
-            if (fr && fr.id && !existingFriendIds.has(fr.id)) {
+            if (fr && fr.id && !isMockFriend(fr) && !deletedIds.has(fr.id) && !existingFriendIds.has(fr.id)) {
                 TEAM_FRIENDS.push(fr);
                 existingFriendIds.add(fr.id);
                 friendsChanged = true;
             }
         });
-        if (friendsChanged) {
+
+        if (friendsChanged || hadCloudMocks) {
             saveFriendsData();
+            if (hadCloudMocks) {
+                syncWorkchatToCloud();
+            }
             if (CHAT_STATE.currentRailTab === 'people') {
                 renderPeopleList();
             } else {
                 renderChatsList();
             }
         }
+    }
+
+    if (Array.isArray(cloudSettings.friend_requests) && typeof FRIEND_REQUESTS !== 'undefined') {
+        mergeFriendRequestsFromCloud(cloudSettings.friend_requests);
     }
 
     if (changed) {
@@ -709,6 +788,11 @@ async function initSupabaseSync() {
                     saveWorkspaceData();
                     renderExplorer();
                     updateHeaderVaultUI();
+                }
+            })
+            .on('broadcast', { event: 'friend_request_update' }, ({ payload }) => {
+                if (payload && Array.isArray(payload.friend_requests)) {
+                    mergeFriendRequestsFromCloud(payload.friend_requests);
                 }
             })
             // B. Postgres changes on cloud store
@@ -894,6 +978,11 @@ function renderChatsList() {
                     </div>
                     <div class="item-snippet">${escapeHtml(snippet)}</div>
                 </div>
+                ${item.isDirect ? `
+                    <button type="button" class="btn-chat-item-delete ms-1" onclick="event.stopPropagation(); deleteFriend('${item.id}')" title="ลบ ${escapeHtml(item.name)} ออกจากรายชื่อเพื่อน">
+                        <i class="bi bi-trash3"></i>
+                    </button>
+                ` : ''}
             </div>
         `;
     }).join('');
@@ -904,16 +993,13 @@ const DEFAULT_FRIENDS = [];
 
 function loadFriendsData() {
     try {
+        const deletedIds = getDeletedFriendIds();
         const stored = localStorage.getItem('sgyver_workchat_friends');
         if (stored) {
             const parsed = JSON.parse(stored);
             if (Array.isArray(parsed)) {
-                // Keep only real added friends (filter out mock contacts)
-                return parsed.filter(f => 
-                    f && 
-                    !MOCK_ITEM_IDS.has(f.id) && 
-                    !['lilly_jr', 'rihanna_goldberg', 'gregory_portman', 'marry_adams', 'callie_goodman'].includes(f.username)
-                );
+                // Keep only real added friends (filter out mock & deleted contacts)
+                return parsed.filter(f => !isMockFriend(f) && !deletedIds.has(f.id));
             }
         }
     } catch (e) {
@@ -924,7 +1010,8 @@ function loadFriendsData() {
 
 function saveFriendsData() {
     try {
-        const cleanFriends = (TEAM_FRIENDS || []).filter(f => f && !MOCK_ITEM_IDS.has(f.id));
+        const deletedIds = getDeletedFriendIds();
+        const cleanFriends = (TEAM_FRIENDS || []).filter(f => !isMockFriend(f) && !deletedIds.has(f.id));
         localStorage.setItem('sgyver_workchat_friends', JSON.stringify(cleanFriends));
     } catch (e) {
         console.warn('Failed to save friends to local storage', e);
@@ -992,11 +1079,9 @@ function renderPeopleList() {
                     <button type="button" class="btn-people-chat" onclick="event.stopPropagation(); openDirectChatFromPeople('${friend.id}')" title="ส่งข้อความคุยกับ ${escapeHtml(friend.name)}">
                         <i class="bi bi-chat-dots-fill"></i>
                     </button>
-                    ${friend.isCustom ? `
-                        <button type="button" class="btn btn-sm btn-link text-danger p-1 text-decoration-none" onclick="event.stopPropagation(); deleteFriend('${friend.id}')" title="ลบออกจากเพื่อน">
-                            <i class="bi bi-trash3"></i>
-                        </button>
-                    ` : ''}
+                    <button type="button" class="btn-people-delete" onclick="event.stopPropagation(); deleteFriend('${friend.id}')" title="ลบ ${escapeHtml(friend.name)} ออกจากรายชื่อเพื่อน">
+                        <i class="bi bi-trash3"></i>
+                    </button>
                 </div>
             </div>
         `).join('')}
@@ -1018,9 +1103,23 @@ function deleteFriend(friendId) {
     if (!friend) return;
     if (!confirm(`คุณต้องการลบ "${friend.name}" ออกจากรายชื่อเพื่อนใช่หรือไม่?`)) return;
 
+    markFriendIdDeleted(friendId);
     TEAM_FRIENDS = TEAM_FRIENDS.filter(f => f.id !== friendId);
     saveFriendsData();
     syncWorkchatToCloud();
+
+    if (CHAT_STATE.activeChatId === friendId) {
+        if (TEAM_FRIENDS.length > 0) {
+            selectChatConversation(TEAM_FRIENDS[0].id);
+        } else if (CHAT_STATE.groups && CHAT_STATE.groups.length > 0) {
+            selectChatConversation(CHAT_STATE.groups[0].id);
+        } else {
+            CHAT_STATE.activeChatId = null;
+            renderEmptyChatHeader();
+            renderMessages();
+        }
+    }
+
     if (CHAT_STATE.currentRailTab === 'people') {
         renderPeopleList();
     } else {
@@ -1132,8 +1231,18 @@ function renderAddFriendSearchResults(users) {
         const displayName = user.nickname || (user.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user.username) || 'สมาชิก Gyver';
         const role = user.role === 'admin' ? 'ผู้ดูแลระบบ (Admin)' : (user.role || `สมาชิก Lv.${user.level || 1}`);
         const avatar = user.avatar_url || 'user_boy';
-        const isMe = (user.id === currentMyId || user.username === CHAT_STATE.currentUser.username);
-        const alreadyFriend = friendUserIdSet.has(user.id) || friendUserIdSet.has(user.username);
+        const isMe = (user.id === currentMyId || (user.username && user.username === CHAT_STATE.currentUser.username));
+        const alreadyFriend = friendUserIdSet.has(user.id) || (user.username && friendUserIdSet.has(user.username)) || TEAM_FRIENDS.some(f => f.name === displayName);
+
+        // Check if there is a pending request between us and this user
+        const outgoingPending = (FRIEND_REQUESTS || []).find(r =>
+            r && r.status === 'pending' && isRequestFromMe(r) &&
+            ((user.id && r.toUserId === user.id) || (user.username && r.toUsername === user.username) || (r.toName === displayName))
+        );
+        const incomingPending = (FRIEND_REQUESTS || []).find(r =>
+            r && r.status === 'pending' && isRequestForMe(r) &&
+            ((user.id && r.fromUserId === user.id) || (user.username && r.fromUsername === user.username) || (r.fromName === displayName))
+        );
 
         const safeUserObj = {
             id: user.id,
@@ -1169,6 +1278,14 @@ function renderAddFriendSearchResults(users) {
                         <button type="button" class="btn btn-sm btn-light text-success rounded-pill px-3 py-1 fw-bold border" disabled>
                             <i class="bi bi-check2"></i> เพื่อนแล้ว
                         </button>
+                    ` : incomingPending ? `
+                        <button type="button" class="btn btn-sm btn-success rounded-pill px-3 py-1 fw-bold shadow-sm" onclick="acceptFriendRequest('${incomingPending.id}'); executeSearchSupabaseUsers();">
+                            <i class="bi bi-check2-circle me-1"></i> ตอบรับคำขอ
+                        </button>
+                    ` : outgoingPending ? `
+                        <button type="button" class="btn btn-sm btn-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-3 py-1 fw-bold" onclick="cancelFriendRequest('${outgoingPending.id}'); executeSearchSupabaseUsers();" title="คลิกเพื่อยกเลิกคำขอ">
+                            <i class="bi bi-hourglass-split me-1"></i> ส่งคำขอแล้ว
+                        </button>
                     ` : `
                         <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 py-1 fw-bold shadow-sm" onclick="addNewFriendFromData('${encodedData}')">
                             <i class="bi bi-person-plus-fill me-1"></i> เพิ่มเพื่อน
@@ -1190,42 +1307,434 @@ function addNewFriendFromData(encodedJson) {
             return;
         }
 
-        const newFriend = {
-            id: newFriendId,
-            userId: u.id,
-            username: u.username || '',
-            name: u.name,
-            role: u.role || 'สมาชิกทีม',
-            avatarType: u.avatarUrl || 'user_boy',
-            status: 'online',
-            bio: u.email ? `อีเมล: ${u.email}` : 'เพื่อนร่วมทีม Gyver',
-            isCustom: true
+        // Check if request already exists
+        const existingOutgoing = (FRIEND_REQUESTS || []).find(r =>
+            r && r.status === 'pending' && isRequestFromMe(r) &&
+            ((u.id && r.toUserId === u.id) || (u.username && r.toUsername === u.username) || (r.toName === u.name))
+        );
+        if (existingOutgoing) {
+            showModernToast(`ส่งคำขอเป็นเพื่อนไปหา "${u.name}" แล้ว รอการตอบรับครับ`);
+            return;
+        }
+
+        // Send a Friend Request to target user
+        const me = CHAT_STATE.currentUser;
+        const newReq = {
+            id: 'freq_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+            fromUserId: me.id || me.username || '',
+            fromUsername: me.username || '',
+            fromName: me.displayName || me.username || 'ผู้ใช้งาน Gyver',
+            fromRole: me.role === 'admin' ? 'ผู้ดูแลระบบ (Admin)' : `สมาชิก Lv.${me.level || 1}`,
+            fromAvatar: me.avatar || 'user_boy',
+            toUserId: u.id || '',
+            toUsername: u.username || '',
+            toName: u.name || 'สมาชิก Gyver',
+            toRole: u.role || 'สมาชิกทีม',
+            toAvatar: u.avatarUrl || 'user_boy',
+            status: 'pending',
+            created_at: new Date().toISOString()
         };
 
-        TEAM_FRIENDS.push(newFriend);
-        saveFriendsData();
+        FRIEND_REQUESTS.push(newReq);
+        saveFriendRequestsData();
+        updateFriendNotifBadge();
+        renderFriendRequestsPopover();
+        broadcastFriendRequestsUpdate();
         syncWorkchatToCloud();
+        executeSearchSupabaseUsers();
 
-        if (CHAT_STATE.currentRailTab === 'people') {
-            renderPeopleList();
-        } else {
-            renderChatsList();
-        }
-
-        showModernToast(`เพิ่ม "${u.name}" เป็นเพื่อนสำเร็จแล้ว! 🎉`);
-
-        const modalEl = document.getElementById('modalAddFriend');
-        if (modalEl) {
-            bootstrap.Modal.getInstance(modalEl)?.hide();
-        }
-
-        openDirectChatFromPeople(newFriend.id);
+        showModernToast(`ส่งคำขอเป็นเพื่อนไปหา "${u.name}" แล้ว รออีกฝ่ายกดยอมรับ 🔔`);
     } catch (err) {
-        console.error('Failed to add friend from data:', err);
-        showModernToast('ไม่สามารถเพิ่มเพื่อนได้');
+        console.error('Failed to send friend request:', err);
+        showModernToast('ไม่สามารถส่งคำขอเป็นเพื่อนได้');
     }
 }
 window.addNewFriendFromData = addNewFriendFromData;
+
+// ── 4.5.1 FRIEND REQUESTS & NOTIFICATION BELL ENGINE ────────────────────────
+let FRIEND_REQUESTS = loadFriendRequestsData();
+
+function loadFriendRequestsData() {
+    try {
+        const raw = localStorage.getItem('sgyver_workchat_friend_requests');
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+                return parsed.filter(r => r && r.id);
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to load friend requests', e);
+    }
+    return [];
+}
+
+function saveFriendRequestsData() {
+    try {
+        const clean = (FRIEND_REQUESTS || []).filter(r => r && r.id).slice(-100);
+        localStorage.setItem('sgyver_workchat_friend_requests', JSON.stringify(clean));
+    } catch (e) {
+        console.warn('Failed to save friend requests', e);
+    }
+}
+
+function isRequestForMe(req) {
+    if (!req) return false;
+    if (req.isDemoToMe) return true;
+    const me = CHAT_STATE.currentUser || {};
+    const myId = String(me.id || '').trim().toLowerCase();
+    const myUser = String(me.username || '').trim().toLowerCase();
+    const myName = String(me.displayName || '').trim().toLowerCase();
+
+    const toId = String(req.toUserId || '').trim().toLowerCase();
+    const toUser = String(req.toUsername || '').trim().toLowerCase();
+    const toName = String(req.toName || '').trim().toLowerCase();
+
+    if (myId && toId && myId === toId) return true;
+    if (myUser && toUser && myUser === toUser) return true;
+    if (myName && toName && myName === toName) return true;
+    return false;
+}
+
+function isRequestFromMe(req) {
+    if (!req) return false;
+    if (req.isDemoToMe) return false;
+    const me = CHAT_STATE.currentUser || {};
+    const myId = String(me.id || '').trim().toLowerCase();
+    const myUser = String(me.username || '').trim().toLowerCase();
+    const myName = String(me.displayName || '').trim().toLowerCase();
+
+    const fromId = String(req.fromUserId || '').trim().toLowerCase();
+    const fromUser = String(req.fromUsername || '').trim().toLowerCase();
+    const fromName = String(req.fromName || '').trim().toLowerCase();
+
+    if (myId && fromId && myId === fromId) return true;
+    if (myUser && fromUser && myUser === fromUser) return true;
+    if (myName && fromName && myName === fromName) return true;
+    return false;
+}
+
+function broadcastFriendRequestsUpdate() {
+    try {
+        if (CHAT_STATE.realtimeChannel) {
+            CHAT_STATE.realtimeChannel.send({
+                type: 'broadcast',
+                event: 'friend_request_update',
+                payload: { friend_requests: FRIEND_REQUESTS }
+            });
+        }
+    } catch (_) {}
+}
+
+function mergeFriendRequestsFromCloud(cloudReqs) {
+    if (!Array.isArray(cloudReqs)) return;
+    let changed = false;
+    let newlyReceivedName = '';
+    let newlyAcceptedName = '';
+
+    const localMap = new Map((FRIEND_REQUESTS || []).map(r => [r.id, r]));
+
+    cloudReqs.forEach(cr => {
+        if (!cr || !cr.id) return;
+        const existing = localMap.get(cr.id);
+        if (!existing) {
+            localMap.set(cr.id, cr);
+            changed = true;
+            if (cr.status === 'pending' && isRequestForMe(cr)) {
+                newlyReceivedName = cr.fromName || 'สมาชิกใหม่';
+            }
+        } else if (existing.status !== cr.status) {
+            const wasPending = existing.status === 'pending';
+            existing.status = cr.status;
+            changed = true;
+            if (wasPending && cr.status === 'accepted' && isRequestFromMe(cr)) {
+                newlyAcceptedName = cr.toName || 'เพื่อนใหม่';
+            }
+        }
+    });
+
+    // Ensure any request accepted where we are either sender or receiver adds the counterpart to TEAM_FRIENDS
+    localMap.forEach(req => {
+        if (req.status === 'accepted') {
+            if (isRequestFromMe(req)) {
+                ensureCounterpartInFriends({
+                    userId: req.toUserId,
+                    username: req.toUsername,
+                    name: req.toName,
+                    role: req.toRole,
+                    avatarType: req.toAvatar
+                });
+            } else if (isRequestForMe(req)) {
+                ensureCounterpartInFriends({
+                    userId: req.fromUserId,
+                    username: req.fromUsername,
+                    name: req.fromName,
+                    role: req.fromRole,
+                    avatarType: req.fromAvatar
+                });
+            }
+        }
+    });
+
+    if (changed) {
+        FRIEND_REQUESTS = Array.from(localMap.values());
+        saveFriendRequestsData();
+        updateFriendNotifBadge();
+        renderFriendRequestsPopover();
+
+        if (newlyReceivedName) {
+            playIncomingChime();
+            showModernToast(`🔔 "${newlyReceivedName}" ส่งคำขอเป็นเพื่อนถึงคุณ!`);
+        }
+        if (newlyAcceptedName) {
+            playIncomingChime();
+            showModernToast(`🎉 "${newlyAcceptedName}" ยอมรับคำขอเป็นเพื่อนของคุณแล้ว!`);
+        }
+    }
+}
+
+function ensureCounterpartInFriends(person) {
+    if (!person || !person.name) return null;
+    const friendId = 'dm_user_' + (person.userId || person.username || person.name.toLowerCase().replace(/\s+/g, '_'));
+    const existing = TEAM_FRIENDS.find(f =>
+        f.id === friendId ||
+        (person.userId && f.userId === person.userId) ||
+        (person.username && f.username === person.username) ||
+        (f.name === person.name)
+    );
+    if (existing) return existing;
+
+    unmarkFriendIdDeleted(friendId);
+    const newFriend = {
+        id: friendId,
+        userId: person.userId || '',
+        username: person.username || '',
+        name: person.name,
+        role: person.role || 'สมาชิกทีม',
+        avatarType: person.avatarType || 'user_boy',
+        status: 'online',
+        bio: 'เพื่อนร่วมทีม Gyver',
+        isCustom: true
+    };
+    TEAM_FRIENDS.push(newFriend);
+    saveFriendsData();
+    if (CHAT_STATE.currentRailTab === 'people') {
+        renderPeopleList();
+    } else {
+        renderChatsList();
+    }
+    return newFriend;
+}
+
+function updateFriendNotifBadge() {
+    const incomingPending = (FRIEND_REQUESTS || []).filter(r => r && r.status === 'pending' && isRequestForMe(r));
+    const count = incomingPending.length;
+
+    const badgeEl = document.getElementById('friend-notif-badge');
+    const bellBtn = document.getElementById('btn-friend-notif-bell');
+    const headerCountEl = document.getElementById('friend-notif-header-count');
+
+    if (badgeEl) {
+        if (count > 0) {
+            badgeEl.textContent = count > 99 ? '99+' : String(count);
+            badgeEl.classList.remove('d-none');
+        } else {
+            badgeEl.textContent = '0';
+            badgeEl.classList.add('d-none');
+        }
+    }
+
+    if (bellBtn) {
+        bellBtn.classList.toggle('has-pending', count > 0);
+    }
+
+    if (headerCountEl) {
+        headerCountEl.textContent = `${count} รายการ`;
+    }
+}
+window.updateFriendNotifBadge = updateFriendNotifBadge;
+
+function renderFriendRequestsPopover() {
+    const container = document.getElementById('friend-notif-list-stream');
+    if (!container) return;
+
+    updateFriendNotifBadge();
+
+    const incoming = (FRIEND_REQUESTS || [])
+        .filter(r => r && r.status === 'pending' && isRequestForMe(r))
+        .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+
+    const outgoing = (FRIEND_REQUESTS || [])
+        .filter(r => r && r.status === 'pending' && isRequestFromMe(r))
+        .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+
+    if (incoming.length === 0 && outgoing.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-4 px-3">
+                <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-light text-secondary mb-2" style="width: 52px; height: 52px;">
+                    <i class="bi bi-bell-slash fs-4"></i>
+                </div>
+                <div class="fw-bold text-dark small">ยังไม่มีคำขอเป็นเพื่อนใหม่</div>
+                <div class="text-muted mb-3" style="font-size: 0.74rem;">เมื่อมีคนกดเพิ่มคุณเป็นเพื่อน รายการจะแจ้งเตือนที่นี่เพื่อให้คุณกดยอมรับหรือปฏิเสธครับ</div>
+                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fw-semibold" style="font-size: 0.74rem;" onclick="simulateIncomingFriendRequest()">
+                    <i class="bi bi-stars me-1"></i> ทดสอบจำลองมีคนขอเป็นเพื่อน
+                </button>
+            </div>
+        `;
+        return;
+    }
+
+    let html = '';
+
+    if (incoming.length > 0) {
+        html += `
+            <div class="px-3 py-1.5 bg-light border-bottom text-muted fw-bold text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.4px;">
+                รอการตอบรับจากคุณ (${incoming.length})
+            </div>
+        `;
+        html += incoming.map(req => `
+            <div class="friend-req-card">
+                <div class="d-flex align-items-start gap-2.5">
+                    <div class="friend-req-avatar">
+                        ${getIllustratedAvatar(req.fromAvatar || 'user_boy', req.fromName)}
+                    </div>
+                    <div class="flex-grow-1 min-w-0">
+                        <div class="d-flex align-items-center justify-content-between gap-1">
+                            <span class="fw-bold text-dark text-truncate" style="font-size: 0.86rem;">${escapeHtml(req.fromName || 'ผู้ใช้งาน')}</span>
+                            <span class="text-muted flex-shrink-0" style="font-size: 0.68rem;">${formatMessageTime(req.created_at)}</span>
+                        </div>
+                        <div class="text-primary text-truncate fw-semibold" style="font-size: 0.72rem;">${escapeHtml(req.fromRole || 'สมาชิกทีม')}</div>
+                        <div class="text-muted mt-0.5 mb-2" style="font-size: 0.72rem;">ต้องการเพิ่มคุณเป็นเพื่อนใน WorkChat</div>
+                        <div class="d-flex align-items-center gap-2">
+                            <button type="button" class="btn-req-accept flex-grow-1" onclick="acceptFriendRequest('${req.id}')">
+                                <i class="bi bi-check-lg me-1"></i> ยอมรับ
+                            </button>
+                            <button type="button" class="btn-req-decline flex-grow-1" onclick="rejectFriendRequest('${req.id}')">
+                                <i class="bi bi-x-lg me-1"></i> ปฏิเสธ
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    if (outgoing.length > 0) {
+        html += `
+            <div class="px-3 py-1.5 bg-light border-top border-bottom text-muted fw-bold text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.4px;">
+                คำขอที่คุณส่งไป (${outgoing.length})
+            </div>
+        `;
+        html += outgoing.map(req => `
+            <div class="friend-req-card">
+                <div class="d-flex align-items-center justify-content-between gap-2">
+                    <div class="d-flex align-items-center gap-2.5 min-w-0">
+                        <div class="friend-req-avatar" style="width: 38px; height: 38px;">
+                            ${getIllustratedAvatar(req.toAvatar || 'user_boy', req.toName)}
+                        </div>
+                        <div class="min-w-0">
+                            <div class="fw-bold text-dark text-truncate" style="font-size: 0.82rem;">${escapeHtml(req.toName || 'สมาชิก')}</div>
+                            <div class="text-muted text-truncate" style="font-size: 0.7rem;">
+                                <i class="bi bi-hourglass-split text-warning me-1"></i> รอการตอบรับ
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-req-decline flex-shrink-0 py-1 px-2.5" style="font-size: 0.72rem;" onclick="cancelFriendRequest('${req.id}')">
+                        ยกเลิก
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    container.innerHTML = html;
+}
+window.renderFriendRequestsPopover = renderFriendRequestsPopover;
+
+function acceptFriendRequest(reqId) {
+    const req = (FRIEND_REQUESTS || []).find(r => r && r.id === reqId);
+    if (!req) return;
+
+    req.status = 'accepted';
+    saveFriendRequestsData();
+
+    const newFriend = ensureCounterpartInFriends({
+        userId: req.fromUserId,
+        username: req.fromUsername,
+        name: req.fromName,
+        role: req.fromRole,
+        avatarType: req.fromAvatar
+    });
+
+    updateFriendNotifBadge();
+    renderFriendRequestsPopover();
+    broadcastFriendRequestsUpdate();
+    syncWorkchatToCloud();
+
+    showModernToast(`ยอมรับ "${req.fromName}" เป็นเพื่อนเรียบร้อยแล้ว! 🎉`);
+
+    if (newFriend) {
+        openDirectChatFromPeople(newFriend.id);
+    }
+}
+window.acceptFriendRequest = acceptFriendRequest;
+
+function rejectFriendRequest(reqId) {
+    const req = (FRIEND_REQUESTS || []).find(r => r && r.id === reqId);
+    if (!req) return;
+
+    const fromName = req.fromName || 'ผู้ใช้งาน';
+    req.status = 'rejected';
+    saveFriendRequestsData();
+    updateFriendNotifBadge();
+    renderFriendRequestsPopover();
+    broadcastFriendRequestsUpdate();
+    syncWorkchatToCloud();
+
+    showModernToast(`ปฏิเสธคำขอเป็นเพื่อนจาก "${fromName}" แล้ว`);
+}
+window.rejectFriendRequest = rejectFriendRequest;
+
+function cancelFriendRequest(reqId) {
+    const req = (FRIEND_REQUESTS || []).find(r => r && r.id === reqId);
+    if (!req) return;
+
+    FRIEND_REQUESTS = FRIEND_REQUESTS.filter(r => r && r.id !== reqId);
+    saveFriendRequestsData();
+    updateFriendNotifBadge();
+    renderFriendRequestsPopover();
+    broadcastFriendRequestsUpdate();
+    syncWorkchatToCloud();
+
+    showModernToast(`ยกเลิกคำขอเป็นเพื่อนที่ส่งให้ "${req.toName || 'สมาชิก'}" แล้ว`);
+}
+window.cancelFriendRequest = cancelFriendRequest;
+
+function simulateIncomingFriendRequest() {
+    const me = CHAT_STATE.currentUser || {};
+    const demoReq = {
+        id: 'freq_demo_' + Date.now(),
+        fromUserId: 'demo_friend_' + Date.now(),
+        fromUsername: 'aya_member',
+        fromName: 'Aya (สมาชิกทีม)',
+        fromRole: 'ฝ่ายประสานงานโปรเจกต์',
+        fromAvatar: 'user_boy',
+        toUserId: me.id || me.username || '',
+        toUsername: me.username || '',
+        toName: me.displayName || '',
+        isDemoToMe: true,
+        status: 'pending',
+        created_at: new Date().toISOString()
+    };
+
+    FRIEND_REQUESTS.push(demoReq);
+    saveFriendRequestsData();
+    updateFriendNotifBadge();
+    renderFriendRequestsPopover();
+    playIncomingChime();
+    showModernToast('🔔 มีคำขอเป็นเพื่อนใหม่เข้ามา! กดยอมรับหรือปฏิเสธได้เลยครับ');
+}
+window.simulateIncomingFriendRequest = simulateIncomingFriendRequest;
 
 function selectCustomFriendAvatar(avatarKey) {
     const valInput = document.getElementById('custom-friend-avatar-val');
