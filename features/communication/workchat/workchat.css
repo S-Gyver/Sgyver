@@ -623,6 +623,109 @@ body {
     gap: 8px;
 }
 
+/* Header Vault Pill & Project Preset Selector */
+.header-vault-pill-group {
+    display: inline-flex;
+    align-items: center;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: var(--radius-pill, 9999px);
+    transition: all 0.2s ease;
+    padding: 2px 3px 2px 4px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.header-vault-pill-group:hover,
+.header-vault-pill-group.show {
+    border-color: #cbd5e1;
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+.header-vault-pill-group.has-project {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+}
+.header-vault-pill-group.has-project:hover,
+.header-vault-pill-group.has-project.show {
+    border-color: #93c5fd;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+}
+
+.btn-header-vault-main {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px 4px 8px;
+    background: transparent;
+    border: none;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-dark, #1e293b);
+    cursor: pointer;
+    border-radius: 9999px 0 0 9999px;
+    transition: all 0.15s ease;
+}
+.btn-header-vault-main:hover {
+    color: var(--primary-color, #2563eb);
+}
+.header-vault-name {
+    max-width: 120px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-block;
+    vertical-align: middle;
+}
+.header-vault-chevron {
+    font-size: 0.65rem;
+    opacity: 0.6;
+    transition: transform 0.2s ease;
+}
+.header-vault-pill-group.show .header-vault-chevron {
+    transform: rotate(180deg);
+}
+
+.btn-header-vault-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 6px;
+    margin-left: 2px;
+    background: transparent;
+    border: none;
+    border-left: 1px solid rgba(0, 0, 0, 0.08);
+    cursor: pointer;
+    border-radius: 0 9999px 9999px 0;
+    transition: transform 0.15s ease;
+}
+.btn-header-vault-count:hover {
+    transform: scale(1.08);
+}
+
+.header-vault-menu {
+    min-width: 290px;
+    max-width: 340px;
+    padding: 0 0 6px 0;
+    border-radius: 14px;
+    box-shadow: 0 14px 35px rgba(15, 23, 42, 0.15) !important;
+    border: 1px solid #e2e8f0 !important;
+    overflow: hidden;
+    z-index: 1060;
+}
+.header-vault-menu-header {
+    background: #f8fafc;
+}
+.header-vault-menu .dropdown-item {
+    border-radius: 8px;
+    margin: 2px 6px;
+    width: calc(100% - 12px);
+    transition: all 0.15s ease;
+}
+.header-vault-menu .dropdown-item.active,
+.header-vault-menu .dropdown-item:active {
+    background: #eff6ff;
+    color: #1e40af;
+}
+
 .btn-header-vault-pill {
     display: flex;
     align-items: center;
@@ -652,6 +755,7 @@ body {
     border-radius: 10px;
     line-height: 16px;
     height: 16px;
+    display: inline-block;
 }
 
 .header-action-circle {
@@ -1867,6 +1971,24 @@ body.drive-open .drive-pane {
     .chat-area-header-actions .header-action-circle[title*="โทร"],
     .chat-area-header-actions .header-action-circle[title*="วิดีโอ"] {
         display: none !important;
+    }
+
+    .header-vault-pill-group {
+        padding: 1px 2px 1px 3px;
+    }
+
+    .btn-header-vault-main {
+        padding: 3px 4px 3px 6px;
+        font-size: 0.74rem;
+        gap: 4px;
+    }
+
+    .header-vault-name {
+        max-width: 80px;
+    }
+
+    .btn-header-vault-count {
+        padding: 2px 4px;
     }
 
     .btn-header-vault-pill {

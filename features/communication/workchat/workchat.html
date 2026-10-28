@@ -192,12 +192,21 @@
                     <button type="button" class="header-action-circle" onclick="showModernToast('กำลังเชื่อมต่อห้องวิดีโอคอล...')" title="เริ่มวิดีโอคอล">
                         <i class="bi bi-camera-video"></i>
                     </button>
-                    <!-- Toggle Project Vault Drawer Button -->
-                    <button type="button" class="btn-header-vault-pill" id="btn-toggle-drive-panel" onclick="toggleDrivePane()" title="เปิด/ปิด คลังไฟล์โปรเจกต์">
-                        <i class="bi bi-folder-fill text-warning"></i>
-                        <span class="d-none d-sm-inline">คลังไฟล์</span>
-                        <span class="vault-mini-count" id="vault-btn-count">4</span>
-                    </button>
+                    <!-- Project Selector Preset & Vault Pill Group -->
+                    <div class="header-vault-pill-group dropdown" id="header-vault-pill-group">
+                        <button type="button" class="btn-header-vault-main" id="btn-header-vault-select" data-bs-toggle="dropdown" aria-expanded="false" title="เลือกโปรเจกต์ที่จะคุยวันนี้ (แท็กข้อความ & บันทึกไฟล์อัตโนมัติ)">
+                            <i class="bi bi-folder-fill text-warning" id="header-vault-icon"></i>
+                            <span class="header-vault-name" id="header-vault-project-name">คลังไฟล์</span>
+                            <i class="bi bi-chevron-down ms-1 header-vault-chevron"></i>
+                        </button>
+                        <button type="button" class="btn-header-vault-count" id="btn-toggle-drive-panel" onclick="toggleDrivePane()" title="เปิด/ปิด ลิ้นชักคลังไฟล์ (Project Vault)">
+                            <span class="vault-mini-count" id="vault-btn-count">4</span>
+                        </button>
+
+                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 header-vault-menu" id="header-project-select-menu">
+                            <!-- Populated dynamically by renderHeaderProjectSelector() -->
+                        </ul>
+                    </div>
                     <!-- Info Button -->
                     <button type="button" class="header-action-circle" onclick="handleUserProfileClick()" title="ข้อมูลและสมาชิก">
                         <i class="bi bi-info-circle"></i>

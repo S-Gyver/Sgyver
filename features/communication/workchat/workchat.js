@@ -549,6 +549,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initSupabaseSync();
     initEmojiPicker();
     renderProjectDropdownList();
+    renderHeaderProjectSelector();
+    updateHeaderVaultUI();
     renderProjectPills();
     renderExplorer();
     renderChatsList();
@@ -774,6 +776,15 @@ function loadWorkspaceData() {
         } else {
             CHAT_STATE.messages = DEFAULT_MESSAGES;
         }
+
+        // Restore preset project selection if previously saved
+        try {
+            const savedPreset = localStorage.getItem('sgyver_workchat_preset_project_' + (CHAT_STATE.activeChatId || 'general')) ||
+                                localStorage.getItem('sgyver_workchat_active_preset_project');
+            if (savedPreset && CHAT_STATE.projects.some(p => p.id === savedPreset)) {
+                CHAT_STATE.selectedTagProjectId = savedPreset;
+            }
+        } catch (_) {}
     } catch (_) {
         CHAT_STATE.projects = DEFAULT_PROJECTS;
         CHAT_STATE.folders = DEFAULT_FOLDERS;
@@ -1331,6 +1342,17 @@ function selectChatConversation(chatId) {
         }
     }
 
+    // Restore preset project for this specific conversation if previously chosen
+    try {
+        const savedChatProj = localStorage.getItem('sgyver_workchat_preset_project_' + chatId);
+        if (savedChatProj !== null && (!savedChatProj || CHAT_STATE.projects.some(p => p.id === savedChatProj))) {
+            CHAT_STATE.selectedTagProjectId = savedChatProj;
+        }
+    } catch (_) {}
+
+    updateHeaderVaultUI();
+    populateStagingFolderDropdown();
+
     renderChatsList();
     renderMessages();
     scrollMessagesToBottom();
@@ -1590,7 +1612,7 @@ function populateStagingFolderDropdown() {
     let html = `<option value="">📁 คลังไฟล์ทั่วไป (General)</option>`;
     CHAT_STATE.projects.forEach(p => {
         html += `<optgroup label="📂 ${escapeHtml(p.name)}">`;
-        html += `<option value="${p.id}:root">📁 [โฟลเดอร์หลักของโปรเจกต์]</option>`;
+        html += `<option value="${p.id}:root">📁 [โฟลเดอร์หลักของ ${escapeHtml(p.code || p.name)}]</option>`;
         const projectFolders = CHAT_STATE.folders.filter(f => f.project_id === p.id);
         projectFolders.forEach(f => {
             html += `<option value="${p.id}:${f.id}">↳ 📁 ${escapeHtml(f.name)}</option>`;
@@ -1599,6 +1621,18 @@ function populateStagingFolderDropdown() {
     });
 
     select.innerHTML = html;
+
+    // Automatic pre-selection based on active selectedTagProjectId
+    if (CHAT_STATE.selectedTagProjectId) {
+        const projectFolders = CHAT_STATE.folders.filter(f => f.project_id === CHAT_STATE.selectedTagProjectId);
+        if (projectFolders.length > 0) {
+            select.value = `${CHAT_STATE.selectedTagProjectId}:${projectFolders[0].id}`;
+        } else {
+            select.value = `${CHAT_STATE.selectedTagProjectId}:root`;
+        }
+    } else {
+        select.value = '';
+    }
 }
 
 function cancelStagedAttachment() {
@@ -1777,9 +1811,180 @@ function renderProjectDropdownList() {
 }
 
 function selectTagProject(projId, label) {
-    CHAT_STATE.selectedTagProjectId = projId;
+    CHAT_STATE.selectedTagProjectId = projId || '';
+
+    // Remember preference for current chat & globally
+    try {
+        if (CHAT_STATE.activeChatId) {
+            localStorage.setItem('sgyver_workchat_preset_project_' + CHAT_STATE.activeChatId, projId || '');
+        }
+        localStorage.setItem('sgyver_workchat_active_preset_project', projId || '');
+    } catch (_) {}
+
+    // If project selected, sync vault activeProjectId so drawer also focuses on this project
+    if (projId) {
+        CHAT_STATE.activeProjectId = projId;
+        CHAT_STATE.activeFolderId = null;
+        renderProjectPills();
+    }
+
+    updateHeaderVaultUI();
     renderProjectDropdownList();
+    populateStagingFolderDropdown();
+
+    const proj = CHAT_STATE.projects.find(p => p.id === projId);
+    if (proj) {
+        showModernToast(`📌 ตั้งค่าโปรเจกต์: [${proj.code || 'PROJ'}] ${proj.name} เรียบร้อย! (ข้อความและไฟล์จะแท็กเข้าโปรเจกต์นี้อัตโนมัติ)`);
+    } else {
+        showModernToast('📁 ตั้งค่าเป็น: คลังไฟล์ทั่วไป (General)');
+    }
 }
+window.selectTagProject = selectTagProject;
+
+function renderHeaderProjectSelector() {
+    const menu = document.getElementById('header-project-select-menu');
+    if (!menu) return;
+
+    const currentProjId = CHAT_STATE.selectedTagProjectId || '';
+
+    let html = `
+        <li class="header-vault-menu-header px-3 py-2 border-bottom">
+            <div class="d-flex align-items-center justify-content-between mb-1">
+                <span class="fw-bold small text-dark"><i class="bi bi-tag-fill text-primary me-1"></i> เลือกโปรเจกต์ประจำวัน</span>
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: 0.65rem;">Auto-Tag</span>
+            </div>
+            <div class="text-muted" style="font-size: 0.73rem; line-height: 1.3;">
+                คุยเรื่องโปรเจกต์ไหนเลือกไว้เลย ตอนส่งข้อความหรือแนบไฟล์จะจัดเก็บเข้าโฟลเดอร์ให้อัตโนมัติ
+            </div>
+        </li>
+        <li class="px-2 pt-2 pb-1">
+            <span class="text-uppercase fw-bold text-muted px-2" style="font-size: 0.65rem; letter-spacing: 0.5px;">โปรเจกต์ที่ใช้งาน</span>
+        </li>
+        <li>
+            <a class="dropdown-item d-flex align-items-center justify-content-between py-2 px-3 ${!currentProjId ? 'active' : ''}" 
+               href="javascript:void(0)" onclick="selectTagProject('', 'ทั่วไป (General)')">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-folder2-open text-warning fs-5"></i>
+                    <div>
+                        <div class="fw-semibold text-dark">ทั่วไป (General)</div>
+                        <div class="text-muted" style="font-size: 0.72rem;">ไม่เจาะจงโปรเจกต์ • บันทึกเข้าคลังกลาง</div>
+                    </div>
+                </div>
+                ${!currentProjId ? '<i class="bi bi-check2 text-primary fs-5 fw-bold"></i>' : ''}
+            </a>
+        </li>
+    `;
+
+    CHAT_STATE.projects.forEach(p => {
+        const isSelected = (currentProjId === p.id);
+        const foldersCount = (CHAT_STATE.folders || []).filter(f => f.project_id === p.id).length;
+        const filesCount = (CHAT_STATE.files || []).filter(f => f.project_id === p.id).length;
+        const color = p.color || '#3b82f6';
+
+        html += `
+            <li>
+                <a class="dropdown-item d-flex align-items-center justify-content-between py-2 px-3 ${isSelected ? 'active' : ''}" 
+                   href="javascript:void(0)" onclick="selectTagProject('${p.id}', '${escapeHtml(p.code || p.name)}')">
+                    <div class="d-flex align-items-center gap-2 text-truncate me-2">
+                        <span class="d-inline-flex align-items-center justify-content-center rounded-circle flex-shrink-0" style="width: 28px; height: 28px; background: ${color}20; color: ${color}; font-size: 0.85rem;">
+                            <i class="bi bi-folder-fill"></i>
+                        </span>
+                        <div class="text-truncate">
+                            <div class="fw-semibold text-dark text-truncate">
+                                <span class="badge me-1" style="background: ${color}; font-size: 0.68rem;">${escapeHtml(p.code || 'PROJ')}</span>
+                                ${escapeHtml(p.name)}
+                            </div>
+                            <div class="text-muted" style="font-size: 0.72rem;">
+                                ${foldersCount} โฟลเดอร์ • ${filesCount} ไฟล์
+                            </div>
+                        </div>
+                    </div>
+                    ${isSelected ? '<i class="bi bi-check2 text-primary fs-5 fw-bold flex-shrink-0"></i>' : ''}
+                </a>
+            </li>
+        `;
+    });
+
+    html += `
+        <li><hr class="dropdown-divider my-1"></li>
+        <li>
+            <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 text-primary fw-semibold" href="javascript:void(0)" onclick="toggleDrivePane(true)">
+                <i class="bi bi-layout-sidebar-reverse fs-5"></i>
+                <div class="d-flex flex-column">
+                    <span>เปิดลิ้นชักคลังไฟล์ (Project Vault)</span>
+                    <span class="text-muted fw-normal" style="font-size: 0.7rem;">ดูโครงสร้างโฟลเดอร์และดาวน์โหลดไฟล์ทั้งหมด</span>
+                </div>
+            </a>
+        </li>
+    `;
+
+    menu.innerHTML = html;
+}
+window.renderHeaderProjectSelector = renderHeaderProjectSelector;
+
+function updateHeaderVaultUI() {
+    const nameEl = document.getElementById('header-vault-project-name');
+    const iconEl = document.getElementById('header-vault-icon');
+    const groupEl = document.getElementById('header-vault-pill-group');
+    const countEl = document.getElementById('vault-btn-count');
+
+    const currentProjId = CHAT_STATE.selectedTagProjectId || '';
+    const proj = CHAT_STATE.projects.find(p => p.id === currentProjId);
+
+    if (proj) {
+        if (nameEl) nameEl.textContent = proj.code || proj.name;
+        if (iconEl) {
+            iconEl.className = 'bi bi-folder-fill';
+            iconEl.style.color = proj.color || '#3b82f6';
+        }
+        if (groupEl) groupEl.classList.add('has-project');
+
+        if (countEl) {
+            const projFolders = (CHAT_STATE.folders || []).filter(f => f.project_id === proj.id);
+            const projFiles = (CHAT_STATE.files || []).filter(f => f.project_id === proj.id);
+            countEl.textContent = projFolders.length + projFiles.length;
+        }
+    } else {
+        if (nameEl) nameEl.textContent = 'คลังไฟล์';
+        if (iconEl) {
+            iconEl.className = 'bi bi-folder-fill text-warning';
+            iconEl.style.color = '';
+        }
+        if (groupEl) groupEl.classList.remove('has-project');
+
+        if (countEl) {
+            countEl.textContent = (CHAT_STATE.folders || []).length;
+        }
+    }
+
+    renderHeaderProjectSelector();
+}
+window.updateHeaderVaultUI = updateHeaderVaultUI;
+
+function showModernToast(msg, duration = 3000) {
+    let container = document.getElementById('workchat-toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'workchat-toast-container';
+        container.style.cssText = 'position: fixed; bottom: 85px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none;';
+        document.body.appendChild(container);
+    }
+    const toast = document.createElement('div');
+    toast.className = 'workchat-floating-toast shadow-lg';
+    toast.style.cssText = 'background: rgba(15, 23, 42, 0.92); color: #fff; padding: 8px 16px; border-radius: 9999px; font-size: 0.82rem; font-weight: 600; backdrop-filter: blur(8px); opacity: 0; transform: translateY(10px); transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); pointer-events: auto; max-width: 90vw; text-align: center; border: 1px solid rgba(255, 255, 255, 0.15);';
+    toast.textContent = msg;
+    container.appendChild(toast);
+    requestAnimationFrame(() => {
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateY(0)';
+    });
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-10px)';
+        setTimeout(() => toast.remove(), 250);
+    }, duration);
+}
+window.showModernToast = showModernToast;
 
 function renderProjectPills() {
     const container = document.getElementById('project-pills-container');
@@ -1841,7 +2046,7 @@ function renderExplorer() {
 
     if (foldersCountEl) foldersCountEl.textContent = activeFolders.length;
     if (filesCountEl) filesCountEl.textContent = activeFiles.length;
-    if (vaultBtnCount) vaultBtnCount.textContent = (CHAT_STATE.folders || []).length;
+    updateHeaderVaultUI();
 
     if (foldersGrid) {
         if (activeFolders.length === 0) {
