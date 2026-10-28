@@ -1434,28 +1434,20 @@ function renderMessages() {
             timeLabelContent = formatMessageTime(msg.created_at);
         }
 
+        const projectMarkup = project 
+            ? `<div class="msg-project-chip" onclick="selectProjectFilter('${project.id}')" title="คลิกเปิดดูไฟล์โปรเจกต์นี้"><i class="bi bi-folder-fill" style="color: ${project.color || '#f59e0b'};"></i><span>${escapeHtml(project.code || project.name)}</span></div>` 
+            : '';
+        const textMarkup = msg.message_text 
+            ? `<div class="msg-text-content">${formatMessageTextWithLinks(msg.message_text)}</div>` 
+            : '';
+
         html += `
             <div class="msg-row ${isMe ? 'outbound ' + bubbleThemeClass : 'inbound'}">
-                ${!isMe ? `
-                    <div class="msg-avatar-circle">
-                        ${avatarMarkup}
-                    </div>
-                ` : ''}
+                ${!isMe ? `<div class="msg-avatar-circle">${avatarMarkup}</div>` : ''}
                 <div class="msg-content-wrapper">
                     ${!isMe ? `<div class="msg-sender-name">${escapeHtml(msg.sender_name)}</div>` : ''}
-                    <div class="msg-bubble-box">
-                        ${project ? `
-                            <div class="msg-project-chip" onclick="selectProjectFilter('${project.id}')" title="คลิกเปิดดูไฟล์โปรเจกต์นี้">
-                                <i class="bi bi-folder-fill" style="color: ${project.color || '#f59e0b'};"></i>
-                                <span>${escapeHtml(project.code || project.name)}</span>
-                            </div>
-                        ` : ''}
-                        <div>${formatMessageTextWithLinks(msg.message_text)}</div>
-                        ${attachedHtml}
-                    </div>
-                    <div class="msg-time-label">
-                        ${timeLabelContent}
-                    </div>
+                    <div class="msg-bubble-box">${projectMarkup}${textMarkup}${attachedHtml}</div>
+                    <div class="msg-time-label">${timeLabelContent}</div>
                 </div>
             </div>
         `;
@@ -1694,9 +1686,12 @@ async function sendMessage() {
 function scrollMessagesToBottom() {
     const container = document.getElementById('messages-stream');
     if (container) {
-        setTimeout(() => {
-            container.scrollTop = container.scrollHeight;
-        }, 50);
+        const doScroll = () => {
+            container.scrollTop = container.scrollHeight + 100;
+        };
+        requestAnimationFrame(doScroll);
+        setTimeout(doScroll, 60);
+        setTimeout(doScroll, 200);
     }
 }
 
