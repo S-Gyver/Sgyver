@@ -1560,6 +1560,8 @@ function stageFileAttachment(file) {
 
         populateStagingFolderDropdown();
         if (stagingBox) stagingBox.classList.remove('d-none');
+        const inputBar = document.getElementById('chat-area-input-bar');
+        if (inputBar) inputBar.classList.add('has-text');
     };
     reader.readAsDataURL(file);
 }
@@ -1586,6 +1588,11 @@ function cancelStagedAttachment() {
     CHAT_STATE.stagedAttachment = null;
     const stagingBox = document.getElementById('attachment-staging-box');
     if (stagingBox) stagingBox.classList.add('d-none');
+    const input = document.getElementById('chat-message-input');
+    const inputBar = document.getElementById('chat-area-input-bar');
+    if (inputBar && (!input || !input.value.trim())) {
+        inputBar.classList.remove('has-text');
+    }
 }
 
 async function sendMessage() {
@@ -1596,8 +1603,7 @@ async function sendMessage() {
     const hasAttachment = !!CHAT_STATE.stagedAttachment;
 
     if (!text && !hasAttachment) {
-        sendQuickLike();
-        return;
+        return; // Empty input: do not send anything
     }
 
     const u = CHAT_STATE.currentUser;

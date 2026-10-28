@@ -967,6 +967,9 @@ body {
 .chat-area-input-bar:not(.has-text) .btn-input-thumbs-up {
     display: flex !important;
 }
+.chat-area-input-bar:not(.has-text) .btn-capsule-send {
+    display: none !important;
+}
 
 .chat-area-input-bar.has-text .btn-input-plus-wrap {
     display: inline-block !important;
@@ -976,6 +979,9 @@ body {
 }
 .chat-area-input-bar.has-text .btn-input-thumbs-up {
     display: none !important;
+}
+.chat-area-input-bar.has-text .btn-capsule-send {
+    display: inline-flex !important;
 }
 
 /* Image 1: 4 Blue Media Icons Row */
