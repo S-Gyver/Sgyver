@@ -799,9 +799,11 @@ function selectProjectFilter(projId) {
     renderProjectPills();
     renderExplorer();
 
-    // If mobile, switch to drive view to inspect
+    // Open drive view to inspect
     if (window.innerWidth <= 992) {
         switchMobileView('drive');
+    } else {
+        toggleDrivePane(true);
     }
 }
 
@@ -817,6 +819,7 @@ function renderExplorer() {
     const filesGrid = document.getElementById('files-grid');
     const foldersCountEl = document.getElementById('folders-count');
     const filesCountEl = document.getElementById('files-count');
+    const vaultBtnCount = document.getElementById('vault-btn-count');
 
     // 1. Filter Folders for current scope
     let activeFolders = CHAT_STATE.folders.filter(f => {
@@ -836,6 +839,7 @@ function renderExplorer() {
 
     if (foldersCountEl) foldersCountEl.textContent = activeFolders.length;
     if (filesCountEl) filesCountEl.textContent = activeFiles.length;
+    if (vaultBtnCount) vaultBtnCount.textContent = (CHAT_STATE.folders || []).length;
 
     // Render Folders
     if (foldersGrid) {
@@ -1290,6 +1294,51 @@ function switchMobileView(viewName) {
         if (btnDrive) btnDrive.classList.remove('active');
     }
 }
+
+// ── 8.1 TOGGLE PROJECT FILE VAULT DRAWER (SLIDE-OUT DRAWER) ────────────────
+function toggleDrivePane(forceState) {
+    const container = document.getElementById('chat-main-container') || document.querySelector('.chat-main-container');
+    const btnToggle = document.getElementById('btn-toggle-drive-panel');
+    const sideTab = document.getElementById('drive-side-tab');
+    if (!container) return;
+
+    // Mobile viewport delegation
+    if (window.innerWidth <= 992) {
+        if (forceState === false) {
+            switchMobileView('chat');
+        } else if (forceState === true) {
+            switchMobileView('drive');
+        } else {
+            const isCurrentlyDrive = document.body.classList.contains('view-drive');
+            switchMobileView(isCurrentlyDrive ? 'chat' : 'drive');
+        }
+        return;
+    }
+
+    const isOpen = (typeof forceState === 'boolean') ? forceState : !container.classList.contains('drive-open');
+
+    if (isOpen) {
+        container.classList.add('drive-open');
+        if (btnToggle) btnToggle.classList.add('active');
+        if (sideTab) sideTab.style.display = 'none';
+        renderExplorer();
+    } else {
+        container.classList.remove('drive-open');
+        if (btnToggle) btnToggle.classList.remove('active');
+        if (sideTab) sideTab.style.display = 'flex';
+    }
+}
+window.toggleDrivePane = toggleDrivePane;
+
+// Keyboard shortcut: Esc to close Project Vault drawer
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const container = document.getElementById('chat-main-container') || document.querySelector('.chat-main-container');
+        if (container && container.classList.contains('drive-open')) {
+            toggleDrivePane(false);
+        }
+    }
+});
 
 // ── 9. HELPERS ──────────────────────────────────────────────────────────────
 function formatMessageTime(isoStr) {

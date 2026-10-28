@@ -91,7 +91,7 @@
     <!-- ══════════════════════════════════════════════════════════════
          MAIN SPLIT WORKSPACE: CHAT (LEFT) & PROJECT DRIVE (RIGHT)
          ══════════════════════════════════════════════════════════════ -->
-    <main class="chat-main-container">
+    <main class="chat-main-container" id="chat-main-container">
 
         <!-- ── 1. LEFT PANEL: REALTIME CHAT CHANNEL ── -->
         <section class="chat-pane" id="pane-chat">
@@ -113,6 +113,13 @@
                         <i class="bi bi-people-fill text-info me-1"></i>
                         <span id="members-count-text">3 คน</span>
                     </div>
+
+                    <!-- 📁 Toggle Project Vault Button -->
+                    <button type="button" class="btn-toggle-vault" id="btn-toggle-drive-panel" onclick="toggleDrivePane()" title="เปิด/ปิด คลังไฟล์โปรเจกต์ (Vault)">
+                        <i class="bi bi-folder-fill text-warning"></i>
+                        <span class="btn-text d-none d-sm-inline">คลังไฟล์โปรเจกต์</span>
+                        <span class="vault-count-badge" id="vault-btn-count">0</span>
+                    </button>
                 </div>
             </div>
 
@@ -188,9 +195,19 @@
                 </div>
             </div>
 
+            <!-- Floating Side Tab to open Project Vault (Quick Access) -->
+            <button type="button" class="drive-side-tab-pill" id="drive-side-tab" onclick="toggleDrivePane(true)" title="เปิดคลังไฟล์โปรเจกต์ (Vault)">
+                <i class="bi bi-folder-fill text-warning"></i>
+                <span class="side-tab-text">คลังไฟล์</span>
+                <i class="bi bi-chevron-left side-tab-arrow"></i>
+            </button>
+
         </section>
 
-        <!-- ── 2. RIGHT PANEL: PROJECT DRIVE & FOLDER VAULT ── -->
+        <!-- Backdrop Overlay for Slide-out Vault on Desktop & Tablet -->
+        <div class="drive-backdrop" id="drive-backdrop" onclick="toggleDrivePane(false)" title="คลิกเพื่อปิดคลังไฟล์"></div>
+
+        <!-- ── 2. RIGHT PANEL: PROJECT DRIVE & FOLDER VAULT (Slide-out Drawer) ── -->
         <section class="drive-pane" id="pane-drive">
 
             <!-- Drive Header & Project Switcher -->
@@ -203,9 +220,14 @@
                             <div class="drive-subtitle">ตู้เก็บไฟล์แยกโปรเจกต์และโฟลเดอร์ย่อย</div>
                         </div>
                     </div>
-                    <button type="button" class="btn btn-sm btn-primary d-flex align-items-center gap-1 fw-bold" onclick="openNewProjectModal()">
-                        <i class="bi bi-plus-lg"></i> โปรเจกต์ใหม่
-                    </button>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-sm btn-primary d-flex align-items-center gap-1 fw-bold" onclick="openNewProjectModal()">
+                            <i class="bi bi-plus-lg"></i> โปรเจกต์ใหม่
+                        </button>
+                        <button type="button" class="btn-close-vault" onclick="toggleDrivePane(false)" title="ปิดคลังไฟล์ (ย่อเก็บ)">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Project Carousel / Selector Tabs -->
