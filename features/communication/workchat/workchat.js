@@ -2269,11 +2269,19 @@ window.switchRailTab = switchRailTab;
 function switchMobileView(viewName) {
     if (viewName === 'chat') {
         document.body.classList.add('mobile-view-chat');
+        scrollMessagesToBottom();
     } else {
         document.body.classList.remove('mobile-view-chat');
     }
 }
 window.switchMobileView = switchMobileView;
+
+// Cleanly handle window resizing between mobile and desktop viewports
+window.addEventListener('resize', () => {
+    if (window.innerWidth > 768) {
+        document.body.classList.remove('mobile-view-chat');
+    }
+});
 
 // Keyboard shortcut: Esc to close Project Vault drawer
 window.addEventListener('keydown', (e) => {

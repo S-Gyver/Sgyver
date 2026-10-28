@@ -543,6 +543,30 @@ body {
     overflow: hidden;
 }
 
+.btn-back-to-chats {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--bg-subtle);
+    border: none;
+    color: var(--text-dark);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+    line-height: 1;
+}
+.btn-back-to-chats:hover {
+    background: var(--bg-hover);
+    color: var(--primary-blue);
+}
+.btn-back-to-chats:active {
+    transform: scale(0.92);
+}
+
 /* Header */
 .chat-area-header {
     height: 72px;
@@ -1388,20 +1412,265 @@ body {
 }
 
 @media (max-width: 768px) {
-    .messenger-nav-rail {
-        display: none;
+    .messenger-layout {
+        flex-direction: column;
+        width: 100%;
+        height: 100dvh;
+        height: 100vh;
+        overflow: hidden;
     }
+
+    /* 1. Mobile Bottom Navigation Bar (Shown on Chats / People list view) */
+    .messenger-nav-rail {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        height: calc(58px + env(safe-area-inset-bottom, 0px));
+        flex-direction: row;
+        justify-content: space-around;
+        align-items: center;
+        padding: 4px 12px env(safe-area-inset-bottom, 4px);
+        background: rgba(255, 255, 255, 0.98);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-top: 1px solid var(--border-light);
+        border-right: none;
+        z-index: 100;
+        box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.04);
+    }
+
+    .rail-top {
+        flex-direction: row;
+        justify-content: space-around;
+        align-items: center;
+        width: auto;
+        flex: 1;
+        gap: 0;
+    }
+
+    .rail-logo-btn,
+    .rail-user-profile-wrap {
+        display: none !important;
+    }
+
+    .rail-nav-menu {
+        flex-direction: row;
+        justify-content: space-around;
+        align-items: center;
+        width: 100%;
+        gap: 0;
+    }
+
+    .rail-nav-item {
+        width: auto;
+        padding: 4px 18px;
+        gap: 2px;
+        border-radius: 12px;
+    }
+
+    .rail-nav-item i {
+        font-size: 1.25rem;
+    }
+
+    .rail-label {
+        font-size: 0.68rem;
+    }
+
+    .rail-bottom {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 4px;
+        padding-right: 4px;
+    }
+
+    .rail-exit-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 1.05rem;
+        border-radius: 50%;
+    }
+
+    /* 2. Middle Column (Chats & People) on Mobile */
     .messenger-chats-col {
         width: 100%;
+        flex: 1;
+        height: 100%;
+        padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+        border-right: none;
     }
+
+    .chats-col-header {
+        padding: 14px 16px 8px;
+    }
+
+    .chats-main-title {
+        font-size: 1.55rem;
+    }
+
+    /* 3. Main Chat Conversation Screen on Mobile */
     .messenger-chat-area {
         display: none;
+        width: 100%;
+        height: 100%;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 110;
+        background: #ffffff;
     }
-    /* When viewing chat on mobile */
+
+    /* When user enters a chat room on mobile */
     body.mobile-view-chat .messenger-chats-col {
-        display: none;
+        display: none !important;
+    }
+    body.mobile-view-chat .messenger-nav-rail {
+        display: none !important;
     }
     body.mobile-view-chat .messenger-chat-area {
-        display: flex;
+        display: flex !important;
+        flex-direction: column;
+        height: 100dvh;
+        height: 100vh;
+    }
+
+    /* Back button inside Chat Topbar */
+    .btn-back-to-chats {
+        display: inline-flex !important;
+    }
+
+    .chat-area-header {
+        height: 58px;
+        padding: 0 12px;
+    }
+
+    .active-chat-avatar-wrap {
+        width: 38px;
+        height: 38px;
+    }
+
+    .active-chat-title {
+        font-size: 0.95rem;
+        max-width: 130px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .active-chat-status {
+        font-size: 0.68rem;
+        max-width: 130px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .chat-area-header-actions {
+        gap: 4px;
+    }
+
+    /* Hide call buttons on mobile to avoid header overflow */
+    .chat-area-header-actions .header-action-circle[title*="โทร"],
+    .chat-area-header-actions .header-action-circle[title*="วิดีโอ"] {
+        display: none !important;
+    }
+
+    .btn-header-vault-pill {
+        padding: 5px 8px;
+        font-size: 0.78rem;
+    }
+
+    .header-action-circle {
+        width: 34px;
+        height: 34px;
+        font-size: 0.9rem;
+    }
+
+    /* Messages on Mobile */
+    .chat-area-messages {
+        padding: 12px 10px;
+    }
+
+    .msg-row {
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+
+    .msg-avatar-circle {
+        width: 32px;
+        height: 32px;
+    }
+
+    .msg-bubble-box {
+        max-width: 86%;
+        padding: 8px 12px;
+        font-size: 0.9rem;
+    }
+
+    .msg-file-card {
+        max-width: 100%;
+        padding: 6px 8px;
+    }
+
+    /* Input Bar on Mobile */
+    .chat-area-input-bar {
+        padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+        gap: 6px;
+    }
+
+    .input-media-buttons {
+        gap: 4px;
+    }
+
+    .input-media-btn {
+        width: 34px;
+        height: 34px;
+        font-size: 1.05rem;
+    }
+
+    .input-pill-field-wrap {
+        padding: 2px 4px 2px 12px;
+    }
+
+    .input-pill-textarea {
+        font-size: 0.9rem;
+        padding: 4px 0;
+        max-height: 80px;
+    }
+
+    .input-pill-send-btn {
+        width: 34px;
+        height: 34px;
+        font-size: 0.9rem;
+    }
+
+    /* Slide-out File Vault Drawer on Mobile */
+    .drive-pane {
+        width: 100%;
+        max-width: 100%;
+        z-index: 130;
+    }
+
+    .drive-header {
+        padding: 14px 16px 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .active-chat-title,
+    .active-chat-status {
+        max-width: 100px;
+    }
+
+    .chat-area-input-bar {
+        padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .msg-bubble-box {
+        max-width: 90%;
     }
 }
