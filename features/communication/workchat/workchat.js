@@ -1513,16 +1513,33 @@ function autoGrowTextarea(el) {
 
 function triggerFileInput() {
     const input = document.getElementById('chat-file-input');
-    if (input) input.click();
+    if (input) {
+        input.removeAttribute('capture');
+        input.setAttribute('accept', '*/*');
+        input.click();
+    }
+}
+
+function triggerImageSelect() {
+    const input = document.getElementById('chat-file-input');
+    if (input) {
+        input.removeAttribute('capture');
+        input.setAttribute('accept', 'image/*');
+        input.click();
+    }
 }
 
 function triggerPhotoCapture() {
     const input = document.getElementById('chat-file-input');
     if (input) {
         input.setAttribute('accept', 'image/*');
+        input.setAttribute('capture', 'environment');
         input.click();
     }
 }
+window.triggerFileInput = triggerFileInput;
+window.triggerImageSelect = triggerImageSelect;
+window.triggerPhotoCapture = triggerPhotoCapture;
 
 function handleFileSelected(e) {
     const file = e.target.files[0];

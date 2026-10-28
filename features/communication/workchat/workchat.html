@@ -268,23 +268,19 @@
                     </ul>
                 </div>
 
-                <!-- 1. Left Action B: 4 Quick Media Action Icons (Shown when NOT typing - Image 1) -->
+                <!-- 1. Left Action B: 3 Quick Media Action Icons (Mic, Gallery, Camera) -->
                 <div class="input-media-icons-row" id="input-media-icons-row">
                     <!-- Mic -->
                     <button type="button" class="btn-input-media-blue" onclick="showModernToast('บันทึกเสียงข้อความ...')" title="ข้อความเสียง">
                         <i class="bi bi-mic-fill"></i>
                     </button>
                     <!-- Gallery / Image -->
-                    <button type="button" class="btn-input-media-blue" onclick="triggerPhotoCapture()" title="รูปภาพ">
+                    <button type="button" class="btn-input-media-blue" onclick="triggerImageSelect()" title="รูปภาพจากคลัง">
                         <i class="bi bi-image-fill"></i>
                     </button>
-                    <!-- Sticker -->
-                    <button type="button" class="btn-input-media-blue" onclick="toggleEmojiPicker(event)" title="สติกเกอร์">
-                        <i class="bi bi-emoji-smile-upside-down-fill"></i>
-                    </button>
-                    <!-- GIF -->
-                    <button type="button" class="btn-input-media-blue btn-gif-wrap" onclick="showModernToast('ค้นหา GIF...')" title="GIF">
-                        <span class="messenger-gif-badge">GIF</span>
+                    <!-- Camera / Take Photo -->
+                    <button type="button" class="btn-input-media-blue" onclick="triggerPhotoCapture()" title="ถ่ายภาพ">
+                        <i class="bi bi-camera-fill"></i>
                     </button>
                 </div>
                 <input type="file" id="chat-file-input" class="d-none" onchange="handleFileSelected(event)">
