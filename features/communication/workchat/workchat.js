@@ -166,389 +166,37 @@ function renderAvatarDisplay(avatar) {
     return getIllustratedAvatar(avatar);
 }
 
-// Starter Mock Data for Instant Demonstration
-const DEFAULT_PROJECTS = [
-    {
-        id: 'proj_pim_2026',
-        name: 'โปรเจกต์ A - นิทรรศการ 10 ปีสาธิต PIM',
-        code: 'PIM-2026',
-        color: '#3b82f6',
-        description: 'งานผลิตฉาก Backdrop ไม้และแท่นวางโมเดลนิทรรศการ',
-        created_by: 'เอส (Admin)',
-        created_at: new Date(Date.now() - 86400000 * 2).toISOString()
-    },
-    {
-        id: 'proj_robot_arm',
-        name: 'โปรเจกต์ B - ชุดแขนกลหุ่นยนต์ 4-DOF',
-        code: 'ROBOT-01',
-        color: '#f59e0b',
-        description: 'จัดทำบอร์ดวงจรควบคุม WiFi และโครงสร้างอะคริลิกเลเซอร์คัต',
-        created_by: 'ช่างเอก',
-        created_at: new Date(Date.now() - 86400000).toISOString()
-    }
-];
+// Starter Data & Purge Registry
+const MOCK_ITEM_IDS = new Set([
+    'general',
+    'dm_rihanna',
+    'dm_gregory',
+    'dm_marry',
+    'dm_callie',
+    'grp_gyver_team',
+    'proj_pim_2026',
+    'proj_robot_arm',
+    'fld_pim_drawings',
+    'fld_pim_photos',
+    'fld_pim_docs',
+    'fld_robot_schematics',
+    'file_spec_pim',
+    'file_photo_stand'
+]);
 
-const DEFAULT_FOLDERS = [
-    {
-        id: 'fld_pim_drawings',
-        project_id: 'proj_pim_2026',
-        parent_id: null,
-        name: '01_แบบแปลน & ขนาด 3D',
-        created_by: 'เอส (Admin)',
-        created_at: new Date(Date.now() - 86400000).toISOString()
-    },
-    {
-        id: 'fld_pim_photos',
-        project_id: 'proj_pim_2026',
-        parent_id: null,
-        name: '02_รูปถ่ายหน้างานจริง',
-        created_by: 'น้องมุก (ดีไซน์)',
-        created_at: new Date(Date.now() - 72000000).toISOString()
-    },
-    {
-        id: 'fld_pim_docs',
-        project_id: 'proj_pim_2026',
-        parent_id: null,
-        name: '03_ใบเสนอราคา & สัญญา',
-        created_by: 'เอส (Admin)',
-        created_at: new Date(Date.now() - 50000000).toISOString()
-    },
-    {
-        id: 'fld_robot_schematics',
-        project_id: 'proj_robot_arm',
-        parent_id: null,
-        name: '01_วงจรและโค้ดโปรแกรม',
-        created_by: 'ช่างเอก',
-        created_at: new Date(Date.now() - 40000000).toISOString()
-    }
-];
+const DEFAULT_PROJECTS = [];
+const DEFAULT_FOLDERS = [];
+const DEFAULT_FILES = [];
+const DEFAULT_GROUPS = [];
 
-const DEFAULT_FILES = [
-    {
-        id: 'file_spec_pim',
-        project_id: 'proj_pim_2026',
-        folder_id: 'fld_pim_drawings',
-        name: 'สเปกกรอบฉากนิทรรศการ_2x2.3m.pdf',
-        file_url: 'sample_items/backdrop_racing.png',
-        file_type: 'pdf',
-        file_size: 2450000,
-        uploaded_by: 'เอส (Admin)',
-        created_at: new Date(Date.now() - 80000000).toISOString()
-    },
-    {
-        id: 'file_photo_stand',
-        project_id: 'proj_pim_2026',
-        folder_id: 'fld_pim_photos',
-        name: 'ตัวอย่างขาตั้งไม้ประกอบจริง.png',
-        file_url: 'sample_items/farm_stand.png',
-        file_type: 'image',
-        file_size: 1120000,
-        uploaded_by: 'น้องมุก (ดีไซน์)',
-        created_at: new Date(Date.now() - 65000000).toISOString()
-    }
-];
-
-const DEFAULT_GROUPS = [
-    {
-        id: 'grp_gyver_team',
-        name: 'กลุ่มทีมหลัก Gyver Core Team',
-        members: ['callie_goodman', 'lilly_jr', 'rihanna_goldberg', 'gregory_portman', 'marry_adams'],
-        created_by: 'Callie Goodman',
-        created_at: new Date(Date.now() - 86400000 * 3).toISOString()
-    }
-];
-
-const DEFAULT_MESSAGES = [
-    // ── 1. Group Chat: grp_gyver_team ──
-    {
-        id: 'msg_grp_1',
-        chat_id: 'grp_gyver_team',
-        sender_username: 'callie_goodman',
-        sender_name: 'Callie Goodman',
-        avatar: 'user_boy',
-        message_text: 'สวัสดีทีม Gyver ทุกคนครับ! ห้องนี้เป็นกลุ่มแชทหลักสำหรับประสานงานโครงการทั้งหมด 🚀',
-        project_id: null,
-        folder_id: null,
-        file_data: null,
-        created_at: new Date(Date.now() - 72000000).toISOString()
-    },
-    {
-        id: 'msg_grp_2',
-        chat_id: 'grp_gyver_team',
-        sender_username: 'lilly_jr',
-        sender_name: 'Lilly Jr.',
-        avatar: 'lilly',
-        message_text: 'ยินดีค่ะทุกคน! ทีมดีไซน์เตรียมแบบงานชุดใหม่พร้อมส่งเข้าคลังไฟล์แล้ว',
-        project_id: null,
-        folder_id: null,
-        file_data: null,
-        created_at: new Date(Date.now() - 65000000).toISOString()
-    },
-    {
-        id: 'msg_grp_3',
-        chat_id: 'grp_gyver_team',
-        sender_username: 'gregory_portman',
-        sender_name: 'Gregory Portman',
-        avatar: 'gregory',
-        message_text: 'ทีมวิศวกรรมพร้อมลุยครับ บอร์ดควบคุมชุดใหม่เริ่มทดสอบแล้ว',
-        project_id: null,
-        folder_id: null,
-        file_data: null,
-        created_at: new Date(Date.now() - 50000000).toISOString()
-    },
-
-    // ── 2. Direct Chat: Lilly Jr. (general) ──
-    {
-        id: 'msg_lilly_1',
-        chat_id: 'general',
-        sender_username: 'callie_goodman',
-        sender_name: 'Callie Goodman',
-        avatar: 'user_boy',
-        message_text: 'Hi, Mrs. Lilly',
-        project_id: null,
-        folder_id: null,
-        file_data: null,
-        created_at: new Date(Date.now() - 45000000).toISOString()
-    },
-    {
-        id: 'msg_lilly_2',
-        chat_id: 'general',
-        sender_username: 'lilly_jr',
-        sender_name: 'Lilly Jr.',
-        avatar: 'lilly',
-        message_text: 'Hey Callie! How is the exhibition project going?',
-        project_id: null,
-        folder_id: null,
-        file_data: null,
-        created_at: new Date(Date.now() - 40000000).toISOString()
-    },
-    {
-        id: 'msg_lilly_3',
-        chat_id: 'general',
-        sender_username: 'callie_goodman',
-        sender_name: 'Callie Goodman',
-        avatar: 'user_boy',
-        message_text: 'Hello Mrs. Lilly, i have a good idea how to create the backdrop with help of our team. Can we meet up tomorrow near the bar to talk?',
-        project_id: 'proj_pim_2026',
-        folder_id: null,
-        file_data: null,
-        created_at: new Date(Date.now() - 36000000).toISOString()
-    },
-    {
-        id: 'msg_lilly_4',
-        chat_id: 'general',
-        sender_username: 'lilly_jr',
-        sender_name: 'Lilly Jr.',
-        avatar: 'lilly',
-        message_text: 'Good idea! i like this',
-        project_id: 'proj_pim_2026',
-        folder_id: null,
-        file_data: null,
-        created_at: new Date(Date.now() - 18000000).toISOString()
-    },
-    {
-        id: 'msg_lilly_5',
-        chat_id: 'general',
-        sender_username: 'callie_goodman',
-        sender_name: 'Callie Goodman',
-        avatar: 'user_boy',
-        message_text: 'แนบแบบแปลนโครงสร้างไม้และตัวอย่างชิ้นงานประกอบจริงไว้ในโฟลเดอร์โปรเจกต์ PIM ให้เรียบร้อยแล้วครับ',
-        project_id: 'proj_pim_2026',
-        folder_id: 'fld_pim_photos',
-        file_data: {
-            name: 'ตัวอย่างขาตั้งไม้ประกอบจริง.png',
-            url: 'sample_items/farm_stand.png',
-            type: 'image',
-            size: '1.1 MB'
-        },
-        created_at: new Date(Date.now() - 6000000).toISOString()
-    },
-
-    // ── 3. Direct Chat: Rihanna Goldberg (dm_rihanna) ──
-    {
-        id: 'msg_rihanna_1',
-        chat_id: 'dm_rihanna',
-        sender_username: 'callie_goodman',
-        sender_name: 'Callie Goodman',
-        avatar: 'user_boy',
-        message_text: 'สวัสดีครับคุณริฮานน่า ราคาไม้อัดเกรดเฟอร์นิเจอร์และบานพับสำหรับโปรเจกต์ PIM ได้ราคาหรือยังครับ',
-        project_id: null,
-        folder_id: null,
-        file_data: null,
-        created_at: new Date(Date.now() - 30000000).toISOString()
-    },
-    {
-        id: 'msg_rihanna_2',
-        chat_id: 'dm_rihanna',
-        sender_username: 'rihanna_goldberg',
-        sender_name: 'Rihanna Goldberg',
-        avatar: 'rihanna',
-        message_text: 'เช็คราคาโรงงานให้แล้วค่ะ สั่งไม้อัด 15mm ได้ส่วนลด 12% เดี๋ยวสรุปยอดให้นะคะ',
-        project_id: null,
-        folder_id: null,
-        file_data: null,
-        created_at: new Date(Date.now() - 25000000).toISOString()
-    },
-    {
-        id: 'msg_rihanna_3',
-        chat_id: 'dm_rihanna',
-        sender_username: 'callie_goodman',
-        sender_name: 'Callie Goodman',
-        avatar: 'user_boy',
-        message_text: 'ยอดเยี่ยมเลยครับ ขอบคุณมากครับ!',
-        project_id: null,
-        folder_id: null,
-        file_data: null,
-        created_at: new Date(Date.now() - 20000000).toISOString()
-    },
-    {
-        id: 'msg_rihanna_4',
-        chat_id: 'dm_rihanna',
-        sender_username: 'rihanna_goldberg',
-        sender_name: 'Rihanna Goldberg',
-        avatar: 'rihanna',
-        message_text: 'Great, Thanks! ยินดีเสมอค่ะ',
-        project_id: null,
-        folder_id: null,
-        file_data: null,
-        created_at: new Date(Date.now() - 15000000).toISOString()
-    },
-
-    // ── 4. Direct Chat: Gregory Portman (dm_gregory) ──
-    {
-        id: 'msg_greg_1',
-        chat_id: 'dm_gregory',
-        sender_username: 'callie_goodman',
-        sender_name: 'Callie Goodman',
-        avatar: 'user_boy',
-        message_text: 'คุณเกรกอรี่ ตัวบอร์ด ESP32 คุมแขนกล 4-DOF เขียนโค้ด Servo ถึงไหนแล้วครับ',
-        project_id: 'proj_robot_arm',
-        folder_id: null,
-        file_data: null,
-        created_at: new Date(Date.now() - 28000000).toISOString()
-    },
-    {
-        id: 'msg_greg_2',
-        chat_id: 'dm_gregory',
-        sender_username: 'gregory_portman',
-        sender_name: 'Gregory Portman',
-        avatar: 'gregory',
-        message_text: 'ทดสอบการเคลื่อนที่และกริปเปอร์ผ่านเว็บเรียบร้อยแล้วครับ เสถียรดีมาก',
-        project_id: 'proj_robot_arm',
-        folder_id: null,
-        file_data: null,
-        created_at: new Date(Date.now() - 22000000).toISOString()
-    },
-    {
-        id: 'msg_greg_3',
-        chat_id: 'dm_gregory',
-        sender_username: 'gregory_portman',
-        sender_name: 'Gregory Portman',
-        avatar: 'gregory',
-        message_text: 'This is so good man. Will do Remix & อัปเกรดเฟิร์มแวร์ให้อีกนิดนะ',
-        project_id: 'proj_robot_arm',
-        folder_id: null,
-        file_data: null,
-        created_at: new Date(Date.now() - 12000000).toISOString()
-    },
-
-    // ── 5. Direct Chat: Marry Adams (dm_marry) ──
-    {
-        id: 'msg_marry_1',
-        chat_id: 'dm_marry',
-        sender_username: 'callie_goodman',
-        sender_name: 'Callie Goodman',
-        avatar: 'user_boy',
-        message_text: 'คุณแมรี่ รบกวนช่วยตรวจเอกสารสัญญาจ้างและใบเสนอราคาของงาน PIM ให้หน่อยนะครับ',
-        project_id: null,
-        folder_id: null,
-        file_data: null,
-        created_at: new Date(Date.now() - 19000000).toISOString()
-    },
-    {
-        id: 'msg_marry_2',
-        chat_id: 'dm_marry',
-        sender_username: 'marry_adams',
-        sender_name: 'Marry Adams',
-        avatar: 'marry',
-        message_text: 'Cool. We can help Lilly & ทีมงาน กำลังเร่งทำเอกสารให้ค่ะ',
-        project_id: null,
-        folder_id: null,
-        file_data: null,
-        created_at: new Date(Date.now() - 10000000).toISOString()
-    },
-
-    // ── 6. Direct Chat: Callie Goodman (dm_callie - Note to self / Sample) ──
-    {
-        id: 'msg_callie_1',
-        chat_id: 'dm_callie',
-        sender_username: 'callie_goodman',
-        sender_name: 'Callie Goodman',
-        avatar: 'user_boy',
-        message_text: `รับมอบหมาย\n5.สามารถปฏิบัติตามกติกาของ\nชุมนุม ใช้อุปกรณ์คอมพิวเตอร์\nอย่างเหมาะสม และเคารพ\nความคิดเห็นของผู้อื่น\n6.มีความพร้อมในการลงมือ\nปฏิบัติ สร้างผลงาน และนำ\nเสนอผลงานของตนเองตาม\nความเหมาะสม`,
-        project_id: null,
-        folder_id: null,
-        file_data: null,
-        created_at: new Date(Date.now() - 50400000).toISOString()
-    },
-    {
-        id: 'msg_callie_2',
-        chat_id: 'dm_callie',
-        sender_username: 'callie_goodman',
-        sender_name: 'Callie Goodman',
-        avatar: 'user_boy',
-        message_text: 'https://www.instagram.com/reel/De-1LKppLWm/?obrf=MW5mMzc5OXVjOHN0ZA==',
-        project_id: null,
-        folder_id: null,
-        file_data: null,
-        created_at: new Date(Date.now() - 50000000).toISOString()
-    },
-
-    // ── 7. Project Room: proj_pim_2026 ──
-    {
-        id: 'msg_proj_pim_1',
-        chat_id: 'proj_pim_2026',
-        sender_username: 'callie_goodman',
-        sender_name: 'Callie Goodman',
-        avatar: 'user_boy',
-        message_text: 'ห้องแชทกลางสำหรับติดตามแบบและไฟล์โปรเจกต์ PIM-2026',
-        project_id: 'proj_pim_2026',
-        folder_id: null,
-        file_data: null,
-        created_at: new Date(Date.now() - 36000000).toISOString()
-    },
-    {
-        id: 'msg_proj_pim_2',
-        chat_id: 'proj_pim_2026',
-        sender_username: 'lilly_jr',
-        sender_name: 'Lilly Jr.',
-        avatar: 'lilly',
-        message_text: 'อัปโหลดแบบแปลน 3D และตัวอย่างฉากลงโฟลเดอร์เรียบร้อยแล้วค่ะ',
-        project_id: 'proj_pim_2026',
-        folder_id: 'fld_pim_drawings',
-        file_data: null,
-        created_at: new Date(Date.now() - 18000000).toISOString()
-    },
-
-    // ── 8. Project Room: proj_robot_arm ──
-    {
-        id: 'msg_proj_rob_1',
-        chat_id: 'proj_robot_arm',
-        sender_username: 'gregory_portman',
-        sender_name: 'Gregory Portman',
-        avatar: 'gregory',
-        message_text: 'ห้องงานหุ่นยนต์แขนกล ROBOT-01 โค้ดและวงจรทั้งหมดอัปขึ้นโฟลเดอร์เรียบร้อยครับ',
-        project_id: 'proj_robot_arm',
-        folder_id: 'fld_robot_schematics',
-        file_data: null,
-        created_at: new Date(Date.now() - 14000000).toISOString()
-    }
-];
+const DEFAULT_MESSAGES = [];
 
 // ── 2. INITIALIZATION ───────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     syncUserProfileFromGyver();
     loadWorkspaceData();
+    TEAM_FRIENDS = loadFriendsData();
+    saveFriendsData();
     initSupabaseSync();
     initEmojiPicker();
     renderProjectDropdownList();
@@ -556,10 +204,37 @@ document.addEventListener('DOMContentLoaded', () => {
     updateHeaderVaultUI();
     renderProjectPills();
     renderExplorer();
+
+    // Auto-select first real friend (e.g. aya) if current chat is invalid or mock
+    if (!CHAT_STATE.activeChatId || MOCK_ITEM_IDS.has(CHAT_STATE.activeChatId) || CHAT_STATE.activeChatId === 'general') {
+        if (TEAM_FRIENDS.length > 0) {
+            CHAT_STATE.activeChatId = TEAM_FRIENDS[0].id;
+            selectChatConversation(TEAM_FRIENDS[0].id);
+        } else if (CHAT_STATE.groups.length > 0) {
+            CHAT_STATE.activeChatId = CHAT_STATE.groups[0].id;
+            selectChatConversation(CHAT_STATE.groups[0].id);
+        } else {
+            CHAT_STATE.activeChatId = null;
+            renderEmptyChatHeader();
+        }
+    } else {
+        selectChatConversation(CHAT_STATE.activeChatId);
+    }
+
     renderChatsList();
     renderMessages();
     scrollMessagesToBottom();
 });
+
+function renderEmptyChatHeader() {
+    const titleEl = document.getElementById('active-chat-name');
+    const avatarEl = document.getElementById('active-chat-avatar');
+    const statusEl = document.getElementById('active-chat-status');
+    if (titleEl) titleEl.textContent = 'เลือกการสนทนา';
+    if (avatarEl) avatarEl.innerHTML = `<div class="d-flex align-items-center justify-content-center w-100 h-100 bg-light text-muted rounded-circle"><i class="bi bi-chat-dots fs-5"></i></div>`;
+    if (statusEl) statusEl.innerHTML = `<span class="text-muted">เลือกเพื่อนเพื่อเริ่มคุยงาน</span>`;
+}
+
 
 async function syncUserProfileFromGyver() {
     let syncedName = '';
@@ -754,50 +429,48 @@ function handleUserProfileClick() {
 function loadWorkspaceData() {
     try {
         const savedProjects = localStorage.getItem('sgyver_workchat_projects');
-        CHAT_STATE.projects = savedProjects ? JSON.parse(savedProjects) : DEFAULT_PROJECTS;
+        CHAT_STATE.projects = savedProjects ? JSON.parse(savedProjects).filter(p => p && !MOCK_ITEM_IDS.has(p.id)) : [];
 
         const savedFolders = localStorage.getItem('sgyver_workchat_folders');
-        CHAT_STATE.folders = savedFolders ? JSON.parse(savedFolders) : DEFAULT_FOLDERS;
+        CHAT_STATE.folders = savedFolders ? JSON.parse(savedFolders).filter(f => f && !MOCK_ITEM_IDS.has(f.project_id) && !MOCK_ITEM_IDS.has(f.id)) : [];
 
         const savedFiles = localStorage.getItem('sgyver_workchat_files');
-        CHAT_STATE.files = savedFiles ? JSON.parse(savedFiles) : DEFAULT_FILES;
+        CHAT_STATE.files = savedFiles ? JSON.parse(savedFiles).filter(f => f && !MOCK_ITEM_IDS.has(f.project_id) && !MOCK_ITEM_IDS.has(f.id)) : [];
 
         const savedGroups = localStorage.getItem('sgyver_workchat_groups');
-        CHAT_STATE.groups = savedGroups ? JSON.parse(savedGroups) : DEFAULT_GROUPS;
+        CHAT_STATE.groups = savedGroups ? JSON.parse(savedGroups).filter(g => g && !MOCK_ITEM_IDS.has(g.id)) : [];
 
         const savedMessages = localStorage.getItem('sgyver_workchat_messages');
         if (savedMessages) {
             const parsed = JSON.parse(savedMessages);
-            CHAT_STATE.messages = parsed.map(m => {
-                if (!m.chat_id) {
-                    m.chat_id = m.project_id || 'general';
-                }
-                return m;
-            });
-            // Backfill default channels if user's local storage lacks them
-            DEFAULT_MESSAGES.forEach(dm => {
-                if (!CHAT_STATE.messages.some(m => m.chat_id === dm.chat_id)) {
-                    CHAT_STATE.messages.push(dm);
-                }
+            CHAT_STATE.messages = parsed.filter(m => {
+                if (!m) return false;
+                if (MOCK_ITEM_IDS.has(m.chat_id) || MOCK_ITEM_IDS.has(m.project_id)) return false;
+                if (['lilly_jr', 'rihanna_goldberg', 'gregory_portman', 'marry_adams'].includes(m.sender_username)) return false;
+                return true;
             });
         } else {
-            CHAT_STATE.messages = DEFAULT_MESSAGES;
+            CHAT_STATE.messages = [];
         }
+
+        saveWorkspaceData();
 
         // Restore preset project selection if previously saved
         try {
-            const savedPreset = localStorage.getItem('sgyver_workchat_preset_project_' + (CHAT_STATE.activeChatId || 'general')) ||
+            const savedPreset = localStorage.getItem('sgyver_workchat_preset_project_' + (CHAT_STATE.activeChatId || '')) ||
                                 localStorage.getItem('sgyver_workchat_active_preset_project');
             if (savedPreset && CHAT_STATE.projects.some(p => p.id === savedPreset)) {
                 CHAT_STATE.selectedTagProjectId = savedPreset;
+            } else {
+                CHAT_STATE.selectedTagProjectId = '';
             }
         } catch (_) {}
     } catch (_) {
-        CHAT_STATE.projects = DEFAULT_PROJECTS;
-        CHAT_STATE.folders = DEFAULT_FOLDERS;
-        CHAT_STATE.files = DEFAULT_FILES;
-        CHAT_STATE.groups = DEFAULT_GROUPS;
-        CHAT_STATE.messages = DEFAULT_MESSAGES;
+        CHAT_STATE.projects = [];
+        CHAT_STATE.folders = [];
+        CHAT_STATE.files = [];
+        CHAT_STATE.groups = [];
+        CHAT_STATE.messages = [];
     }
 }
 
@@ -1227,76 +900,32 @@ function renderChatsList() {
 }
 
 // ── 4.5 PEOPLE (FRIENDS) LIST ENGINE ────────────────────────────────────────
-const DEFAULT_FRIENDS = [
-    {
-        id: 'general',
-        username: 'lilly_jr',
-        name: 'Lilly Jr.',
-        role: 'ฝ่ายดีไซน์ (Design Lead)',
-        avatarType: 'lilly',
-        status: 'online',
-        bio: 'ออกแบบฉากนิทรรศการ และโมเดล 3D'
-    },
-    {
-        id: 'dm_rihanna',
-        username: 'rihanna_goldberg',
-        name: 'Rihanna Goldberg',
-        role: 'ฝ่ายจัดซื้อและผลิต (Production)',
-        avatarType: 'rihanna',
-        status: 'online',
-        bio: 'เช็คราคาไม้ สเปกบานพับ และสั่งซื้ออุปกรณ์'
-    },
-    {
-        id: 'dm_gregory',
-        username: 'gregory_portman',
-        name: 'Gregory Portman',
-        role: 'วิศวกรโครงสร้าง & หุ่นยนต์ (Engineering)',
-        avatarType: 'gregory',
-        status: 'online',
-        bio: 'โปรเจกต์หุ่นยนต์แขนกล และงานระบบบอร์ด'
-    },
-    {
-        id: 'dm_marry',
-        username: 'marry_adams',
-        name: 'Marry Adams',
-        role: 'ผู้ประสานงานโครงการ (Coordinator)',
-        avatarType: 'marry',
-        status: 'offline',
-        bio: 'ติดตามเอกสารใบเสนอราคาและสัญญาจ้าง'
-    },
-    {
-        id: 'dm_callie',
-        username: 'callie_goodman',
-        name: 'Callie Goodman',
-        role: 'ผู้จัดการโปรเจกต์ (Project Manager)',
-        avatarType: 'user_boy',
-        status: 'online',
-        bio: 'วางแผนงาน ติดตามกำหนดส่งมอบงาน'
-    }
-];
+const DEFAULT_FRIENDS = [];
 
 function loadFriendsData() {
     try {
         const stored = localStorage.getItem('sgyver_workchat_friends');
         if (stored) {
             const parsed = JSON.parse(stored);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-                const idSet = new Set(parsed.map(p => p.id));
-                DEFAULT_FRIENDS.forEach(df => {
-                    if (!idSet.has(df.id)) parsed.push(df);
-                });
-                return parsed;
+            if (Array.isArray(parsed)) {
+                // Keep only real added friends (filter out mock contacts)
+                return parsed.filter(f => 
+                    f && 
+                    !MOCK_ITEM_IDS.has(f.id) && 
+                    !['lilly_jr', 'rihanna_goldberg', 'gregory_portman', 'marry_adams', 'callie_goodman'].includes(f.username)
+                );
             }
         }
     } catch (e) {
         console.warn('Failed to load friends from local storage', e);
     }
-    return [...DEFAULT_FRIENDS];
+    return [];
 }
 
 function saveFriendsData() {
     try {
-        localStorage.setItem('sgyver_workchat_friends', JSON.stringify(TEAM_FRIENDS));
+        const cleanFriends = (TEAM_FRIENDS || []).filter(f => f && !MOCK_ITEM_IDS.has(f.id));
+        localStorage.setItem('sgyver_workchat_friends', JSON.stringify(cleanFriends));
     } catch (e) {
         console.warn('Failed to save friends to local storage', e);
     }
