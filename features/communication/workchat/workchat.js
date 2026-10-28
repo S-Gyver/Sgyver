@@ -15,6 +15,7 @@ const CHAT_STATE = {
     activeFolderId: null,
     selectedTagProjectId: '',
     chatsSearchQuery: '',
+    currentRailTab: 'chat',
     stagedAttachment: null,
 
     projects: [],
@@ -674,9 +675,148 @@ function renderChatsList() {
     }).join('');
 }
 
+// ── 4.5 PEOPLE (FRIENDS) LIST ENGINE ────────────────────────────────────────
+const TEAM_FRIENDS = [
+    {
+        id: 'general',
+        username: 'lilly_jr',
+        name: 'Lilly Jr.',
+        role: 'ฝ่ายดีไซน์ (Design Lead)',
+        avatarType: 'lilly',
+        status: 'online',
+        bio: 'ออกแบบฉากนิทรรศการ และโมเดล 3D'
+    },
+    {
+        id: 'dm_rihanna',
+        username: 'rihanna_goldberg',
+        name: 'Rihanna Goldberg',
+        role: 'ฝ่ายจัดซื้อและผลิต (Production)',
+        avatarType: 'rihanna',
+        status: 'online',
+        bio: 'เช็คราคาไม้ สเปกบานพับ และสั่งซื้ออุปกรณ์'
+    },
+    {
+        id: 'dm_gregory',
+        username: 'gregory_portman',
+        name: 'Gregory Portman',
+        role: 'วิศวกรโครงสร้าง & หุ่นยนต์ (Engineering)',
+        avatarType: 'gregory',
+        status: 'online',
+        bio: 'โปรเจกต์หุ่นยนต์แขนกล และงานระบบบอร์ด'
+    },
+    {
+        id: 'dm_marry',
+        username: 'marry_adams',
+        name: 'Marry Adams',
+        role: 'ผู้ประสานงานโครงการ (Coordinator)',
+        avatarType: 'marry',
+        status: 'offline',
+        bio: 'ติดตามเอกสารใบเสนอราคาและสัญญาจ้าง'
+    },
+    {
+        id: 'dm_callie',
+        username: 'callie_goodman',
+        name: 'Callie Goodman',
+        role: 'ผู้จัดการโปรเจกต์ (Project Manager)',
+        avatarType: 'user_boy',
+        status: 'online',
+        bio: 'วางแผนงาน ติดตามกำหนดส่งมอบงาน'
+    }
+];
+
+function renderPeopleList() {
+    const container = document.getElementById('chats-list-stream');
+    if (!container) return;
+
+    const query = (CHAT_STATE.chatsSearchQuery || '').toLowerCase();
+    const filtered = TEAM_FRIENDS.filter(f => 
+        !query || 
+        f.name.toLowerCase().includes(query) || 
+        f.role.toLowerCase().includes(query) ||
+        f.bio.toLowerCase().includes(query)
+    );
+
+    if (filtered.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-people fs-1 d-block mb-2 text-primary opacity-50"></i>
+                <div class="fw-bold">ไม่พบรายชื่อเพื่อน</div>
+                <div class="small">ลองค้นหาด้วยคำอื่น หรือกดปุ่ม + ด้านบนเพื่อเพิ่มเพื่อน</div>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="d-flex align-items-center justify-content-between px-2 py-2 mb-1">
+            <span class="small fw-bold text-muted text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">รายชื่อเพื่อน (${filtered.length})</span>
+            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill font-mono" style="font-size: 0.68rem;">ออนไลน์ 4</span>
+        </div>
+        ${filtered.map(friend => `
+            <div class="people-card-item" onclick="openDirectChatFromPeople('${friend.id}')">
+                <div class="people-avatar-wrap">
+                    ${getIllustratedAvatar(friend.avatarType, friend.name)}
+                    <span class="people-status-dot ${friend.status}"></span>
+                </div>
+                <div class="people-info">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <span class="people-name">${escapeHtml(friend.name)}</span>
+                        <span class="people-status-badge ${friend.status}">
+                            ${friend.status === 'online' ? '● ออนไลน์' : 'ออฟไลน์'}
+                        </span>
+                    </div>
+                    <div class="people-role">${escapeHtml(friend.role)}</div>
+                    <div class="people-bio">${escapeHtml(friend.bio)}</div>
+                </div>
+                <button type="button" class="btn-people-chat" onclick="event.stopPropagation(); openDirectChatFromPeople('${friend.id}')" title="ส่งข้อความคุยกับ ${escapeHtml(friend.name)}">
+                    <i class="bi bi-chat-dots-fill"></i>
+                </button>
+            </div>
+        `).join('')}
+    `;
+}
+
+function openDirectChatFromPeople(chatId) {
+    selectChatConversation(chatId);
+    if (window.innerWidth <= 768) {
+        switchMobileView('chat');
+    }
+    const input = document.getElementById('chat-message-input');
+    if (input) input.focus();
+}
+window.openDirectChatFromPeople = openDirectChatFromPeople;
+
+function openAddFriendModal() {
+    const modalEl = document.getElementById('modalAddFriend');
+    if (modalEl) {
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+}
+window.openAddFriendModal = openAddFriendModal;
+
+function handleAddFriendSubmit() {
+    const input = document.getElementById('input-add-friend-query');
+    const val = input ? input.value.trim() : '';
+    const modalEl = document.getElementById('modalAddFriend');
+    if (modalEl) {
+        bootstrap.Modal.getInstance(modalEl)?.hide();
+    }
+    if (val) {
+        showModernToast(`ส่งคำขอเป็นเพื่อนไปยัง "${val}" เรียบร้อยแล้ว (ระบบจะบันทึกอัตโนมัติในเวอร์ชันถัดไป)`);
+        if (input) input.value = '';
+    } else {
+        showModernToast('ระบบเพิ่มเพื่อนร่วมทีมจะเปิดใช้งานเร็วๆ นี้ครับ');
+    }
+}
+window.handleAddFriendSubmit = handleAddFriendSubmit;
+
 function handleChatsSearch(query) {
     CHAT_STATE.chatsSearchQuery = query;
-    renderChatsList();
+    if (CHAT_STATE.currentRailTab === 'people') {
+        renderPeopleList();
+    } else {
+        renderChatsList();
+    }
 }
 window.handleChatsSearch = handleChatsSearch;
 
@@ -1544,8 +1684,47 @@ function toggleDrivePane(forceState) {
 window.toggleDrivePane = toggleDrivePane;
 
 function switchRailTab(tabName) {
+    const titleEl = document.getElementById('middle-col-title');
+    const actionsEl = document.getElementById('middle-col-actions');
+    const searchInput = document.getElementById('chats-search-input');
+
     if (tabName === 'chat') {
+        CHAT_STATE.currentRailTab = 'chat';
+        document.querySelectorAll('.rail-nav-item').forEach(b => b.classList.remove('active'));
+        document.getElementById('rail-tab-chat')?.classList.add('active');
         toggleDrivePane(false);
+
+        if (titleEl) titleEl.textContent = 'Chats';
+        if (actionsEl) {
+            actionsEl.innerHTML = `
+                <button type="button" class="chats-action-circle" onclick="showModernToast('เริ่มวิดีโอคอลคุยงานกลุ่ม...')" title="วิดีโอคอล">
+                    <i class="bi bi-camera-video"></i>
+                </button>
+                <button type="button" class="chats-action-circle" onclick="openNewProjectModal()" title="สร้างโปรเจกต์ / แชทใหม่">
+                    <i class="bi bi-plus-lg"></i>
+                </button>
+            `;
+        }
+        if (searchInput) searchInput.placeholder = 'Search messenger...';
+        renderChatsList();
+
+    } else if (tabName === 'people') {
+        CHAT_STATE.currentRailTab = 'people';
+        document.querySelectorAll('.rail-nav-item').forEach(b => b.classList.remove('active'));
+        document.getElementById('rail-tab-people')?.classList.add('active');
+        toggleDrivePane(false);
+
+        if (titleEl) titleEl.textContent = 'People';
+        if (actionsEl) {
+            actionsEl.innerHTML = `
+                <button type="button" class="chats-action-circle" onclick="openAddFriendModal()" title="เพิ่มเพื่อนร่วมทีม (เร็วๆ นี้)">
+                    <i class="bi bi-person-plus-fill text-primary"></i>
+                </button>
+            `;
+        }
+        if (searchInput) searchInput.placeholder = 'Search people... (ค้นหารายชื่อเพื่อน)';
+        renderPeopleList();
+
     } else if (tabName === 'vault') {
         const container = document.getElementById('chat-main-container');
         const isAlreadyOpen = container && container.classList.contains('drive-open');

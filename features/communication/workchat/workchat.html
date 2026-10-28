@@ -68,7 +68,7 @@
                         <i class="bi bi-chat-dots-fill"></i>
                         <span class="rail-label">Chat</span>
                     </button>
-                    <button type="button" class="rail-nav-item" id="rail-tab-people" onclick="handleUserProfileClick()" title="สมาชิกในทีม (People)">
+                    <button type="button" class="rail-nav-item" id="rail-tab-people" onclick="switchRailTab('people')" title="รายชื่อเพื่อน (People)">
                         <i class="bi bi-people"></i>
                         <span class="rail-label">People</span>
                     </button>
@@ -101,16 +101,13 @@
             <!-- Chats Header -->
             <div class="chats-col-header">
                 <div class="d-flex align-items-center justify-content-between mb-3">
-                    <h1 class="chats-main-title">Chats</h1>
-                    <div class="chats-header-actions">
+                    <h1 class="chats-main-title" id="middle-col-title">Chats</h1>
+                    <div class="chats-header-actions" id="middle-col-actions">
                         <button type="button" class="chats-action-circle" onclick="showModernToast('เริ่มวิดีโอคอลคุยงานกลุ่ม...')" title="วิดีโอคอล">
                             <i class="bi bi-camera-video"></i>
                         </button>
                         <button type="button" class="chats-action-circle" onclick="openNewProjectModal()" title="สร้างโปรเจกต์ / แชทใหม่">
                             <i class="bi bi-plus-lg"></i>
-                        </button>
-                        <button type="button" class="chats-action-circle d-lg-none" onclick="toggleDrivePane(true)" title="คลังไฟล์โปรเจกต์">
-                            <i class="bi bi-folder-fill text-warning"></i>
                         </button>
                     </div>
                 </div>
@@ -509,6 +506,45 @@
                             <i class="bi bi-download me-1"></i> ติดตั้งทันที
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── MODAL: ADD FRIEND (Ready for future expansion) ── -->
+    <div class="modal fade" id="modalAddFriend" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 24px;">
+                <div class="modal-header border-0 pb-0 pt-4 px-4">
+                    <div>
+                        <h5 class="modal-title fw-bold text-dark">
+                            <i class="bi bi-person-plus-fill text-primary me-2"></i>เพิ่มเพื่อนร่วมทีม
+                        </h5>
+                        <p class="text-muted small mb-0">ค้นหาเพื่อนร่วมทีมด้วยชื่อ หรือไอดี Gyver</p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body px-4 py-3">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-muted">ชื่อผู้ใช้ / อีเมล / PIN ของเพื่อน:</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control bg-light border-0 py-2" id="input-add-friend-query" placeholder="เช่น pim_designer, หรือช่างเอก...">
+                        </div>
+                    </div>
+                    <div class="p-3 rounded-4 mb-2 d-flex align-items-center gap-3" style="background: #eff6ff; border: 1px dashed #93c5fd;">
+                        <i class="bi bi-info-circle-fill text-primary fs-3 flex-shrink-0"></i>
+                        <div class="small text-muted" style="line-height: 1.45;">
+                            <strong class="text-dark d-block">ระบบเพิ่มเพื่อนอัตโนมัติ</strong>
+                            กำลังพัฒนาเพื่อเชื่อมต่อระบบฐานข้อมูลเพื่อนของ Gyver ในเร็วๆ นี้ครับ ขณะนี้สามารถทักข้อความคุยกับเพื่อนในทีมจากรายชื่อ People ได้ทันทีครับ
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0 pb-4 px-4">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">ปิด</button>
+                    <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold" onclick="handleAddFriendSubmit()">
+                        <i class="bi bi-send-fill me-1"></i> ส่งคำขอเพื่อน
+                    </button>
                 </div>
             </div>
         </div>
