@@ -32,6 +32,9 @@ const CHAT_STATE = {
 
 // ── 🎨 ILLUSTRATED AVATARS (Matching Modern Cartoon Reference Screenshot) ──
 function getIllustratedAvatar(avatarTypeOrName, fallbackName) {
+    if (typeof avatarTypeOrName === 'string' && (avatarTypeOrName.startsWith('http://') || avatarTypeOrName.startsWith('https://') || avatarTypeOrName.startsWith('data:image/'))) {
+        return `<img src="${avatarTypeOrName}" alt="Avatar" class="w-100 h-100 object-fit-cover" style="object-fit: cover; border-radius: inherit;">`;
+    }
     const key = String(avatarTypeOrName || fallbackName || '').toLowerCase();
     
     // 0. Group Avatar (Multiple Persons on Gradient)
@@ -821,6 +824,7 @@ function syncWorkchatToCloud() {
                     files: (CHAT_STATE.files || []).slice(-100),
                     folders: CHAT_STATE.folders || [],
                     projects: CHAT_STATE.projects || [],
+                    friends: (typeof TEAM_FRIENDS !== 'undefined' ? TEAM_FRIENDS : []),
                     updated_at: new Date().toISOString()
                 }
             };
@@ -919,6 +923,26 @@ function mergeCloudStore(cloudSettings) {
                 changed = true;
             }
         });
+    }
+
+    if (Array.isArray(cloudSettings.friends) && cloudSettings.friends.length > 0 && typeof TEAM_FRIENDS !== 'undefined') {
+        const existingFriendIds = new Set(TEAM_FRIENDS.map(fr => fr.id));
+        let friendsChanged = false;
+        cloudSettings.friends.forEach(fr => {
+            if (fr && fr.id && !existingFriendIds.has(fr.id)) {
+                TEAM_FRIENDS.push(fr);
+                existingFriendIds.add(fr.id);
+                friendsChanged = true;
+            }
+        });
+        if (friendsChanged) {
+            saveFriendsData();
+            if (CHAT_STATE.currentRailTab === 'people') {
+                renderPeopleList();
+            } else {
+                renderChatsList();
+            }
+        }
     }
 
     if (changed) {
@@ -1091,54 +1115,29 @@ function renderChatsList() {
         status: `กลุ่มแชท • สมาชิก ${(g.members && g.members.length) || 1} คน`
     }));
 
-    // 2. 1-on-1 Direct Chats
-    const directChannels = [
-        {
-            id: 'general',
-            name: 'Lilly Jr.',
-            subtitleDefault: 'Good idea! I like this.',
-            avatarType: 'lilly',
-            status: 'ออนไลน์ • ฝ่ายดีไซน์',
-            isDirect: true,
-            type: 'direct'
-        },
-        {
-            id: 'dm_rihanna',
-            name: 'Rihanna Goldberg',
-            subtitleDefault: 'Great, Thanks!',
-            avatarType: 'rihanna',
-            status: 'ออนไลน์ • จัดซื้อและผลิต',
-            isDirect: true,
-            type: 'direct'
-        },
-        {
-            id: 'dm_gregory',
-            name: 'Gregory Portman',
-            subtitleDefault: 'This is so good man. Will do Remix.',
-            avatarType: 'gregory',
-            status: 'ออนไลน์ • วิศวกรโครงสร้าง',
-            isDirect: true,
-            type: 'direct'
-        },
-        {
-            id: 'dm_marry',
-            name: 'Marry Adams',
-            subtitleDefault: 'Cool. We can help Lilly.',
-            avatarType: 'marry',
-            status: 'ออฟไลน์ • ประสานงาน',
-            isDirect: true,
-            type: 'direct'
-        },
-        {
-            id: 'dm_callie',
-            name: 'Callie Goodman',
-            subtitleDefault: 'You: Call me today. We have a new project.',
-            avatarType: 'user_boy',
-            status: 'บันทึกส่วนตัว (Note to self)',
-            isDirect: true,
-            type: 'direct'
+    // 2. 1-on-1 Direct Chats (Dynamically generated from TEAM_FRIENDS)
+    const directChannels = (TEAM_FRIENDS || []).map(f => {
+        const lastMsg = (CHAT_STATE.messages || [])
+            .filter(m => m.chatId === f.id || m.recipientId === f.id)
+            .pop();
+
+        let sub = f.bio || f.role || 'ส่งข้อความเพื่อเริ่มคุยงาน';
+        if (lastMsg) {
+            const isMe = (lastMsg.sender === CHAT_STATE.currentUser.displayName || lastMsg.sender === CHAT_STATE.currentUser.username);
+            sub = (isMe ? 'คุณ: ' : '') + (lastMsg.text || '📎 ส่งไฟล์แนบ');
         }
-    ];
+
+        return {
+            id: f.id,
+            name: f.name,
+            subtitleDefault: sub,
+            avatarType: f.avatarType,
+            status: `${f.status === 'online' ? 'ออนไลน์' : 'ออฟไลน์'} • ${f.role}`,
+            isDirect: true,
+            type: 'direct',
+            isCustom: f.isCustom
+        };
+    });
 
     // 3. Dynamic Projects
     const projectChannels = CHAT_STATE.projects.map(p => ({
@@ -1228,7 +1227,7 @@ function renderChatsList() {
 }
 
 // ── 4.5 PEOPLE (FRIENDS) LIST ENGINE ────────────────────────────────────────
-const TEAM_FRIENDS = [
+const DEFAULT_FRIENDS = [
     {
         id: 'general',
         username: 'lilly_jr',
@@ -1276,6 +1275,35 @@ const TEAM_FRIENDS = [
     }
 ];
 
+function loadFriendsData() {
+    try {
+        const stored = localStorage.getItem('sgyver_workchat_friends');
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                const idSet = new Set(parsed.map(p => p.id));
+                DEFAULT_FRIENDS.forEach(df => {
+                    if (!idSet.has(df.id)) parsed.push(df);
+                });
+                return parsed;
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to load friends from local storage', e);
+    }
+    return [...DEFAULT_FRIENDS];
+}
+
+function saveFriendsData() {
+    try {
+        localStorage.setItem('sgyver_workchat_friends', JSON.stringify(TEAM_FRIENDS));
+    } catch (e) {
+        console.warn('Failed to save friends to local storage', e);
+    }
+}
+
+let TEAM_FRIENDS = loadFriendsData();
+
 function renderPeopleList() {
     const container = document.getElementById('chats-list-stream');
     if (!container) return;
@@ -1284,8 +1312,9 @@ function renderPeopleList() {
     const filtered = TEAM_FRIENDS.filter(f => 
         !query || 
         f.name.toLowerCase().includes(query) || 
-        f.role.toLowerCase().includes(query) ||
-        f.bio.toLowerCase().includes(query)
+        (f.role && f.role.toLowerCase().includes(query)) ||
+        (f.bio && f.bio.toLowerCase().includes(query)) ||
+        (f.username && f.username.toLowerCase().includes(query))
     );
 
     if (filtered.length === 0) {
@@ -1293,36 +1322,53 @@ function renderPeopleList() {
             <div class="text-center py-5 text-muted">
                 <i class="bi bi-people fs-1 d-block mb-2 text-primary opacity-50"></i>
                 <div class="fw-bold">ไม่พบรายชื่อเพื่อน</div>
-                <div class="small">ลองค้นหาด้วยคำอื่น หรือกดปุ่ม + ด้านบนเพื่อเพิ่มเพื่อน</div>
+                <div class="small mb-3">ลองค้นหาด้วยคำอื่น หรือกดปุ่มด้านล่างเพื่อเพิ่มเพื่อน</div>
+                <button type="button" class="btn btn-sm btn-primary rounded-pill px-4 fw-bold shadow-sm" onclick="openAddFriendModal()">
+                    <i class="bi bi-person-plus-fill me-1"></i> เพิ่มเพื่อนใหม่
+                </button>
             </div>
         `;
         return;
     }
 
+    const onlineCount = filtered.filter(f => f.status === 'online').length;
+
     container.innerHTML = `
         <div class="d-flex align-items-center justify-content-between px-2 py-2 mb-1">
             <span class="small fw-bold text-muted text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">รายชื่อเพื่อน (${filtered.length})</span>
-            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill font-mono" style="font-size: 0.68rem;">ออนไลน์ 4</span>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill font-mono" style="font-size: 0.68rem;">ออนไลน์ ${onlineCount}</span>
+                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-2.5 py-0 fw-semibold" style="font-size: 0.72rem;" onclick="openAddFriendModal()" title="เพิ่มเพื่อน">
+                    <i class="bi bi-person-plus-fill me-1"></i> เพิ่มเพื่อน
+                </button>
+            </div>
         </div>
         ${filtered.map(friend => `
-            <div class="people-card-item" onclick="openDirectChatFromPeople('${friend.id}')">
+            <div class="people-card-item position-relative" onclick="openDirectChatFromPeople('${friend.id}')">
                 <div class="people-avatar-wrap">
                     ${getIllustratedAvatar(friend.avatarType, friend.name)}
                     <span class="people-status-dot ${friend.status}"></span>
                 </div>
                 <div class="people-info">
                     <div class="d-flex align-items-center justify-content-between">
-                        <span class="people-name">${escapeHtml(friend.name)}</span>
+                        <span class="people-name text-truncate">${escapeHtml(friend.name)}</span>
                         <span class="people-status-badge ${friend.status}">
                             ${friend.status === 'online' ? '● ออนไลน์' : 'ออฟไลน์'}
                         </span>
                     </div>
-                    <div class="people-role">${escapeHtml(friend.role)}</div>
-                    <div class="people-bio">${escapeHtml(friend.bio)}</div>
+                    <div class="people-role text-truncate">${escapeHtml(friend.role || '')}</div>
+                    <div class="people-bio text-truncate">${escapeHtml(friend.bio || '')}</div>
                 </div>
-                <button type="button" class="btn-people-chat" onclick="event.stopPropagation(); openDirectChatFromPeople('${friend.id}')" title="ส่งข้อความคุยกับ ${escapeHtml(friend.name)}">
-                    <i class="bi bi-chat-dots-fill"></i>
-                </button>
+                <div class="d-flex align-items-center gap-1 ms-1 flex-shrink-0">
+                    <button type="button" class="btn-people-chat" onclick="event.stopPropagation(); openDirectChatFromPeople('${friend.id}')" title="ส่งข้อความคุยกับ ${escapeHtml(friend.name)}">
+                        <i class="bi bi-chat-dots-fill"></i>
+                    </button>
+                    ${friend.isCustom ? `
+                        <button type="button" class="btn btn-sm btn-link text-danger p-1 text-decoration-none" onclick="event.stopPropagation(); deleteFriend('${friend.id}')" title="ลบออกจากเพื่อน">
+                            <i class="bi bi-trash3"></i>
+                        </button>
+                    ` : ''}
+                </div>
             </div>
         `).join('')}
     `;
@@ -1338,29 +1384,287 @@ function openDirectChatFromPeople(chatId) {
 }
 window.openDirectChatFromPeople = openDirectChatFromPeople;
 
+function deleteFriend(friendId) {
+    const friend = TEAM_FRIENDS.find(f => f.id === friendId);
+    if (!friend) return;
+    if (!confirm(`คุณต้องการลบ "${friend.name}" ออกจากรายชื่อเพื่อนใช่หรือไม่?`)) return;
+
+    TEAM_FRIENDS = TEAM_FRIENDS.filter(f => f.id !== friendId);
+    saveFriendsData();
+    syncWorkchatToCloud();
+    if (CHAT_STATE.currentRailTab === 'people') {
+        renderPeopleList();
+    } else {
+        renderChatsList();
+    }
+    showModernToast(`ลบ "${friend.name}" ออกจากรายชื่อเพื่อนแล้ว`);
+}
+window.deleteFriend = deleteFriend;
+
 function openAddFriendModal() {
     const modalEl = document.getElementById('modalAddFriend');
     if (modalEl) {
         bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        setTimeout(() => {
+            executeSearchSupabaseUsers();
+        }, 150);
     }
 }
 window.openAddFriendModal = openAddFriendModal;
 
-function handleAddFriendSubmit() {
-    const input = document.getElementById('input-add-friend-query');
-    const val = input ? input.value.trim() : '';
+let _searchUserDebounce = null;
+function onAddFriendSearchInput(val) {
+    clearTimeout(_searchUserDebounce);
+    _searchUserDebounce = setTimeout(() => {
+        executeSearchSupabaseUsers();
+    }, 350);
+}
+window.onAddFriendSearchInput = onAddFriendSearchInput;
+
+async function executeSearchSupabaseUsers() {
+    const queryInput = document.getElementById('input-add-friend-query');
+    const query = queryInput ? queryInput.value.trim() : '';
+    const stream = document.getElementById('add-friend-results-stream');
+    const labelEl = document.getElementById('search-results-label');
+    const countEl = document.getElementById('search-results-count');
+    if (!stream) return;
+
+    if (countEl) countEl.innerText = 'กำลังค้นหา...';
+
+    if (!window.supabaseClient) {
+        if (countEl) countEl.innerText = '';
+        stream.innerHTML = `
+            <div class="p-3 text-center text-muted small bg-light rounded-3">
+                <i class="bi bi-wifi-off fs-4 d-block mb-1 text-secondary"></i>
+                ไม่ได้เชื่อมต่อ Supabase หรืออยู่ในโหมดออฟไลน์
+                <div class="mt-2">คุณสามารถใช้แท็บ <strong>"สร้างรายชื่อใหม่เอง"</strong> เพื่อเพิ่มเพื่อนได้ทันทีครับ</div>
+            </div>
+        `;
+        return;
+    }
+
+    try {
+        let req = window.supabaseClient.from('profiles').select('id, username, nickname, first_name, last_name, avatar_url, role, level, email');
+        if (query) {
+            req = req.or(`username.ilike.%${query}%,nickname.ilike.%${query}%,first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%`).limit(25);
+            if (labelEl) labelEl.innerText = `ผลการค้นหา: "${query}"`;
+        } else {
+            req = req.order('created_at', { ascending: false }).limit(10);
+            if (labelEl) labelEl.innerText = 'สมาชิกแนะนำในระบบ';
+        }
+
+        const { data, error } = await req;
+        if (error) {
+            console.warn('Search users error:', error);
+            if (countEl) countEl.innerText = 'เกิดข้อผิดพลาด';
+            stream.innerHTML = `
+                <div class="p-3 text-center text-muted small bg-light rounded-3">
+                    <i class="bi bi-exclamation-triangle text-warning fs-4 d-block mb-1"></i>
+                    ไม่สามารถค้นหาได้ในขณะนี้
+                    <div class="mt-2 text-secondary">สามารถสลับไปที่แท็บ <strong>"สร้างรายชื่อใหม่เอง"</strong> เพื่อเพิ่มเพื่อนได้ทันที</div>
+                </div>
+            `;
+            return;
+        }
+
+        renderAddFriendSearchResults(data || []);
+    } catch (err) {
+        console.warn('Search exception:', err);
+        if (countEl) countEl.innerText = '';
+        stream.innerHTML = `<div class="p-3 text-center text-muted small">เกิดข้อผิดพลาดในการค้นหา</div>`;
+    }
+}
+window.executeSearchSupabaseUsers = executeSearchSupabaseUsers;
+
+function renderAddFriendSearchResults(users) {
+    const stream = document.getElementById('add-friend-results-stream');
+    const countEl = document.getElementById('search-results-count');
+    if (!stream) return;
+
+    if (countEl) countEl.innerText = `พบ ${users.length} คน`;
+
+    if (!users || users.length === 0) {
+        stream.innerHTML = `
+            <div class="text-center py-4 text-muted small">
+                <i class="bi bi-person-x fs-2 d-block mb-1 opacity-50"></i>
+                ไม่พบสมาชิกที่ตรงกับคำค้นหา
+                <div class="mt-2">
+                    สามารถสลับไปแท็บ <strong>"สร้างรายชื่อใหม่เอง"</strong> เพื่อเพิ่มเพื่อนด้วยตนเองได้ครับ
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    const friendUserIdSet = new Set(TEAM_FRIENDS.map(f => f.userId || f.username));
+    const currentMyId = CHAT_STATE.currentUser.id || CHAT_STATE.currentUser.username;
+
+    stream.innerHTML = users.map(user => {
+        const displayName = user.nickname || (user.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user.username) || 'สมาชิก Gyver';
+        const role = user.role === 'admin' ? 'ผู้ดูแลระบบ (Admin)' : (user.role || `สมาชิก Lv.${user.level || 1}`);
+        const avatar = user.avatar_url || 'user_boy';
+        const isMe = (user.id === currentMyId || user.username === CHAT_STATE.currentUser.username);
+        const alreadyFriend = friendUserIdSet.has(user.id) || friendUserIdSet.has(user.username);
+
+        const safeUserObj = {
+            id: user.id,
+            name: displayName,
+            username: user.username || '',
+            avatarUrl: user.avatar_url || 'user_boy',
+            role: role,
+            email: user.email || ''
+        };
+        const encodedData = encodeURIComponent(JSON.stringify(safeUserObj));
+
+        return `
+            <div class="friend-search-result-item">
+                <div class="d-flex align-items-center gap-2.5 min-w-0">
+                    <div class="friend-search-avatar">
+                        ${getIllustratedAvatar(avatar, displayName)}
+                    </div>
+                    <div class="min-w-0">
+                        <div class="fw-bold text-dark small text-truncate">
+                            ${escapeHtml(displayName)}
+                            ${isMe ? '<span class="badge bg-secondary-subtle text-secondary ms-1 font-mono" style="font-size: 0.65rem;">คุณ</span>' : ''}
+                        </div>
+                        <div class="text-muted text-truncate" style="font-size: 0.72rem;">
+                            ${escapeHtml(user.username ? '@' + user.username : (user.email || ''))} • ${escapeHtml(role)}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex-shrink-0">
+                    ${isMe ? `
+                        <span class="badge bg-light text-muted border rounded-pill px-2.5 py-1.5 small">บัญชีของคุณ</span>
+                    ` : alreadyFriend ? `
+                        <button type="button" class="btn btn-sm btn-light text-success rounded-pill px-3 py-1 fw-bold border" disabled>
+                            <i class="bi bi-check2"></i> เพื่อนแล้ว
+                        </button>
+                    ` : `
+                        <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 py-1 fw-bold shadow-sm" onclick="addNewFriendFromData('${encodedData}')">
+                            <i class="bi bi-person-plus-fill me-1"></i> เพิ่มเพื่อน
+                        </button>
+                    `}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function addNewFriendFromData(encodedJson) {
+    try {
+        const u = JSON.parse(decodeURIComponent(encodedJson));
+        const newFriendId = 'dm_user_' + (u.id || u.username || Date.now());
+
+        if (TEAM_FRIENDS.some(f => f.id === newFriendId || (u.id && f.userId === u.id) || (u.username && f.username === u.username))) {
+            showModernToast(`"${u.name}" อยู่ในรายชื่อเพื่อนของคุณแล้ว`);
+            return;
+        }
+
+        const newFriend = {
+            id: newFriendId,
+            userId: u.id,
+            username: u.username || '',
+            name: u.name,
+            role: u.role || 'สมาชิกทีม',
+            avatarType: u.avatarUrl || 'user_boy',
+            status: 'online',
+            bio: u.email ? `อีเมล: ${u.email}` : 'เพื่อนร่วมทีม Gyver',
+            isCustom: true
+        };
+
+        TEAM_FRIENDS.push(newFriend);
+        saveFriendsData();
+        syncWorkchatToCloud();
+
+        if (CHAT_STATE.currentRailTab === 'people') {
+            renderPeopleList();
+        } else {
+            renderChatsList();
+        }
+
+        showModernToast(`เพิ่ม "${u.name}" เป็นเพื่อนสำเร็จแล้ว! 🎉`);
+
+        const modalEl = document.getElementById('modalAddFriend');
+        if (modalEl) {
+            bootstrap.Modal.getInstance(modalEl)?.hide();
+        }
+
+        openDirectChatFromPeople(newFriend.id);
+    } catch (err) {
+        console.error('Failed to add friend from data:', err);
+        showModernToast('ไม่สามารถเพิ่มเพื่อนได้');
+    }
+}
+window.addNewFriendFromData = addNewFriendFromData;
+
+function selectCustomFriendAvatar(avatarKey) {
+    const valInput = document.getElementById('custom-friend-avatar-val');
+    if (valInput) valInput.value = avatarKey;
+
+    const options = document.querySelectorAll('#custom-friend-avatar-picker .custom-avatar-option');
+    options.forEach(opt => {
+        if (opt.getAttribute('data-avatar') === avatarKey) {
+            opt.classList.add('active');
+        } else {
+            opt.classList.remove('active');
+        }
+    });
+}
+window.selectCustomFriendAvatar = selectCustomFriendAvatar;
+
+function handleCreateCustomFriend() {
+    const nameInput = document.getElementById('custom-friend-name');
+    const roleInput = document.getElementById('custom-friend-role');
+    const bioInput = document.getElementById('custom-friend-bio');
+    const avatarInput = document.getElementById('custom-friend-avatar-val');
+
+    const name = nameInput ? nameInput.value.trim() : '';
+    if (!name) {
+        showModernToast('กรุณาระบุชื่อเพื่อน');
+        return;
+    }
+
+    const role = roleInput ? roleInput.value.trim() : 'เพื่อนร่วมทีม';
+    const bio = bioInput ? bioInput.value.trim() : '';
+    const avatar = avatarInput ? avatarInput.value : 'user_boy';
+
+    const newFriendId = 'dm_custom_' + Date.now();
+    const newFriend = {
+        id: newFriendId,
+        username: 'contact_' + Date.now(),
+        name: name,
+        role: role || 'เพื่อนร่วมทีม',
+        avatarType: avatar,
+        status: 'online',
+        bio: bio || 'รายชื่อเพื่อนที่สร้างเอง',
+        isCustom: true
+    };
+
+    TEAM_FRIENDS.push(newFriend);
+    saveFriendsData();
+    syncWorkchatToCloud();
+
+    if (nameInput) nameInput.value = '';
+    if (roleInput) roleInput.value = '';
+    if (bioInput) bioInput.value = '';
+
+    if (CHAT_STATE.currentRailTab === 'people') {
+        renderPeopleList();
+    } else {
+        renderChatsList();
+    }
+
+    showModernToast(`บันทึกและเพิ่ม "${name}" เรียบร้อยแล้ว! 🎉`);
+
     const modalEl = document.getElementById('modalAddFriend');
     if (modalEl) {
         bootstrap.Modal.getInstance(modalEl)?.hide();
     }
-    if (val) {
-        showModernToast(`ส่งคำขอเป็นเพื่อนไปยัง "${val}" เรียบร้อยแล้ว (ระบบจะบันทึกอัตโนมัติในเวอร์ชันถัดไป)`);
-        if (input) input.value = '';
-    } else {
-        showModernToast('ระบบเพิ่มเพื่อนร่วมทีมจะเปิดใช้งานเร็วๆ นี้ครับ');
-    }
+
+    openDirectChatFromPeople(newFriend.id);
 }
-window.handleAddFriendSubmit = handleAddFriendSubmit;
+window.handleCreateCustomFriend = handleCreateCustomFriend;
 
 // ── 4.6 GROUP CHAT ENGINE (สร้างกลุ่มคุยงาน) ────────────────────────────────
 function openNewGroupModal() {

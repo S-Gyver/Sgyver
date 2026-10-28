@@ -2467,3 +2467,66 @@ body.drive-open .drive-pane {
         max-width: 100%;
     }
 }
+
+/* ── Modern Add Friend Modal Styles ── */
+.custom-avatar-option {
+    cursor: pointer;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    padding: 3px;
+    transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    background: transparent;
+}
+
+.custom-avatar-option:hover {
+    transform: scale(1.08);
+}
+
+.custom-avatar-option.active {
+    border-color: #0084ff;
+    background: rgba(0, 132, 255, 0.12);
+    box-shadow: 0 0 0 3px rgba(0, 132, 255, 0.18);
+}
+
+.avatar-preview-box {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    overflow: hidden;
+    user-select: none;
+}
+
+.friend-search-result-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    transition: all 0.18s ease;
+}
+
+.friend-search-result-item:hover {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.06);
+}
+
+.friend-search-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: #eff6ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

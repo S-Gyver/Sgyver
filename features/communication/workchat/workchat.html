@@ -31,7 +31,7 @@
     <script src="../../../assets/js/toast_shared.js"></script>
 
     <!-- Modern WorkChat Stylesheet -->
-    <link rel="stylesheet" href="workchat.css?v=2.5">
+    <link rel="stylesheet" href="workchat.css?v=2.6">
 </head>
 <body>
 
@@ -546,58 +546,6 @@
         </div>
     </div>
 
-    <!-- 5. Modal: PWA Mobile Install Guide & QR Code -->
-    <div class="modal fade" id="modalPwaInstallGuide" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
-            <div class="modal-content modal-modern">
-                <div class="modal-header border-0 pb-0">
-                    <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2">
-                        <i class="bi bi-phone-arrow-down-fill text-warning"></i> ติดตั้งลงมือถือ (Mobile App)
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body py-3">
-                    <div class="text-center mb-3">
-                        <p class="text-muted small mb-2">ติดตั้งเป็นไอคอนแอปบนหน้าจอมือถือ เปิดเต็มจอ ใช้งานลื่นไหล ไม่ต้องโหลดจาก Store</p>
-                        <div class="p-2 d-inline-block rounded-3 bg-white shadow-sm mb-2 border">
-                            <img id="pwa-install-qrcode" src="" alt="QR Code" style="width: 140px; height: 140px; display: block;">
-                        </div>
-                        <div class="text-dark small fw-bold">ใช้มือถือสแกน QR Code นี้เพื่อเปิดและติดตั้ง</div>
-                    </div>
-
-                    <!-- Android Guide -->
-                    <div class="p-3 rounded-3 mb-2" style="background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.25);">
-                        <div class="fw-bold text-success small mb-1"><i class="bi bi-android2 me-1"></i> สำหรับมือถือ Android (Chrome):</div>
-                        <ol class="small text-muted mb-0 ps-3" style="font-size: 0.8rem; line-height: 1.5;">
-                            <li>เปิดลิงก์ในเบราว์เซอร์ Chrome</li>
-                            <li>กดปุ่มจุดสามจุด <strong>(⋮)</strong> มุมบนขวา</li>
-                            <li>เลือก <strong>"ติดตั้งแอป (Install App)"</strong> หรือ "เพิ่มลงหน้าจอหลัก"</li>
-                        </ol>
-                    </div>
-
-                    <!-- iOS Guide -->
-                    <div class="p-3 rounded-3 mb-3" style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25);">
-                        <div class="fw-bold text-primary small mb-1"><i class="bi bi-apple me-1"></i> สำหรับ iPhone / iPad (Safari):</div>
-                        <ol class="small text-muted mb-0 ps-3" style="font-size: 0.8rem; line-height: 1.5;">
-                            <li>เปิดลิงก์ด้วยเบราว์เซอร์ Safari</li>
-                            <li>กดปุ่มแชร์ <strong>⎋ (สี่เหลี่ยมลูกศรชี้ขึ้น)</strong> แถบล่าง</li>
-                            <li>เลื่อนลงแล้วเลือก <strong>"เพิ่มไปยังหน้าจอโฮม (Add to Home Screen)"</strong></li>
-                        </ol>
-                    </div>
-
-                    <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill flex-grow-1" onclick="copyAppUrl()">
-                            <i class="bi bi-clipboard-check me-1"></i> คัดลอกลิงก์
-                        </button>
-                        <button type="button" class="btn btn-sm btn-primary rounded-pill flex-grow-1 fw-bold" id="btn-trigger-native-install" onclick="executeNativeInstallPrompt()">
-                            <i class="bi bi-download me-1"></i> ติดตั้งทันที
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- ── MODAL: CREATE NEW GROUP CHAT (สร้างกลุ่มคุยงาน) ── -->
     <div class="modal fade" id="modalCreateGroup" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" style="max-width: 480px;">
@@ -642,40 +590,109 @@
         </div>
     </div>
 
-    <!-- ── MODAL: ADD FRIEND (Ready for future expansion) ── -->
+    <!-- ── MODAL: ADD FRIEND (ค้นหาและเพิ่มเพื่อนร่วมทีม) ── -->
     <div class="modal fade" id="modalAddFriend" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
-            <div class="modal-content border-0 shadow-lg" style="border-radius: 24px;">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 480px;">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 24px; overflow: hidden;">
                 <div class="modal-header border-0 pb-0 pt-4 px-4">
                     <div>
-                        <h5 class="modal-title fw-bold text-dark">
-                            <i class="bi bi-person-plus-fill text-primary me-2"></i>เพิ่มเพื่อนร่วมทีม
+                        <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2">
+                            <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-primary bg-opacity-10 text-primary" style="width: 36px; height: 36px;">
+                                <i class="bi bi-person-plus-fill"></i>
+                            </span>
+                            เพิ่มเพื่อนร่วมทีม (Add Friend)
                         </h5>
-                        <p class="text-muted small mb-0">ค้นหาเพื่อนร่วมทีมด้วยชื่อ หรือไอดี Gyver</p>
+                        <p class="text-muted small mb-0 mt-1">ค้นหาสมาชิกในระบบ หรือสร้างรายชื่อเพื่อนร่วมทีม</p>
                     </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body px-4 py-3">
-                    <div class="mb-3">
-                        <label class="form-label small fw-semibold text-muted">ชื่อผู้ใช้ / อีเมล / PIN ของเพื่อน:</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
-                            <input type="text" class="form-control bg-light border-0 py-2" id="input-add-friend-query" placeholder="เช่น pim_designer, หรือช่างเอก...">
+
+                <div class="modal-body px-4 pt-3 pb-2">
+                    <!-- Nav Tabs: Search vs Custom -->
+                    <ul class="nav nav-pills nav-fill mb-3 bg-light p-1 rounded-pill" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active rounded-pill py-2 small fw-bold" id="tab-find-user" data-bs-toggle="pill" data-bs-target="#panel-find-user" type="button" role="tab">
+                                <i class="bi bi-search me-1"></i> ค้นหาสมาชิกในระบบ
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link rounded-pill py-2 small fw-bold" id="tab-create-friend" data-bs-toggle="pill" data-bs-target="#panel-create-friend" type="button" role="tab">
+                                <i class="bi bi-person-plus me-1"></i> สร้างรายชื่อใหม่เอง
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content">
+                        <!-- 1. Search Users from Supabase -->
+                        <div class="tab-pane fade show active" id="panel-find-user" role="tabpanel">
+                            <div class="mb-3">
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-0 ps-3"><i class="bi bi-search text-muted"></i></span>
+                                    <input type="text" class="form-control bg-light border-0 py-2 font-mono small" id="input-add-friend-query" placeholder="พิมพ์ชื่อผู้ใช้, ชื่อเล่น, หรืออีเมล..." oninput="onAddFriendSearchInput(this.value)">
+                                    <button class="btn btn-outline-primary border-0 fw-semibold px-3" type="button" onclick="executeSearchSupabaseUsers()">
+                                        ค้นหา
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="d-flex align-items-center justify-content-between mb-2 px-1">
+                                <span class="small fw-bold text-muted text-uppercase" id="search-results-label" style="font-size: 0.72rem; letter-spacing: 0.5px;">สมาชิกในระบบ</span>
+                                <span class="small text-muted" id="search-results-count" style="font-size: 0.72rem;">กำลังโหลด...</span>
+                            </div>
+
+                            <!-- Search Results List -->
+                            <div id="add-friend-results-stream" class="d-flex flex-column gap-2" style="max-height: 280px; overflow-y: auto; padding-right: 2px;">
+                                <!-- Dynamically populated by JS -->
+                            </div>
                         </div>
-                    </div>
-                    <div class="p-3 rounded-4 mb-2 d-flex align-items-center gap-3" style="background: #eff6ff; border: 1px dashed #93c5fd;">
-                        <i class="bi bi-info-circle-fill text-primary fs-3 flex-shrink-0"></i>
-                        <div class="small text-muted" style="line-height: 1.45;">
-                            <strong class="text-dark d-block">ระบบเพิ่มเพื่อนอัตโนมัติ</strong>
-                            กำลังพัฒนาเพื่อเชื่อมต่อระบบฐานข้อมูลเพื่อนของ Gyver ในเร็วๆ นี้ครับ ขณะนี้สามารถทักข้อความคุยกับเพื่อนในทีมจากรายชื่อ People ได้ทันทีครับ
+
+                        <!-- 2. Create Custom Contact -->
+                        <div class="tab-pane fade" id="panel-create-friend" role="tabpanel">
+                            <form onsubmit="event.preventDefault(); handleCreateCustomFriend();">
+                                <div class="mb-2">
+                                    <label class="form-label small fw-semibold text-muted mb-1">ชื่อเพื่อน / ชื่อเล่น <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control bg-light border-0 py-2 small" id="custom-friend-name" placeholder="เช่น ช่างเอก (โครงสร้างไม้), น้องมายด์..." required>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label small fw-semibold text-muted mb-1">ตำแหน่ง / แผนก</label>
+                                    <input type="text" class="form-control bg-light border-0 py-2 small" id="custom-friend-role" placeholder="เช่น วิศวกร, ฝ่ายจัดซื้อ, โรงพิมพ์...">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold text-muted mb-1">คำอธิบาย / เบอร์โทร</label>
+                                    <input type="text" class="form-control bg-light border-0 py-2 small" id="custom-friend-bio" placeholder="เช่น ติดต่องานฉาก 081-xxx-xxxx">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold text-muted mb-1">เลือกรูปโปรไฟล์</label>
+                                    <div class="d-flex align-items-center gap-2 flex-wrap" id="custom-friend-avatar-picker">
+                                        <div class="custom-avatar-option active" data-avatar="user_boy" onclick="selectCustomFriendAvatar('user_boy')">
+                                            <div class="avatar-preview-box">👨‍💻</div>
+                                        </div>
+                                        <div class="custom-avatar-option" data-avatar="lilly" onclick="selectCustomFriendAvatar('lilly')">
+                                            <div class="avatar-preview-box">🎨</div>
+                                        </div>
+                                        <div class="custom-avatar-option" data-avatar="gregory" onclick="selectCustomFriendAvatar('gregory')">
+                                            <div class="avatar-preview-box">🛠️</div>
+                                        </div>
+                                        <div class="custom-avatar-option" data-avatar="rihanna" onclick="selectCustomFriendAvatar('rihanna')">
+                                            <div class="avatar-preview-box">📦</div>
+                                        </div>
+                                        <div class="custom-avatar-option" data-avatar="marry" onclick="selectCustomFriendAvatar('marry')">
+                                            <div class="avatar-preview-box">💼</div>
+                                        </div>
+                                    </div>
+                                    <input type="hidden" id="custom-friend-avatar-val" value="user_boy">
+                                </div>
+
+                                <button type="submit" class="btn btn-primary w-100 rounded-pill py-2 fw-bold shadow-sm">
+                                    <i class="bi bi-check2-circle me-1"></i> บันทึกและเพิ่มเพื่อน
+                                </button>
+                            </form>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer border-0 pt-0 pb-4 px-4">
-                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">ปิด</button>
-                    <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold" onclick="handleAddFriendSubmit()">
-                        <i class="bi bi-send-fill me-1"></i> ส่งคำขอเพื่อน
-                    </button>
+
+                <div class="modal-footer border-0 pt-0 pb-3 px-4">
+                    <button type="button" class="btn btn-light rounded-pill px-4 ms-auto" data-bs-dismiss="modal">ปิดหน้าต่าง</button>
                 </div>
             </div>
         </div>
@@ -826,7 +843,7 @@
     <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- App Script -->
-    <script src="workchat.js?v=2.5"></script>
+    <script src="workchat.js?v=2.6"></script>
     <!-- Register PWA Service Worker for Mobile Installation -->
     <script>
         if ('serviceWorker' in navigator) {
