@@ -1904,99 +1904,154 @@ body.drive-open .drive-pane {
         height: 100dvh;
         height: 100vh;
         overflow: hidden;
+        background: #ffffff;
     }
 
-    /* 1. Mobile Bottom Navigation Bar (Shown on Chats / People list view) */
+    /* 1. Mobile Pure Messenger: Completely HIDE Left Navigation Rail and Project Vault */
     .messenger-nav-rail {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        width: 100%;
-        height: calc(58px + env(safe-area-inset-bottom, 0px));
-        flex-direction: row;
-        justify-content: space-around;
-        align-items: center;
-        padding: 4px 12px env(safe-area-inset-bottom, 4px);
-        background: rgba(255, 255, 255, 0.98);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border-top: 1px solid var(--border-light);
-        border-right: none;
-        z-index: 100;
-        box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.04);
-    }
-
-    .rail-top {
-        flex-direction: row;
-        justify-content: space-around;
-        align-items: center;
-        width: auto;
-        flex: 1;
-        gap: 0;
-    }
-
-    .rail-logo-btn,
-    .rail-user-profile-wrap {
         display: none !important;
     }
 
-    .rail-nav-menu {
-        flex-direction: row;
-        justify-content: space-around;
-        align-items: center;
-        width: 100%;
-        gap: 0;
+    .drive-pane,
+    .drive-backdrop,
+    .header-vault-pill-group {
+        display: none !important;
     }
 
-    .rail-nav-item {
-        width: auto;
-        padding: 4px 18px;
-        gap: 2px;
-        border-radius: 12px;
-    }
-
-    .rail-nav-item i {
-        font-size: 1.25rem;
-    }
-
-    .rail-label {
-        font-size: 0.68rem;
-    }
-
-    .rail-bottom {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        gap: 4px;
-        padding-right: 4px;
-    }
-
-    .rail-exit-btn {
-        width: 36px;
-        height: 36px;
-        font-size: 1.05rem;
-        border-radius: 50%;
-    }
-
-    /* 2. Middle Column (Chats & People) on Mobile */
+    /* 2. Middle Column: Full Screen Messenger Chats List */
     .messenger-chats-col {
-        width: 100%;
+        width: 100% !important;
         flex: 1;
-        height: 100%;
-        padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+        height: 100dvh;
+        height: 100vh;
+        padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
         border-right: none;
+        background: #ffffff;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
     }
 
     .chats-col-header {
-        padding: 14px 16px 8px;
+        padding: 12px 16px 8px;
+        background: #ffffff;
+        border-bottom: 1px solid #f0f2f5;
+        flex-shrink: 0;
     }
 
     .chats-main-title {
-        font-size: 1.55rem;
+        font-size: 1.65rem;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+        color: #050505;
     }
 
-    /* 3. Main Chat Conversation Screen on Mobile */
+    /* Mobile Profile Avatar in Chats Header (Messenger Style) */
+    .chats-mobile-profile-avatar {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        overflow: hidden;
+        cursor: pointer;
+        flex-shrink: 0;
+        background: #f0f2f5;
+        border: 2px solid #ffffff;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+        transition: transform 0.15s ease;
+    }
+    .chats-mobile-profile-avatar:active {
+        transform: scale(0.92);
+    }
+    .chats-mobile-profile-avatar img,
+    .chats-mobile-profile-avatar svg {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .chats-search-wrapper {
+        margin: 10px 0 8px;
+        background: #f0f2f5;
+        border-radius: 20px;
+        padding: 7px 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .chats-search-input {
+        background: transparent;
+        border: none;
+        outline: none;
+        font-size: 0.92rem;
+        width: 100%;
+        color: #050505;
+    }
+    .chats-search-icon {
+        color: #65676b;
+        font-size: 0.95rem;
+    }
+
+    .chats-filter-tabs {
+        display: flex;
+        gap: 6px;
+        margin-top: 4px;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+    .chats-filter-tabs::-webkit-scrollbar {
+        display: none;
+    }
+    .chats-filter-pill {
+        border-radius: 18px;
+        padding: 5px 14px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        border: none;
+        background: #f0f2f5;
+        color: #050505;
+        white-space: nowrap;
+        transition: background-color 0.15s ease, color 0.15s ease;
+    }
+    .chats-filter-pill.active {
+        background: #e7f3ff;
+        color: #0084ff;
+    }
+
+    .chats-list-stream {
+        flex: 1;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: 6px 8px calc(16px + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* Messenger Mobile Conversation Items */
+    .chat-conversation-item {
+        border-radius: 14px;
+        padding: 10px 12px;
+        margin-bottom: 2px;
+    }
+    .chat-conversation-item.active {
+        background: #f0f2f5 !important;
+        color: inherit !important;
+        box-shadow: none !important;
+    }
+    .chat-conversation-item.active .item-name {
+        color: #050505 !important;
+    }
+    .chat-conversation-item.active .item-snippet {
+        color: #65676b !important;
+    }
+    .chat-conversation-item.active .item-time {
+        color: #65676b !important;
+    }
+    .chat-conversation-item:active {
+        background: #e4e6eb !important;
+    }
+
+    /* 3. Main Chat Conversation Screen on Mobile (100% Messenger) */
     .messenger-chat-area {
         display: none;
         width: 100%;
@@ -2022,76 +2077,120 @@ body.drive-open .drive-pane {
         flex-direction: column;
         height: 100dvh;
         height: 100vh;
+        width: 100%;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 110;
+        background: #ffffff;
     }
 
-    /* Back button inside Chat Topbar */
+    /* Back button inside Chat Topbar (Messenger Chevron) */
     .btn-back-to-chats {
         display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: transparent;
+        color: #0084ff;
+        font-size: 1.25rem;
+        border-radius: 50%;
+        cursor: pointer;
+        padding: 0;
+        margin-left: -2px;
+        margin-right: 0;
+        flex-shrink: 0;
+        transition: background-color 0.15s ease;
+    }
+    .btn-back-to-chats:active {
+        background: rgba(0, 132, 255, 0.1);
     }
 
     .chat-area-header {
-        height: 58px;
-        padding: 0 12px;
+        height: 56px;
+        padding: 0 8px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #ffffff;
+        border-bottom: 1px solid #f0f2f5;
+        flex-shrink: 0;
+        z-index: 10;
+        gap: 6px;
+        width: 100%;
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+
+    .chat-area-header > .d-flex {
+        gap: 6px !important;
+        min-width: 0;
+        flex: 1;
+        overflow: hidden;
     }
 
     .active-chat-avatar-wrap {
-        width: 38px;
-        height: 38px;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        overflow: hidden;
+        flex-shrink: 0;
+        position: relative;
     }
 
     .active-chat-title {
-        font-size: 0.95rem;
-        max-width: 130px;
+        font-size: 0.92rem;
+        font-weight: 600;
+        color: #050505;
+        max-width: 105px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        margin-bottom: 1px;
     }
 
     .active-chat-status {
         font-size: 0.68rem;
-        max-width: 130px;
+        color: #65676b;
+        max-width: 105px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        display: flex;
+        align-items: center;
+        gap: 4px;
     }
 
+    /* Messenger Call & Video & Info Action Circles */
     .chat-area-header-actions {
+        display: flex !important;
+        align-items: center;
         gap: 4px;
+        flex-shrink: 0;
     }
 
-    /* Hide call buttons on mobile to avoid header overflow */
-    .chat-area-header-actions .header-action-circle[title*="โทร"],
-    .chat-area-header-actions .header-action-circle[title*="วิดีโอ"] {
-        display: none !important;
-    }
-
-    .header-vault-pill-group {
-        padding: 1px 2px 1px 3px;
-    }
-
-    .btn-header-vault-main {
-        padding: 3px 4px 3px 6px;
-        font-size: 0.74rem;
-        gap: 4px;
-    }
-
-    .header-vault-name {
-        max-width: 80px;
-    }
-
-    .btn-header-vault-count {
-        padding: 2px 4px;
-    }
-
-    .btn-header-vault-pill {
-        padding: 5px 8px;
-        font-size: 0.78rem;
-    }
-
-    .header-action-circle {
+    .chat-area-header-actions .header-action-circle {
+        display: inline-flex !important;
         width: 34px;
         height: 34px;
-        font-size: 0.9rem;
+        color: #0084ff;
+        background: #f0f2f5;
+        border: none;
+        font-size: 0.98rem;
+        border-radius: 50%;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: transform 0.15s ease, background-color 0.15s ease;
+    }
+
+    .chat-area-header-actions .header-action-circle:active {
+        transform: scale(0.92);
+        background: #e4e6eb;
     }
 
     /* Messages on Mobile */
@@ -2128,7 +2227,7 @@ body.drive-open .drive-pane {
         padding: 6px 8px;
     }
 
-    /* Input Bar on Mobile */
+    /* Input Bar on Mobile (Messenger Style) */
     .chat-area-input-bar {
         padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
         gap: 4px;
@@ -2136,6 +2235,8 @@ body.drive-open .drive-pane {
         width: 100%;
         max-width: 100%;
         overflow: visible;
+        background: #ffffff;
+        border-top: 1px solid #f0f2f5;
     }
 
     .btn-input-plus i {
@@ -2204,32 +2305,12 @@ body.drive-open .drive-pane {
         bottom: calc(62px + env(safe-area-inset-bottom, 0px));
         z-index: 600;
     }
-
-    /* Slide-out File Vault Drawer on Mobile */
-    .drive-backdrop {
-        position: fixed;
-        z-index: 140;
-    }
-
-    .drive-pane {
-        position: fixed;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        width: 100%;
-        max-width: 100%;
-        z-index: 150;
-    }
-
-    .drive-header {
-        padding: 14px 16px 10px;
-    }
 }
 
 @media (max-width: 480px) {
     .active-chat-title,
     .active-chat-status {
-        max-width: 100px;
+        max-width: 150px;
     }
 
     .chat-area-input-bar {

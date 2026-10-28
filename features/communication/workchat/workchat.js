@@ -728,6 +728,10 @@ function updateUserUI() {
     if (railAvatar) {
         railAvatar.innerHTML = renderAvatarDisplay(u.avatar || 'user_boy');
     }
+    const mobileAvatar = document.getElementById('chats-mobile-profile-avatar');
+    if (mobileAvatar) {
+        mobileAvatar.innerHTML = renderAvatarDisplay(u.avatar || 'user_boy');
+    }
 }
 
 function handleUserProfileClick() {
