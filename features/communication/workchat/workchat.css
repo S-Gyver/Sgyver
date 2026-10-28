@@ -945,37 +945,108 @@ body {
     letter-spacing: 0.5px;
 }
 
-/* Quick Media Action Circle Buttons (Camera, Gallery, Audio, Attachment) */
-.input-media-quick-actions {
+/* Dynamic Input States: Image 1 (Not typing) vs Image 2 (Typing) */
+.chat-area-input-bar:not(.has-text) .btn-input-plus-wrap {
+    display: none !important;
+}
+.chat-area-input-bar:not(.has-text) .input-media-icons-row {
+    display: flex !important;
+}
+.chat-area-input-bar:not(.has-text) .btn-input-thumbs-up {
+    display: flex !important;
+}
+.chat-area-input-bar:not(.has-text) .btn-input-send-plane {
+    display: none !important;
+}
+
+.chat-area-input-bar.has-text .btn-input-plus-wrap {
+    display: inline-block !important;
+}
+.chat-area-input-bar.has-text .input-media-icons-row {
+    display: none !important;
+}
+.chat-area-input-bar.has-text .btn-input-thumbs-up {
+    display: none !important;
+}
+.chat-area-input-bar.has-text .btn-input-send-plane {
+    display: flex !important;
+}
+
+/* Image 1: 4 Blue Media Icons Row */
+.input-media-icons-row {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
     flex-shrink: 0;
 }
 
-.input-quick-circle-btn {
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    background: #f0f4f9;
+.btn-input-media-blue {
+    background: transparent;
     border: none;
-    color: #1e293b;
+    padding: 0;
+    width: 32px;
+    height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.15rem;
+    color: #0084ff;
+    font-size: 1.3rem;
     cursor: pointer;
-    flex-shrink: 0;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    border-radius: 50%;
+    transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), color 0.15s;
     line-height: 1;
 }
-.input-quick-circle-btn:hover {
-    background: #e2e8f0;
-    color: #0084ff;
-    transform: scale(1.08);
+.btn-input-media-blue:hover {
+    transform: scale(1.18);
+    color: #0070f3;
 }
-.input-quick-circle-btn:active {
+.btn-input-media-blue:active {
     transform: scale(0.92);
+}
+
+/* Blue Solid GIF Badge in Image 1 */
+.messenger-gif-badge {
+    background: #0084ff;
+    color: #ffffff;
+    font-size: 0.65rem;
+    font-weight: 900;
+    padding: 2px 5px;
+    border-radius: 5px;
+    line-height: 1.1;
+    letter-spacing: 0.5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+}
+.btn-input-media-blue:hover .messenger-gif-badge {
+    background: #0070f3;
+}
+
+/* Blue Thumbs Up 👍 Button in Image 1 */
+.btn-input-thumbs-up {
+    background: transparent;
+    border: none;
+    padding: 0;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #0084ff;
+    font-size: 1.4rem;
+    cursor: pointer;
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), color 0.18s;
+    line-height: 1;
+}
+.btn-input-thumbs-up:hover {
+    transform: scale(1.22);
+    color: #0070f3;
+}
+.btn-input-thumbs-up:active {
+    transform: scale(0.9);
 }
 
 /* Capsule Pill Input Container */
@@ -1810,14 +1881,25 @@ body {
         font-size: 1.6rem;
     }
 
-    .input-media-quick-actions {
-        gap: 4px;
+    .input-media-icons-row {
+        gap: 6px;
     }
 
-    .input-quick-circle-btn {
-        width: 32px;
-        height: 32px;
-        font-size: 0.98rem;
+    .btn-input-media-blue {
+        width: 28px;
+        height: 28px;
+        font-size: 1.15rem;
+    }
+
+    .messenger-gif-badge {
+        font-size: 0.58rem;
+        padding: 1px 3px;
+    }
+
+    .btn-input-thumbs-up {
+        width: 30px;
+        height: 30px;
+        font-size: 1.25rem;
     }
 
     .chat-input-capsule {
@@ -1873,14 +1955,25 @@ body {
         font-size: 1.45rem;
     }
 
-    .input-media-quick-actions {
+    .input-media-icons-row {
         gap: 3px;
     }
 
-    .input-quick-circle-btn {
+    .btn-input-media-blue {
+        width: 25px;
+        height: 25px;
+        font-size: 1.05rem;
+    }
+
+    .messenger-gif-badge {
+        font-size: 0.52rem;
+        padding: 1px 2px;
+    }
+
+    .btn-input-thumbs-up {
         width: 28px;
         height: 28px;
-        font-size: 0.88rem;
+        font-size: 1.15rem;
     }
 
     .msg-bubble-box {

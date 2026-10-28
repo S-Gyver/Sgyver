@@ -1471,6 +1471,48 @@ function handleInputKeyDown(e) {
     }
 }
 
+function handleMessageInputChange(el) {
+    if (!el) return;
+    autoGrowTextarea(el);
+    const inputBar = document.getElementById('chat-area-input-bar');
+    if (!inputBar) return;
+    if (el.value.trim().length > 0) {
+        inputBar.classList.add('has-text');
+    } else {
+        inputBar.classList.remove('has-text');
+    }
+}
+window.handleMessageInputChange = handleMessageInputChange;
+
+function sendQuickLike() {
+    const u = CHAT_STATE.currentUser;
+    const activeChatId = CHAT_STATE.activeChatId || 'general';
+    const newMsg = {
+        id: 'msg_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+        chat_id: activeChatId,
+        sender_username: u.username,
+        sender_name: u.displayName || u.username,
+        avatar: u.avatar || 'user_boy',
+        message_text: '👍',
+        project_id: CHAT_STATE.selectedTagProjectId || null,
+        folder_id: null,
+        file_data: null,
+        created_at: new Date().toISOString()
+    };
+
+    CHAT_STATE.messages.push(newMsg);
+    saveWorkspaceData();
+
+    renderChatsList();
+    renderMessages();
+    scrollMessagesToBottom();
+
+    if (window.supabaseClient) {
+        window.supabaseClient.from('workchat_messages').insert([newMsg]).then(() => {});
+    }
+}
+window.sendQuickLike = sendQuickLike;
+
 function autoGrowTextarea(el) {
     if (!el) return;
     el.style.height = 'auto';
@@ -1632,6 +1674,8 @@ async function sendMessage() {
     input.value = '';
     input.style.height = 'auto';
     toggleEmojiPicker(false);
+    const inputBar = document.getElementById('chat-area-input-bar');
+    if (inputBar) inputBar.classList.remove('has-text');
 
     renderChatsList();
     renderMessages();
@@ -2420,7 +2464,7 @@ function insertEmoji(emoji) {
     input.value = val.substring(0, start) + emoji + val.substring(end);
     input.selectionStart = input.selectionEnd = start + emoji.length;
     input.focus();
-    autoGrowTextarea(input);
+    handleMessageInputChange(input);
     toggleEmojiPicker(false);
 }
 window.insertEmoji = insertEmoji;

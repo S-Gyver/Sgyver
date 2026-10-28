@@ -244,10 +244,10 @@
                 </div>
             </div>
 
-            <!-- Modern Bottom Input Bar (Matching Messenger/Instagram Reference) -->
-            <div class="chat-area-input-bar">
-                <!-- 1. Left Action: Blue Plus Circle Button with Dropup Menu -->
-                <div class="dropup d-inline-block">
+            <!-- Modern Bottom Input Bar (Messenger / Instagram Adaptive Reference) -->
+            <div class="chat-area-input-bar" id="chat-area-input-bar">
+                <!-- 1. Left Action A: Blue Plus Button (Shown when typing has-text - Image 2) -->
+                <div class="dropup d-inline-block btn-input-plus-wrap">
                     <button type="button" class="btn-input-plus" data-bs-toggle="dropdown" id="btn-input-plus" title="เมนูเพิ่มเติม & เลือกโฟลเดอร์โปรเจกต์">
                         <i class="bi bi-plus-circle-fill"></i>
                     </button>
@@ -257,30 +257,30 @@
                     </ul>
                 </div>
 
-                <!-- 4 Quick Media Action Buttons (Camera, Gallery, Audio, Attachment) -->
-                <div class="input-media-quick-actions" id="input-media-quick-actions">
-                    <!-- Camera -->
-                    <button type="button" class="input-quick-circle-btn" onclick="triggerPhotoCapture()" title="ถ่ายภาพ">
-                        <i class="bi bi-camera"></i>
+                <!-- 1. Left Action B: 4 Quick Media Action Icons (Shown when NOT typing - Image 1) -->
+                <div class="input-media-icons-row" id="input-media-icons-row">
+                    <!-- Mic -->
+                    <button type="button" class="btn-input-media-blue" onclick="showModernToast('บันทึกเสียงข้อความ...')" title="ข้อความเสียง">
+                        <i class="bi bi-mic-fill"></i>
                     </button>
-                    <!-- Gallery -->
-                    <button type="button" class="input-quick-circle-btn" onclick="triggerPhotoCapture()" title="เลือกรูปภาพ">
-                        <i class="bi bi-image"></i>
+                    <!-- Gallery / Image -->
+                    <button type="button" class="btn-input-media-blue" onclick="triggerPhotoCapture()" title="รูปภาพ">
+                        <i class="bi bi-image-fill"></i>
                     </button>
-                    <!-- Audio / Voice memo -->
-                    <button type="button" class="input-quick-circle-btn" onclick="showModernToast('บันทึกเสียงข้อความ...')" title="ส่งข้อความเสียง">
-                        <i class="bi bi-soundwave"></i>
+                    <!-- Sticker -->
+                    <button type="button" class="btn-input-media-blue" onclick="toggleEmojiPicker(event)" title="สติกเกอร์">
+                        <i class="bi bi-emoji-smile-upside-down-fill"></i>
                     </button>
-                    <!-- File / Doc attachment -->
-                    <button type="button" class="input-quick-circle-btn" onclick="triggerFileInput()" title="แนบไฟล์ / เอกสาร">
-                        <i class="bi bi-paperclip"></i>
+                    <!-- GIF -->
+                    <button type="button" class="btn-input-media-blue btn-gif-wrap" onclick="showModernToast('ค้นหา GIF...')" title="GIF">
+                        <span class="messenger-gif-badge">GIF</span>
                     </button>
                 </div>
                 <input type="file" id="chat-file-input" class="d-none" onchange="handleFileSelected(event)">
 
-                <!-- 2. Center: Rounded Pill Capsule with Input & Emoji Smiley Face -->
+                <!-- 2. Center: Rounded Pill Capsule with "Aa" Placeholder & Emoji Smiley Face -->
                 <div class="chat-input-capsule">
-                    <textarea class="input-capsule-textarea" id="chat-message-input" rows="1" placeholder="ส่งข้อความ..." onkeydown="handleInputKeyDown(event)" oninput="autoGrowTextarea(this)"></textarea>
+                    <textarea class="input-capsule-textarea" id="chat-message-input" rows="1" placeholder="Aa" onkeydown="handleInputKeyDown(event)" oninput="handleMessageInputChange(this)"></textarea>
                     
                     <!-- Floating Quick Emoji Picker Popover -->
                     <div class="emoji-picker-popover shadow-lg d-none" id="emoji-picker-popover">
@@ -299,7 +299,12 @@
                     </button>
                 </div>
 
-                <!-- 3. Right: Blue Paper Airplane Send Button -->
+                <!-- 3. Right Action A: Blue Thumbs Up 👍 (Shown when NOT typing - Image 1) -->
+                <button type="button" class="btn-input-thumbs-up" id="btn-thumbs-up" onclick="sendQuickLike()" title="ส่งถูกใจ">
+                    <i class="bi bi-hand-thumbs-up-fill"></i>
+                </button>
+
+                <!-- 3. Right Action B: Blue Send Airplane ✈️ (Shown when typing - Image 2) -->
                 <button type="button" class="btn-input-send-plane" id="btn-send-message" onclick="sendMessage()" title="ส่งข้อความ">
                     <i class="bi bi-send-fill"></i>
                 </button>
