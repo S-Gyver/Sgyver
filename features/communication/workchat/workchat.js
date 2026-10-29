@@ -470,6 +470,15 @@ async function syncUserProfileFromGyver() {
     updateFriendNotifBadge();
     renderFriendRequestsPopover();
     enforcePermissionGuard(userLevel, userRole);
+
+    // Refresh friends list for this specific user
+    TEAM_FRIENDS = loadFriendsData();
+    if (CHAT_STATE.activeChatId && !TEAM_FRIENDS.some(f => f.id === CHAT_STATE.activeChatId) && !CHAT_STATE.groups.some(g => g.id === CHAT_STATE.activeChatId)) {
+        CHAT_STATE.activeChatId = null;
+        renderEmptyChatHeader();
+    }
+    renderChatsList();
+    renderMessages();
 }
 
 function enforcePermissionGuard(level, role) {
@@ -695,14 +704,14 @@ function mergeCloudStore(cloudSettings) {
     if (Array.isArray(cloudSettings.friends) && typeof TEAM_FRIENDS !== 'undefined') {
         const hadCloudMocks = cloudSettings.friends.some(fr => isMockFriend(fr) || isDeletedFriendObj(fr));
 
-        // Purge any mock or deleted friends currently in TEAM_FRIENDS
+        // Purge any mock, deleted, or unassociated friends currently in TEAM_FRIENDS
         const beforeLen = TEAM_FRIENDS.length;
-        TEAM_FRIENDS = TEAM_FRIENDS.filter(fr => !isMockFriend(fr) && !isDeletedFriendObj(fr));
+        TEAM_FRIENDS = TEAM_FRIENDS.filter(fr => !isMockFriend(fr) && !isDeletedFriendObj(fr) && isFriendBelongingToCurrentUser(fr));
         let friendsChanged = (TEAM_FRIENDS.length !== beforeLen);
 
         const existingFriendIds = new Set(TEAM_FRIENDS.map(fr => fr.id));
         cloudSettings.friends.forEach(fr => {
-            if (fr && fr.id && !isMockFriend(fr) && !isDeletedFriendObj(fr) && !existingFriendIds.has(fr.id)) {
+            if (fr && fr.id && !isMockFriend(fr) && !isDeletedFriendObj(fr) && isFriendBelongingToCurrentUser(fr) && !existingFriendIds.has(fr.id)) {
                 TEAM_FRIENDS.push(fr);
                 existingFriendIds.add(fr.id);
                 friendsChanged = true;
@@ -1020,14 +1029,37 @@ function renderChatsList() {
 // ── 4.5 PEOPLE (FRIENDS) LIST ENGINE ────────────────────────────────────────
 const DEFAULT_FRIENDS = [];
 
+function getFriendsStorageKey() {
+    const u = (CHAT_STATE.currentUser?.username || '').toLowerCase();
+    return u ? `sgyver_workchat_friends_${u}` : 'sgyver_workchat_friends_guest';
+}
+
+function isFriendBelongingToCurrentUser(fr) {
+    if (!fr) return false;
+    const myUser = (CHAT_STATE.currentUser?.username || '').toLowerCase();
+    const myId = (CHAT_STATE.currentUser?.id || '').toLowerCase();
+    if (!myUser && !myId) return true;
+    if (fr.ownerUsername) return fr.ownerUsername.toLowerCase() === myUser;
+    if (fr.ownerUserId && myId) return fr.ownerUserId.toLowerCase() === myId;
+    if (Array.isArray(FRIEND_REQUESTS)) {
+        return FRIEND_REQUESTS.some(req => 
+            req.status === 'accepted' && (
+                (req.fromUsername?.toLowerCase() === myUser && (req.toUsername?.toLowerCase() === fr.username?.toLowerCase() || req.toName === fr.name)) ||
+                (req.toUsername?.toLowerCase() === myUser && (req.fromUsername?.toLowerCase() === fr.username?.toLowerCase() || req.fromName === fr.name))
+            )
+        );
+    }
+    return false;
+}
+
 function loadFriendsData() {
     try {
-        const stored = localStorage.getItem('sgyver_workchat_friends');
+        const key = getFriendsStorageKey();
+        const stored = localStorage.getItem(key);
         if (stored) {
             const parsed = JSON.parse(stored);
             if (Array.isArray(parsed)) {
-                // Keep only real added friends (filter out mock & deleted contacts)
-                return parsed.filter(f => !isMockFriend(f) && !isDeletedFriendObj(f));
+                return parsed.filter(f => !isMockFriend(f) && !isDeletedFriendObj(f) && isFriendBelongingToCurrentUser(f));
             }
         }
     } catch (e) {
@@ -1038,8 +1070,9 @@ function loadFriendsData() {
 
 function saveFriendsData() {
     try {
+        const key = getFriendsStorageKey();
         const cleanFriends = (TEAM_FRIENDS || []).filter(f => !isMockFriend(f) && !isDeletedFriendObj(f));
-        localStorage.setItem('sgyver_workchat_friends', JSON.stringify(cleanFriends));
+        localStorage.setItem(key, JSON.stringify(cleanFriends));
     } catch (e) {
         console.warn('Failed to save friends to local storage', e);
     }
@@ -2069,7 +2102,18 @@ function renderMessages() {
     const container = document.getElementById('messages-stream');
     if (!container) return;
 
-    const activeChatId = CHAT_STATE.activeChatId || 'general';
+    if (!CHAT_STATE.activeChatId) {
+        container.innerHTML = `
+            <div class="text-center py-5 text-muted" style="margin-top: 15vh;">
+                <i class="bi bi-chat-square-text fs-1 d-block mb-3 text-primary opacity-50"></i>
+                <div class="fw-bold fs-5 mb-1 text-dark">ยังไม่ได้เลือกการสนทนา</div>
+                <div class="small text-muted mb-4">กดเลือกเพื่อนหรือกลุ่มจากแถบด้านซ้าย เพื่อเริ่มคุยงานได้เลยครับ</div>
+            </div>
+        `;
+        return;
+    }
+
+    const activeChatId = CHAT_STATE.activeChatId;
     const currentMessages = CHAT_STATE.messages.filter(msg => {
         if (msg.chat_id) {
             return msg.chat_id === activeChatId;
