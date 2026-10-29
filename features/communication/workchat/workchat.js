@@ -807,7 +807,7 @@ async function initSupabaseSync() {
                     renderChatsList();
                     renderMessages();
                     scrollMessagesToBottom();
-                    playIncomingChime();
+                    playIncomingChime(payload.sender_name, payload.message_text, payload.chat_id);
                 }
             })
             .on('broadcast', { event: 'sync_vault' }, ({ payload }) => {
@@ -838,7 +838,7 @@ async function initSupabaseSync() {
                     renderChatsList();
                     renderMessages();
                     scrollMessagesToBottom();
-                    playIncomingChime();
+                    playIncomingChime(payload.new.sender_name, payload.new.message_text, payload.new.chat_id);
                 }
             })
             .subscribe((status) => {
@@ -2482,13 +2482,68 @@ function scrollMessagesToBottom() {
     }
 }
 
-function playIncomingChime() {
+function playIncomingChime(senderName, messageText, chatId) {
     const audio = document.getElementById('chat-chime-sound');
     if (audio) {
         audio.currentTime = 0;
         audio.play().catch(() => {});
     }
+
+    // 📳 Mobile Vibration
+    if (navigator.vibrate) {
+        try { navigator.vibrate([150, 80, 150]); } catch (_) {}
+    }
+
+    // 🔔 System Notification when app is in background or another tab
+    if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+        const title = senderName ? `${senderName} (WorkChat)` : 'WorkChat';
+        const body = messageText || 'มีข้อความใหม่ส่งถึงคุณ';
+        try {
+            if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+                navigator.serviceWorker.ready.then(reg => {
+                    reg.showNotification(title, {
+                        body: body,
+                        icon: 'icon-192.png',
+                        badge: 'icon-192.png',
+                        tag: 'workchat-msg-' + (chatId || 'general'),
+                        renotify: true,
+                        vibrate: [200, 100, 200],
+                        data: { url: './workchat.html' }
+                    });
+                }).catch(() => {
+                    new Notification(title, { body: body, icon: 'icon-192.png' });
+                });
+            } else {
+                new Notification(title, { body: body, icon: 'icon-192.png' });
+            }
+        } catch (_) {}
+    }
 }
+
+function requestNotificationPermission() {
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission().then(permission => {
+            if (permission === 'granted') {
+                if (typeof showModernToast === 'function') {
+                    showModernToast('เปิดการแจ้งเตือนข้อความแล้ว');
+                }
+            }
+        });
+    }
+}
+window.requestNotificationPermission = requestNotificationPermission;
+
+// Trigger notification permission on first user tap/click
+if (typeof window !== 'undefined') {
+    const promptNotificationOnInteraction = () => {
+        if ('Notification' in window && Notification.permission === 'default') {
+            requestNotificationPermission();
+        }
+    };
+    window.addEventListener('click', promptNotificationOnInteraction, { once: true });
+    window.addEventListener('touchend', promptNotificationOnInteraction, { once: true });
+}
+
 
 // ── 6. PROJECT DRIVE & FOLDER EXPLORER ───────────────────────────────────────
 function renderProjectDropdownList() {
