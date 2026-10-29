@@ -214,30 +214,60 @@ function getDeletedFriendIds() {
     try {
         const raw = localStorage.getItem('sgyver_workchat_deleted_friends');
         const arr = raw ? JSON.parse(raw) : [];
-        return new Set(Array.isArray(arr) ? arr : []);
+        return new Set(Array.isArray(arr) ? arr.map(x => String(x).toLowerCase()) : []);
     } catch (_) {
         return new Set();
     }
 }
 
-function markFriendIdDeleted(friendId) {
-    if (!friendId) return;
+function isDeletedFriendObj(f) {
+    if (!f) return false;
+    const set = getDeletedFriendIds();
+    if (f.id && set.has(String(f.id).toLowerCase())) return true;
+    if (f.userId && set.has(String(f.userId).toLowerCase())) return true;
+    if (f.username && set.has(String(f.username).toLowerCase())) return true;
+    if (f.name && set.has(String(f.name).trim().toLowerCase())) return true;
+    return false;
+}
+
+function markFriendDeleted(friendOrId) {
+    if (!friendOrId) return;
     try {
         const set = getDeletedFriendIds();
-        set.add(friendId);
+        if (typeof friendOrId === 'string') {
+            set.add(friendOrId.toLowerCase());
+        } else if (typeof friendOrId === 'object') {
+            if (friendOrId.id) set.add(String(friendOrId.id).toLowerCase());
+            if (friendOrId.userId) set.add(String(friendOrId.userId).toLowerCase());
+            if (friendOrId.username) set.add(String(friendOrId.username).toLowerCase());
+            if (friendOrId.name) set.add(String(friendOrId.name).trim().toLowerCase());
+        }
+        localStorage.setItem('sgyver_workchat_deleted_friends', JSON.stringify([...set]));
+    } catch (_) {}
+}
+
+function markFriendIdDeleted(friendId) {
+    markFriendDeleted(friendId);
+}
+
+function unmarkFriendDeleted(friendOrId) {
+    if (!friendOrId) return;
+    try {
+        const set = getDeletedFriendIds();
+        if (typeof friendOrId === 'string') {
+            set.delete(friendOrId.toLowerCase());
+        } else if (typeof friendOrId === 'object') {
+            if (friendOrId.id) set.delete(String(friendOrId.id).toLowerCase());
+            if (friendOrId.userId) set.delete(String(friendOrId.userId).toLowerCase());
+            if (friendOrId.username) set.delete(String(friendOrId.username).toLowerCase());
+            if (friendOrId.name) set.delete(String(friendOrId.name).trim().toLowerCase());
+        }
         localStorage.setItem('sgyver_workchat_deleted_friends', JSON.stringify([...set]));
     } catch (_) {}
 }
 
 function unmarkFriendIdDeleted(friendId) {
-    if (!friendId) return;
-    try {
-        const set = getDeletedFriendIds();
-        if (set.has(friendId)) {
-            set.delete(friendId);
-            localStorage.setItem('sgyver_workchat_deleted_friends', JSON.stringify([...set]));
-        }
-    } catch (_) {}
+    unmarkFriendDeleted(friendId);
 }
 
 const DEFAULT_PROJECTS = [];
@@ -663,17 +693,16 @@ function mergeCloudStore(cloudSettings) {
     }
 
     if (Array.isArray(cloudSettings.friends) && typeof TEAM_FRIENDS !== 'undefined') {
-        const deletedIds = getDeletedFriendIds();
-        const hadCloudMocks = cloudSettings.friends.some(fr => isMockFriend(fr) || (fr && deletedIds.has(fr.id)));
+        const hadCloudMocks = cloudSettings.friends.some(fr => isMockFriend(fr) || isDeletedFriendObj(fr));
 
         // Purge any mock or deleted friends currently in TEAM_FRIENDS
         const beforeLen = TEAM_FRIENDS.length;
-        TEAM_FRIENDS = TEAM_FRIENDS.filter(fr => !isMockFriend(fr) && !deletedIds.has(fr.id));
+        TEAM_FRIENDS = TEAM_FRIENDS.filter(fr => !isMockFriend(fr) && !isDeletedFriendObj(fr));
         let friendsChanged = (TEAM_FRIENDS.length !== beforeLen);
 
         const existingFriendIds = new Set(TEAM_FRIENDS.map(fr => fr.id));
         cloudSettings.friends.forEach(fr => {
-            if (fr && fr.id && !isMockFriend(fr) && !deletedIds.has(fr.id) && !existingFriendIds.has(fr.id)) {
+            if (fr && fr.id && !isMockFriend(fr) && !isDeletedFriendObj(fr) && !existingFriendIds.has(fr.id)) {
                 TEAM_FRIENDS.push(fr);
                 existingFriendIds.add(fr.id);
                 friendsChanged = true;
@@ -993,13 +1022,12 @@ const DEFAULT_FRIENDS = [];
 
 function loadFriendsData() {
     try {
-        const deletedIds = getDeletedFriendIds();
         const stored = localStorage.getItem('sgyver_workchat_friends');
         if (stored) {
             const parsed = JSON.parse(stored);
             if (Array.isArray(parsed)) {
                 // Keep only real added friends (filter out mock & deleted contacts)
-                return parsed.filter(f => !isMockFriend(f) && !deletedIds.has(f.id));
+                return parsed.filter(f => !isMockFriend(f) && !isDeletedFriendObj(f));
             }
         }
     } catch (e) {
@@ -1010,8 +1038,7 @@ function loadFriendsData() {
 
 function saveFriendsData() {
     try {
-        const deletedIds = getDeletedFriendIds();
-        const cleanFriends = (TEAM_FRIENDS || []).filter(f => !isMockFriend(f) && !deletedIds.has(f.id));
+        const cleanFriends = (TEAM_FRIENDS || []).filter(f => !isMockFriend(f) && !isDeletedFriendObj(f));
         localStorage.setItem('sgyver_workchat_friends', JSON.stringify(cleanFriends));
     } catch (e) {
         console.warn('Failed to save friends to local storage', e);
@@ -1099,12 +1126,54 @@ function openDirectChatFromPeople(chatId) {
 window.openDirectChatFromPeople = openDirectChatFromPeople;
 
 function deleteFriend(friendId) {
-    const friend = TEAM_FRIENDS.find(f => f.id === friendId);
-    if (!friend) return;
-    if (!confirm(`คุณต้องการลบ "${friend.name}" ออกจากรายชื่อเพื่อนใช่หรือไม่?`)) return;
+    const friend = TEAM_FRIENDS.find(f => f.id === friendId) || { id: friendId, name: 'เพื่อน' };
 
-    markFriendIdDeleted(friendId);
-    TEAM_FRIENDS = TEAM_FRIENDS.filter(f => f.id !== friendId);
+    // 1. Mark all identifiers of this friend as deleted so cloud sync never resurrects them
+    markFriendDeleted(friend);
+    markFriendDeleted(friendId);
+
+    // 2. Remove from TEAM_FRIENDS
+    const targetNameLower = String(friend.name || '').trim().toLowerCase();
+    const targetUserLower = String(friend.username || '').trim().toLowerCase();
+    const targetUserId = String(friend.userId || '').trim();
+
+    TEAM_FRIENDS = TEAM_FRIENDS.filter(f => {
+        if (!f) return false;
+        if (f.id === friendId) return false;
+        if (targetUserId && f.userId === targetUserId) return false;
+        if (targetUserLower && String(f.username || '').trim().toLowerCase() === targetUserLower) return false;
+        if (targetNameLower && String(f.name || '').trim().toLowerCase() === targetNameLower) return false;
+        return true;
+    });
+
+    // 3. Also mark any friend requests involving this person as 'removed' so mergeFriendRequestsFromCloud never re-adds them!
+    if (typeof FRIEND_REQUESTS !== 'undefined' && Array.isArray(FRIEND_REQUESTS)) {
+        FRIEND_REQUESTS.forEach(r => {
+            if (!r) return;
+            const matchFrom = (targetUserId && r.fromUserId === targetUserId) ||
+                              (targetUserLower && String(r.fromUsername || '').trim().toLowerCase() === targetUserLower) ||
+                              (targetNameLower && String(r.fromName || '').trim().toLowerCase() === targetNameLower) ||
+                              ('dm_user_' + r.fromUserId === friendId);
+            const matchTo = (targetUserId && r.toUserId === targetUserId) ||
+                            (targetUserLower && String(r.toUsername || '').trim().toLowerCase() === targetUserLower) ||
+                            (targetNameLower && String(r.toName || '').trim().toLowerCase() === targetNameLower) ||
+                            ('dm_user_' + r.toUserId === friendId);
+            if (matchFrom || matchTo) {
+                r.status = 'removed';
+            }
+        });
+        saveFriendRequestsData();
+        updateFriendNotifBadge();
+        renderFriendRequestsPopover();
+        broadcastFriendRequestsUpdate();
+    }
+
+    // 4. Also remove messages belonging to this deleted direct chat
+    if (Array.isArray(CHAT_STATE.messages)) {
+        CHAT_STATE.messages = CHAT_STATE.messages.filter(m => m && m.chat_id !== friendId);
+        saveWorkspaceData();
+    }
+
     saveFriendsData();
     syncWorkchatToCloud();
 
@@ -1335,6 +1404,7 @@ function addNewFriendFromData(encodedJson) {
             created_at: new Date().toISOString()
         };
 
+        unmarkFriendDeleted({ id: newFriendId, userId: u.id, username: u.username, name: u.name });
         FRIEND_REQUESTS.push(newReq);
         saveFriendRequestsData();
         updateFriendNotifBadge();
@@ -1493,9 +1563,23 @@ function mergeFriendRequestsFromCloud(cloudReqs) {
     }
 }
 
-function ensureCounterpartInFriends(person) {
+function ensureCounterpartInFriends(person, forceAdd = false) {
     if (!person || !person.name) return null;
     const friendId = 'dm_user_' + (person.userId || person.username || person.name.toLowerCase().replace(/\s+/g, '_'));
+    const candidate = {
+        id: friendId,
+        userId: person.userId || '',
+        username: person.username || '',
+        name: person.name
+    };
+
+    if (!forceAdd && isDeletedFriendObj(candidate)) {
+        return null;
+    }
+    if (forceAdd) {
+        unmarkFriendDeleted(candidate);
+    }
+
     const existing = TEAM_FRIENDS.find(f =>
         f.id === friendId ||
         (person.userId && f.userId === person.userId) ||
@@ -1504,7 +1588,6 @@ function ensureCounterpartInFriends(person) {
     );
     if (existing) return existing;
 
-    unmarkFriendIdDeleted(friendId);
     const newFriend = {
         id: friendId,
         userId: person.userId || '',
@@ -1664,7 +1747,7 @@ function acceptFriendRequest(reqId) {
         name: req.fromName,
         role: req.fromRole,
         avatarType: req.fromAvatar
-    });
+    }, true);
 
     updateFriendNotifBadge();
     renderFriendRequestsPopover();
