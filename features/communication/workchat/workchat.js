@@ -470,6 +470,9 @@ async function syncUserProfileFromGyver() {
     updateFriendNotifBadge();
     renderFriendRequestsPopover();
     enforcePermissionGuard(userLevel, userRole);
+    if ('Notification' in window && Notification.permission === 'granted') {
+        registerPushSubscription();
+    }
 
     // Refresh friends list for this specific user
     TEAM_FRIENDS = loadFriendsData();
@@ -664,6 +667,10 @@ function mergeCloudStore(cloudSettings) {
     if (Array.isArray(cloudSettings.messages) && cloudSettings.messages.length > 0) {
         const existingIds = new Set((CHAT_STATE.messages || []).map(m => m.id));
         let newCount = 0;
+        let latestNewIncoming = null;
+        const myUsername = String(CHAT_STATE.currentUser?.username || '').toLowerCase();
+        const myName = String(CHAT_STATE.currentUser?.displayName || '').toLowerCase();
+
         cloudSettings.messages.forEach(m => {
             if (!m || !m.id || existingIds.has(m.id)) return;
             if (MOCK_ITEM_IDS.has(m.chat_id) || MOCK_ITEM_IDS.has(m.project_id)) return;
@@ -671,11 +678,24 @@ function mergeCloudStore(cloudSettings) {
             CHAT_STATE.messages.push(m);
             existingIds.add(m.id);
             newCount++;
+
+            const sUser = String(m.sender_username || '').toLowerCase();
+            const sName = String(m.sender_name || '').toLowerCase();
+            const isFromMe = (myUsername && sUser === myUsername) || (myName && sName === myName);
+            if (!isFromMe) {
+                latestNewIncoming = m;
+            }
         });
         if (newCount > 0) {
             CHAT_STATE.messages.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
             changed = true;
-            playIncomingChime();
+            if (latestNewIncoming) {
+                playIncomingChime(
+                    latestNewIncoming.sender_name || 'WorkChat',
+                    latestNewIncoming.message_text || (latestNewIncoming.file_data ? 'ส่งไฟล์แนบ' : 'มีข้อความใหม่'),
+                    latestNewIncoming.chat_id
+                );
+            }
         }
     }
 
@@ -1444,6 +1464,11 @@ function addNewFriendFromData(encodedJson) {
         renderFriendRequestsPopover();
         broadcastFriendRequestsUpdate();
         syncWorkchatToCloud();
+        dispatchPushNotification({
+            sender_name: me.displayName || me.username || 'WorkChat',
+            message_text: `🔔 ส่งคำขอเป็นเพื่อนถึง ${u.name || 'คุณ'} (กดยอมรับในแอป)`,
+            chat_id: 'friend_request'
+        });
         executeSearchSupabaseUsers();
 
         showModernToast(`ส่งคำขอเป็นเพื่อนไปหา "${u.name}" แล้ว รออีกฝ่ายกดยอมรับ 🔔`);
@@ -1586,11 +1611,11 @@ function mergeFriendRequestsFromCloud(cloudReqs) {
         renderFriendRequestsPopover();
 
         if (newlyReceivedName) {
-            playIncomingChime();
+            playIncomingChime(newlyReceivedName, '🔔 ส่งคำขอเป็นเพื่อนถึงคุณใน WorkChat', 'friend_request');
             showModernToast(`🔔 "${newlyReceivedName}" ส่งคำขอเป็นเพื่อนถึงคุณ!`);
         }
         if (newlyAcceptedName) {
-            playIncomingChime();
+            playIncomingChime(newlyAcceptedName, '🎉 ยอมรับคำขอเป็นเพื่อนของคุณแล้ว!', 'friend_accept');
             showModernToast(`🎉 "${newlyAcceptedName}" ยอมรับคำขอเป็นเพื่อนของคุณแล้ว!`);
         }
     }
@@ -1689,6 +1714,41 @@ function renderFriendRequestsPopover() {
 
     updateFriendNotifBadge();
 
+    const perm = ('Notification' in window) ? Notification.permission : 'unsupported';
+    let pushBannerHtml = '';
+    if (perm === 'granted') {
+        pushBannerHtml = `
+            <div class="px-3 py-2 bg-success-subtle border-bottom d-flex align-items-center justify-content-between gap-2">
+                <div class="d-flex align-items-center gap-1.5 text-success-emphasis" style="font-size: 0.74rem; font-weight: 600;">
+                    <i class="bi bi-check-circle-fill text-success"></i>
+                    <span>แจ้งเตือนเมื่อปิดหน้าจอ: เปิดอยู่</span>
+                </div>
+                <button type="button" class="btn btn-sm btn-success rounded-pill px-2.5 py-0.5 fw-bold" style="font-size: 0.68rem;" onclick="testBackgroundPushAlert()">
+                    <i class="bi bi-send-check me-1"></i> ทดสอบ (3 วิ)
+                </button>
+            </div>
+        `;
+    } else if (perm === 'denied') {
+        pushBannerHtml = `
+            <div class="px-3 py-2 bg-danger-subtle border-bottom text-danger-emphasis" style="font-size: 0.72rem;">
+                <i class="bi bi-exclamation-octagon-fill me-1"></i>
+                <strong>การแจ้งเตือนถูกปิดกั้น:</strong> กรุณากดที่รูปแม่กุญแจบนแถบ URL หรือตั้งค่าแอปเพื่ออนุญาต Notification
+            </div>
+        `;
+    } else {
+        pushBannerHtml = `
+            <div class="px-3 py-2.5 bg-warning-subtle border-bottom d-flex align-items-center justify-content-between gap-2">
+                <div class="text-warning-emphasis" style="font-size: 0.73rem; line-height: 1.25;">
+                    <strong>ยังไม่เปิดแจ้งเตือนขณะปิดจอ</strong><br>
+                    <span>กดปุ่มขวาเพื่อรับแจ้งเตือนแม้ปิดแอป</span>
+                </div>
+                <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 py-1 fw-bold flex-shrink-0 shadow-sm" style="font-size: 0.72rem;" onclick="enableBackgroundPushNow()">
+                    <i class="bi bi-bell-fill me-1"></i> เปิดแจ้งเตือน
+                </button>
+            </div>
+        `;
+    }
+
     const incoming = (FRIEND_REQUESTS || [])
         .filter(r => r && r.status === 'pending' && isRequestForMe(r))
         .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
@@ -1698,7 +1758,7 @@ function renderFriendRequestsPopover() {
         .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 
     if (incoming.length === 0 && outgoing.length === 0) {
-        const emptyHtml = `
+        const emptyHtml = pushBannerHtml + `
             <div class="text-center py-4 px-3">
                 <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-light text-secondary mb-2" style="width: 52px; height: 52px;">
                     <i class="bi bi-bell-slash fs-4"></i>
@@ -1714,7 +1774,7 @@ function renderFriendRequestsPopover() {
         return;
     }
 
-    let html = '';
+    let html = pushBannerHtml;
 
     if (incoming.length > 0) {
         html += `
@@ -1800,6 +1860,11 @@ function acceptFriendRequest(reqId) {
     renderFriendRequestsPopover();
     broadcastFriendRequestsUpdate();
     syncWorkchatToCloud();
+    dispatchPushNotification({
+        sender_name: CHAT_STATE.currentUser?.displayName || CHAT_STATE.currentUser?.username || 'WorkChat',
+        message_text: `🎉 ยอมรับคำขอเป็นเพื่อนของ ${req.fromName} แล้ว!`,
+        chat_id: 'friend_accept'
+    });
 
     showModernToast(`ยอมรับ "${req.fromName}" เป็นเพื่อนเรียบร้อยแล้ว! 🎉`);
 
@@ -2623,6 +2688,20 @@ function scrollMessagesToBottom() {
     }
 }
 
+function getWorkchatDeviceId() {
+    try {
+        let devId = localStorage.getItem('sgyver_workchat_device_id');
+        if (!devId) {
+            devId = 'dev_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+            localStorage.setItem('sgyver_workchat_device_id', devId);
+        }
+        const uname = (CHAT_STATE.currentUser?.username || 'user').toLowerCase().replace(/\s+/g, '_');
+        return `${uname}__${devId}`;
+    } catch (_) {
+        return 'dev_guest';
+    }
+}
+
 function playIncomingChime(senderName, messageText, chatId) {
     const audio = document.getElementById('chat-chime-sound');
     if (audio) {
@@ -2632,30 +2711,32 @@ function playIncomingChime(senderName, messageText, chatId) {
 
     // 📳 Mobile Vibration
     if (navigator.vibrate) {
-        try { navigator.vibrate([150, 80, 150]); } catch (_) {}
+        try { navigator.vibrate([200, 100, 200]); } catch (_) {}
     }
 
-    // 🔔 System Notification when app is in background or another tab
-    if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+    // 🔔 System Notification when app is in background, screen is off, or another tab is focused
+    const isBackground = document.hidden || (typeof document.hasFocus === 'function' && !document.hasFocus());
+    if (isBackground && 'Notification' in window && Notification.permission === 'granted') {
         const title = senderName ? `${senderName} (WorkChat)` : 'WorkChat';
         const body = messageText || 'มีข้อความใหม่ส่งถึงคุณ';
+        const tag = 'workchat-msg-' + (chatId || 'general') + '-' + Date.now();
         try {
-            if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+            if (navigator.serviceWorker) {
                 navigator.serviceWorker.ready.then(reg => {
                     reg.showNotification(title, {
                         body: body,
-                        icon: 'icon-192.png',
-                        badge: 'icon-192.png',
-                        tag: 'workchat-msg-' + (chatId || 'general'),
+                        icon: './icon-192.png',
+                        badge: './icon-192.png',
+                        tag: tag,
                         renotify: true,
-                        vibrate: [200, 100, 200],
-                        data: { url: './workchat.html' }
+                        vibrate: [250, 100, 250],
+                        data: { url: './workchat.html', chat_id: chatId || 'general' }
                     });
                 }).catch(() => {
-                    new Notification(title, { body: body, icon: 'icon-192.png' });
+                    new Notification(title, { body: body, icon: './icon-192.png', tag: tag });
                 });
             } else {
-                new Notification(title, { body: body, icon: 'icon-192.png' });
+                new Notification(title, { body: body, icon: './icon-192.png', tag: tag });
             }
         } catch (_) {}
     }
@@ -2675,8 +2756,8 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 async function registerPushSubscription() {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-    if (Notification.permission !== 'granted') return;
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+    if (Notification.permission !== 'granted') return null;
 
     try {
         const reg = await navigator.serviceWorker.ready;
@@ -2695,10 +2776,11 @@ async function registerPushSubscription() {
             const rawAuth = sub.getKey('auth');
             const p256dh = rawKey ? btoa(String.fromCharCode.apply(null, new Uint8Array(rawKey))) : '';
             const auth = rawAuth ? btoa(String.fromCharCode.apply(null, new Uint8Array(rawAuth))) : '';
-            const currentUserId = CHAT_STATE.currentUser?.username || 'user_' + (localStorage.getItem('gyver_user_id') || 'guest');
+            // Use unique device identifier so multi-device / same-account tests never filter out your own phone!
+            const deviceUserId = getWorkchatDeviceId();
 
             await window.supabaseClient.from('workchat_push_subscriptions').upsert({
-                user_id: currentUserId,
+                user_id: deviceUserId,
                 endpoint: sub.endpoint,
                 p256dh: p256dh,
                 auth: auth,
@@ -2706,8 +2788,10 @@ async function registerPushSubscription() {
                 updated_at: new Date().toISOString()
             }, { onConflict: 'endpoint' });
         }
+        return sub;
     } catch (err) {
         console.warn('Push subscription notice:', err);
+        return null;
     }
 }
 window.registerPushSubscription = registerPushSubscription;
@@ -2716,40 +2800,96 @@ async function dispatchPushNotification(msgPayload) {
     if (!window.supabaseClient || !msgPayload) return;
     try {
         const senderName = msgPayload.sender_name || CHAT_STATE.currentUser?.displayName || 'WorkChat';
-        const msgText = msgPayload.message_text || (msgPayload.attachment_url ? 'ส่งไฟล์แนบ' : 'มีข้อความใหม่');
+        const msgText = msgPayload.message_text || (msgPayload.file_data ? `📎 ส่งไฟล์: ${msgPayload.file_data.name || 'ไฟล์แนบ'}` : (msgPayload.attachment_url ? 'ส่งไฟล์แนบ' : 'มีข้อความใหม่'));
         const chatId = msgPayload.chat_id || CHAT_STATE.activeChatId || 'general';
-        const senderId = msgPayload.sender_id || CHAT_STATE.currentUser?.username || '';
+        // Send unique device ID as sender_id so ONLY this sending browser is excluded, and all other phones/PCs wake up!
+        const senderDeviceId = msgPayload.sender_device_id || getWorkchatDeviceId();
 
-        // Call Supabase Edge Function to deliver push notifications to all other devices
         await window.supabaseClient.functions.invoke('send-workchat-push', {
             body: {
                 sender_name: senderName,
                 message_text: msgText,
                 chat_id: chatId,
-                sender_id: senderId
+                sender_id: senderDeviceId
             }
         });
-    } catch (_) {
-        // Silently continue if edge function is not yet deployed
+    } catch (err) {
+        console.warn('Dispatch push notice:', err);
     }
 }
 window.dispatchPushNotification = dispatchPushNotification;
 
 function requestNotificationPermission() {
-    if ('Notification' in window && Notification.permission === 'default') {
-        Notification.requestPermission().then(permission => {
+    if (!('Notification' in window)) {
+        showModernToast('เบราว์เซอร์นี้ไม่รองรับระบบแจ้งเตือน (สำหรับ iPhone กรุณากดเพิ่มลงหน้าจอโฮมก่อนครับ)');
+        return;
+    }
+    if (Notification.permission === 'default') {
+        Notification.requestPermission().then(async (permission) => {
+            renderFriendRequestsPopover();
             if (permission === 'granted') {
-                registerPushSubscription();
+                await registerPushSubscription();
+                renderFriendRequestsPopover();
                 if (typeof showModernToast === 'function') {
-                    showModernToast('เปิดการแจ้งเตือนข้อความแล้ว');
+                    showModernToast('เปิดการแจ้งเตือนขณะปิดแอป/ล็อกหน้าจอเรียบร้อยแล้ว 🔔');
                 }
+            } else {
+                showModernToast('คุณไม่ได้อนุญาตการแจ้งเตือน กรุณาเปิดในตั้งค่าเบราว์เซอร์');
             }
         });
     } else if (Notification.permission === 'granted') {
-        registerPushSubscription();
+        registerPushSubscription().then(() => {
+            renderFriendRequestsPopover();
+        });
     }
 }
 window.requestNotificationPermission = requestNotificationPermission;
+
+async function enableBackgroundPushNow() {
+    requestNotificationPermission();
+}
+window.enableBackgroundPushNow = enableBackgroundPushNow;
+
+async function testBackgroundPushAlert() {
+    if (!('Notification' in window) || Notification.permission !== 'granted') {
+        requestNotificationPermission();
+        return;
+    }
+    await registerPushSubscription();
+    showModernToast('⏳ กำลังจะส่งแจ้งเตือนในอีก 3 วินาที... ลองกดล็อกหน้าจอหรือสลับแอปได้เลยครับ!');
+
+    setTimeout(async () => {
+        // 1. Trigger via Server Web Push to all subscribed devices (including this one by passing a test sender_id)
+        try {
+            if (window.supabaseClient) {
+                await window.supabaseClient.functions.invoke('send-workchat-push', {
+                    body: {
+                        sender_name: 'WorkChat (ทดสอบระบบแจ้งเตือน)',
+                        message_text: '🔔 ทดสอบแจ้งเตือนขณะปิดหน้าจอ / ปิดแอปสำเร็จแล้ว!',
+                        chat_id: 'general',
+                        sender_id: 'test_push_trigger_' + Date.now()
+                    }
+                });
+            }
+        } catch (_) {}
+
+        // 2. Also ensure local Service Worker shows notification if server push is delayed
+        try {
+            if (navigator.serviceWorker) {
+                const reg = await navigator.serviceWorker.ready;
+                await reg.showNotification('WorkChat (ทดสอบแจ้งเตือน)', {
+                    body: '🔔 ระบบแจ้งเตือนเมื่อปิดหน้าจอพร้อมใช้งานแล้ว!',
+                    icon: './icon-192.png',
+                    badge: './icon-192.png',
+                    tag: 'workchat-test-' + Date.now(),
+                    renotify: true,
+                    vibrate: [250, 100, 250]
+                });
+            }
+        } catch (_) {}
+    }, 3000);
+}
+window.testBackgroundPushAlert = testBackgroundPushAlert;
 
 // Trigger notification permission on first user tap/click
 if (typeof window !== 'undefined') {

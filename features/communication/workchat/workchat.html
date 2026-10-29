@@ -31,7 +31,7 @@
     <script src="../../../assets/js/toast_shared.js"></script>
 
     <!-- Modern WorkChat Stylesheet -->
-    <link rel="stylesheet" href="workchat.css?v=3.3">
+    <link rel="stylesheet" href="workchat.css?v=3.9">
 </head>
 <body>
 
@@ -829,12 +829,14 @@
     <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- App Script -->
-    <script src="workchat.js?v=3.8"></script>
+    <script src="workchat.js?v=3.9"></script>
     <!-- Register PWA Service Worker for Mobile Installation -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js').catch(() => {});
+                navigator.serviceWorker.register('./sw.js?v=3.9').then((reg) => {
+                    try { reg.update(); } catch (_) {}
+                }).catch(() => {});
             });
         }
     </script>
