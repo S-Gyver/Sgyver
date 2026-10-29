@@ -2050,6 +2050,15 @@ function handleChatsSearch(query) {
 }
 window.handleChatsSearch = handleChatsSearch;
 
+function getDirectRoomId(user1, user2) {
+    if (!user1 || !user2) return '';
+    const clean1 = String(user1).trim().toLowerCase().replace(/[^a-z0-9_\u0E00-\u0E7F]/g, '');
+    const clean2 = String(user2).trim().toLowerCase().replace(/[^a-z0-9_\u0E00-\u0E7F]/g, '');
+    const sorted = [clean1, clean2].sort();
+    return `dm_${sorted[0]}__${sorted[1]}`;
+}
+window.getDirectRoomId = getDirectRoomId;
+
 function selectChatConversation(chatId) {
     CHAT_STATE.activeChatId = chatId;
 
@@ -2128,7 +2137,51 @@ function renderMessages() {
     }
 
     const activeChatId = CHAT_STATE.activeChatId;
+    const activeFriend = (typeof TEAM_FRIENDS !== 'undefined' ? TEAM_FRIENDS : []).find(f => f.id === activeChatId);
+    const myUsername = (CHAT_STATE.currentUser?.username || '').toLowerCase();
+    const myName = (CHAT_STATE.currentUser?.displayName || '').toLowerCase();
+    const myId = (CHAT_STATE.currentUser?.id || '').toLowerCase();
+
+    let directRoomId = null;
+    if (activeFriend) {
+        directRoomId = getDirectRoomId(myUsername || myName, (activeFriend.username || activeFriend.name).toLowerCase());
+    }
+
     const currentMessages = CHAT_STATE.messages.filter(msg => {
+        if (activeFriend) {
+            // 1-on-1 Direct Chat Isolation:
+            // A message is ONLY shown if it belongs to this pair:
+            if (directRoomId && msg.chat_id === directRoomId) {
+                return true;
+            }
+
+            // Legacy direct messages check:
+            if (msg.chat_id === activeChatId || msg.legacy_chat_id === activeChatId) {
+                const senderUser = (msg.sender_username || '').toLowerCase();
+                const senderName = (msg.sender_name || '').toLowerCase();
+                const senderId = (msg.sender_id || '').toLowerCase();
+
+                const isSenderMe = (senderUser === myUsername || senderName === myName || (myId && senderId === myId));
+                const isSenderFriend = (senderUser === (activeFriend.username || '').toLowerCase() || 
+                                        senderName === (activeFriend.name || '').toLowerCase() || 
+                                        (activeFriend.userId && senderId === activeFriend.userId.toLowerCase()));
+
+                if (isSenderMe) return true;
+                if (isSenderFriend) {
+                    const recipUser = (msg.recipient_username || '').toLowerCase();
+                    const recipName = (msg.recipient_name || '').toLowerCase();
+                    const recipId = (msg.recipient_id || '').toLowerCase();
+                    if (recipUser || recipName || recipId) {
+                        return (recipUser === myUsername || recipName === myName || (myId && recipId === myId));
+                    }
+                    // If no explicit recipient was stored, do NOT leak to third-party accounts
+                    return false;
+                }
+                return false;
+            }
+            return false;
+        }
+
         if (msg.chat_id) {
             return msg.chat_id === activeChatId;
         }
@@ -2488,13 +2541,28 @@ async function sendMessage() {
     }
 
     const activeChatId = CHAT_STATE.activeChatId || 'general';
-    if (!targetProjectId && CHAT_STATE.projects.some(p => p.id === activeChatId)) {
+    const activeFriend = (typeof TEAM_FRIENDS !== 'undefined' ? TEAM_FRIENDS : []).find(f => f.id === activeChatId);
+    let targetChatId = activeChatId;
+    let recipientUsername = null;
+    let recipientName = null;
+    let recipientId = null;
+
+    if (activeFriend) {
+        recipientUsername = activeFriend.username || null;
+        recipientName = activeFriend.name || null;
+        recipientId = activeFriend.userId || null;
+        targetChatId = getDirectRoomId(u.username || u.displayName, activeFriend.username || activeFriend.name);
+    } else if (!targetProjectId && CHAT_STATE.projects.some(p => p.id === activeChatId)) {
         targetProjectId = activeChatId;
     }
 
     const newMsg = {
         id: msgId,
-        chat_id: activeChatId,
+        chat_id: targetChatId,
+        legacy_chat_id: activeChatId,
+        recipient_username: recipientUsername,
+        recipient_name: recipientName,
+        recipient_id: recipientId,
         sender_username: u.username,
         sender_name: u.displayName || u.username,
         avatar: u.avatar || 'user_boy',
