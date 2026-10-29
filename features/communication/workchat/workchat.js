@@ -1646,33 +1646,46 @@ function updateFriendNotifBadge() {
     const incomingPending = (FRIEND_REQUESTS || []).filter(r => r && r.status === 'pending' && isRequestForMe(r));
     const count = incomingPending.length;
 
-    const badgeEl = document.getElementById('friend-notif-badge');
-    const bellBtn = document.getElementById('btn-friend-notif-bell');
-    const headerCountEl = document.getElementById('friend-notif-header-count');
-
-    if (badgeEl) {
-        if (count > 0) {
-            badgeEl.textContent = count > 99 ? '99+' : String(count);
-            badgeEl.classList.remove('d-none');
-        } else {
-            badgeEl.textContent = '0';
-            badgeEl.classList.add('d-none');
+    // Badges on desktop header, mobile chats header, and mobile bottom rail
+    const badgeIds = ['friend-notif-badge', 'middle-friend-notif-badge', 'rail-friend-notif-badge'];
+    badgeIds.forEach(id => {
+        const badgeEl = document.getElementById(id);
+        if (badgeEl) {
+            if (count > 0) {
+                badgeEl.textContent = count > 99 ? '99+' : String(count);
+                badgeEl.classList.remove('d-none');
+            } else {
+                badgeEl.textContent = '0';
+                badgeEl.classList.add('d-none');
+            }
         }
-    }
+    });
 
-    if (bellBtn) {
-        bellBtn.classList.toggle('has-pending', count > 0);
-    }
+    const bellBtnIds = ['btn-friend-notif-bell', 'btn-middle-notif-bell'];
+    bellBtnIds.forEach(id => {
+        const bellBtn = document.getElementById(id);
+        if (bellBtn) {
+            bellBtn.classList.toggle('has-pending', count > 0);
+        }
+    });
 
-    if (headerCountEl) {
-        headerCountEl.textContent = `${count} รายการ`;
-    }
+    const countHeaderIds = ['friend-notif-header-count', 'middle-friend-notif-header-count'];
+    countHeaderIds.forEach(id => {
+        const headerCountEl = document.getElementById(id);
+        if (headerCountEl) {
+            headerCountEl.textContent = `${count} รายการ`;
+        }
+    });
 }
 window.updateFriendNotifBadge = updateFriendNotifBadge;
 
 function renderFriendRequestsPopover() {
-    const container = document.getElementById('friend-notif-list-stream');
-    if (!container) return;
+    const containers = [
+        document.getElementById('friend-notif-list-stream'),
+        document.getElementById('middle-friend-notif-list-stream')
+    ].filter(Boolean);
+
+    if (containers.length === 0) return;
 
     updateFriendNotifBadge();
 
@@ -1685,7 +1698,7 @@ function renderFriendRequestsPopover() {
         .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 
     if (incoming.length === 0 && outgoing.length === 0) {
-        container.innerHTML = `
+        const emptyHtml = `
             <div class="text-center py-4 px-3">
                 <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-light text-secondary mb-2" style="width: 52px; height: 52px;">
                     <i class="bi bi-bell-slash fs-4"></i>
@@ -1697,6 +1710,7 @@ function renderFriendRequestsPopover() {
                 </button>
             </div>
         `;
+        containers.forEach(c => { c.innerHTML = emptyHtml; });
         return;
     }
 
@@ -1763,7 +1777,7 @@ function renderFriendRequestsPopover() {
         `).join('');
     }
 
-    container.innerHTML = html;
+    containers.forEach(c => { c.innerHTML = html; });
 }
 window.renderFriendRequestsPopover = renderFriendRequestsPopover;
 
