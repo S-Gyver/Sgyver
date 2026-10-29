@@ -579,13 +579,19 @@ function loadWorkspaceData() {
 }
 
 function saveWorkspaceData() {
+    try { localStorage.setItem('sgyver_workchat_projects', JSON.stringify(CHAT_STATE.projects)); } catch (_) {}
+    try { localStorage.setItem('sgyver_workchat_folders', JSON.stringify(CHAT_STATE.folders)); } catch (_) {}
+    try { localStorage.setItem('sgyver_workchat_groups', JSON.stringify(CHAT_STATE.groups)); } catch (_) {}
     try {
-        localStorage.setItem('sgyver_workchat_projects', JSON.stringify(CHAT_STATE.projects));
-        localStorage.setItem('sgyver_workchat_folders', JSON.stringify(CHAT_STATE.folders));
-        localStorage.setItem('sgyver_workchat_files', JSON.stringify(CHAT_STATE.files));
-        localStorage.setItem('sgyver_workchat_groups', JSON.stringify(CHAT_STATE.groups));
-        localStorage.setItem('sgyver_workchat_messages', JSON.stringify(CHAT_STATE.messages));
-    } catch (_) {}
+        localStorage.setItem('sgyver_workchat_files', JSON.stringify((CHAT_STATE.files || []).slice(0, 60)));
+    } catch (_) {
+        try { localStorage.setItem('sgyver_workchat_files', JSON.stringify((CHAT_STATE.files || []).slice(0, 15))); } catch (__) {}
+    }
+    try {
+        localStorage.setItem('sgyver_workchat_messages', JSON.stringify((CHAT_STATE.messages || []).slice(-150)));
+    } catch (_) {
+        try { localStorage.setItem('sgyver_workchat_messages', JSON.stringify((CHAT_STATE.messages || []).slice(-40))); } catch (__) {}
+    }
 }
 
 // ── 3.1 CLOUD STORE & REALTIME SYNC ENGINE (PC <-> MOBILE) ───────────────────
@@ -659,7 +665,7 @@ if (!window._workchatSyncInterval) {
     }, 5000);
 }
 
-function mergeCloudStore(cloudSettings) {
+function mergeCloudStore(cloudSettings, isInitialLoad = false) {
     if (!cloudSettings) return;
 
     let changed = false;
@@ -690,11 +696,15 @@ function mergeCloudStore(cloudSettings) {
             CHAT_STATE.messages.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
             changed = true;
             if (latestNewIncoming) {
-                playIncomingChime(
-                    latestNewIncoming.sender_name || 'WorkChat',
-                    latestNewIncoming.message_text || (latestNewIncoming.file_data ? 'ส่งไฟล์แนบ' : 'มีข้อความใหม่'),
-                    latestNewIncoming.chat_id
-                );
+                const msgAgeMs = Date.now() - new Date(latestNewIncoming.created_at || 0).getTime();
+                if (!isInitialLoad || msgAgeMs < 30000) {
+                    playIncomingChime(
+                        latestNewIncoming.sender_name || 'WorkChat',
+                        latestNewIncoming.message_text || (latestNewIncoming.file_data ? 'ส่งไฟล์แนบ' : 'มีข้อความใหม่'),
+                        latestNewIncoming.chat_id,
+                        latestNewIncoming.id
+                    );
+                }
             }
         }
     }
@@ -778,7 +788,7 @@ async function initSupabaseSync() {
                 .maybeSingle();
 
             if (cloudStore && cloudStore.quiz_settings) {
-                mergeCloudStore(cloudStore.quiz_settings);
+                mergeCloudStore(cloudStore.quiz_settings, true);
             } else {
                 syncWorkchatToCloud();
             }
@@ -836,7 +846,7 @@ async function initSupabaseSync() {
                     renderChatsList();
                     renderMessages();
                     scrollMessagesToBottom();
-                    playIncomingChime(payload.sender_name, payload.message_text, payload.chat_id);
+                    playIncomingChime(payload.sender_name, payload.message_text || (payload.file_data ? 'ส่งไฟล์แนบ' : 'มีข้อความใหม่'), payload.chat_id, payload.id);
                 }
             })
             .on('broadcast', { event: 'sync_vault' }, ({ payload }) => {
@@ -867,7 +877,7 @@ async function initSupabaseSync() {
                     renderChatsList();
                     renderMessages();
                     scrollMessagesToBottom();
-                    playIncomingChime(payload.new.sender_name, payload.new.message_text, payload.new.chat_id);
+                    playIncomingChime(payload.new.sender_name, payload.new.message_text || (payload.new.file_data ? 'ส่งไฟล์แนบ' : 'มีข้อความใหม่'), payload.new.chat_id, payload.new.id);
                 }
             })
             .subscribe((status) => {
@@ -1014,7 +1024,7 @@ function renderChatsList() {
         // Find latest message snippet for this specific chat
         let snippet = item.subtitleDefault;
         let lastTime = '';
-        const chatMsgs = CHAT_STATE.messages.filter(m => m.chat_id === item.id || (!m.chat_id && item.id === 'general'));
+        const chatMsgs = CHAT_STATE.messages.filter(m => isMessageInChatRoom(m, item.id));
         if (chatMsgs.length > 0) {
             const lastM = chatMsgs[chatMsgs.length - 1];
             const isMe = (lastM.sender_username === CHAT_STATE.currentUser.username || lastM.sender_name === CHAT_STATE.currentUser.displayName);
@@ -2124,6 +2134,84 @@ function getDirectRoomId(user1, user2) {
 }
 window.getDirectRoomId = getDirectRoomId;
 
+function isMessageInChatRoom(msg, targetChatId) {
+    if (!msg || !targetChatId) return false;
+    const activeFriend = (typeof TEAM_FRIENDS !== 'undefined' ? TEAM_FRIENDS : []).find(f => f.id === targetChatId);
+    const myUsername = String(CHAT_STATE.currentUser?.username || '').trim().toLowerCase();
+    const myName = String(CHAT_STATE.currentUser?.displayName || '').trim().toLowerCase();
+    const myId = String(CHAT_STATE.currentUser?.id || '').trim().toLowerCase();
+
+    if (activeFriend) {
+        const friendUser = String(activeFriend.username || '').trim().toLowerCase();
+        const friendName = String(activeFriend.name || '').trim().toLowerCase();
+        const friendUserId = String(activeFriend.userId || '').trim().toLowerCase();
+
+        const candidateRoomIds = new Set();
+        if (myUsername && friendUser) candidateRoomIds.add(getDirectRoomId(myUsername, friendUser));
+        if (myUsername && friendName) candidateRoomIds.add(getDirectRoomId(myUsername, friendName));
+        if (myName && friendUser) candidateRoomIds.add(getDirectRoomId(myName, friendUser));
+        if (myName && friendName) candidateRoomIds.add(getDirectRoomId(myName, friendName));
+
+        if (msg.chat_id && candidateRoomIds.has(msg.chat_id)) {
+            return true;
+        }
+
+        const senderUser = String(msg.sender_username || '').trim().toLowerCase();
+        const senderName = String(msg.sender_name || '').trim().toLowerCase();
+        const senderId = String(msg.sender_id || '').trim().toLowerCase();
+
+        const isSenderMe = Boolean(
+            (myUsername && (senderUser === myUsername || senderName === myUsername)) ||
+            (myName && (senderName === myName || senderUser === myName)) ||
+            (myId && senderId === myId)
+        );
+        const isSenderFriend = Boolean(
+            (friendUser && (senderUser === friendUser || senderName === friendUser)) ||
+            (friendName && (senderName === friendName || senderUser === friendName)) ||
+            (friendUserId && senderId === friendUserId)
+        );
+
+        const msgChatLower = String(msg.chat_id || '').trim().toLowerCase();
+        const msgLegacyLower = String(msg.legacy_chat_id || '').trim().toLowerCase();
+        const targetChatLower = String(targetChatId).trim().toLowerCase();
+
+        // Check if message was sent by me in this friend's chat tab
+        if (isSenderMe && (msgChatLower === targetChatLower || msgLegacyLower === targetChatLower)) {
+            return true;
+        }
+
+        // Check if message was sent by this friend to me (including legacy dm_user_<myName/myUsername/myId> from sendQuickLike)
+        if (isSenderFriend) {
+            const recipUser = String(msg.recipient_username || '').trim().toLowerCase();
+            const recipName = String(msg.recipient_name || '').trim().toLowerCase();
+            const recipId = String(msg.recipient_id || '').trim().toLowerCase();
+            if (recipUser || recipName || recipId) {
+                return Boolean(
+                    (myUsername && (recipUser === myUsername || recipName === myUsername)) ||
+                    (myName && (recipName === myName || recipUser === myName)) ||
+                    (myId && recipId === myId)
+                );
+            }
+            const myDirectIds = new Set([targetChatLower]);
+            if (myUsername) myDirectIds.add('dm_user_' + myUsername);
+            if (myName) myDirectIds.add('dm_user_' + myName);
+            if (myId) myDirectIds.add('dm_user_' + myId);
+            if (myDirectIds.has(msgChatLower) || myDirectIds.has(msgLegacyLower)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    if (msg.chat_id) {
+        return msg.chat_id === targetChatId;
+    }
+    if (targetChatId === 'general') return !msg.project_id;
+    if (msg.project_id && msg.project_id === targetChatId) return true;
+    return false;
+}
+window.isMessageInChatRoom = isMessageInChatRoom;
+
 function selectChatConversation(chatId) {
     CHAT_STATE.activeChatId = chatId;
 
@@ -2202,59 +2290,7 @@ function renderMessages() {
     }
 
     const activeChatId = CHAT_STATE.activeChatId;
-    const activeFriend = (typeof TEAM_FRIENDS !== 'undefined' ? TEAM_FRIENDS : []).find(f => f.id === activeChatId);
-    const myUsername = (CHAT_STATE.currentUser?.username || '').toLowerCase();
-    const myName = (CHAT_STATE.currentUser?.displayName || '').toLowerCase();
-    const myId = (CHAT_STATE.currentUser?.id || '').toLowerCase();
-
-    let directRoomId = null;
-    if (activeFriend) {
-        directRoomId = getDirectRoomId(myUsername || myName, (activeFriend.username || activeFriend.name).toLowerCase());
-    }
-
-    const currentMessages = CHAT_STATE.messages.filter(msg => {
-        if (activeFriend) {
-            // 1-on-1 Direct Chat Isolation:
-            // A message is ONLY shown if it belongs to this pair:
-            if (directRoomId && msg.chat_id === directRoomId) {
-                return true;
-            }
-
-            // Legacy direct messages check:
-            if (msg.chat_id === activeChatId || msg.legacy_chat_id === activeChatId) {
-                const senderUser = (msg.sender_username || '').toLowerCase();
-                const senderName = (msg.sender_name || '').toLowerCase();
-                const senderId = (msg.sender_id || '').toLowerCase();
-
-                const isSenderMe = (senderUser === myUsername || senderName === myName || (myId && senderId === myId));
-                const isSenderFriend = (senderUser === (activeFriend.username || '').toLowerCase() || 
-                                        senderName === (activeFriend.name || '').toLowerCase() || 
-                                        (activeFriend.userId && senderId === activeFriend.userId.toLowerCase()));
-
-                if (isSenderMe) return true;
-                if (isSenderFriend) {
-                    const recipUser = (msg.recipient_username || '').toLowerCase();
-                    const recipName = (msg.recipient_name || '').toLowerCase();
-                    const recipId = (msg.recipient_id || '').toLowerCase();
-                    if (recipUser || recipName || recipId) {
-                        return (recipUser === myUsername || recipName === myName || (myId && recipId === myId));
-                    }
-                    // If no explicit recipient was stored, do NOT leak to third-party accounts
-                    return false;
-                }
-                return false;
-            }
-            return false;
-        }
-
-        if (msg.chat_id) {
-            return msg.chat_id === activeChatId;
-        }
-        // Legacy fallback
-        if (activeChatId === 'general') return !msg.project_id;
-        if (msg.project_id && msg.project_id === activeChatId) return true;
-        return false;
-    });
+    const currentMessages = CHAT_STATE.messages.filter(msg => isMessageInChatRoom(msg, activeChatId));
 
     if (currentMessages.length === 0) {
         container.innerHTML = `
@@ -2302,13 +2338,24 @@ function renderMessages() {
             (msg.file_data.url && (msg.file_data.url.startsWith('data:image/') || /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i.test(msg.file_data.url))) ||
             (msg.file_data.name && /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(msg.file_data.name))
         ));
+        const isAudioAttachment = Boolean(msg.file_data && (
+            (msg.file_data.type && msg.file_data.type.startsWith('audio/')) ||
+            (msg.file_data.url && msg.file_data.url.startsWith('data:audio/')) ||
+            (msg.file_data.name && /\.(webm|ogg|mp3|wav|m4a|aac)$/i.test(msg.file_data.name))
+        ));
 
         if (msg.file_data) {
             const f = msg.file_data;
             if (isImageAttachment && f.url) {
                 attachedHtml = `
-                    <div class="msg-image-attachment my-1" onclick="previewFileDirectly('${escapeHtml(f.name)}', '${escapeHtml(f.url)}')" style="cursor: pointer;">
-                        <img src="${f.url}" alt="${escapeHtml(f.name)}" class="rounded-3 shadow-sm d-block" style="max-width: 100%; max-height: 260px; object-fit: cover;">
+                    <div class="msg-image-attachment my-1" onclick="previewFileDirectly('${escapeHtml(f.name || 'รูปภาพ')}', '${escapeHtml(f.url)}')" style="cursor: pointer;">
+                        <img src="${f.url}" alt="${escapeHtml(f.name || 'รูปภาพ')}" class="rounded-3 shadow-sm d-block" style="max-width: 100%; max-height: 260px; object-fit: cover;">
+                    </div>
+                `;
+            } else if (isAudioAttachment && f.url) {
+                attachedHtml = `
+                    <div class="msg-audio-player-wrap">
+                        <audio controls preload="metadata" src="${f.url}" class="msg-audio-player"></audio>
                     </div>
                 `;
             } else {
@@ -2349,8 +2396,9 @@ function renderMessages() {
         const projectMarkup = (project && isImageAttachment) 
             ? `<div class="msg-project-chip" onclick="selectProjectFilter('${project.id}')" title="คลิกเปิดดูไฟล์โปรเจกต์นี้"><i class="bi bi-folder-fill" style="color: ${project.color || '#f59e0b'};"></i><span>${escapeHtml(project.code || project.name)}</span></div>` 
             : '';
+        const isJumboLike = (!msg.file_data && msg.message_text && msg.message_text.trim() === '👍');
         const textMarkup = msg.message_text 
-            ? `<div class="msg-text-content">${formatMessageTextWithLinks(msg.message_text)}</div>` 
+            ? (isJumboLike ? `<div class="msg-like-jumbo" title="ถูกใจ">👍</div>` : `<div class="msg-text-content">${formatMessageTextWithLinks(msg.message_text)}</div>`) 
             : '';
 
         html += `
@@ -2380,7 +2428,7 @@ function handleMessageInputChange(el) {
     autoGrowTextarea(el);
     const inputBar = document.getElementById('chat-area-input-bar');
     if (!inputBar) return;
-    if (el.value.trim().length > 0) {
+    if (el.value.trim().length > 0 || CHAT_STATE.stagedAttachment) {
         inputBar.classList.add('has-text');
     } else {
         inputBar.classList.remove('has-text');
@@ -2391,10 +2439,28 @@ window.handleMessageInputChange = handleMessageInputChange;
 function sendQuickLike() {
     const u = CHAT_STATE.currentUser;
     const activeChatId = CHAT_STATE.activeChatId || 'general';
+    const activeFriend = (typeof TEAM_FRIENDS !== 'undefined' ? TEAM_FRIENDS : []).find(f => f.id === activeChatId);
     const isProjectChannel = CHAT_STATE.projects.some(p => p.id === activeChatId);
+
+    let targetChatId = activeChatId;
+    let recipientUsername = null;
+    let recipientName = null;
+    let recipientId = null;
+
+    if (activeFriend) {
+        recipientUsername = activeFriend.username || null;
+        recipientName = activeFriend.name || null;
+        recipientId = activeFriend.userId || null;
+        targetChatId = getDirectRoomId(u.username || u.displayName, activeFriend.username || activeFriend.name);
+    }
+
     const newMsg = {
         id: 'msg_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
-        chat_id: activeChatId,
+        chat_id: targetChatId,
+        legacy_chat_id: activeChatId,
+        recipient_username: recipientUsername,
+        recipient_name: recipientName,
+        recipient_id: recipientId,
         sender_username: u.username,
         sender_name: u.displayName || u.username,
         avatar: u.avatar || 'user_boy',
@@ -2412,10 +2478,6 @@ function sendQuickLike() {
     renderMessages();
     scrollMessagesToBottom();
 
-    if (window.supabaseClient) {
-        window.supabaseClient.from('workchat_messages').insert([newMsg]).then(() => {});
-    }
-
     if (CHAT_STATE.realtimeChannel) {
         try {
             CHAT_STATE.realtimeChannel.send({
@@ -2425,7 +2487,15 @@ function sendQuickLike() {
             });
         } catch (_) {}
     }
+
     syncWorkchatToCloud();
+
+    if (window.supabaseClient) {
+        try {
+            window.supabaseClient.from('workchat_messages').insert([newMsg]).catch(() => {});
+        } catch (_) {}
+    }
+
     dispatchPushNotification(newMsg);
 }
 window.sendQuickLike = sendQuickLike;
@@ -2473,15 +2543,62 @@ function handleFileSelected(e) {
     e.target.value = '';
 }
 
+function compressImageDataUrl(rawDataUrl, maxDim = 960, quality = 0.74) {
+    return new Promise((resolve) => {
+        try {
+            const img = new Image();
+            img.onload = () => {
+                try {
+                    let w = img.width || 800;
+                    let h = img.height || 600;
+                    if (w > maxDim || h > maxDim) {
+                        if (w >= h) {
+                            h = Math.round((h * maxDim) / w);
+                            w = maxDim;
+                        } else {
+                            w = Math.round((w * maxDim) / h);
+                            h = maxDim;
+                        }
+                    }
+                    const canvas = document.createElement('canvas');
+                    canvas.width = w;
+                    canvas.height = h;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, w, h);
+                    const compressed = canvas.toDataURL('image/jpeg', quality);
+                    resolve(compressed || rawDataUrl);
+                } catch (_) {
+                    resolve(rawDataUrl);
+                }
+            };
+            img.onerror = () => resolve(rawDataUrl);
+            img.src = rawDataUrl;
+        } catch (_) {
+            resolve(rawDataUrl);
+        }
+    });
+}
+
 function stageFileAttachment(file) {
     const reader = new FileReader();
-    reader.onload = function(evt) {
+    reader.onload = async function(evt) {
+        let finalDataUrl = evt.target.result;
+        const isImg = Boolean((file.type && file.type.startsWith('image/')) || /\.(jpg|jpeg|png|webp|bmp)$/i.test(file.name || ''));
+
+        if (isImg && typeof finalDataUrl === 'string') {
+            finalDataUrl = await compressImageDataUrl(finalDataUrl, 960, 0.74);
+        }
+
+        const approxBytes = typeof finalDataUrl === 'string'
+            ? Math.round((finalDataUrl.length * 3) / 4)
+            : file.size;
+
         CHAT_STATE.stagedAttachment = {
-            file: file,
+            file: { size: approxBytes, name: file.name, type: isImg ? 'image/jpeg' : (file.type || 'file') },
             name: file.name,
-            size: formatBytes(file.size),
-            type: file.type || 'file',
-            dataUrl: evt.target.result
+            size: formatBytes(approxBytes),
+            type: isImg ? 'image/jpeg' : (file.type || 'file'),
+            dataUrl: finalDataUrl
         };
 
         const stagingBox = document.getElementById('attachment-staging-box');
@@ -2490,11 +2607,11 @@ function stageFileAttachment(file) {
         const thumbWrap = document.getElementById('staging-thumb-preview');
 
         if (filenameEl) filenameEl.textContent = file.name;
-        if (sizeEl) sizeEl.textContent = formatBytes(file.size);
+        if (sizeEl) sizeEl.textContent = formatBytes(approxBytes);
 
         if (thumbWrap) {
-            if (file.type.startsWith('image/')) {
-                thumbWrap.innerHTML = `<img src="${evt.target.result}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px;">`;
+            if (isImg) {
+                thumbWrap.innerHTML = `<img src="${finalDataUrl}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px;">`;
             } else {
                 thumbWrap.innerHTML = `<i class="bi bi-file-earmark-arrow-up fs-3 text-primary"></i>`;
             }
@@ -2506,6 +2623,205 @@ function stageFileAttachment(file) {
         if (inputBar) inputBar.classList.add('has-text');
     };
     reader.readAsDataURL(file);
+}
+
+// ── VOICE MESSAGE RECORDING & SENDING ENGINE ──
+let _voiceMediaRecorder = null;
+let _voiceAudioChunks = [];
+let _voiceRecordStartTime = 0;
+let _voiceTimerInterval = null;
+let _voiceShouldSend = false;
+
+function formatVoiceDuration(sec) {
+    const m = String(Math.floor(sec / 60)).padStart(2, '0');
+    const s = String(sec % 60).padStart(2, '0');
+    return `${m}:${s}`;
+}
+
+async function toggleVoiceRecording() {
+    if (_voiceMediaRecorder && _voiceMediaRecorder.state === 'recording') {
+        stopAndSendVoiceRecording();
+        return;
+    }
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showModernToast('เบราว์เซอร์นี้ไม่รองรับการอัดเสียง (ต้องเปิดผ่าน HTTPS หรือ localhost)');
+        return;
+    }
+
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        _voiceAudioChunks = [];
+        _voiceShouldSend = false;
+
+        let options = { audioBitsPerSecond: 32000 };
+        if (typeof MediaRecorder !== 'undefined' && typeof MediaRecorder.isTypeSupported === 'function') {
+            if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+                options.mimeType = 'audio/webm;codecs=opus';
+            } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+                options.mimeType = 'audio/mp4';
+            } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
+                options.mimeType = 'audio/ogg;codecs=opus';
+            }
+        }
+
+        try {
+            _voiceMediaRecorder = new MediaRecorder(stream, options);
+        } catch (_) {
+            _voiceMediaRecorder = new MediaRecorder(stream);
+        }
+
+        _voiceMediaRecorder.ondataavailable = (e) => {
+            if (e.data && e.data.size > 0) {
+                _voiceAudioChunks.push(e.data);
+            }
+        };
+
+        _voiceMediaRecorder.onstop = () => {
+            clearInterval(_voiceTimerInterval);
+            try {
+                stream.getTracks().forEach(t => t.stop());
+            } catch (_) {}
+
+            const bar = document.getElementById('voice-recording-bar');
+            if (bar) bar.classList.add('d-none');
+            const micBtn = document.getElementById('btn-mic-record');
+            if (micBtn) micBtn.classList.remove('recording-active');
+
+            if (!_voiceShouldSend || _voiceAudioChunks.length === 0) {
+                _voiceAudioChunks = [];
+                return;
+            }
+
+            const durationSec = Math.max(1, Math.round((Date.now() - _voiceRecordStartTime) / 1000));
+            const mimeType = (_voiceMediaRecorder && _voiceMediaRecorder.mimeType) || 'audio/webm';
+            const blob = new Blob(_voiceAudioChunks, { type: mimeType });
+            _voiceAudioChunks = [];
+
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                if (reader.result) {
+                    sendVoiceClipMessage(reader.result, mimeType, durationSec);
+                }
+            };
+            reader.readAsDataURL(blob);
+        };
+
+        _voiceRecordStartTime = Date.now();
+        _voiceMediaRecorder.start(250);
+
+        const bar = document.getElementById('voice-recording-bar');
+        const timerEl = document.getElementById('voice-record-timer');
+        const micBtn = document.getElementById('btn-mic-record');
+        if (bar) bar.classList.remove('d-none');
+        if (timerEl) timerEl.textContent = '00:00';
+        if (micBtn) micBtn.classList.add('recording-active');
+
+        clearInterval(_voiceTimerInterval);
+        _voiceTimerInterval = setInterval(() => {
+            const elapsed = Math.floor((Date.now() - _voiceRecordStartTime) / 1000);
+            if (timerEl) timerEl.textContent = formatVoiceDuration(elapsed);
+            if (elapsed >= 60) {
+                stopAndSendVoiceRecording();
+            }
+        }, 500);
+    } catch (err) {
+        console.warn('Mic permission error:', err);
+        showModernToast('ไม่สามารถเข้าถึงไมโครโฟนได้ กรุณาอนุญาตการใช้ไมโครโฟนในเบราว์เซอร์ครับ');
+    }
+}
+window.toggleVoiceRecording = toggleVoiceRecording;
+
+function stopAndSendVoiceRecording() {
+    if (_voiceMediaRecorder && _voiceMediaRecorder.state !== 'inactive') {
+        _voiceShouldSend = true;
+        _voiceMediaRecorder.stop();
+    }
+}
+window.stopAndSendVoiceRecording = stopAndSendVoiceRecording;
+
+function cancelVoiceRecording() {
+    if (_voiceMediaRecorder && _voiceMediaRecorder.state !== 'inactive') {
+        _voiceShouldSend = false;
+        _voiceMediaRecorder.stop();
+    } else {
+        const bar = document.getElementById('voice-recording-bar');
+        if (bar) bar.classList.add('d-none');
+        const micBtn = document.getElementById('btn-mic-record');
+        if (micBtn) micBtn.classList.remove('recording-active');
+    }
+}
+window.cancelVoiceRecording = cancelVoiceRecording;
+
+function sendVoiceClipMessage(audioDataUrl, mimeType, durationSec) {
+    const u = CHAT_STATE.currentUser;
+    const activeChatId = CHAT_STATE.activeChatId || 'general';
+    const activeFriend = (typeof TEAM_FRIENDS !== 'undefined' ? TEAM_FRIENDS : []).find(f => f.id === activeChatId);
+    const isProjectChannel = CHAT_STATE.projects.some(p => p.id === activeChatId);
+
+    let targetChatId = activeChatId;
+    let recipientUsername = null;
+    let recipientName = null;
+    let recipientId = null;
+
+    if (activeFriend) {
+        recipientUsername = activeFriend.username || null;
+        recipientName = activeFriend.name || null;
+        recipientId = activeFriend.userId || null;
+        targetChatId = getDirectRoomId(u.username || u.displayName, activeFriend.username || activeFriend.name);
+    }
+
+    const durationLabel = formatVoiceDuration(durationSec || 1);
+    const ext = (mimeType && mimeType.includes('mp4')) ? 'm4a' : ((mimeType && mimeType.includes('ogg')) ? 'ogg' : 'webm');
+
+    const newMsg = {
+        id: 'msg_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+        chat_id: targetChatId,
+        legacy_chat_id: activeChatId,
+        recipient_username: recipientUsername,
+        recipient_name: recipientName,
+        recipient_id: recipientId,
+        sender_username: u.username,
+        sender_name: u.displayName || u.username,
+        avatar: u.avatar || 'user_boy',
+        message_text: `🎤 ข้อความเสียง (${durationLabel})`,
+        project_id: isProjectChannel ? activeChatId : null,
+        folder_id: null,
+        file_data: {
+            name: `ข้อความเสียง_${durationLabel.replace(':', '-')}.${ext}`,
+            url: audioDataUrl,
+            type: mimeType || 'audio/webm',
+            size: `ความยาว ${durationLabel}`
+        },
+        created_at: new Date().toISOString()
+    };
+
+    CHAT_STATE.messages.push(newMsg);
+    saveWorkspaceData();
+
+    renderChatsList();
+    renderMessages();
+    scrollMessagesToBottom();
+
+    if (CHAT_STATE.realtimeChannel) {
+        try {
+            CHAT_STATE.realtimeChannel.send({
+                type: 'broadcast',
+                event: 'new_message',
+                payload: newMsg
+            });
+        } catch (_) {}
+    }
+
+    syncWorkchatToCloud();
+
+    if (window.supabaseClient) {
+        try {
+            window.supabaseClient.from('workchat_messages').insert([newMsg]).catch(() => {});
+        } catch (_) {}
+    }
+
+    dispatchPushNotification(newMsg);
 }
 
 function populateStagingFolderDropdown() {
@@ -2702,7 +3018,21 @@ function getWorkchatDeviceId() {
     }
 }
 
-function playIncomingChime(senderName, messageText, chatId) {
+const _notifiedMsgIds = new Set();
+function playIncomingChime(senderName, messageText, chatId, msgId) {
+    if (msgId) {
+        if (_notifiedMsgIds.has(msgId)) return;
+        _notifiedMsgIds.add(msgId);
+    }
+
+    // Ignore our own messages if accidentally passed
+    const myUser = String(CHAT_STATE.currentUser?.username || '').trim().toLowerCase();
+    const myName = String(CHAT_STATE.currentUser?.displayName || '').trim().toLowerCase();
+    const sNameLower = String(senderName || '').trim().toLowerCase();
+    if (sNameLower && ((myUser && sNameLower === myUser) || (myName && sNameLower === myName))) {
+        return;
+    }
+
     const audio = document.getElementById('chat-chime-sound');
     if (audio) {
         audio.currentTime = 0;
@@ -2714,12 +3044,17 @@ function playIncomingChime(senderName, messageText, chatId) {
         try { navigator.vibrate([200, 100, 200]); } catch (_) {}
     }
 
-    // 🔔 System Notification when app is in background, screen is off, or another tab is focused
-    const isBackground = document.hidden || (typeof document.hasFocus === 'function' && !document.hasFocus());
-    if (isBackground && 'Notification' in window && Notification.permission === 'granted') {
-        const title = senderName ? `${senderName} (WorkChat)` : 'WorkChat';
-        const body = messageText || 'มีข้อความใหม่ส่งถึงคุณ';
-        const tag = 'workchat-msg-' + (chatId || 'general') + '-' + Date.now();
+    const title = senderName ? `${senderName} (WorkChat)` : 'WorkChat';
+    const body = messageText || 'มีข้อความใหม่ส่งถึงคุณ';
+    const tag = 'workchat-msg-' + (msgId || ((chatId || 'general') + '-' + Date.now()));
+
+    // 💬 In-App Top Toast Banner when someone sends a message
+    if (typeof showModernToast === 'function' && senderName) {
+        showModernToast(`💬 ${senderName}: ${body}`);
+    }
+
+    // 🔔 System OS Notification (both background and foreground so phone status bar always alerts)
+    if ('Notification' in window && Notification.permission === 'granted') {
         try {
             if (navigator.serviceWorker) {
                 navigator.serviceWorker.ready.then(reg => {
@@ -2731,6 +3066,8 @@ function playIncomingChime(senderName, messageText, chatId) {
                         renotify: true,
                         vibrate: [250, 100, 250],
                         data: { url: './workchat.html', chat_id: chatId || 'general' }
+                    }).catch(() => {
+                        reg.showNotification(title, { body: body, icon: './icon-192.png' });
                     });
                 }).catch(() => {
                     new Notification(title, { body: body, icon: './icon-192.png', tag: tag });
@@ -2760,9 +3097,20 @@ async function registerPushSubscription() {
     if (Notification.permission !== 'granted') return null;
 
     try {
-        const reg = await navigator.serviceWorker.ready;
-        let sub = await reg.pushManager.getSubscription();
+        let reg = null;
+        try {
+            const allRegs = await navigator.serviceWorker.getRegistrations();
+            for (const r of allRegs) {
+                try { await r.update(); } catch (_) {}
+            }
+            reg = await navigator.serviceWorker.register('./sw.js?v=4.1', { updateViaCache: 'none' });
+            try { await reg.update(); } catch (_) {}
+        } catch (_) {}
+        if (!reg || !reg.pushManager) {
+            reg = await navigator.serviceWorker.ready;
+        }
 
+        let sub = await reg.pushManager.getSubscription();
         if (!sub) {
             const appServerKey = urlBase64ToUint8Array(WORKCHAT_VAPID_PUBLIC_KEY);
             sub = await reg.pushManager.subscribe({
@@ -2776,7 +3124,6 @@ async function registerPushSubscription() {
             const rawAuth = sub.getKey('auth');
             const p256dh = rawKey ? btoa(String.fromCharCode.apply(null, new Uint8Array(rawKey))) : '';
             const auth = rawAuth ? btoa(String.fromCharCode.apply(null, new Uint8Array(rawAuth))) : '';
-            // Use unique device identifier so multi-device / same-account tests never filter out your own phone!
             const deviceUserId = getWorkchatDeviceId();
 
             await window.supabaseClient.from('workchat_push_subscriptions').upsert({
@@ -2797,22 +3144,37 @@ async function registerPushSubscription() {
 window.registerPushSubscription = registerPushSubscription;
 
 async function dispatchPushNotification(msgPayload) {
-    if (!window.supabaseClient || !msgPayload) return;
+    if (!msgPayload) return;
     try {
         const senderName = msgPayload.sender_name || CHAT_STATE.currentUser?.displayName || 'WorkChat';
         const msgText = msgPayload.message_text || (msgPayload.file_data ? `📎 ส่งไฟล์: ${msgPayload.file_data.name || 'ไฟล์แนบ'}` : (msgPayload.attachment_url ? 'ส่งไฟล์แนบ' : 'มีข้อความใหม่'));
         const chatId = msgPayload.chat_id || CHAT_STATE.activeChatId || 'general';
-        // Send unique device ID as sender_id so ONLY this sending browser is excluded, and all other phones/PCs wake up!
         const senderDeviceId = msgPayload.sender_device_id || getWorkchatDeviceId();
 
-        await window.supabaseClient.functions.invoke('send-workchat-push', {
-            body: {
-                sender_name: senderName,
-                message_text: msgText,
-                chat_id: chatId,
-                sender_id: senderDeviceId
-            }
-        });
+        const payloadBody = {
+            sender_name: senderName,
+            message_text: msgText,
+            chat_id: chatId,
+            sender_id: senderDeviceId
+        };
+
+        // Use fetch with keepalive: true so even if the user immediately closes/locks the phone, the push request still completes!
+        const anonKey = window.supabaseClient?.supabaseKey || '';
+        const supabaseUrl = window.supabaseClient?.supabaseUrl || 'https://igiihteeeprpcxxlldkd.supabase.co';
+        if (anonKey) {
+            await fetch(`${supabaseUrl}/functions/v1/send-workchat-push`, {
+                method: 'POST',
+                keepalive: true,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + anonKey,
+                    'apikey': anonKey
+                },
+                body: JSON.stringify(payloadBody)
+            });
+        } else if (window.supabaseClient) {
+            await window.supabaseClient.functions.invoke('send-workchat-push', { body: payloadBody });
+        }
     } catch (err) {
         console.warn('Dispatch push notice:', err);
     }
@@ -2856,38 +3218,38 @@ async function testBackgroundPushAlert() {
         return;
     }
     await registerPushSubscription();
-    showModernToast('⏳ กำลังจะส่งแจ้งเตือนในอีก 3 วินาที... ลองกดล็อกหน้าจอหรือสลับแอปได้เลยครับ!');
+    showModernToast('⏳ กำลังส่งแจ้งเตือนในอีก 3 วินาที... ลองกดล็อกหน้าจอหรือสลับแอปได้เลยครับ!');
 
-    setTimeout(async () => {
-        // 1. Trigger via Server Web Push to all subscribed devices (including this one by passing a test sender_id)
-        try {
-            if (window.supabaseClient) {
-                await window.supabaseClient.functions.invoke('send-workchat-push', {
-                    body: {
-                        sender_name: 'WorkChat (ทดสอบระบบแจ้งเตือน)',
-                        message_text: '🔔 ทดสอบแจ้งเตือนขณะปิดหน้าจอ / ปิดแอปสำเร็จแล้ว!',
-                        chat_id: 'general',
-                        sender_id: 'test_push_trigger_' + Date.now()
-                    }
-                });
-            }
-        } catch (_) {}
+    const anonKey = window.supabaseClient?.supabaseKey || '';
+    let delegatedToSW = false;
 
-        // 2. Also ensure local Service Worker shows notification if server push is delayed
-        try {
-            if (navigator.serviceWorker) {
-                const reg = await navigator.serviceWorker.ready;
-                await reg.showNotification('WorkChat (ทดสอบแจ้งเตือน)', {
-                    body: '🔔 ระบบแจ้งเตือนเมื่อปิดหน้าจอพร้อมใช้งานแล้ว!',
-                    icon: './icon-192.png',
-                    badge: './icon-192.png',
-                    tag: 'workchat-test-' + Date.now(),
-                    renotify: true,
-                    vibrate: [250, 100, 250]
+    try {
+        if ('serviceWorker' in navigator) {
+            const reg = await navigator.serviceWorker.ready;
+            const swTarget = reg.active || navigator.serviceWorker.controller;
+            if (swTarget) {
+                swTarget.postMessage({
+                    type: 'DELAYED_TEST_PUSH',
+                    delayMs: 3000,
+                    anonKey: anonKey,
+                    title: 'WorkChat (ทดสอบระบบแจ้งเตือน)',
+                    body: '🔔 ทดสอบแจ้งเตือนขณะปิดหน้าจอ / ปิดแอปสำเร็จแล้ว!'
                 });
+                delegatedToSW = true;
             }
-        } catch (_) {}
-    }, 3000);
+        }
+    } catch (_) {}
+
+    if (!delegatedToSW) {
+        setTimeout(async () => {
+            await dispatchPushNotification({
+                sender_name: 'WorkChat (ทดสอบระบบแจ้งเตือน)',
+                message_text: '🔔 ทดสอบแจ้งเตือนขณะปิดหน้าจอ / ปิดแอปสำเร็จแล้ว!',
+                chat_id: 'general',
+                sender_device_id: 'test_push_trigger_' + Date.now()
+            });
+        }, 3000);
+    }
 }
 window.testBackgroundPushAlert = testBackgroundPushAlert;
 
@@ -2932,7 +3294,7 @@ function renderProjectDropdownList() {
             </a>
         </li>
         <li>
-            <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="javascript:void(0)" onclick="showModernToast('บันทึกเสียงข้อความ...')">
+            <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="javascript:void(0)" onclick="toggleVoiceRecording()">
                 <i class="bi bi-mic-fill text-danger fs-5"></i>
                 <span class="fw-semibold">ข้อความเสียง</span>
             </a>
@@ -3585,9 +3947,27 @@ function shareFileToChat(fileId) {
 
     const u = CHAT_STATE.currentUser;
     const msgId = 'msg_' + Date.now();
+    const activeChatId = CHAT_STATE.activeChatId || 'general';
+    const activeFriend = (typeof TEAM_FRIENDS !== 'undefined' ? TEAM_FRIENDS : []).find(f => f.id === activeChatId);
+    let targetChatId = activeChatId;
+    let recipientUsername = null;
+    let recipientName = null;
+    let recipientId = null;
+
+    if (activeFriend) {
+        recipientUsername = activeFriend.username || null;
+        recipientName = activeFriend.name || null;
+        recipientId = activeFriend.userId || null;
+        targetChatId = getDirectRoomId(u.username || u.displayName, activeFriend.username || activeFriend.name);
+    }
 
     const newMsg = {
         id: msgId,
+        chat_id: targetChatId,
+        legacy_chat_id: activeChatId,
+        recipient_username: recipientUsername,
+        recipient_name: recipientName,
+        recipient_id: recipientId,
         sender_username: u.username,
         sender_name: u.displayName || u.username,
         avatar: u.avatar || 'user_boy',

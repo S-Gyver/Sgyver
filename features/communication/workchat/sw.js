@@ -1,4 +1,6 @@
-// S-Gyver WorkChat Service Worker (PWA Engine v3.9)
+// S-Gyver WorkChat Service Worker (PWA & Background Web Push Engine v4.0)
+const SUPABASE_PUSH_FN_URL = 'https://igiihteeeprpcxxlldkd.supabase.co/functions/v1/send-workchat-push';
+
 self.addEventListener('install', (event) => {
     self.skipWaiting();
 });
@@ -11,7 +13,40 @@ self.addEventListener('activate', (event) => {
     );
 });
 
-// Handle incoming Web Push notifications (Background / Lock Screen Push)
+function showWorkchatNotification(rawTitle, rawBody, rawUrl, rawChatId, rawTag, rawIcon) {
+    const title = rawTitle || 'WorkChat';
+    const body = rawBody || 'มีข้อความใหม่ส่งถึงคุณ';
+    const icon = rawIcon || './icon-192.png';
+    const url = rawUrl || './workchat.html';
+    const chatId = rawChatId || 'general';
+    const tag = rawTag || ('workchat-push-' + Date.now());
+
+    const options = {
+        body: body,
+        icon: icon,
+        badge: icon,
+        tag: tag,
+        renotify: true,
+        requireInteraction: false,
+        vibrate: [250, 100, 250, 100, 300],
+        timestamp: Date.now(),
+        data: {
+            url: url,
+            chat_id: chatId
+        }
+    };
+
+    return self.registration.showNotification(title, options).catch(() => {
+        // Fallback minimal notification if any option is unsupported on specific OS/Browser
+        return self.registration.showNotification(title, {
+            body: body,
+            icon: icon,
+            data: { url: url, chat_id: chatId }
+        });
+    });
+}
+
+// Handle incoming Web Push notifications (Background / Closed App / Lock Screen Push)
 self.addEventListener('push', (event) => {
     let data = {
         title: 'WorkChat',
@@ -23,11 +58,16 @@ self.addEventListener('push', (event) => {
     try {
         if (event.data) {
             const parsed = event.data.json();
-            data = Object.assign(data, parsed);
+            if (parsed && typeof parsed === 'object') {
+                data = Object.assign(data, parsed);
+            }
         }
     } catch (_) {
         try {
-            if (event.data) data.body = event.data.text();
+            if (event.data) {
+                const txt = event.data.text();
+                if (txt) data.body = txt;
+            }
         } catch (__) {}
     }
 
@@ -35,41 +75,57 @@ self.addEventListener('push', (event) => {
     const body = data.body || data.message_text || 'มีข้อความใหม่ในห้องแชท';
     const tag = data.tag || ('workchat-push-' + Date.now());
 
-    const options = {
-        body: body,
-        icon: data.icon || './icon-192.png',
-        badge: './icon-192.png',
-        tag: tag,
-        renotify: true,
-        requireInteraction: false,
-        silent: false,
-        vibrate: [250, 100, 250, 100, 300],
-        timestamp: Date.now(),
-        data: {
-            url: data.url || './workchat.html',
-            chat_id: data.chat_id || 'general'
-        }
-    };
-
     event.waitUntil(
-        self.registration.showNotification(title, options)
+        showWorkchatNotification(title, body, data.url || './workchat.html', data.chat_id || 'general', tag, data.icon || './icon-192.png')
     );
 });
 
-// Handle message from page to trigger background/lockscreen notification via SW
+// Handle messages from page (including background delayed test push that survives app closing/screen lock)
 self.addEventListener('message', (event) => {
-    if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
-        const title = event.data.title || 'WorkChat';
-        const options = {
-            body: event.data.body || 'มีข้อความใหม่ส่งถึงคุณ',
-            icon: './icon-192.png',
-            badge: './icon-192.png',
-            tag: event.data.tag || ('workchat-local-' + Date.now()),
-            renotify: true,
-            vibrate: [250, 100, 250],
-            data: { url: './workchat.html' }
-        };
-        event.waitUntil(self.registration.showNotification(title, options));
+    if (!event.data) return;
+
+    if (event.data.type === 'SHOW_NOTIFICATION') {
+        event.waitUntil(
+            showWorkchatNotification(
+                event.data.title || 'WorkChat',
+                event.data.body || 'มีข้อความใหม่ส่งถึงคุณ',
+                event.data.url || './workchat.html',
+                event.data.chat_id || 'general',
+                event.data.tag || ('workchat-local-' + Date.now()),
+                './icon-192.png'
+            )
+        );
+    } else if (event.data.type === 'DELAYED_TEST_PUSH') {
+        const delayMs = Number(event.data.delayMs) || 3000;
+        const anonKey = event.data.anonKey || '';
+        const title = event.data.title || 'WorkChat (ทดสอบระบบแจ้งเตือน)';
+        const body = event.data.body || '🔔 ทดสอบแจ้งเตือนขณะปิดหน้าจอ / ปิดแอปสำเร็จแล้ว!';
+
+        event.waitUntil(
+            new Promise((resolve) => setTimeout(resolve, delayMs)).then(async () => {
+                // 1. Trigger remote Web Push via Edge Function from inside SW
+                if (anonKey) {
+                    try {
+                        await fetch(SUPABASE_PUSH_FN_URL, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': 'Bearer ' + anonKey,
+                                'apikey': anonKey
+                            },
+                            body: JSON.stringify({
+                                sender_name: title,
+                                message_text: body,
+                                chat_id: 'general',
+                                sender_id: 'sw_test_push_' + Date.now()
+                            })
+                        });
+                    } catch (_) {}
+                }
+                // 2. Also guarantee local SW notification display
+                return showWorkchatNotification(title, body, './workchat.html', 'general', 'workchat-test-' + Date.now(), './icon-192.png');
+            })
+        );
     }
 });
 
