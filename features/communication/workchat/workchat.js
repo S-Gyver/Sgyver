@@ -2239,6 +2239,18 @@ function sendQuickLike() {
     if (window.supabaseClient) {
         window.supabaseClient.from('workchat_messages').insert([newMsg]).then(() => {});
     }
+
+    if (CHAT_STATE.realtimeChannel) {
+        try {
+            CHAT_STATE.realtimeChannel.send({
+                type: 'broadcast',
+                event: 'new_message',
+                payload: newMsg
+            });
+        } catch (_) {}
+    }
+    syncWorkchatToCloud();
+    dispatchPushNotification(newMsg);
 }
 window.sendQuickLike = sendQuickLike;
 
@@ -2468,6 +2480,9 @@ async function sendMessage() {
             window.supabaseClient.from('workchat_messages').insert([newMsg]).catch(() => {});
         } catch (_) {}
     }
+
+    // 4. Dispatch Web Push to wake up phones when app is closed
+    dispatchPushNotification(newMsg);
 }
 
 function scrollMessagesToBottom() {
@@ -2520,15 +2535,92 @@ function playIncomingChime(senderName, messageText, chatId) {
     }
 }
 
+const WORKCHAT_VAPID_PUBLIC_KEY = 'BISry9qnvms9_wSiEQPgLMxB1l5zE5nF7FJrErFXeAgT61M-Rj9eGWNVB3hOWev8By9ZSMzyFw91u2nGg3dydUk';
+
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+}
+
+async function registerPushSubscription() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    if (Notification.permission !== 'granted') return;
+
+    try {
+        const reg = await navigator.serviceWorker.ready;
+        let sub = await reg.pushManager.getSubscription();
+
+        if (!sub) {
+            const appServerKey = urlBase64ToUint8Array(WORKCHAT_VAPID_PUBLIC_KEY);
+            sub = await reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: appServerKey
+            });
+        }
+
+        if (sub && window.supabaseClient) {
+            const rawKey = sub.getKey('p256dh');
+            const rawAuth = sub.getKey('auth');
+            const p256dh = rawKey ? btoa(String.fromCharCode.apply(null, new Uint8Array(rawKey))) : '';
+            const auth = rawAuth ? btoa(String.fromCharCode.apply(null, new Uint8Array(rawAuth))) : '';
+            const currentUserId = CHAT_STATE.currentUser?.username || 'user_' + (localStorage.getItem('gyver_user_id') || 'guest');
+
+            await window.supabaseClient.from('workchat_push_subscriptions').upsert({
+                user_id: currentUserId,
+                endpoint: sub.endpoint,
+                p256dh: p256dh,
+                auth: auth,
+                user_agent: navigator.userAgent.slice(0, 200),
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'endpoint' });
+        }
+    } catch (err) {
+        console.warn('Push subscription notice:', err);
+    }
+}
+window.registerPushSubscription = registerPushSubscription;
+
+async function dispatchPushNotification(msgPayload) {
+    if (!window.supabaseClient || !msgPayload) return;
+    try {
+        const senderName = msgPayload.sender_name || CHAT_STATE.currentUser?.displayName || 'WorkChat';
+        const msgText = msgPayload.message_text || (msgPayload.attachment_url ? 'ส่งไฟล์แนบ' : 'มีข้อความใหม่');
+        const chatId = msgPayload.chat_id || CHAT_STATE.activeChatId || 'general';
+        const senderId = msgPayload.sender_id || CHAT_STATE.currentUser?.username || '';
+
+        // Call Supabase Edge Function to deliver push notifications to all other devices
+        await window.supabaseClient.functions.invoke('send-workchat-push', {
+            body: {
+                sender_name: senderName,
+                message_text: msgText,
+                chat_id: chatId,
+                sender_id: senderId
+            }
+        });
+    } catch (_) {
+        // Silently continue if edge function is not yet deployed
+    }
+}
+window.dispatchPushNotification = dispatchPushNotification;
+
 function requestNotificationPermission() {
     if ('Notification' in window && Notification.permission === 'default') {
         Notification.requestPermission().then(permission => {
             if (permission === 'granted') {
+                registerPushSubscription();
                 if (typeof showModernToast === 'function') {
                     showModernToast('เปิดการแจ้งเตือนข้อความแล้ว');
                 }
             }
         });
+    } else if (Notification.permission === 'granted') {
+        registerPushSubscription();
     }
 }
 window.requestNotificationPermission = requestNotificationPermission;
@@ -2536,12 +2628,21 @@ window.requestNotificationPermission = requestNotificationPermission;
 // Trigger notification permission on first user tap/click
 if (typeof window !== 'undefined') {
     const promptNotificationOnInteraction = () => {
-        if ('Notification' in window && Notification.permission === 'default') {
-            requestNotificationPermission();
+        if ('Notification' in window) {
+            if (Notification.permission === 'default') {
+                requestNotificationPermission();
+            } else if (Notification.permission === 'granted') {
+                registerPushSubscription();
+            }
         }
     };
     window.addEventListener('click', promptNotificationOnInteraction, { once: true });
     window.addEventListener('touchend', promptNotificationOnInteraction, { once: true });
+
+    // Also auto-sync push subscription if already granted
+    if ('Notification' in window && Notification.permission === 'granted') {
+        setTimeout(registerPushSubscription, 1500);
+    }
 }
 
 
@@ -3253,6 +3354,8 @@ function shareFileToChat(fileId) {
     if (window.supabaseClient) {
         window.supabaseClient.from('workchat_messages').insert([newMsg]).catch(() => {});
     }
+
+    dispatchPushNotification(newMsg);
 
     renderChatsList();
     renderMessages();
