@@ -1351,12 +1351,46 @@ function setupRealtimeSubscription() {
                     const idx = cachedClassrooms.findIndex(c => c.id === activeClassroomId);
                     if (idx !== -1) cachedClassrooms[idx] = activeClassroom;
 
+                    if (activeClassroom.attendance_logs && activeClassroom.attendance_logs[currentAttendanceDate]) {
+                        currentAttendanceMap = Object.assign({}, currentAttendanceMap, activeClassroom.attendance_logs[currentAttendanceDate]);
+                        try {
+                            localStorage.setItem(`gyver_attendance_${activeClassroomId}`, JSON.stringify(activeClassroom.attendance_logs));
+                        } catch (_) {}
+                    }
+
                     renderActiveClassroomHeader();
                     renderTabScan();
                     renderTabAttendance();
                     updateProjectorRoster();
-
-                    showToast('info', 'นักเรียนอัปเดต!', 'มีนักเรียนเข้าร่วมห้องเรียนเพิ่มเติม');
+                    if (typeof renderAttendanceQrModalFeed === 'function') {
+                        renderAttendanceQrModalFeed();
+                    }
+                }
+            }
+        )
+        .on(
+            'broadcast',
+            { event: 'attendance_checkin' },
+            ({ payload }) => {
+                if (payload && payload.studentKey && payload.date) {
+                    if (!activeClassroom.attendance_logs) activeClassroom.attendance_logs = {};
+                    if (!activeClassroom.attendance_logs[payload.date]) activeClassroom.attendance_logs[payload.date] = {};
+                    activeClassroom.attendance_logs[payload.date][payload.studentKey] = {
+                        status: payload.status || 'present',
+                        note: payload.note || ''
+                    };
+                    if (payload.date === currentAttendanceDate) {
+                        currentAttendanceMap[payload.studentKey] = activeClassroom.attendance_logs[payload.date][payload.studentKey];
+                    }
+                    try {
+                        localStorage.setItem(`gyver_attendance_${activeClassroomId}`, JSON.stringify(activeClassroom.attendance_logs));
+                    } catch (_) {}
+                    renderActiveClassroomHeader();
+                    renderTabAttendance();
+                    if (typeof renderAttendanceQrModalFeed === 'function') {
+                        renderAttendanceQrModalFeed();
+                    }
+                    showToast('success', 'เช็คชื่อสำเร็จ! 📲', `${payload.studentName || payload.studentKey} สแกนเช็คชื่อแล้ว`);
                 }
             }
         )
@@ -1967,9 +2001,9 @@ function renderTabAttendance() {
 
     tbody.innerHTML = students.map((s, idx) => {
         const studentKey = s.user_id || s.name;
-        const currentRecord = currentAttendanceMap[studentKey] || { status: 'present', note: '' };
-        const status = currentRecord.status || 'present';
-        const note = currentRecord.note || '';
+        const currentRecord = currentAttendanceMap[studentKey] || ( currentAttendanceMap[s.name] ) || null;
+        const status = currentRecord ? (currentRecord.status || 'present') : '';
+        const note = currentRecord ? (currentRecord.note || '') : '';
 
         if (status === 'present') present++;
         else if (status === 'late') late++;
@@ -2036,7 +2070,7 @@ function setStudentAttendanceStatus(studentKey, status) {
     } else {
         currentAttendanceMap[studentKey].status = status;
     }
-    renderTabAttendance();
+    saveAttendanceRecord(true);
 }
 
 function updateStudentAttendanceNote(studentKey, noteVal) {
@@ -2045,6 +2079,7 @@ function updateStudentAttendanceNote(studentKey, noteVal) {
     } else {
         currentAttendanceMap[studentKey].note = noteVal;
     }
+    saveAttendanceRecord(true);
 }
 
 function markAllAttendance(status) {
@@ -2055,12 +2090,21 @@ function markAllAttendance(status) {
         const oldNote = currentAttendanceMap[studentKey]?.note || '';
         currentAttendanceMap[studentKey] = { status: status, note: oldNote };
     });
-    renderTabAttendance();
-    showToast('info', 'อัปเดตสถานะ', `เช็ค "${status === 'present' ? 'มา' : status}" ให้นักเรียนทุกคนแล้ว`);
+    saveAttendanceRecord(true);
+    showToast('success', 'เช็คชื่อทุกคนแล้ว', `บันทึกสถานะ "${status === 'present' ? 'มา' : status}" ให้นักเรียนทุกคนเรียบร้อย`);
 }
 
 function resetAttendanceStatus() {
     currentAttendanceMap = {};
+    if (activeClassroom && activeClassroom.attendance_logs) {
+        delete activeClassroom.attendance_logs[currentAttendanceDate];
+        try {
+            localStorage.setItem(`gyver_attendance_${activeClassroomId}`, JSON.stringify(activeClassroom.attendance_logs));
+        } catch (_) {}
+        if (supabaseClient && activeClassroomId) {
+            supabaseClient.from('classrooms').update({ attendance_logs: activeClassroom.attendance_logs }).eq('id', activeClassroomId).then(() => {});
+        }
+    }
     renderTabAttendance();
 }
 
@@ -2087,16 +2131,29 @@ function updateAttendanceStatsBadge() {
     badge.innerText = `${checkedCount} / ${students.length}`;
 }
 
-async function saveAttendanceRecord() {
+async function saveAttendanceRecord(silent = false) {
     if (!activeClassroomId || !activeClassroom) return;
 
+    // หากกดปุ่ม "บันทึกการเช็คชื่อ" โดยตรงแล้วยังไม่ได้กดเลือกใครเลย ให้เช็ค "มา" ให้ทุกคนเป็นค่าเริ่มต้น
+    if (!silent && Object.keys(currentAttendanceMap).length === 0 && Array.isArray(activeClassroom.students) && activeClassroom.students.length > 0) {
+        activeClassroom.students.forEach(s => {
+            const studentKey = s.user_id || s.name;
+            currentAttendanceMap[studentKey] = { status: 'present', note: '' };
+        });
+    }
+
     const existingLogs = activeClassroom.attendance_logs || {};
-    existingLogs[currentAttendanceDate] = currentAttendanceMap;
+    existingLogs[currentAttendanceDate] = Object.assign({}, currentAttendanceMap);
     activeClassroom.attendance_logs = existingLogs;
-    localStorage.setItem(`gyver_attendance_${activeClassroomId}`, JSON.stringify(existingLogs));
+    try {
+        localStorage.setItem(`gyver_attendance_${activeClassroomId}`, JSON.stringify(existingLogs));
+    } catch (_) {}
 
     // อัปเดตตารางให้แสดงสถิติและคะแนนสะสมใหม่ทันที
     renderTabAttendance();
+    if (typeof renderAttendanceQrModalFeed === 'function') {
+        renderAttendanceQrModalFeed();
+    }
 
     try {
         const { error } = await supabaseClient
@@ -2104,17 +2161,264 @@ async function saveAttendanceRecord() {
             .update({ attendance_logs: existingLogs })
             .eq('id', activeClassroomId);
 
-        if (!error) {
-            showToast('success', 'บันทึกสำเร็จ!', `บันทึกข้อมูลการเช็คชื่อวันที่ ${currentAttendanceDate} เรียบร้อยแล้ว`);
-        } else {
-            console.warn("Supabase attendance_logs notice:", error.message);
-            showToast('success', 'บันทึกสำเร็จ!', `บันทึกข้อมูลการเช็คชื่อเรียบร้อยแล้ว`);
+        if (!silent) {
+            if (!error) {
+                showToast('success', 'บันทึกสำเร็จ!', `บันทึกข้อมูลการเช็คชื่อวันที่ ${currentAttendanceDate} เรียบร้อยแล้ว`);
+            } else {
+                showToast('success', 'บันทึกสำเร็จ!', `บันทึกข้อมูลการเช็คชื่อเรียบร้อยแล้ว`);
+            }
         }
     } catch (err) {
-        console.warn("Save attendance error:", err);
-        showToast('success', 'บันทึกสำเร็จ!', `บันทึกข้อมูลการเช็คชื่อเรียบร้อยแล้ว`);
+        if (!silent) {
+            showToast('success', 'บันทึกสำเร็จ!', `บันทึกข้อมูลการเช็คชื่อเรียบร้อยแล้ว`);
+        }
     }
 }
+
+// 📲 ระบบเปิด QR Code สแกนเช็คชื่อเข้าเรียนรายวัน (Live QR Attendance Check-in)
+let currentAttendanceQrMode = 'present'; // 'present' | 'late'
+let _attQrPollTimer = null;
+
+function getAttendanceCheckinUrl() {
+    const roomCode = activeClassroom?.room_code || '';
+    const origin = window.location.origin;
+    let basePath = window.location.pathname;
+    if (basePath.includes('/auth/my_classroom/')) {
+        basePath = basePath.replace('/auth/my_classroom/my_classroom.html', '/auth/student_join/student_join.html');
+    } else {
+        basePath = '/auth/student_join/student_join.html';
+    }
+    const dateStr = currentAttendanceDate || new Date().toISOString().split('T')[0];
+    return `${origin}${basePath}?code=${encodeURIComponent(roomCode)}&mode=checkin&date=${encodeURIComponent(dateStr)}&status=${encodeURIComponent(currentAttendanceQrMode)}`;
+}
+
+function openAttendanceQrModal() {
+    if (!activeClassroom) return;
+    const dateInput = document.getElementById('attendance-date-input');
+    if (dateInput && dateInput.value) {
+        currentAttendanceDate = dateInput.value;
+    } else {
+        currentAttendanceDate = new Date().toISOString().split('T')[0];
+    }
+
+    currentAttendanceQrMode = 'present';
+    updateAttendanceQrModalUI();
+    renderAttendanceQrModalFeed();
+
+    const modalEl = document.getElementById('attendanceQrModal');
+    if (modalEl) {
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+
+        // Start 2.5s live sync polling while modal is open so any student scan appears immediately
+        clearInterval(_attQrPollTimer);
+        _attQrPollTimer = setInterval(async () => {
+            if (!modalEl.classList.contains('show')) {
+                clearInterval(_attQrPollTimer);
+                return;
+            }
+            await pollLatestAttendanceFromCloud();
+        }, 2500);
+
+        modalEl.addEventListener('hidden.bs.modal', () => {
+            clearInterval(_attQrPollTimer);
+        }, { once: true });
+    }
+}
+window.openAttendanceQrModal = openAttendanceQrModal;
+
+async function pollLatestAttendanceFromCloud() {
+    if (!activeClassroomId || !supabaseClient) return;
+    try {
+        const { data } = await supabaseClient
+            .from('classrooms')
+            .select('attendance_logs, students')
+            .eq('id', activeClassroomId)
+            .maybeSingle();
+
+        if (data && data.attendance_logs) {
+            const remoteDay = data.attendance_logs[currentAttendanceDate] || {};
+            const localKeys = Object.keys(currentAttendanceMap);
+            const remoteKeys = Object.keys(remoteDay);
+
+            let hasNew = false;
+            remoteKeys.forEach(k => {
+                if (!currentAttendanceMap[k] || currentAttendanceMap[k].status !== remoteDay[k].status || currentAttendanceMap[k].note !== remoteDay[k].note) {
+                    hasNew = true;
+                }
+            });
+
+            if (hasNew || remoteKeys.length !== localKeys.length) {
+                activeClassroom.attendance_logs = data.attendance_logs;
+                if (Array.isArray(data.students) && data.students.length > 0) {
+                    activeClassroom.students = data.students;
+                }
+                currentAttendanceMap = Object.assign({}, currentAttendanceMap, remoteDay);
+                try {
+                    localStorage.setItem(`gyver_attendance_${activeClassroomId}`, JSON.stringify(activeClassroom.attendance_logs));
+                } catch (_) {}
+                renderActiveClassroomHeader();
+                renderTabAttendance();
+                renderAttendanceQrModalFeed();
+            }
+        }
+    } catch (_) {}
+}
+
+function setAttendanceQrMode(mode) {
+    currentAttendanceQrMode = (mode === 'late') ? 'late' : 'present';
+    updateAttendanceQrModalUI();
+}
+window.setAttendanceQrMode = setAttendanceQrMode;
+
+function updateAttendanceQrModalUI() {
+    if (!activeClassroom) return;
+    const url = getAttendanceCheckinUrl();
+    const qrImg = document.getElementById('att-qr-image');
+    if (qrImg) {
+        qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=340x340&data=${encodeURIComponent(url)}`;
+    }
+
+    const linkInput = document.getElementById('att-qr-link-input');
+    if (linkInput) linkInput.value = url;
+
+    const codeBadge = document.getElementById('att-qr-code-badge');
+    if (codeBadge) codeBadge.innerText = `รหัส: ${activeClassroom.room_code || '------'}`;
+
+    const dateBadge = document.getElementById('att-qr-date-badge');
+    if (dateBadge) dateBadge.innerHTML = `<i class="bi bi-calendar-event me-1"></i>วันที่: ${currentAttendanceDate}`;
+
+    const titleEl = document.getElementById('att-qr-modal-title');
+    if (titleEl) titleEl.innerText = `สแกน QR เช็คชื่อ • ${activeClassroom.class_name || 'ห้องเรียน'}`;
+
+    const btnPresent = document.getElementById('btn-att-qr-mode-present');
+    const btnLate = document.getElementById('btn-att-qr-mode-late');
+    const statusInd = document.getElementById('att-qr-status-indicator');
+
+    if (currentAttendanceQrMode === 'present') {
+        if (btnPresent) btnPresent.className = 'btn btn-sm rounded-pill flex-grow-1 fw-bold py-1.5 btn-success shadow-sm';
+        if (btnLate) btnLate.className = 'btn btn-sm rounded-pill flex-grow-1 fw-bold py-1.5 btn-light text-secondary';
+        if (statusInd) {
+            statusInd.className = 'badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 small';
+            statusInd.innerText = '🟢 กำลังเปิดรับสแกนสถานะ: "มาเรียน (Present)"';
+        }
+    } else {
+        if (btnPresent) btnPresent.className = 'btn btn-sm rounded-pill flex-grow-1 fw-bold py-1.5 btn-light text-secondary';
+        if (btnLate) btnLate.className = 'btn btn-sm rounded-pill flex-grow-1 fw-bold py-1.5 btn-warning text-dark shadow-sm';
+        if (statusInd) {
+            statusInd.className = 'badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-3 py-1 small';
+            statusInd.innerText = '🟡 กำลังเปิดรับสแกนสถานะ: "มาสาย (Late)"';
+        }
+    }
+}
+
+function renderAttendanceQrModalFeed() {
+    if (!activeClassroom) return;
+    const students = Array.isArray(activeClassroom.students) ? activeClassroom.students : [];
+    const doneListEl = document.getElementById('att-qr-done-list');
+    const waitingListEl = document.getElementById('att-qr-waiting-list');
+    if (!doneListEl || !waitingListEl) return;
+
+    const doneStudents = [];
+    const waitingStudents = [];
+
+    students.forEach((s, idx) => {
+        const studentKey = s.user_id || s.name;
+        const rec = currentAttendanceMap[studentKey] || currentAttendanceMap[s.name] || null;
+        if (rec && (rec.status === 'present' || rec.status === 'late' || rec.status === 'leave')) {
+            doneStudents.push({ s, idx, studentKey, rec });
+        } else {
+            waitingStudents.push({ s, idx, studentKey, rec });
+        }
+    });
+
+    const total = students.length;
+    const doneCount = doneStudents.length;
+    const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
+
+    const counterEl = document.getElementById('att-qr-checked-counter');
+    if (counterEl) counterEl.innerText = `${doneCount} / ${total} คน`;
+
+    const barEl = document.getElementById('att-qr-progress-bar');
+    if (barEl) barEl.style.width = `${pct}%`;
+
+    const doneBadge = document.getElementById('att-qr-done-count');
+    if (doneBadge) doneBadge.innerText = doneCount;
+
+    const waitBadge = document.getElementById('att-qr-waiting-count');
+    if (waitBadge) waitBadge.innerText = waitingStudents.length;
+
+    if (doneStudents.length === 0) {
+        doneListEl.innerHTML = `<div class="text-center py-4 text-muted small border rounded-3 bg-light">ยังไม่มีนักเรียนสแกนเช็คชื่อ</div>`;
+    } else {
+        doneListEl.innerHTML = doneStudents.map(({ s, idx, rec }) => {
+            const avatar = s.image || `https://api.dicebear.com/7.x/big-smile/svg?seed=${encodeURIComponent(s.name || 'Student')}`;
+            const badgeHtml = rec.status === 'late'
+                ? '<span class="badge bg-warning text-dark rounded-pill">มาสาย</span>'
+                : (rec.status === 'leave' ? '<span class="badge bg-info text-dark rounded-pill">ลา</span>' : '<span class="badge bg-success rounded-pill">✓ มา</span>');
+            return `
+                <div class="d-flex align-items-center justify-content-between p-2 rounded-3 border bg-white shadow-sm">
+                    <div class="d-flex align-items-center gap-2 text-truncate">
+                        <img src="${avatar}" class="rounded-circle border" style="width: 34px; height: 34px; object-fit: cover;">
+                        <div class="text-truncate">
+                            <div class="fw-bold text-dark small text-truncate">${idx + 1}. ${escapeHtml(s.name)}</div>
+                            <div class="text-muted" style="font-size: 0.68rem;">${escapeHtml(rec.note || 'เช็คชื่อแล้ว')}</div>
+                        </div>
+                    </div>
+                    ${badgeHtml}
+                </div>
+            `;
+        }).join('');
+    }
+
+    if (waitingStudents.length === 0) {
+        waitingListEl.innerHTML = `<div class="text-center py-4 text-success small fw-bold border border-success-subtle rounded-3 bg-success-subtle">🎉 นักเรียนเช็คชื่อครบทุกคนแล้ว!</div>`;
+    } else {
+        waitingListEl.innerHTML = waitingStudents.map(({ s, idx, studentKey, rec }) => {
+            const avatar = s.image || `https://api.dicebear.com/7.x/big-smile/svg?seed=${encodeURIComponent(s.name || 'Student')}`;
+            const isAbsent = rec && rec.status === 'absent';
+            return `
+                <div class="d-flex align-items-center justify-content-between p-2 rounded-3 border bg-light">
+                    <div class="d-flex align-items-center gap-2 text-truncate">
+                        <img src="${avatar}" class="rounded-circle border opacity-75" style="width: 32px; height: 32px; object-fit: cover;">
+                        <div class="fw-semibold text-secondary small text-truncate">${idx + 1}. ${escapeHtml(s.name)}</div>
+                    </div>
+                    <div class="d-flex gap-1 flex-shrink-0">
+                        <button type="button" class="btn btn-xs btn-outline-success rounded-pill py-0 px-2" style="font-size: 0.7rem;" onclick="setStudentAttendanceStatus('${escapeHtml(studentKey)}', 'present')" title="เช็คมาให้ทันที">✓ มา</button>
+                        <button type="button" class="btn btn-xs ${isAbsent ? 'btn-danger' : 'btn-outline-danger'} rounded-pill py-0 px-2" style="font-size: 0.7rem;" onclick="setStudentAttendanceStatus('${escapeHtml(studentKey)}', 'absent')" title="เช็คขาด">ขาด</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+}
+window.renderAttendanceQrModalFeed = renderAttendanceQrModalFeed;
+
+function copyAttendanceQrLink() {
+    const input = document.getElementById('att-qr-link-input');
+    if (input) {
+        input.select();
+        navigator.clipboard.writeText(input.value);
+        showToast('success', 'คัดลอกลิงก์เช็คชื่อแล้ว', 'ส่งลิงก์ให้นักเรียนกดเช็คชื่อได้เลยครับ');
+    }
+}
+window.copyAttendanceQrLink = copyAttendanceQrLink;
+
+function markRemainingAsAbsentFromQrModal() {
+    if (!activeClassroom) return;
+    const students = Array.isArray(activeClassroom.students) ? activeClassroom.students : [];
+    let count = 0;
+    students.forEach(s => {
+        const studentKey = s.user_id || s.name;
+        if (!currentAttendanceMap[studentKey] && !currentAttendanceMap[s.name]) {
+            currentAttendanceMap[studentKey] = { status: 'absent', note: 'ไม่ได้สแกนเช็คชื่อ' };
+            count++;
+        }
+    });
+    saveAttendanceRecord(false);
+    showToast('info', 'อัปเดตสถานะขาดเรียน', `เช็ค "ขาด" ให้นักเรียนที่ยังไม่สแกนจำนวน ${count} คนแล้ว`);
+}
+window.markRemainingAsAbsentFromQrModal = markRemainingAsAbsentFromQrModal;
 
 // ⚙️ Modal: ตั้งเกณฑ์คะแนนเช็คชื่อ (Attendance Criteria)
 function openAttendanceCriteriaModal() {

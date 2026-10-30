@@ -24,6 +24,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     // โหลดข้อมูลห้องเรียน
     await fetchClassroomData(code);
 
+    // 📲 ตรวจสอบว่าเป็นโหมดสแกน QR เช็คชื่อรายวัน (mode=checkin) หรือไม่
+    const mode = urlParams.get('mode');
+    if (mode === 'checkin' && currentClassData) {
+        await setupAttendanceCheckinMode(urlParams);
+        return;
+    }
+
     // ตรวจสอบการสมัครใช้งาน / ล็อกอิน
     try {
         const { data: { session } } = await supabaseClient.auth.getSession();
@@ -558,5 +565,255 @@ async function submitStudentName(e) {
         alert('เกิดข้อผิดพลาดในการบันทึกห้องเรียน กรุณาลองใหม่อีกครั้ง');
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<i class="bi bi-send-fill me-1"></i> ยืนยันเข้าร่วมห้อง';
+    }
+}
+
+// =============================================================================
+// 📲 โหมดสแกน QR เช็คชื่อเข้าเรียนรายวัน (Daily Attendance Check-in Mode)
+// =============================================================================
+let selectedCheckinStudentKey = null;
+let selectedCheckinStudentObj = null;
+let currentCheckinDate = '';
+let currentCheckinStatus = 'present';
+
+async function setupAttendanceCheckinMode(urlParams) {
+    const checkingState = document.getElementById('auth-checking-state');
+    const joinContent = document.getElementById('join-content');
+    const checkinContent = document.getElementById('checkin-content');
+
+    if (checkingState) checkingState.classList.add('d-none');
+    if (joinContent) joinContent.classList.add('d-none');
+    if (checkinContent) checkinContent.classList.remove('d-none');
+
+    currentCheckinDate = urlParams.get('date') || new Date().toISOString().split('T')[0];
+    currentCheckinStatus = urlParams.get('status') === 'late' ? 'late' : 'present';
+
+    const roomNameEl = document.getElementById('checkin-room-name');
+    const dateBadgeEl = document.getElementById('checkin-date-badge');
+    const statusBadgeEl = document.getElementById('checkin-status-badge');
+
+    if (roomNameEl) roomNameEl.innerText = currentClassData.class_name || 'ห้องเรียน';
+    if (dateBadgeEl) dateBadgeEl.innerText = `วันที่: ${currentCheckinDate}`;
+    if (statusBadgeEl) {
+        if (currentCheckinStatus === 'late') {
+            statusBadgeEl.className = 'badge bg-warning text-dark rounded-pill px-3 py-1';
+            statusBadgeEl.innerText = '🟡 สถานะ: มาสาย';
+        } else {
+            statusBadgeEl.className = 'badge bg-success text-white rounded-pill px-3 py-1';
+            statusBadgeEl.innerText = '🟢 สถานะ: มาเรียน';
+        }
+    }
+
+    // ลองตรวจสอบว่ามี session ล็อกอิน หรือเคยจำชื่อนักเรียนในเครื่องนี้ไว้หรือไม่
+    let rememberedKey = null;
+    try {
+        rememberedKey = localStorage.getItem(`gyver_checkin_student_${currentClassData.room_code}`);
+    } catch (_) {}
+
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session?.user) {
+            currentStudentUser = session.user;
+            const students = Array.isArray(currentClassData.students) ? currentClassData.students : [];
+            const matched = students.find(s => (s.user_id && s.user_id === session.user.id) || (s.email && s.email === session.user.email));
+            if (matched) {
+                rememberedKey = matched.user_id || matched.name;
+            }
+        }
+    } catch (_) {}
+
+    renderCheckinStudentList('', rememberedKey);
+}
+
+function renderCheckinStudentList(filterText = '', preselectKey = null) {
+    const listEl = document.getElementById('checkin-student-list');
+    const confirmBtn = document.getElementById('btn-confirm-checkin');
+    if (!listEl || !currentClassData) return;
+
+    const students = Array.isArray(currentClassData.students) ? currentClassData.students : [];
+    const dayLogs = (currentClassData.attendance_logs && currentClassData.attendance_logs[currentCheckinDate]) || {};
+    const q = (filterText || '').trim().toLowerCase();
+
+    if (students.length === 0) {
+        listEl.innerHTML = `
+            <div class="text-center py-4 text-muted small">
+                ยังไม่มีรายชื่อนักเรียนในห้องนี้<br>
+                กรุณากดปุ่มด้านล่างเพื่อลงทะเบียนเพิ่มชื่อเข้าห้องเรียนก่อนครับ
+            </div>
+        `;
+        return;
+    }
+
+    if (preselectKey) {
+        const found = students.find(s => (s.user_id || s.name) === preselectKey || s.name === preselectKey);
+        if (found) {
+            selectedCheckinStudentKey = found.user_id || found.name;
+            selectedCheckinStudentObj = found;
+            if (confirmBtn) {
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i> ยืนยันเช็คชื่อ "${found.name}"`;
+            }
+        }
+    }
+
+    const filtered = students.map((s, idx) => ({ s, idx })).filter(({ s }) => {
+        if (!q) return true;
+        return (s.name && s.name.toLowerCase().includes(q)) || (s.nickname && s.nickname.toLowerCase().includes(q));
+    });
+
+    listEl.innerHTML = filtered.map(({ s, idx }) => {
+        const sKey = s.user_id || s.name;
+        const isSelected = (selectedCheckinStudentKey === sKey || selectedCheckinStudentKey === s.name);
+        const alreadyChecked = dayLogs[sKey] || dayLogs[s.name];
+        const avatar = s.image || `https://api.dicebear.com/7.x/big-smile/svg?seed=${encodeURIComponent(s.name || 'Student')}`;
+
+        return `
+            <div onclick="selectStudentForCheckin(${idx})"
+                 class="d-flex align-items-center justify-content-between p-2 mb-1.5 rounded-3 border ${isSelected ? 'border-success bg-success-subtle shadow-sm' : 'bg-white'}"
+                 style="cursor: pointer; transition: all 0.15s;">
+                <div class="d-flex align-items-center gap-2.5 text-truncate">
+                    <img src="${avatar}" class="rounded-circle border" style="width: 40px; height: 40px; object-fit: cover; flex-shrink: 0;">
+                    <div class="text-truncate">
+                        <div class="fw-bold text-dark small text-truncate">${idx + 1}. ${s.name}</div>
+                        <div class="text-muted" style="font-size: 0.72rem;">
+                            ${alreadyChecked ? '<span class="text-success fw-semibold">✓ เช็คชื่อวันนี้แล้ว</span>' : 'แตะเพื่อเลือกชื่อของคุณ'}
+                        </div>
+                    </div>
+                </div>
+                <div class="ms-2 flex-shrink-0">
+                    ${isSelected
+                        ? '<i class="bi bi-check-circle-fill text-success fs-4"></i>'
+                        : (alreadyChecked ? '<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill">เช็คแล้ว</span>' : '<i class="bi bi-circle text-muted fs-5"></i>')}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function filterCheckinStudentList(val) {
+    renderCheckinStudentList(val);
+}
+
+function selectStudentForCheckin(studentIndex) {
+    if (!currentClassData || !Array.isArray(currentClassData.students)) return;
+    const s = currentClassData.students[studentIndex];
+    if (!s) return;
+
+    selectedCheckinStudentKey = s.user_id || s.name;
+    selectedCheckinStudentObj = s;
+
+    const confirmBtn = document.getElementById('btn-confirm-checkin');
+    if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i> ยืนยันเช็คชื่อ "${s.name}"`;
+    }
+
+    const searchVal = document.getElementById('checkin-search-input')?.value || '';
+    renderCheckinStudentList(searchVal);
+}
+
+async function submitStudentCheckin() {
+    if (!currentClassData || !selectedCheckinStudentKey || !selectedCheckinStudentObj) {
+        alert('กรุณาแตะเลือกชื่อของคุณก่อนครับ');
+        return;
+    }
+
+    const confirmBtn = document.getElementById('btn-confirm-checkin');
+    if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>กำลังบันทึกการเช็คชื่อ...';
+    }
+
+    const extraNote = document.getElementById('checkin-note-input')?.value?.trim() || '';
+    const nowTime = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+    const noteText = extraNote ? `สแกน QR ${nowTime} น. (${extraNote})` : `สแกน QR ${nowTime} น.`;
+
+    try {
+        // 1. ดึง attendance_logs ล่าสุดจากฐานข้อมูลเพื่อไม่ให้ทับข้อมูลเพื่อนที่สแกนพร้อมกัน
+        const { data: freshRoom } = await supabaseClient
+            .from('classrooms')
+            .select('attendance_logs')
+            .eq('id', currentClassData.id)
+            .maybeSingle();
+
+        const logs = (freshRoom && freshRoom.attendance_logs && typeof freshRoom.attendance_logs === 'object')
+            ? freshRoom.attendance_logs
+            : (currentClassData.attendance_logs || {});
+
+        if (!logs[currentCheckinDate]) {
+            logs[currentCheckinDate] = {};
+        }
+
+        logs[currentCheckinDate][selectedCheckinStudentKey] = {
+            status: currentCheckinStatus,
+            note: noteText
+        };
+
+        const { error } = await supabaseClient
+            .from('classrooms')
+            .update({ attendance_logs: logs })
+            .eq('id', currentClassData.id);
+
+        if (error) throw error;
+
+        // 2. ส่ง Realtime Broadcast แจ้งหน้าจอครูทันที
+        try {
+            const ch = supabaseClient.channel(`classroom-channel-${currentClassData.id}`);
+            ch.subscribe((status) => {
+                if (status === 'SUBSCRIBED') {
+                    ch.send({
+                        type: 'broadcast',
+                        event: 'attendance_checkin',
+                        payload: {
+                            date: currentCheckinDate,
+                            studentKey: selectedCheckinStudentKey,
+                            studentName: selectedCheckinStudentObj.name,
+                            status: currentCheckinStatus,
+                            note: noteText
+                        }
+                    });
+                }
+            });
+        } catch (_) {}
+
+        // 3. จำชื่อนักเรียนไว้ในเครื่องสำหรับสแกนครั้งถัดไป
+        try {
+            localStorage.setItem(`gyver_checkin_student_${currentClassData.room_code}`, selectedCheckinStudentKey);
+        } catch (_) {}
+
+        // 4. แสดงหน้าเช็คชื่อสำเร็จ
+        document.getElementById('checkin-step-select')?.classList.add('d-none');
+        const successBox = document.getElementById('checkin-success-box');
+        if (successBox) successBox.classList.remove('d-none');
+
+        const avatarEl = document.getElementById('checkin-success-avatar');
+        const nameEl = document.getElementById('checkin-success-name');
+        const metaEl = document.getElementById('checkin-success-meta');
+        const goBtn = document.getElementById('btn-checkin-go-classroom');
+
+        if (avatarEl) {
+            avatarEl.src = selectedCheckinStudentObj.image || `https://api.dicebear.com/7.x/big-smile/svg?seed=${encodeURIComponent(selectedCheckinStudentObj.name)}`;
+        }
+        if (nameEl) nameEl.innerText = selectedCheckinStudentObj.name;
+        if (metaEl) metaEl.innerText = `วันที่ ${currentCheckinDate} • เวลา ${nowTime} น. (${currentCheckinStatus === 'late' ? 'มาสาย' : 'มาเรียน'})`;
+        if (goBtn && currentClassData.room_code) {
+            goBtn.href = `../my_classroom/student_view.html?code=${encodeURIComponent(currentClassData.room_code)}`;
+        }
+    } catch (err) {
+        console.error('Checkin error:', err);
+        alert('เกิดข้อผิดพลาดในการบันทึกเช็คชื่อ กรุณาลองใหม่อีกครั้ง');
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i> ยืนยันเช็คชื่อ "${selectedCheckinStudentObj.name}"`;
+        }
+    }
+}
+
+function switchToRegisterNewStudentMode() {
+    document.getElementById('checkin-content')?.classList.add('d-none');
+    if (currentStudentUser) {
+        setupAuthenticatedStudentUI();
+    } else {
+        setupGuestStudentUI();
     }
 }

@@ -180,6 +180,60 @@
                 </div>
             </div>
         </div>
+
+        <!-- 📲 โหมดสแกน QR เช็คชื่อเข้าเรียนรายวัน (Daily Attendance Check-in Mode) -->
+        <div id="checkin-content" class="d-none text-start">
+            <div class="text-center mb-3">
+                <div class="d-inline-flex align-items-center justify-content-center bg-success-subtle text-success rounded-circle mb-2 shadow-sm" style="width: 56px; height: 56px;">
+                    <i class="bi bi-qr-code-scan fs-3"></i>
+                </div>
+                <h4 class="fw-bold text-dark mb-1">สแกนเช็คชื่อเข้าเรียน</h4>
+                <div class="d-flex justify-content-center align-items-center gap-2 flex-wrap">
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1" id="checkin-room-name">ห้องเรียน</span>
+                    <span class="badge bg-light text-dark border rounded-pill px-3 py-1 font-monospace" id="checkin-date-badge">วันที่: -</span>
+                    <span class="badge bg-success text-white rounded-pill px-3 py-1" id="checkin-status-badge">สถานะ: มาเรียน</span>
+                </div>
+            </div>
+
+            <div id="checkin-step-select">
+                <label class="form-label small fw-bold text-secondary mb-1">
+                    <i class="bi bi-person-check-fill text-primary me-1"></i>แตะเลือกชื่อของคุณในห้องเรียนนี้:
+                </label>
+                <div class="input-group input-group-sm mb-2">
+                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" id="checkin-search-input" class="form-control bg-light border-start-0" placeholder="ค้นหาชื่อของคุณ..." oninput="filterCheckinStudentList(this.value)">
+                </div>
+
+                <div id="checkin-student-list" class="border rounded-4 p-2 bg-light mb-3" style="max-height: 300px; overflow-y: auto;">
+                    <div class="text-center py-4 text-muted small">กำลังโหลดรายชื่อนักเรียน...</div>
+                </div>
+
+                <div class="mb-3">
+                    <input type="text" id="checkin-note-input" class="form-control form-control-sm rounded-3" placeholder="หมายเหตุเพิ่มเติม (ถ้ามี)">
+                </div>
+
+                <button type="button" id="btn-confirm-checkin" class="btn btn-success btn-lg w-100 fw-bold rounded-pill shadow" onclick="submitStudentCheckin()" disabled>
+                    <i class="bi bi-check-circle-fill me-1"></i> ยืนยันเช็คชื่อเข้าเรียน
+                </button>
+
+                <div class="text-center mt-3 pt-2 border-top">
+                    <a href="javascript:void(0)" onclick="switchToRegisterNewStudentMode()" class="small text-primary fw-semibold text-decoration-none">
+                        <i class="bi bi-person-plus me-1"></i>ยังไม่มีชื่อในรายการ? กดลงทะเบียนเพิ่มชื่อเข้าห้องเรียน
+                    </a>
+                </div>
+            </div>
+
+            <!-- หน้าแสดงผลเมื่อเช็คชื่อสำเร็จ -->
+            <div id="checkin-success-box" class="text-center p-4 bg-success-subtle border border-success-subtle rounded-4 d-none">
+                <img id="checkin-success-avatar" src="" class="rounded-circle border border-3 border-success shadow-sm mb-2" style="width: 76px; height: 76px; object-fit: cover;">
+                <h5 class="fw-bold text-success mb-1"><i class="bi bi-patch-check-fill me-1"></i>เช็คชื่อเข้าเรียนสำเร็จ!</h5>
+                <div class="fw-bold text-dark fs-5 mb-1" id="checkin-success-name">-</div>
+                <div class="small text-secondary mb-3" id="checkin-success-meta">-</div>
+                <a id="btn-checkin-go-classroom" href="#" class="btn btn-primary fw-bold rounded-pill px-4 py-2 w-100 shadow-sm mb-2">
+                    <i class="bi bi-mortarboard-fill me-1"></i>เข้าดูใบงาน / เอกสารในห้องเรียน
+                </a>
+            </div>
+        </div>
     </div>
 
     <!-- 🔑 Quick Login Modal (สำหรับนักเรียนที่มีบัญชีอยู่แล้ว) -->
