@@ -1928,6 +1928,39 @@ function renderAnalyticsView() {
     });
 }
 
+// 🧹 ล้างรายชื่อและผลสอบทั้งหมดของแบบทดสอบปัจจุบัน (เริ่มรอบใหม่)
+async function clearQuizResponses() {
+    if (!currentQuiz) return;
+    const msg = 'ต้องการล้างรายชื่อและผลสอบทั้งหมดของแบบทดสอบนี้ใช่หรือไม่? (ไม่สามารถกู้คืนได้)';
+    const swal = typeof getCyberSwal === 'function' ? getCyberSwal() : null;
+    if (swal) {
+        const result = await swal.fire({
+            icon: 'warning',
+            title: 'ล้างรายชื่อ (เริ่มรอบใหม่)?',
+            text: msg,
+            showCancelButton: true,
+            confirmButtonText: 'ล้างข้อมูล',
+            cancelButtonText: 'ยกเลิก'
+        });
+        if (!result.isConfirmed) return;
+    } else if (!confirm(msg)) {
+        return;
+    }
+
+    saveLocalQuizResponses(currentQuiz.id, []);
+    if (window.supabaseClient && isSupabaseTableAvailable) {
+        try {
+            await window.supabaseClient.from('gyver_quiz_responses').delete().eq('quiz_id', currentQuiz.id);
+        } catch (e) {
+            console.warn('Could not clear responses on Supabase', e);
+        }
+    }
+    renderAnalyticsView();
+    const toast = getCyberToast();
+    if (toast) toast.fire({ icon: 'success', title: 'ล้างรายชื่อเรียบร้อย พร้อมเริ่มรอบใหม่' });
+}
+window.clearQuizResponses = clearQuizResponses;
+
 function exportQuizResultsCSV() {
     if (!currentQuiz) return;
     const responses = getLocalQuizResponses(currentQuiz.id);

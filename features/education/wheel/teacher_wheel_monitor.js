@@ -810,6 +810,8 @@ function startEditPlayer(index) {
     document.getElementById('edit-player-index').value = index;
     document.getElementById('player-name').value = target.name;
     document.getElementById('delete-current-image-flag').value = "false"; 
+    const delBtn = document.getElementById('player-delete-img-btn');
+    if (delBtn) delBtn.classList.toggle('d-none', !(target.image && !String(target.image).includes('dicebear.com')));
     
     document.getElementById('player-form-title').innerHTML = `<i class="bi bi-pencil-square me-2"></i>กำลังแก้ไขข้อมูล: ${target.name}`;
     document.getElementById('player-submit-btn').innerText = "บันทึกข้อมูล";
@@ -824,6 +826,43 @@ function cancelEditPlayer() {
     document.getElementById('player-form-title').innerHTML = `<i class="bi bi-person-plus-fill me-2"></i>เพิ่มนักเรียนใหม่`;
     document.getElementById('player-submit-btn').innerText = "เพิ่มชื่อ";
     document.getElementById('player-cancel-edit-btn').classList.add('d-none');
+    document.getElementById('player-delete-img-btn')?.classList.add('d-none');
+}
+
+// 🗑️ ทำเครื่องหมายลบรูปเดิมของนักเรียน (จะกลับไปใช้อวตารเริ่มต้นเมื่อกดบันทึก)
+function markDeleteImage() {
+    const flag = document.getElementById('delete-current-image-flag');
+    if (flag) flag.value = "true";
+    const fileInput = document.getElementById('player-img');
+    if (fileInput) fileInput.value = "";
+    const btn = document.getElementById('player-delete-img-btn');
+    if (btn) {
+        btn.innerHTML = '<i class="bi bi-check2"></i> จะลบรูปเมื่อบันทึก';
+        btn.disabled = true;
+    }
+}
+window.markDeleteImage = markDeleteImage;
+
+// 📷 ย่อรูปที่อัปโหลดให้เล็กลง (ไม่ให้ข้อมูลห้องใหญ่เกินไป)
+function readPlayerImageAsDataUrl(file, maxSize = 256) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const img = new Image();
+            img.onload = () => {
+                const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+                const c = document.createElement('canvas');
+                c.width = Math.round(img.width * scale);
+                c.height = Math.round(img.height * scale);
+                c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+                resolve(c.toDataURL('image/jpeg', 0.82));
+            };
+            img.onerror = () => resolve(ev.target.result);
+            img.src = ev.target.result;
+        };
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(file);
+    });
 }
 
 document.getElementById('player-form')?.addEventListener('submit', async function(e) {
@@ -834,13 +873,24 @@ document.getElementById('player-form')?.addEventListener('submit', async functio
     const players = getActivePlayers();
     const editIndex = editIndexInput.value;
 
+    const imgFile = document.getElementById('player-img')?.files?.[0] || null;
+    const uploadedImage = imgFile ? await readPlayerImageAsDataUrl(imgFile) : null;
+    const deleteFlag = document.getElementById('delete-current-image-flag')?.value === "true";
+
     if (editIndex === "") {
         if(players.some(p => p.name === name)) return alert('ชื่อนี้ซ้ำกันในห้องนี้แล้วครับ!');
-        players.push({ name: name, score: 0, spunCount: 0, image: `https://api.dicebear.com/7.x/big-smile/svg?seed=${encodeURIComponent(name)}` });
+        players.push({ name: name, score: 0, spunCount: 0, image: uploadedImage || `https://api.dicebear.com/7.x/big-smile/svg?seed=${encodeURIComponent(name)}` });
     } else {
         const idx = parseInt(editIndex);
         players[idx].name = name;
+        if (uploadedImage) {
+            players[idx].image = uploadedImage;
+        } else if (deleteFlag) {
+            players[idx].image = `https://api.dicebear.com/7.x/big-smile/svg?seed=${encodeURIComponent(name)}`;
+        }
     }
+    const delBtn = document.getElementById('player-delete-img-btn');
+    if (delBtn) { delBtn.disabled = false; delBtn.innerHTML = '<i class="bi bi-trash"></i> ลบรูป'; }
 
     await saveActivePlayers(players); 
     cancelEditPlayer(); 

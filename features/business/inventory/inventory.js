@@ -5744,6 +5744,27 @@ function openQuickAddCategoryModal() {
     openCategoryManagerModal();
 }
 
+function closeQuickAddCategoryModal() {
+    const modal = document.getElementById('quickAddCategoryModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+    closeCategoryManagerModal();
+}
+
+function handleSaveQuickCategory(e) {
+    if (e) e.preventDefault();
+    const nameInput = document.getElementById('newCategoryName');
+    const name = (nameInput?.value || '').trim();
+    if (!name) return;
+    const catInput = document.getElementById('modalCategory');
+    const catDisplay = document.getElementById('displayModalCategory');
+    if (catInput) catInput.value = name;
+    if (catDisplay) catDisplay.textContent = name;
+    closeQuickAddCategoryModal();
+}
+
 // ----------------------------------------------------
 // Tab 2 Helper: Custom Option Popup Modal & Custom Attributes
 // ----------------------------------------------------

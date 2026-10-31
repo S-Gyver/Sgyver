@@ -1,3 +1,44 @@
+
+// 📱 สร้างและดึงรหัสประจำเครื่อง (Device ID Token แทน MAC Address) เก็บถาวรใน LocalStorage + Cookie 1 ปี
+function getOrCreateGyverDeviceId() {
+    const STORAGE_KEY = 'gyver_device_id';
+    let devId = null;
+
+    try {
+        devId = localStorage.getItem(STORAGE_KEY);
+    } catch (_) {}
+
+    if (!devId) {
+        try {
+            const match = document.cookie.match(/(?:^|;\s*)gyver_device_id=([^;]+)/);
+            if (match && match[1]) devId = decodeURIComponent(match[1]);
+        } catch (_) {}
+    }
+
+    if (!devId && typeof window.name === 'string' && window.name.startsWith('gyver_dev_')) {
+        devId = window.name;
+    }
+
+    if (!devId) {
+        const scr = (typeof screen !== 'undefined') ? `${screen.width || 0}x${screen.height || 0}x${window.devicePixelRatio || 1}` : '0x0';
+        const rand = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 6);
+        devId = `gyver_dev_${scr}_${Date.now().toString(36)}_${rand}`;
+    }
+
+    try {
+        localStorage.setItem(STORAGE_KEY, devId);
+    } catch (_) {}
+    try {
+        document.cookie = `gyver_device_id=${encodeURIComponent(devId)}; max-age=31536000; path=/; SameSite=Lax`;
+    } catch (_) {}
+    try {
+        if (!window.name) window.name = devId;
+    } catch (_) {}
+
+    return devId;
+}
+window.getOrCreateGyverDeviceId = getOrCreateGyverDeviceId;
+
 let currentClassData = null;
 let currentStudentUser = null;
 let currentStudentProfile = null;
@@ -512,7 +553,8 @@ async function submitStudentName(e) {
                     phone: phone,
                     image: avatarUrl,
                     user_id: currentStudentUser.id,
-                    email: studentEmail || currentStudentUser.email
+                    email: studentEmail || currentStudentUser.email,
+                    device_id: getOrCreateGyverDeviceId()
                 };
             }
             return s;
@@ -528,7 +570,8 @@ async function submitStudentName(e) {
             email: studentEmail || currentStudentUser.email,
             score: 0,
             spunCount: 0,
-            image: avatarUrl
+            image: avatarUrl,
+            device_id: getOrCreateGyverDeviceId()
         });
     }
 
@@ -569,7 +612,7 @@ async function submitStudentName(e) {
 }
 
 // =============================================================================
-// 📲 โหมดสแกน QR เช็คชื่อเข้าเรียนรายวัน (Daily Attendance Check-in Mode)
+// 📲 โหมดสแกน QR เช็คชื่อเข้าเรียนรายวัน (Daily Attendance Check-in Mode + Device Binding)
 // =============================================================================
 let selectedCheckinStudentKey = null;
 let selectedCheckinStudentObj = null;
@@ -604,23 +647,42 @@ async function setupAttendanceCheckinMode(urlParams) {
         }
     }
 
-    // ลองตรวจสอบว่ามี session ล็อกอิน หรือเคยจำชื่อนักเรียนในเครื่องนี้ไว้หรือไม่
-    let rememberedKey = null;
-    try {
-        rememberedKey = localStorage.getItem(`gyver_checkin_student_${currentClassData.room_code}`);
-    } catch (_) {}
+    const myDeviceId = getOrCreateGyverDeviceId();
+    const students = Array.isArray(currentClassData.students) ? currentClassData.students : [];
 
-    try {
-        const { data: { session } } = await supabaseClient.auth.getSession();
-        if (session?.user) {
-            currentStudentUser = session.user;
-            const students = Array.isArray(currentClassData.students) ? currentClassData.students : [];
-            const matched = students.find(s => (s.user_id && s.user_id === session.user.id) || (s.email && s.email === session.user.email));
-            if (matched) {
-                rememberedKey = matched.user_id || matched.name;
+    // 1. ตรวจสอบจาก Device ID ที่ผูกไว้บน Cloud ก่อนเป็นอันดับแรก
+    let rememberedKey = null;
+    const boundToThisPhone = students.find(s => s.device_id && s.device_id === myDeviceId);
+    if (boundToThisPhone) {
+        rememberedKey = boundToThisPhone.user_id || boundToThisPhone.name;
+    }
+
+    // 2. หากยังไม่มีใน Cloud ให้ดูจาก localStorage เฉพาะกรณีที่ชื่อนั้นยังไม่ถูกผูกกับเครื่องอื่น
+    if (!rememberedKey) {
+        try {
+            const localSaved = localStorage.getItem(`gyver_checkin_student_${currentClassData.room_code}`);
+            if (localSaved) {
+                const candidate = students.find(s => (s.user_id || s.name) === localSaved || s.name === localSaved);
+                if (candidate && (!candidate.device_id || candidate.device_id === myDeviceId)) {
+                    rememberedKey = candidate.user_id || candidate.name;
+                }
             }
-        }
-    } catch (_) {}
+        } catch (_) {}
+    }
+
+    // 3. ตรวจสอบจาก session ล็อกอิน (ถ้ามี)
+    if (!rememberedKey) {
+        try {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session?.user) {
+                currentStudentUser = session.user;
+                const matched = students.find(s => (s.user_id && s.user_id === session.user.id) || (s.email && s.email === session.user.email));
+                if (matched && (!matched.device_id || matched.device_id === myDeviceId)) {
+                    rememberedKey = matched.user_id || matched.name;
+                }
+            }
+        } catch (_) {}
+    }
 
     renderCheckinStudentList('', rememberedKey);
 }
@@ -630,6 +692,7 @@ function renderCheckinStudentList(filterText = '', preselectKey = null) {
     const confirmBtn = document.getElementById('btn-confirm-checkin');
     if (!listEl || !currentClassData) return;
 
+    const myDeviceId = getOrCreateGyverDeviceId();
     const students = Array.isArray(currentClassData.students) ? currentClassData.students : [];
     const dayLogs = (currentClassData.attendance_logs && currentClassData.attendance_logs[currentCheckinDate]) || {};
     const q = (filterText || '').trim().toLowerCase();
@@ -644,9 +707,11 @@ function renderCheckinStudentList(filterText = '', preselectKey = null) {
         return;
     }
 
+    const myBoundStudent = students.find(s => s.device_id && s.device_id === myDeviceId);
+
     if (preselectKey) {
         const found = students.find(s => (s.user_id || s.name) === preselectKey || s.name === preselectKey);
-        if (found) {
+        if (found && (!found.device_id || found.device_id === myDeviceId)) {
             selectedCheckinStudentKey = found.user_id || found.name;
             selectedCheckinStudentObj = found;
             if (confirmBtn) {
@@ -661,29 +726,65 @@ function renderCheckinStudentList(filterText = '', preselectKey = null) {
         return (s.name && s.name.toLowerCase().includes(q)) || (s.nickname && s.nickname.toLowerCase().includes(q));
     });
 
-    listEl.innerHTML = filtered.map(({ s, idx }) => {
+    const lockBanner = myBoundStudent ? `
+        <div class="alert alert-success py-2 px-3 mb-2 rounded-3 small d-flex align-items-center gap-2 border-success-subtle">
+            <i class="bi bi-phone-vibrate-fill fs-5 text-success"></i>
+            <div>
+                <b>เครื่องนี้ผูกกับชื่อ: ${myBoundStudent.name}</b>
+                <div class="text-muted" style="font-size:0.72rem;">ระบบจำเครื่องอัตโนมัติ (1 เครื่องเช็คชื่อได้เฉพาะตัวเอง)</div>
+            </div>
+        </div>
+    ` : `
+        <div class="alert alert-info py-2 px-3 mb-2 rounded-3 small d-flex align-items-center gap-2">
+            <i class="bi bi-shield-lock-fill fs-5 text-primary"></i>
+            <div>
+                <b>เลือกชื่อของคุณเพื่อผูกกับมือถือเครื่องนี้</b>
+                <div class="text-muted" style="font-size:0.72rem;">หลังกดยืนยัน ระบบจะจำชื่อคุณไว้ในเครื่องนี้ถาวร</div>
+            </div>
+        </div>
+    `;
+
+    listEl.innerHTML = lockBanner + filtered.map(({ s, idx }) => {
         const sKey = s.user_id || s.name;
         const isSelected = (selectedCheckinStudentKey === sKey || selectedCheckinStudentKey === s.name);
         const alreadyChecked = dayLogs[sKey] || dayLogs[s.name];
+        const isMyDevice = Boolean(s.device_id && s.device_id === myDeviceId);
+        const isOtherDevice = Boolean(s.device_id && s.device_id !== myDeviceId);
+        const isLockedByMyOwnBinding = Boolean(myBoundStudent && !isMyDevice);
+        const isDisabledRow = isOtherDevice || isLockedByMyOwnBinding;
+
         const avatar = s.image || `https://api.dicebear.com/7.x/big-smile/svg?seed=${encodeURIComponent(s.name || 'Student')}`;
+
+        let subStatusHtml = 'แตะเพื่อเลือกชื่อของคุณ';
+        if (alreadyChecked) {
+            subStatusHtml = '<span class="text-success fw-semibold">✓ เช็คชื่อวันนี้แล้ว</span>';
+        } else if (isMyDevice) {
+            subStatusHtml = '<span class="text-primary fw-semibold"><i class="bi bi-phone-fill"></i> เครื่องของคุณ</span>';
+        } else if (isOtherDevice) {
+            subStatusHtml = '<span class="text-danger"><i class="bi bi-lock-fill"></i> ผูกกับมือถือเครื่องอื่นแล้ว</span>';
+        } else if (isLockedByMyOwnBinding) {
+            subStatusHtml = '<span class="text-muted"><i class="bi bi-lock"></i> เครื่องนี้ผูกกับชื่อคุณแล้ว</span>';
+        }
 
         return `
             <div onclick="selectStudentForCheckin(${idx})"
-                 class="d-flex align-items-center justify-content-between p-2 mb-1.5 rounded-3 border ${isSelected ? 'border-success bg-success-subtle shadow-sm' : 'bg-white'}"
-                 style="cursor: pointer; transition: all 0.15s;">
+                 class="d-flex align-items-center justify-content-between p-2 mb-1.5 rounded-3 border ${isSelected ? 'border-success bg-success-subtle shadow-sm' : isDisabledRow ? 'bg-light opacity-75' : 'bg-white'}"
+                 style="cursor: ${isDisabledRow ? 'not-allowed' : 'pointer'}; transition: all 0.15s;">
                 <div class="d-flex align-items-center gap-2.5 text-truncate">
                     <img src="${avatar}" class="rounded-circle border" style="width: 40px; height: 40px; object-fit: cover; flex-shrink: 0;">
                     <div class="text-truncate">
                         <div class="fw-bold text-dark small text-truncate">${idx + 1}. ${s.name}</div>
                         <div class="text-muted" style="font-size: 0.72rem;">
-                            ${alreadyChecked ? '<span class="text-success fw-semibold">✓ เช็คชื่อวันนี้แล้ว</span>' : 'แตะเพื่อเลือกชื่อของคุณ'}
+                            ${subStatusHtml}
                         </div>
                     </div>
                 </div>
                 <div class="ms-2 flex-shrink-0">
                     ${isSelected
                         ? '<i class="bi bi-check-circle-fill text-success fs-4"></i>'
-                        : (alreadyChecked ? '<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill">เช็คแล้ว</span>' : '<i class="bi bi-circle text-muted fs-5"></i>')}
+                        : isOtherDevice
+                            ? '<span class="badge bg-secondary-subtle text-secondary border rounded-pill"><i class="bi bi-lock-fill me-1"></i>ผูกแล้ว</span>'
+                            : (alreadyChecked ? '<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill">เช็คแล้ว</span>' : '<i class="bi bi-circle text-muted fs-5"></i>')}
                 </div>
             </div>
         `;
@@ -698,6 +799,22 @@ function selectStudentForCheckin(studentIndex) {
     if (!currentClassData || !Array.isArray(currentClassData.students)) return;
     const s = currentClassData.students[studentIndex];
     if (!s) return;
+
+    const myDeviceId = getOrCreateGyverDeviceId();
+    const students = currentClassData.students;
+    const myBoundStudent = students.find(st => st.device_id && st.device_id === myDeviceId);
+
+    // ป้องกันการเช็คชื่อแทนเพื่อน: หากเครื่องนี้ผูกกับชื่ออื่นอยู่แล้ว
+    if (myBoundStudent && (myBoundStudent.user_id || myBoundStudent.name) !== (s.user_id || s.name)) {
+        alert(`🔒 มือถือเครื่องนี้ผูกกับชื่อ "${myBoundStudent.name}" อยู่แล้ว!\n\nไม่สามารถเลือกชื่อเพื่อนเพื่อเช็คชื่อแทนกันได้ครับ (หากต้องการเปลี่ยนเครื่อง กรุณาแจ้งคุณครูให้กดปลดล็อกเครื่อง)`);
+        return;
+    }
+
+    // ป้องกันการแย่งชื่อที่เพื่อนผูกเครื่องไว้แล้ว
+    if (s.device_id && s.device_id !== myDeviceId) {
+        alert(`⚠️ ชื่อ "${s.name}" ผูกกับมือถือเครื่องอื่นไปแล้ว!\n\nหากคุณเปลี่ยนมือถือใหม่หรือล้างเครื่อง กรุณาแจ้งคุณครูให้กดปุ่ม "ปลดล็อกเครื่อง" ที่ชื่อของคุณครับ`);
+        return;
+    }
 
     selectedCheckinStudentKey = s.user_id || s.name;
     selectedCheckinStudentObj = s;
@@ -718,6 +835,7 @@ async function submitStudentCheckin() {
         return;
     }
 
+    const myDeviceId = getOrCreateGyverDeviceId();
     const confirmBtn = document.getElementById('btn-confirm-checkin');
     if (confirmBtn) {
         confirmBtn.disabled = true;
@@ -729,10 +847,10 @@ async function submitStudentCheckin() {
     const noteText = extraNote ? `สแกน QR ${nowTime} น. (${extraNote})` : `สแกน QR ${nowTime} น.`;
 
     try {
-        // 1. ดึง attendance_logs ล่าสุดจากฐานข้อมูลเพื่อไม่ให้ทับข้อมูลเพื่อนที่สแกนพร้อมกัน
+        // 1. ดึง attendance_logs และ students ล่าสุดจากฐานข้อมูล
         const { data: freshRoom } = await supabaseClient
             .from('classrooms')
-            .select('attendance_logs')
+            .select('attendance_logs, students')
             .eq('id', currentClassData.id)
             .maybeSingle();
 
@@ -740,21 +858,53 @@ async function submitStudentCheckin() {
             ? freshRoom.attendance_logs
             : (currentClassData.attendance_logs || {});
 
+        const freshStudents = (freshRoom && Array.isArray(freshRoom.students))
+            ? freshRoom.students
+            : (Array.isArray(currentClassData.students) ? currentClassData.students : []);
+
+        // ตรวจสอบซ้ำอีกครั้งว่าเครื่องนี้ไม่ได้ผูกกับคนอื่น หรือชื่อนี้ไม่ได้ถูกคนอื่นผูกไปก่อน
+        const alreadyBoundToMe = freshStudents.find(st => st.device_id && st.device_id === myDeviceId);
+        if (alreadyBoundToMe && (alreadyBoundToMe.user_id || alreadyBoundToMe.name) !== selectedCheckinStudentKey) {
+            alert(`🔒 มือถือเครื่องนี้ผูกกับชื่อ "${alreadyBoundToMe.name}" อยู่แล้ว ไม่สามารถเช็คชื่อแทนเพื่อนได้ครับ`);
+            if (confirmBtn) {
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i> ยืนยันเช็คชื่อ "${alreadyBoundToMe.name}"`;
+            }
+            return;
+        }
+
+        const targetIdx = freshStudents.findIndex(st => (st.user_id || st.name) === selectedCheckinStudentKey || st.name === selectedCheckinStudentObj.name);
+        if (targetIdx !== -1) {
+            const targetStu = freshStudents[targetIdx];
+            if (targetStu.device_id && targetStu.device_id !== myDeviceId) {
+                alert(`⚠️ ชื่อ "${targetStu.name}" ผูกกับมือถือเครื่องอื่นไปแล้ว! กรุณาแจ้งคุณครูให้กดปลดล็อกเครื่องครับ`);
+                if (confirmBtn) confirmBtn.disabled = false;
+                return;
+            }
+            // ผูก Device ID ประจำเครื่องไว้กับชื่อนักเรียนบน Cloud ทันที
+            freshStudents[targetIdx].device_id = myDeviceId;
+            freshStudents[targetIdx].device_bound_at = new Date().toISOString();
+        }
+
         if (!logs[currentCheckinDate]) {
             logs[currentCheckinDate] = {};
         }
 
         logs[currentCheckinDate][selectedCheckinStudentKey] = {
             status: currentCheckinStatus,
-            note: noteText
+            note: noteText,
+            device_id: myDeviceId
         };
 
         const { error } = await supabaseClient
             .from('classrooms')
-            .update({ attendance_logs: logs })
+            .update({ attendance_logs: logs, students: freshStudents })
             .eq('id', currentClassData.id);
 
         if (error) throw error;
+
+        currentClassData.students = freshStudents;
+        currentClassData.attendance_logs = logs;
 
         // 2. ส่ง Realtime Broadcast แจ้งหน้าจอครูทันที
         try {

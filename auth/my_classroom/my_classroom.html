@@ -117,7 +117,15 @@
                     </div>
                 </div>
 
-                <div class="d-flex align-items-center gap-2">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <button class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold shadow-xs"
+                        onclick="openStudentPortalFromTeacher()" title="เปิดหน้าห้องเรียนมุมมองนักเรียน (ส่งงาน/โหลดชีท/ดูคะแนน)">
+                        <i class="bi bi-eye-fill me-1"></i>มุมมองนักเรียน
+                    </button>
+                    <button class="btn btn-outline-success btn-sm rounded-pill px-3 fw-bold shadow-xs"
+                        onclick="copyStudentPortalLink()" title="คัดลอกลิงก์หน้าส่งงาน/โหลดชีทส่งให้นักเรียน">
+                        <i class="bi bi-share-fill me-1"></i>ลิงก์ส่งงานนักเรียน
+                    </button>
                     <button class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-bold"
                         onclick="showClassroomsHub()">
                         <i class="bi bi-grid me-1"></i>สลับห้องอื่น
@@ -256,6 +264,15 @@
                             </div>
 
                             <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <!-- ปุ่มเพิ่มนักเรียนด้วยตัวเอง / วางรายชื่อจาก Excel -->
+                                <button
+                                    class="btn btn-success btn-sm rounded-pill px-3 fw-bold d-flex align-items-center gap-1 shadow-sm"
+                                    onclick="openManualAddStudentModal()"
+                                    title="เพิ่มชื่อนักเรียนด้วยตัวเอง หรือวางรายชื่อหลายคนจาก Excel/Line">
+                                    <i class="bi bi-person-plus-fill fs-6"></i>
+                                    <span>เพิ่มนักเรียน</span>
+                                </button>
+
                                 <!-- ปุ่มเล็กสำหรับเปิดดู QR Code -->
                                 <button
                                     class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold d-flex align-items-center gap-1 shadow-sm"
@@ -358,7 +375,11 @@
                                     <i class="bi bi-sliders me-1"></i>ตั้งเกณฑ์คะแนนเช็คชื่อ
                                 </button>
                             </div>
-                            <div class="d-flex gap-2">
+                            <div class="d-flex gap-2 flex-wrap">
+                                <button class="btn btn-sm btn-outline-success rounded-pill px-3 fw-bold shadow-sm"
+                                    onclick="exportAttendanceToCSV()" title="ดาวน์โหลดตารางประวัติเช็คชื่อทุกวันเป็นไฟล์ Excel (CSV)">
+                                    <i class="bi bi-file-earmark-excel-fill me-1"></i>ส่งออก Excel (CSV)
+                                </button>
                                 <button class="btn btn-sm btn-primary rounded-pill px-4 fw-bold shadow-sm"
                                     onclick="saveAttendanceRecord()">
                                     <i class="bi bi-floppy2-fill me-1"></i>บันทึกการเช็คชื่อ
@@ -2064,6 +2085,40 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+    <!-- ============================================================== -->
+    <!-- ➕ MODAL: เพิ่มรายชื่อนักเรียนด้วยตัวเอง (รายคน / วางหลายคนจาก Excel) -->
+    <!-- ============================================================== -->
+    <div class="modal fade" id="manualAddStudentModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold text-dark">
+                        <i class="bi bi-person-plus-fill text-success me-2"></i>เพิ่มรายชื่อนักเรียนเข้าห้องเรียน
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">
+                        สามารถพิมพ์ชื่อนักเรียนทีละคน หรือก๊อปปี้รายชื่อจาก Excel / Word / Line มาวางทีละหลายบรรทัดได้เลยครับ (1 บรรทัด = 1 คน)
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-secondary">รายชื่อนักเรียน <span class="text-danger">*</span></label>
+                        <textarea id="manual-student-names-input" class="form-control rounded-3" rows="6"
+                            placeholder="ตัวอย่าง:&#10;ด.ช. สมชาย ใจดี&#10;ด.ญ. สมหญิง รักเรียน&#10;ณัฏฐชัย 1/2"></textarea>
+                        <div class="form-text small">💡 ระบบจะตัดช่องว่างและเลขลำดับหน้าชื่อให้อัตโนมัติ และข้ามชื่อที่ซ้ำในห้อง</div>
+                    </div>
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">ยกเลิก</button>
+                        <button type="button" class="btn btn-success rounded-pill px-4 fw-bold shadow-sm" onclick="submitManualAddStudents()">
+                            <i class="bi bi-check2-circle me-1"></i>บันทึกรายชื่อเข้าห้อง
+                        </button>
                     </div>
                 </div>
             </div>

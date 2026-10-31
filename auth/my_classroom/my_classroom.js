@@ -1515,11 +1515,17 @@ function renderTabScan() {
                     </div>` : ''}
                 </div>
 
+                ${s.device_id ? `<div class="mt-1"><span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill" style="font-size:0.63rem;" title="ผูกกับมือถือเรียบร้อยแล้ว"><i class="bi bi-phone-fill me-1"></i>ผูกเครื่องแล้ว</span></div>` : ''}
                 <div class="student-card-actions">
                     <button type="button" class="btn ${hasNote ? 'btn-warning text-dark' : 'btn-outline-secondary'}" onclick="openStudentNoteModal(${idx})" title="${hasNote ? 'ดู/แก้ไขโน้ต' : 'เพิ่มโน้ตช่วยจำ'}">
                         <i class="bi ${hasNote ? 'bi-journal-check' : 'bi-journal-plus'}"></i>
                         <span>${hasNote ? 'มีโน้ต' : 'โน้ต'}</span>
                     </button>
+                    ${s.device_id ? `
+                    <button type="button" class="btn btn-outline-primary" onclick="unlockStudentDevice(${idx})" title="ปลดล็อกเครื่องมือถือของ ${safeNick} (กรณีนักเรียนเปลี่ยนมือถือใหม่)">
+                        <i class="bi bi-unlock-fill"></i>
+                        <span>ปลดเครื่อง</span>
+                    </button>` : ''}
                     <button type="button" class="btn btn-outline-danger" onclick="kickStudent(${idx})" title="เตะ ${safeNick} ออกจากห้อง">
                         <i class="bi bi-person-x"></i>
                         <span>เตะ</span>
@@ -5918,3 +5924,200 @@ function printGradebookReport() {
     }, 1000);
 }
 
+
+
+// =============================================================================
+// ➕ เพิ่มรายชื่อนักเรียนด้วยตัวเอง / วางจาก Excel & ส่งออกเช็คชื่อ CSV & ลิงก์นักเรียน
+// =============================================================================
+function openManualAddStudentModal() {
+    if (!activeClassroom) return;
+    const input = document.getElementById('manual-student-names-input');
+    if (input) input.value = '';
+    const modalEl = document.getElementById('manualAddStudentModal');
+    if (modalEl) {
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+        setTimeout(() => input?.focus(), 200);
+    }
+}
+window.openManualAddStudentModal = openManualAddStudentModal;
+
+async function submitManualAddStudents() {
+    if (!activeClassroom) return;
+    const input = document.getElementById('manual-student-names-input');
+    const raw = (input?.value || '').trim();
+    if (!raw) {
+        showToast('warning', 'กรุณากรอกรายชื่อ', 'พิมพ์ชื่อนักเรียนอย่างน้อย 1 ชื่อครับ');
+        return;
+    }
+
+    const lines = raw.split(/\r?\n/)
+        .map(line => line.replace(/^\s*\d+[.)\s-]+/, '').trim())
+        .filter(Boolean);
+
+    if (lines.length === 0) return;
+
+    if (!Array.isArray(activeClassroom.students)) activeClassroom.students = [];
+    const existingNames = new Set(activeClassroom.students.map(s => (s.name || '').trim().toLowerCase()));
+
+    let addedCount = 0;
+    lines.forEach(name => {
+        if (!existingNames.has(name.toLowerCase())) {
+            existingNames.add(name.toLowerCase());
+            activeClassroom.students.push({
+                name: name,
+                nickname: name,
+                image: `https://api.dicebear.com/7.x/big-smile/svg?seed=${encodeURIComponent(name)}`,
+                score: 0,
+                spunCount: 0,
+                joined_at: new Date().toISOString()
+            });
+            addedCount++;
+        }
+    });
+
+    if (addedCount === 0) {
+        showToast('info', 'รายชื่อซ้ำ', 'รายชื่อที่กรอกมีอยู่ในห้องเรียนนี้ทั้งหมดแล้ว');
+        return;
+    }
+
+    try {
+        const { error } = await supabaseClient
+            .from('classrooms')
+            .update({ students: activeClassroom.students })
+            .eq('id', activeClassroom.id);
+
+        if (error) throw error;
+
+        bootstrap.Modal.getInstance(document.getElementById('manualAddStudentModal'))?.hide();
+        renderActiveClassroomHeader();
+        renderAllTabs();
+        showToast('success', 'เพิ่มนักเรียนสำเร็จ!', `เพิ่มรายชื่อนักเรียนใหม่จำนวน ${addedCount} คนเรียบร้อยแล้ว`);
+    } catch (err) {
+        console.error('Manual add student error:', err);
+        showToast('error', 'บันทึกไม่สำเร็จ', err.message || 'เกิดข้อผิดพลาดในการบันทึกรายชื่อ');
+    }
+}
+window.submitManualAddStudents = submitManualAddStudents;
+
+// 📥 ส่งออกประวัติเช็คชื่อทุกวัน + สรุปสถิติ มา/สาย/ลา/ขาด เป็นไฟล์ Excel (CSV)
+function exportAttendanceToCSV() {
+    if (!activeClassroom) return;
+    const students = Array.isArray(activeClassroom.students) ? activeClassroom.students : [];
+    if (students.length === 0) {
+        showToast('warning', 'ยังไม่มีรายชื่อนักเรียน', 'ไม่สามารถส่งออกได้เนื่องจากยังไม่มีนักเรียนในห้อง');
+        return;
+    }
+
+    const logs = activeClassroom.attendance_logs || {};
+    const dates = Object.keys(logs).sort();
+    const criteria = getAttendanceCriteria(activeClassroom);
+
+    const statusLabel = {
+        present: 'มา',
+        late: 'สาย',
+        leave: 'ลา',
+        absent: 'ขาด'
+    };
+
+    const headers = ['ลำดับ', 'ชื่อนักเรียน', ...dates, 'รวมมา', 'รวมสาย', 'รวมลา', 'รวมขาด', 'คะแนนเช็คชื่อ'];
+    const rows = [headers];
+
+    students.forEach((s, idx) => {
+        const sKey = s.user_id || s.name;
+        const summary = calcStudentAttendanceSummary(s, logs, criteria);
+        const dateCells = dates.map(d => {
+            const rec = logs[d]?.[sKey] || logs[d]?.[s.name];
+            if (!rec || !rec.status) return '-';
+            const st = statusLabel[rec.status] || rec.status;
+            return rec.note ? `${st} (${rec.note})` : st;
+        });
+
+        rows.push([
+            idx + 1,
+            s.name || `นักเรียน #${idx + 1}`,
+            ...dateCells,
+            summary.present,
+            summary.late,
+            summary.leave,
+            summary.absent,
+            summary.totalScore
+        ]);
+    });
+
+    const csvContent = '\uFEFF' + rows.map(r => r.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const cleanName = (activeClassroom.class_name || 'classroom').replace(/[^a-zA-Z0-9ก-๙_-]/g, '_');
+    a.href = url;
+    a.download = `เช็คชื่อ_${cleanName}_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('success', 'ดาวน์โหลดไฟล์สำเร็จ', 'ส่งออกตารางเช็คชื่อเป็นไฟล์ CSV (เปิดด้วย Excel ได้ทันที)');
+}
+window.exportAttendanceToCSV = exportAttendanceToCSV;
+
+// 👁️ เปิดหน้าห้องเรียนมุมมองนักเรียน & คัดลอกลิงก์หน้าส่งงานนักเรียน
+function getStudentPortalUrl() {
+    const roomCode = activeClassroom?.room_code || '';
+    const origin = window.location.origin;
+    let basePath = window.location.pathname;
+    if (basePath.includes('/auth/my_classroom/')) {
+        basePath = basePath.replace('my_classroom.html', 'student_view.html');
+    } else {
+        basePath = '/auth/my_classroom/student_view.html';
+    }
+    return `${origin}${basePath}?code=${encodeURIComponent(roomCode)}`;
+}
+
+function openStudentPortalFromTeacher() {
+    if (!activeClassroom) return;
+    window.open(getStudentPortalUrl(), '_blank');
+}
+window.openStudentPortalFromTeacher = openStudentPortalFromTeacher;
+
+function copyStudentPortalLink() {
+    if (!activeClassroom) return;
+    const url = getStudentPortalUrl();
+    navigator.clipboard.writeText(url);
+    showToast('success', 'คัดลอกลิงก์นักเรียนแล้ว!', 'ส่งลิงก์นี้เข้ากลุ่มให้นักเรียนเปิดโหลดชีท ส่งการบ้าน และดูคะแนนได้เลย');
+}
+window.copyStudentPortalLink = copyStudentPortalLink;
+
+
+// 🔓 ปลดล็อกเครื่องมือถือของนักเรียน (กรณีนักเรียนเปลี่ยนโทรศัพท์ใหม่หรือล้างเครื่อง)
+async function unlockStudentDevice(studentIndex) {
+    if (!activeClassroom || !Array.isArray(activeClassroom.students)) return;
+    const s = activeClassroom.students[studentIndex];
+    if (!s) return;
+
+    const ok = await showGyverConfirm({
+        title: 'ปลดล็อกเครื่องมือถือ?',
+        message: `ต้องการปลดล็อกการผูกเครื่องมือถือของ "${s.name}" ใช่หรือไม่? (เพื่อให้นักเรียนสามารถใช้มือถือเครื่องใหม่สแกนผูกชื่อได้)`,
+        confirmText: 'ปลดล็อกเครื่อง',
+        cancelText: 'ยกเลิก',
+        variant: 'primary',
+        icon: 'bi-phone-flip'
+    });
+    if (!ok) return;
+
+    delete s.device_id;
+    delete s.device_bound_at;
+
+    try {
+        const { error } = await supabaseClient
+            .from('classrooms')
+            .update({ students: activeClassroom.students })
+            .eq('id', activeClassroom.id);
+
+        if (error) throw error;
+        renderTabScan();
+        showToast('success', 'ปลดล็อกเครื่องแล้ว!', `นักเรียน "${s.name}" สามารถใช้มือถือเครื่องใหม่สแกนเช็คชื่อได้แล้ว`);
+    } catch (err) {
+        showToast('error', 'ปลดล็อกไม่สำเร็จ', err.message || 'เกิดข้อผิดพลาด');
+    }
+}
+window.unlockStudentDevice = unlockStudentDevice;

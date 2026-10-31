@@ -27,8 +27,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         fileInput.addEventListener('change', handleCustomAvatarUpload);
     }
 
+    // หมายเหตุ: ฟอร์มมี onsubmit="handleStudentJoin(event)" ใน HTML อยู่แล้ว ไม่ต้องผูก listener ซ้ำ (เดิมทำให้ส่งข้อมูล 2 รอบ)
     const joinForm = document.getElementById('student-join-form') || document.querySelector('form');
-    if (joinForm) joinForm.addEventListener('submit', handleStudentJoin);
+    if (joinForm && !joinForm.getAttribute('onsubmit')) joinForm.addEventListener('submit', handleStudentJoin);
 
     await loadUserProfileFromDatabase();
 
@@ -297,6 +298,29 @@ async function handleStudentJoin(e) {
 
     window.location.href = `student_waiting.html?room=${inputRoom}&name=${encodeURIComponent(nicknameTh)}&class=${encodeURIComponent(studentClassFormatted)}&no=${studentNumber}&team=${teamNum}`;
 }
+
+// ✏️ สลับจากการ์ดโปรไฟล์ที่บันทึกไว้ ไปเป็นฟอร์มแก้ไขเต็ม
+function enableEditProfileMode() {
+    document.getElementById('saved-profile-card')?.classList.add('d-none');
+    document.getElementById('full-profile-form-zone')?.classList.remove('d-none');
+    document.getElementById('student-nickname-th')?.focus();
+}
+window.enableEditProfileMode = enableEditProfileMode;
+
+// 👤 เล่นเดี่ยว (ไม่มีทีม)
+function toggleNoTeam(checked) {
+    const teamInput = document.getElementById('student-team-num');
+    if (!teamInput) return;
+    if (checked) {
+        teamInput.dataset.prevValue = teamInput.value || '1';
+        teamInput.value = 0;
+        teamInput.disabled = true;
+    } else {
+        teamInput.disabled = false;
+        teamInput.value = teamInput.dataset.prevValue || 1;
+    }
+}
+window.toggleNoTeam = toggleNoTeam;
 
 function resetJoinBtn() {
     const btnSubmit = document.getElementById('btn-submit-join');

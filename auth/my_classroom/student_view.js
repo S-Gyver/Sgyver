@@ -1,3 +1,54 @@
+
+// 📱 สร้างและดึงรหัสประจำเครื่อง (Device ID Token แทน MAC Address) เก็บถาวรใน LocalStorage + Cookie 1 ปี
+function getOrCreateGyverDeviceId() {
+    const STORAGE_KEY = 'gyver_device_id';
+    let devId = null;
+
+    try {
+        devId = localStorage.getItem(STORAGE_KEY);
+    } catch (_) {}
+
+    if (!devId) {
+        try {
+            const match = document.cookie.match(/(?:^|;\s*)gyver_device_id=([^;]+)/);
+            if (match && match[1]) devId = decodeURIComponent(match[1]);
+        } catch (_) {}
+    }
+
+    if (!devId && typeof window.name === 'string' && window.name.startsWith('gyver_dev_')) {
+        devId = window.name;
+    }
+
+    if (!devId) {
+        const scr = (typeof screen !== 'undefined') ? `${screen.width || 0}x${screen.height || 0}x${window.devicePixelRatio || 1}` : '0x0';
+        const rand = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 6);
+        devId = `gyver_dev_${scr}_${Date.now().toString(36)}_${rand}`;
+    }
+
+    try {
+        localStorage.setItem(STORAGE_KEY, devId);
+    } catch (_) {}
+    try {
+        document.cookie = `gyver_device_id=${encodeURIComponent(devId)}; max-age=31536000; path=/; SameSite=Lax`;
+    } catch (_) {}
+    try {
+        if (!window.name) window.name = devId;
+    } catch (_) {}
+
+    return devId;
+}
+window.getOrCreateGyverDeviceId = getOrCreateGyverDeviceId;
+
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 /**
  * ====================================================
  * 🎓 Gyver Student Classroom Portal - Logic
@@ -64,10 +115,12 @@ async function initStudentView() {
     }
 
     currentClassroom = classrooms[0];
+    resolveStudentIdentityForRoom();
     renderClassroomHeader();
     renderStudentMaterials();
     renderStudentAssignments();
     renderStudentAttendance();
+    renderStudentGrades();
 }
 
 function renderClassroomHeader() {
@@ -92,10 +145,12 @@ async function refreshStudentView() {
 
     if (updated) {
         currentClassroom = updated;
+        resolveStudentIdentityForRoom();
         renderClassroomHeader();
         renderStudentMaterials();
         renderStudentAssignments();
         renderStudentAttendance();
+        renderStudentGrades();
         showToast('success', 'อัปเดตแล้ว', 'ข้อมูลห้องเรียนเป็นล่าสุดแล้ว');
     }
 }
@@ -173,7 +228,7 @@ function renderStudentAssignments() {
         const dueDateStr = a.due_date ? new Date(a.due_date).toLocaleDateString('th-TH') : 'ไม่ระบุ';
         const isQuiz = a.type === 'quiz' || !!a.quiz_id;
         const isProject = a.type === 'project' || (Array.isArray(a.rubrics) && a.rubrics.length > 0);
-        const quizUrl = isQuiz ? `../../features/education/quiz/quiz.html?id=${encodeURIComponent(a.quiz_id)}&name=${encodeURIComponent(currentStudentName)}&room=${encodeURIComponent(currentClassroom.class_name)}&class_id=${encodeURIComponent(currentClassroomId)}&assign_id=${encodeURIComponent(a.id)}&student_id=${encodeURIComponent(studentKey)}` : '';
+        const quizUrl = isQuiz ? `../../features/education/quiz/quiz.html?id=${encodeURIComponent(a.quiz_id)}&name=${encodeURIComponent(currentStudentName)}&room=${encodeURIComponent(currentClassroom.class_name)}&class_id=${encodeURIComponent(currentClassroom.id)}&assign_id=${encodeURIComponent(a.id)}&student_id=${encodeURIComponent(studentKey)}` : '';
 
         return `
         <div class="col-md-6">
@@ -703,4 +758,305 @@ function renderStudentAttendance() {
             <td class="text-muted small">${note}</td>
         </tr>`;
     }).join('');
+}
+
+
+// 👤 จับคู่ชื่อนักเรียนจาก Device ID บน Cloud หรือบังคับเลือกชื่อครั้งแรก (ไม่ให้ขึ้นคำว่า "นักเรียน" ซ้ำกัน)
+async function bindStudentDeviceOnCloud(studentKey) {
+    if (!currentClassroom) return false;
+    const myDeviceId = getOrCreateGyverDeviceId();
+    try {
+        const { data: fresh } = await supabaseClient
+            .from('classrooms')
+            .select('students')
+            .eq('id', currentClassroom.id)
+            .maybeSingle();
+
+        const list = (fresh && Array.isArray(fresh.students)) ? fresh.students : (currentClassroom.students || []);
+        const idx = list.findIndex(s => (s.user_id || s.name) === studentKey || s.name === studentKey);
+        if (idx === -1) return false;
+
+        if (list[idx].device_id && list[idx].device_id !== myDeviceId) {
+            return false; // ผูกกับเครื่องอื่นอยู่แล้ว
+        }
+
+        list[idx].device_id = myDeviceId;
+        list[idx].device_bound_at = new Date().toISOString();
+
+        const { error } = await supabaseClient
+            .from('classrooms')
+            .update({ students: list })
+            .eq('id', currentClassroom.id);
+
+        if (!error) {
+            currentClassroom.students = list;
+            return true;
+        }
+    } catch (_) {}
+    return false;
+}
+
+function resolveStudentIdentityForRoom() {
+    if (!currentClassroom) return;
+    const roomCode = currentClassroom.room_code || '';
+    const students = Array.isArray(currentClassroom.students) ? currentClassroom.students : [];
+    const myDeviceId = getOrCreateGyverDeviceId();
+
+    // 1. ตรวจสอบจาก Device ID ที่ผูกไว้กับชื่อนักเรียนบน Cloud เป็นอันดับแรก!
+    const deviceMatched = students.find(s => s.device_id && s.device_id === myDeviceId);
+    if (deviceMatched) {
+        currentStudentId = deviceMatched.user_id || deviceMatched.name;
+        currentStudentName = deviceMatched.name;
+        try {
+            localStorage.setItem(`gyver_checkin_student_${roomCode}`, currentStudentId);
+        } catch (_) {}
+        return;
+    }
+
+    // 2. ตรวจสอบจาก localStorage เฉพาะกรณีที่ชื่อนั้นยังไม่ถูกผูกกับเครื่องอื่น
+    try {
+        const savedKey = localStorage.getItem(`gyver_checkin_student_${roomCode}`);
+        if (savedKey) {
+            const matched = students.find(s => (s.user_id || s.name) === savedKey || s.name === savedKey);
+            if (matched && (!matched.device_id || matched.device_id === myDeviceId)) {
+                currentStudentId = matched.user_id || matched.name;
+                currentStudentName = matched.name;
+                bindStudentDeviceOnCloud(currentStudentId);
+                return;
+            }
+        }
+    } catch (_) {}
+
+    // 3. ถ้าล็อกอินไว้ ลองจับคู่กับรายชื่อในห้อง
+    if (currentStudentSession) {
+        const matched = students.find(s =>
+            (s.user_id && s.user_id === currentStudentSession.id) ||
+            (s.name && s.name === currentStudentName)
+        );
+        if (matched && (!matched.device_id || matched.device_id === myDeviceId)) {
+            currentStudentId = matched.user_id || matched.name;
+            currentStudentName = matched.name;
+            bindStudentDeviceOnCloud(currentStudentId);
+            return;
+        }
+    }
+
+    // 4. หากยังระบุตัวตนไม่ได้เลย และห้องมีรายชื่อนักเรียน ให้เด้งหน้าต่างเลือกชื่อเพื่อผูกกับเครื่องทันที!
+    if (students.length > 0 && (!currentStudentId || currentStudentName === 'นักเรียน')) {
+        setTimeout(() => {
+            openSelectMyStudentNameModal(true);
+        }, 350);
+    }
+}
+
+// 🔄 เปิดหน้าต่างให้นักเรียนเลือกชื่อตัวเองเพื่อผูกกับมือถือเครื่องนี้
+async function openSelectMyStudentNameModal(isFirstTimeMandatory = false) {
+    if (!currentClassroom) return;
+    const students = Array.isArray(currentClassroom.students) ? currentClassroom.students : [];
+    if (students.length === 0) {
+        showToast('info', 'ยังไม่มีรายชื่อนักเรียน', 'คุณครูยังไม่ได้เพิ่มรายชื่อนักเรียนในห้องนี้');
+        return;
+    }
+
+    const myDeviceId = getOrCreateGyverDeviceId();
+    const myBound = students.find(s => s.device_id && s.device_id === myDeviceId);
+
+    const currentKey = currentStudentId || currentStudentName;
+    const optionsHtml = students.map((s, idx) => {
+        const sKey = s.user_id || s.name;
+        const isOtherDevice = Boolean(s.device_id && s.device_id !== myDeviceId);
+        const isLockedByMe = Boolean(myBound && (myBound.user_id || myBound.name) !== sKey);
+        const disabled = (isOtherDevice || isLockedByMe) ? 'disabled' : '';
+        const selected = (sKey === currentKey || s.name === currentStudentName) ? 'selected' : '';
+        const suffix = isOtherDevice ? ' (🔒 ผูกเครื่องอื่นแล้ว)' : (s.device_id === myDeviceId ? ' (📱 เครื่องของคุณ)' : '');
+        return `<option value="${escapeHtml(sKey)}" ${selected} ${disabled}>${idx + 1}. ${escapeHtml(s.name)}${suffix}</option>`;
+    }).join('');
+
+    if (typeof Swal !== 'undefined') {
+        const { value: chosenKey } = await Swal.fire({
+            title: isFirstTimeMandatory ? '📱 ยืนยันชื่อของคุณ (ครั้งแรก)' : 'ข้อมูลประจำเครื่องของคุณ',
+            html: `
+                <p class="text-muted small mb-2">
+                    ${myBound
+                        ? `มือถือเครื่องนี้ผูกกับชื่อ <b>"${escapeHtml(myBound.name)}"</b> แล้ว (หากต้องการเปลี่ยนเครื่อง กรุณาแจ้งคุณครูให้ปลดล็อก)`
+                        : 'กรุณาเลือกชื่อของคุณในห้องเรียนนี้ ระบบจะจำชื่อผูกไว้กับมือถือเครื่องนี้อัตโนมัติ ไม่ต้องล็อกอินซ้ำ'}
+                </p>
+                <select id="swal-select-student-key" class="form-select rounded-3">
+                    <option value="">-- แตะเพื่อเลือกชื่อของคุณ --</option>
+                    ${optionsHtml}
+                </select>
+            `,
+            allowOutsideClick: !isFirstTimeMandatory,
+            showCancelButton: !isFirstTimeMandatory,
+            confirmButtonText: '<i class="bi bi-phone-fill me-1"></i> ยืนยันผูกชื่อกับเครื่องนี้',
+            cancelButtonText: 'ปิด',
+            preConfirm: () => {
+                const val = document.getElementById('swal-select-student-key')?.value;
+                if (!val) {
+                    Swal.showValidationMessage('กรุณาเลือกชื่อของคุณจากรายการ');
+                    return false;
+                }
+                return val;
+            }
+        });
+
+        if (chosenKey) {
+            const found = students.find(s => (s.user_id || s.name) === chosenKey || s.name === chosenKey);
+            if (found) {
+                currentStudentId = found.user_id || found.name;
+                currentStudentName = found.name;
+                try {
+                    localStorage.setItem(`gyver_checkin_student_${currentClassroom.room_code}`, currentStudentId);
+                } catch (_) {}
+                await bindStudentDeviceOnCloud(currentStudentId);
+                renderClassroomHeader();
+                renderStudentAssignments();
+                renderStudentAttendance();
+                renderStudentGrades();
+                showToast('success', 'ผูกชื่อกับเครื่องสำเร็จ!', `มือถือเครื่องนี้จำชื่อ "${currentStudentName}" เรียบร้อยแล้ว`);
+            }
+        }
+    }
+}
+window.openSelectMyStudentNameModal = openSelectMyStudentNameModal;
+
+// 📊 TAB 4: แสดงคะแนนเก็บ การบ้าน และเกรดของนักเรียนรายบุคคล
+function renderStudentGrades() {
+    const box = document.getElementById('student-grade-summary-box');
+    const nameBadge = document.getElementById('grade-tab-student-name');
+    if (!box || !currentClassroom) return;
+
+    const studentKey = currentStudentId || currentStudentName;
+    if (nameBadge) nameBadge.innerText = currentStudentName || 'ยังไม่เลือกชื่อ';
+
+    const students = Array.isArray(currentClassroom.students) ? currentClassroom.students : [];
+    const me = students.find(s => (s.user_id || s.name) === studentKey || s.name === currentStudentName);
+
+    if (!me) {
+        box.innerHTML = `
+            <div class="text-center py-5 border rounded-4 bg-light">
+                <i class="bi bi-person-exclamation fs-1 text-warning d-block mb-2"></i>
+                <h6 class="fw-bold text-dark">กรุณาเลือกชื่อของคุณในห้องเรียนก่อนดูคะแนน</h6>
+                <p class="small text-muted mb-3">กดปุ่มด้านล่างเพื่อเลือกชื่อของคุณจากรายชื่อนักเรียนในห้อง</p>
+                <button class="btn btn-primary btn-sm rounded-pill px-4 fw-bold" onclick="openSelectMyStudentNameModal()">
+                    <i class="bi bi-person-check-fill me-1"></i>เลือกชื่อของฉัน
+                </button>
+            </div>
+        `;
+        return;
+    }
+
+    const sKey = me.user_id || me.name;
+    // 1. คะแนนการบ้าน/ชิ้นงาน
+    const assignments = Array.isArray(currentClassroom.assignments) ? currentClassroom.assignments : [];
+    let assignEarned = 0;
+    let assignMax = 0;
+    const assignRows = assignments.map(a => {
+        const sub = a.submissions?.[sKey] || a.submissions?.[me.name];
+        const maxPts = Number(a.points) || 10;
+        assignMax += maxPts;
+        const sc = (sub && sub.score !== undefined && sub.score !== null) ? Number(sub.score) : null;
+        if (sc !== null && !isNaN(sc)) assignEarned += sc;
+        return `
+            <tr>
+                <td class="fw-semibold text-dark">${escapeHtml(a.title)}</td>
+                <td class="text-center">${sub ? '<span class="badge bg-success-subtle text-success">ส่งแล้ว</span>' : '<span class="badge bg-secondary-subtle text-secondary">ยังไม่ส่ง</span>'}</td>
+                <td class="text-end font-mono fw-bold ${sc !== null ? 'text-primary' : 'text-muted'}">${sc !== null ? sc : '-'} / ${maxPts}</td>
+            </tr>
+        `;
+    }).join('');
+
+    // 2. คะแนนจากสมุดพก/ปพ.5 (gradebook)
+    const gb = currentClassroom.gradebook || {};
+    const cols = Array.isArray(gb.columns) ? gb.columns : [];
+    const stuScores = (gb.scores && (gb.scores[sKey] || gb.scores[me.name])) || {};
+    let gbTotal = 0;
+    let gbMax = 0;
+    const gbRows = cols.map(c => {
+        const val = stuScores[c.id];
+        const num = (val !== undefined && val !== '' && val !== null) ? Number(val) : null;
+        const max = Number(c.maxScore || c.max) || 0;
+        gbMax += max;
+        if (num !== null && !isNaN(num)) gbTotal += num;
+        return `
+            <tr>
+                <td class="fw-semibold text-dark">${escapeHtml(c.title || c.name || 'คะแนนเก็บ')}</td>
+                <td class="text-end font-mono fw-bold ${num !== null ? 'text-success' : 'text-muted'}">${num !== null ? num : '-'} / ${max}</td>
+            </tr>
+        `;
+    }).join('');
+
+    // 3. สถิติการเช็คชื่อ
+    const logs = currentClassroom.attendance_logs || {};
+    let present = 0, late = 0, leave = 0, absent = 0;
+    Object.keys(logs).forEach(d => {
+        const rec = logs[d]?.[sKey] || logs[d]?.[me.name];
+        if (!rec) return;
+        if (rec.status === 'present') present++;
+        else if (rec.status === 'late') late++;
+        else if (rec.status === 'leave') leave++;
+        else if (rec.status === 'absent') absent++;
+    });
+
+    box.innerHTML = `
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+                <div class="p-3 rounded-4 border bg-primary-subtle border-primary-subtle text-center">
+                    <div class="small text-primary fw-bold">คะแนนสะสมในห้อง (วงล้อ/กิจกรรม)</div>
+                    <div class="fs-3 fw-bold text-primary font-mono">${me.score || 0}</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="p-3 rounded-4 border bg-success-subtle border-success-subtle text-center">
+                    <div class="small text-success fw-bold">เข้าเรียน (มา/สาย)</div>
+                    <div class="fs-3 fw-bold text-success font-mono">${present} / ${late}</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="p-3 rounded-4 border bg-info-subtle border-info-subtle text-center">
+                    <div class="small text-info-emphasis fw-bold">คะแนนการบ้าน</div>
+                    <div class="fs-3 fw-bold text-dark font-mono">${assignEarned} <span class="fs-6 text-muted">/ ${assignMax}</span></div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="p-3 rounded-4 border bg-warning-subtle border-warning-subtle text-center">
+                    <div class="small text-warning-emphasis fw-bold">คะแนนสมุดพก (ปพ.5)</div>
+                    <div class="fs-3 fw-bold text-dark font-mono">${gbTotal} <span class="fs-6 text-muted">/ ${gbMax || 100}</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="border rounded-4 p-3 bg-white h-100">
+                    <h6 class="fw-bold text-dark mb-3"><i class="bi bi-journal-check text-primary me-1"></i>คะแนนการบ้านและชิ้นงาน</h6>
+                    ${assignments.length === 0 ? '<div class="text-muted small text-center py-3">ยังไม่มีงานที่มอบหมาย</div>' : `
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle m-0">
+                                <thead class="table-light">
+                                    <tr><th>ชิ้นงาน</th><th class="text-center">สถานะ</th><th class="text-end">คะแนน</th></tr>
+                                </thead>
+                                <tbody>${assignRows}</tbody>
+                            </table>
+                        </div>
+                    `}
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="border rounded-4 p-3 bg-white h-100">
+                    <h6 class="fw-bold text-dark mb-3"><i class="bi bi-award text-success me-1"></i>คะแนนเก็บรายช่อง (ปพ.5)</h6>
+                    ${cols.length === 0 ? '<div class="text-muted small text-center py-3">คุณครูยังไม่ได้เปิดช่องคะแนน ปพ.5</div>' : `
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle m-0">
+                                <thead class="table-light">
+                                    <tr><th>ช่องคะแนน</th><th class="text-end">คะแนนที่ได้</th></tr>
+                                </thead>
+                                <tbody>${gbRows}</tbody>
+                            </table>
+                        </div>
+                    `}
+                </div>
+            </div>
+        </div>
+    `;
 }

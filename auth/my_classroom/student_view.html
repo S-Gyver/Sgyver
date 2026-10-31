@@ -61,6 +61,12 @@
                                 รหัสวิชา: <span id="student-view-room-code">------</span>
                             </span>
                             <span class="text-muted small" id="student-view-welcome-name">ยินดีต้อนรับนักเรียน</span>
+                            <button type="button" class="btn btn-sm btn-outline-success rounded-pill px-2.5 py-0 fw-bold" style="font-size: 0.75rem;" onclick="openSelectMyStudentNameModal()" title="เลือกหรือเปลี่ยนชื่อของคุณในห้องเรียนนี้">
+                                <i class="bi bi-person-check-fill me-1"></i>สลับชื่อนักเรียน
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-success rounded-pill px-2.5 py-0 fw-bold" style="font-size: 0.75rem;" onclick="openSelectMyStudentNameModal()" title="เลือกหรือเปลี่ยนชื่อของคุณในห้องเรียนนี้">
+                                <i class="bi bi-person-check-fill me-1"></i>สลับชื่อนักเรียน
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -92,6 +98,11 @@
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="tab-student-att-btn" data-bs-toggle="pill" data-bs-target="#tab-student-att" type="button" role="tab">
                             <i class="bi bi-calendar-check me-1"></i> 3. ประวัติเข้าเรียนของฉัน
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-student-grade-btn" data-bs-toggle="pill" data-bs-target="#tab-student-grade" type="button" role="tab">
+                            <i class="bi bi-award-fill me-1"></i> 4. คะแนน & เกรดของฉัน
                         </button>
                     </li>
                 </ul>
@@ -138,6 +149,19 @@
                                     <tr><td colspan="3" class="text-center py-4 text-muted">กำลังโหลดข้อมูล...</td></tr>
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+
+                    <!-- TAB 4: คะแนน & เกรดของฉัน -->
+                    <div class="tab-pane fade" id="tab-student-grade" role="tabpanel">
+                        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                            <h5 class="fw-bold text-dark m-0"><i class="bi bi-bar-chart-line-fill text-primary me-2"></i>สรุปคะแนนเก็บ การบ้าน และผลการเรียนของฉัน</h5>
+                            <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold" onclick="openSelectMyStudentNameModal()">
+                                <i class="bi bi-person-badge me-1"></i>ดูในชื่อ: <span id="grade-tab-student-name">-</span>
+                            </button>
+                        </div>
+                        <div id="student-grade-summary-box">
+                            <div class="text-center py-5 text-muted">กำลังโหลดข้อมูลคะแนน...</div>
                         </div>
                     </div>
 
@@ -249,6 +273,7 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="student_view.js"></script>
 </body>
 </html>

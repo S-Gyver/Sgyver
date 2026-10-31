@@ -185,7 +185,7 @@
                 </div>
                 <div class="image-preview-content">
                     <div class="image-frame" id="imageFrame">
-                        <img src="" id="categoryPreviewImage" alt="รูปตัวอย่างไม้" onerror="handleImageError(this)">
+                        <img src="" id="categoryPreviewImage" alt="รูปตัวอย่างไม้" onerror="if (typeof handleImageError === 'function') handleImageError(this)">
                         <div class="image-frame-placeholder" id="imageFramePlaceholder" style="display: none;">
                             <i class="bi bi-image"></i>
                             <span>ยังไม่มีรูปภาพ</span>

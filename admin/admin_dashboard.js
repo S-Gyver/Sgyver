@@ -121,8 +121,13 @@ async function loadAdminDashboardData() {
             let rawUsers = users || [];
 
             // 2. ดึงข้อมูลห้องเรียน class_rooms
-            let { data: classRooms } = await supabaseClient.from('class_rooms').select('*');
-            allClassRooms = classRooms || [];
+            let { data: classRooms } = await supabaseClient.from('classrooms').select('*');
+            allClassRooms = (classRooms || []).map(c => ({
+                ...c,
+                players: Array.isArray(c.players) ? c.players : (Array.isArray(c.students) ? c.students : []),
+                class_key: c.class_key || c.room_code,
+                created_by: c.created_by || c.teacher_id
+            }));
 
             // 3. ดึงข้อมูล Lobbies กำลังเปิด
             let { data: lobbies } = await supabaseClient.from('lobbies').select('*');
