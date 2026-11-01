@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>คลังสื่อการสอนส่วนตัว (Teacher Cloud Drive) - Gyver Workspace</title>
+
+    <!-- Bootstrap 5, Icons & Kanit Font -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@600;700&family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Shared & Custom CSS -->
+    <link rel="stylesheet" href="../../../assets/css/index.css">
+    <link rel="stylesheet" href="../../../assets/css/toast_shared.css">
+    <link rel="stylesheet" href="teacher_drive.css">
+
+    <!-- Supabase & Shared Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../../assets/js/supabaseClient.js"></script>
+    <script src="../../../assets/js/toast_shared.js"></script>
+</head>
+<body class="min-vh-100 d-flex flex-column">
+
+    <!-- Navbar -->
+    <nav class="navbar py-2.5 bg-white border-bottom sticky-top shadow-sm">
+        <div class="container-fluid px-3 px-md-4" style="max-width: 1400px;">
+            <div class="d-flex align-items-center gap-2.5">
+                <a class="navbar-brand fw-bold fs-5 text-dark d-flex align-items-center gap-2 m-0" href="../../../my_workspace.html">
+                    <div class="rounded-3 p-1.5 px-2.5 text-white shadow-sm" style="background: linear-gradient(135deg, #ec4899, #8b5cf6);">
+                        <i class="bi bi-cloud-arrow-up-fill"></i>
+                    </div>
+                    <span>คลังสื่อการสอนส่วนตัว</span>
+                </a>
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1 small fw-bold d-none d-sm-inline-block" id="drive-user-badge">
+                    <i class="bi bi-person-lock me-1"></i>กำลังตรวจสอบบัญชี...
+                </span>
+            </div>
+
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <button class="btn btn-primary btn-sm rounded-pill px-3 fw-bold shadow-sm" onclick="openAddDriveModal('file')">
+                    <i class="bi bi-cloud-plus-fill me-1"></i>อัปโหลดไฟล์สอน
+                </button>
+                <button class="btn btn-info text-dark btn-sm rounded-pill px-3 fw-bold shadow-sm" onclick="openAddDriveModal('canva')">
+                    <i class="bi bi-easel2-fill me-1"></i>เพิ่มสไลด์ Canva / ลิงก์
+                </button>
+                <a href="../../../auth/my_classroom/my_classroom.html" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold">
+                    <i class="bi bi-mortarboard-fill me-1"></i>ห้องเรียนของฉัน
+                </a>
+                <a href="../../../my_workspace.html" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-bold">
+                    <i class="bi bi-house-door-fill me-1"></i>หน้าหลัก
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container-fluid px-3 px-md-4 my-3 my-md-4 flex-grow-1" style="max-width: 1400px;">
+
+        <!-- KPI Summary Row -->
+        <div class="row g-3 mb-3">
+            <div class="col-6 col-md-3">
+                <div class="card border-0 shadow-sm rounded-4 p-3 bg-white d-flex flex-row align-items-center gap-3">
+                    <div class="drive-icon-box icon-other"><i class="bi bi-hdd-network-fill text-primary"></i></div>
+                    <div>
+                        <div class="fs-4 fw-bold text-dark font-mono" id="stat-total-files">0</div>
+                        <div class="text-muted small">ไฟล์และสื่อทั้งหมด</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card border-0 shadow-sm rounded-4 p-3 bg-white d-flex flex-row align-items-center gap-3">
+                    <div class="drive-icon-box icon-ppt"><i class="bi bi-easel2-fill"></i></div>
+                    <div>
+                        <div class="fs-4 fw-bold text-dark font-mono" id="stat-ppt-canva">0</div>
+                        <div class="text-muted small">PowerPoint & Canva</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card border-0 shadow-sm rounded-4 p-3 bg-white d-flex flex-row align-items-center gap-3">
+                    <div class="drive-icon-box icon-word"><i class="bi bi-file-earmark-richtext-fill"></i></div>
+                    <div>
+                        <div class="fs-4 fw-bold text-dark font-mono" id="stat-doc-xls-pdf">0</div>
+                        <div class="text-muted small">Word / Excel / PDF</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card border-0 shadow-sm rounded-4 p-3 bg-white d-flex flex-row align-items-center gap-3">
+                    <div class="drive-icon-box icon-image"><i class="bi bi-images"></i></div>
+                    <div>
+                        <div class="fs-4 fw-bold text-dark font-mono" id="stat-images-media">0</div>
+                        <div class="text-muted small">รูปภาพ & วิดีโอ</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Folders Bar -->
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2 pb-2 border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-folder2-open text-warning fs-5"></i>
+                    <span class="fw-bold text-dark">โฟลเดอร์จัดเก็บสื่อของคุณ:</span>
+                    <span class="text-muted small d-none d-md-inline">แยกเก็บไฟล์ตามรายวิชาหรือระดับชั้น (ข้อมูลส่วนตัวเฉพาะบัญชีของคุณบน Cloudinary)</span>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold" onclick="promptCreateFolder()">
+                        <i class="bi bi-folder-plus me-1"></i>สร้างโฟลเดอร์ใหม่
+                    </button>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-wrap" id="drive-folders-list">
+                <!-- Dynamic folder pills -->
+            </div>
+        </div>
+
+        <!-- Filter & Search Bar + Files Grid -->
+        <div class="card border-0 shadow-sm rounded-4 p-3 p-md-4 bg-white">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4 pb-3 border-bottom">
+                <div class="d-flex align-items-center gap-1.5 flex-wrap" id="drive-type-tabs">
+                    <span class="drive-type-tab active" data-type="all" onclick="setDriveTypeFilter('all')">ทั้งหมด</span>
+                    <span class="drive-type-tab" data-type="ppt" onclick="setDriveTypeFilter('ppt')"><i class="bi bi-file-earmark-slides-fill text-warning me-1"></i>PowerPoint</span>
+                    <span class="drive-type-tab" data-type="canva" onclick="setDriveTypeFilter('canva')"><i class="bi bi-palette-fill text-info me-1"></i>Canva</span>
+                    <span class="drive-type-tab" data-type="word" onclick="setDriveTypeFilter('word')"><i class="bi bi-file-earmark-word-fill text-primary me-1"></i>Word</span>
+                    <span class="drive-type-tab" data-type="excel" onclick="setDriveTypeFilter('excel')"><i class="bi bi-file-earmark-excel-fill text-success me-1"></i>Excel</span>
+                    <span class="drive-type-tab" data-type="pdf" onclick="setDriveTypeFilter('pdf')"><i class="bi bi-file-earmark-pdf-fill text-danger me-1"></i>PDF</span>
+                    <span class="drive-type-tab" data-type="image" onclick="setDriveTypeFilter('image')"><i class="bi bi-image-fill text-purple me-1"></i>รูปภาพ</span>
+                </div>
+
+                <div class="d-flex align-items-center gap-2 flex-grow-1" style="max-width: 360px;">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light border-end-0 rounded-start-pill ps-3"><i class="bi bi-search text-muted"></i></span>
+                        <input type="text" id="drive-search-input" class="form-control bg-light border-start-0 rounded-end-pill"
+                            placeholder="ค้นหาชื่อไฟล์, วิชา, คำอธิบาย..." oninput="renderDriveFiles()">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Files Grid -->
+            <div class="row g-3" id="drive-files-grid">
+                <div class="col-12 text-center py-5 text-muted">
+                    <div class="spinner-border spinner-border-sm text-primary mb-2"></div>
+                    <div>กำลังโหลดคลังสื่อการสอนของคุณ...</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- ➕ MODAL: อัปโหลดไฟล์ขึ้น Cloudinary หรือ เพิ่มลิงก์ Canva -->
+    <!-- ============================================================== -->
+    <div class="modal fade" id="addDriveItemModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold text-dark">
+                        <i class="bi bi-cloud-plus-fill text-primary me-2"></i>เพิ่มไฟล์หรือสไลด์เข้าคลังสื่อส่วนตัว
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-add-drive-item" onsubmit="handleSaveDriveItem(event)">
+                        <!-- Switch Mode: File Upload vs Canva/URL -->
+                        <div class="btn-group w-100 p-1 bg-light rounded-pill border mb-3" role="group">
+                            <input type="radio" class="btn-check" name="driveSourceMode" id="mode-drive-file" value="file" checked onchange="switchDriveModalMode('file')">
+                            <label class="btn btn-sm rounded-pill fw-bold" for="mode-drive-file">
+                                <i class="bi bi-cloud-arrow-up-fill me-1"></i>อัปโหลดไฟล์ (Word/Excel/PPT/รูป)
+                            </label>
+                            <input type="radio" class="btn-check" name="driveSourceMode" id="mode-drive-canva" value="canva" onchange="switchDriveModalMode('canva')">
+                            <label class="btn btn-sm rounded-pill fw-bold" for="mode-drive-canva">
+                                <i class="bi bi-easel2-fill me-1"></i>สไลด์ Canva / Google Slides / URL
+                            </label>
+                        </div>
+
+                        <!-- Folder Selector -->
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">เก็บไว้ในโฟลเดอร์</label>
+                            <select id="drive-item-folder" class="form-select rounded-3">
+                                <option value="default">📁 ทั่วไป (ไม่ได้แยกโฟลเดอร์)</option>
+                            </select>
+                        </div>
+
+                        <!-- Section 1: Upload Files to Cloudinary (Multiple supported) -->
+                        <div id="drive-section-file" class="mb-3">
+                            <div class="drive-dropzone" id="drive-dropzone" onclick="document.getElementById('drive-file-input').click()">
+                                <input type="file" id="drive-file-input" class="d-none" multiple onchange="handleDriveFilesSelected(event)">
+                                <i class="bi bi-cloud-arrow-up-fill text-primary display-6 d-block mb-1"></i>
+                                <div class="fw-bold text-dark small mb-1">คลิกเลือกไฟล์ หรือลากไฟล์มาวางที่นี่ (เลือกได้หลายไฟล์พร้อมกัน)</div>
+                                <div class="text-muted" style="font-size: 0.76rem;">
+                                    รองรับ PowerPoint (.pptx, .ppt), Word (.docx, .doc), Excel (.xlsx, .xls), PDF, รูปภาพ (.png, .jpg, .webp), วิดีโอ (สูงสุด 100 MB/ไฟล์ บน Cloudinary)
+                                </div>
+                            </div>
+
+                            <div id="drive-selected-files-box" class="mt-2 d-none">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="small fw-bold text-secondary" id="drive-selected-count">ไฟล์ที่เลือก (0)</span>
+                                    <button type="button" class="btn btn-sm btn-link text-danger p-0 text-decoration-none small" onclick="clearDriveSelectedFiles()">ล้างทั้งหมด</button>
+                                </div>
+                                <div id="drive-selected-files-list" class="d-flex flex-column gap-1.5" style="max-height: 180px; overflow-y: auto;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Section 2: Canva / Online Slide Link -->
+                        <div id="drive-section-canva" class="mb-3 d-none">
+                            <label class="form-label small fw-bold text-secondary">ลิงก์ Canva / Google Slides / โค้ดฝัง (Embed) <span class="text-danger">*</span></label>
+                            <input type="text" id="drive-item-url" class="form-control rounded-3 font-mono"
+                                placeholder="เช่น https://www.canva.com/design/.../view หรือวางโค้ด <iframe>">
+                            <div class="form-text small">
+                                💡 ก๊อปปี้ลิงก์แชร์จาก Canva หรือ Google Slides มาวางได้เลย ระบบจะแปลงให้เปิดสไลด์บนเว็บได้อัตโนมัติ
+                            </div>
+                        </div>
+
+                        <!-- Title & Note -->
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">ชื่อสื่อการสอน / ชื่อไฟล์ <span class="text-muted fw-normal">(หากอัปโหลดหลายไฟล์จะใช้ชื่อไฟล์อัตโนมัติ)</span></label>
+                            <input type="text" id="drive-item-title" class="form-control rounded-3" placeholder="เช่น สไลด์บทที่ 1 พื้นฐาน Python">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">บันทึกช่วยจำ / รายละเอียดเพิ่มเติม</label>
+                            <textarea id="drive-item-desc" class="form-control rounded-3" rows="2" placeholder="เช่น ใช้สอนคาบที่ 2 ม.1/2"></textarea>
+                        </div>
+
+                        <!-- Upload Progress -->
+                        <div id="drive-upload-progress" class="alert alert-info border-info-subtle rounded-3 p-2 small d-none mb-3">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                                <span class="fw-bold text-dark" id="drive-upload-status">กำลังอัปโหลดขึ้น Cloudinary...</span>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2 mt-4">
+                            <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">ยกเลิก</button>
+                            <button type="submit" id="btn-save-drive-item" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">
+                                <i class="bi bi-cloud-check-fill me-1"></i>บันทึกเข้าคลังสื่อ
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- 🖥️ MODAL: เปิดดูไฟล์ Word / Excel / PowerPoint / Canva / รูป บนเว็บทันที -->
+    <!-- ============================================================== -->
+    <div class="modal fade" id="driveViewerModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered" style="max-width: 95vw;">
+            <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden" id="drive-viewer-modal-content" style="height: 89vh;">
+                <div class="modal-header bg-dark text-white py-2.5 px-3 border-0 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-2 text-truncate" style="max-width: 50%;">
+                        <span class="badge bg-warning text-dark rounded-pill px-2.5 py-1 fw-bold" id="drive-viewer-badge">VIEWER</span>
+                        <h6 class="modal-title fw-bold m-0 text-white text-truncate" id="drive-viewer-title">กำลังเปิดไฟล์...</h6>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <!-- สลับ Engine สำหรับไฟล์ Word / Excel / PowerPoint / PDF -->
+                        <div class="btn-group btn-group-sm d-none" id="drive-viewer-engine-group" role="group">
+                            <button type="button" class="btn btn-outline-light active fw-bold" id="btn-drv-engine-office" onclick="switchDriveViewerEngine('office')">
+                                <i class="bi bi-microsoft me-1"></i>Office Web (PPT/Word/Excel)
+                            </button>
+                            <button type="button" class="btn btn-outline-light fw-bold" id="btn-drv-engine-google" onclick="switchDriveViewerEngine('google')">
+                                <i class="bi bi-google me-1"></i>Google Viewer
+                            </button>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-warning text-dark rounded-pill px-3 fw-bold" onclick="toggleDriveViewerFullscreen()">
+                            <i class="bi bi-arrows-fullscreen me-1"></i>ขยายเต็มจอ
+                        </button>
+                        <a href="#" target="_blank" download id="drive-viewer-download-btn" class="btn btn-sm btn-outline-light rounded-pill px-3 fw-bold">
+                            <i class="bi bi-download me-1"></i>ดาวน์โหลด / แท็บใหม่
+                        </a>
+                        <button type="button" class="btn-close btn-close-white ms-1" data-bs-dismiss="modal"></button>
+                    </div>
+                </div>
+                <div class="modal-body p-0 bg-black position-relative d-flex align-items-center justify-content-center flex-grow-1" style="height: calc(89vh - 56px);">
+                    <div id="drive-viewer-loading" class="position-absolute top-50 start-50 translate-middle text-center text-white" style="z-index: 2; pointer-events: none;">
+                        <div class="spinner-border text-warning mb-2" role="status"></div>
+                        <div class="small text-white-50">กำลังเปิดเอกสารบนเว็บ...</div>
+                    </div>
+                    <!-- สำหรับรูปภาพความละเอียดสูง -->
+                    <img id="drive-viewer-image" src="" alt="" class="d-none" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                    <!-- สำหรับ PowerPoint / Word / Excel / Canva / PDF / Video -->
+                    <iframe id="drive-viewer-iframe" src="about:blank" class="w-100 h-100 border-0"
+                        allowfullscreen="true" allow="fullscreen; autoplay; clipboard-write"
+                        onload="document.getElementById('drive-viewer-loading')?.classList.add('d-none')"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="teacher_drive.js"></script>
+</body>
+</html>
+

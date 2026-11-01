@@ -2809,11 +2809,16 @@ function loadMaterials() {
                 <h6 class="fw-bold text-dark mb-1 text-truncate" title="${m.title}">${m.title}</h6>
                 <p class="text-muted small mb-3 flex-grow-1" style="font-size: 0.82rem;">${m.description || 'ไม่มีคำอธิบาย'}</p>
 
-                <div class="d-flex justify-content-between align-items-center pt-2 border-top mt-auto">
+                <div class="d-flex justify-content-between align-items-center pt-2 border-top mt-auto gap-1 flex-wrap">
                     <small class="text-muted font-mono" style="font-size: 0.72rem;">${dateStr}</small>
-                    <a href="${m.file_url}" target="_blank" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold">
-                        <i class="bi bi-download me-1"></i>ดาวน์โหลด
-                    </a>
+                    <div class="d-flex gap-1.5">
+                        <button type="button" class="btn btn-primary btn-sm rounded-pill px-3 fw-bold shadow-xs" onclick="openTeacherMaterialViewer(${idx})" title="เปิดสไลด์ PowerPoint / Canva / PDF บนหน้าเว็บทันที">
+                            <i class="bi bi-easel2-fill me-1"></i>เปิดบนเว็บ
+                        </button>
+                        <a href="${m.file_url}" target="_blank" class="btn btn-outline-secondary btn-sm rounded-pill px-2.5 fw-bold" title="ดาวน์โหลดหรือเปิดในแท็บใหม่">
+                            <i class="bi bi-download"></i>
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>`;
@@ -2938,7 +2943,7 @@ async function handleSaveMaterial(e) {
         }
     } else {
         const urlInput = document.getElementById('material-url');
-        finalUrl = (urlInput?.value || '').trim();
+        finalUrl = normalizeSlideOrCanvaInput(urlInput?.value || '');
         if (!finalUrl) {
             showToast('warning', 'กรุณาระบุลิงก์', 'กรุณาระบุลิงก์ดาวน์โหลดเอกสาร');
             return;
@@ -6121,3 +6126,212 @@ async function unlockStudentDevice(studentIndex) {
     }
 }
 window.unlockStudentDevice = unlockStudentDevice;
+
+
+// =============================================================================
+// 🖥️ ระบบเปิดดูสไลด์ PowerPoint (.pptx), Canva, Google Slides, PDF บนเว็บทันที
+// =============================================================================
+let _currentViewerRawUrl = '';
+let _currentViewerTitle = '';
+
+function normalizeSlideOrCanvaInput(rawInput) {
+    let val = (rawInput || '').trim();
+    if (!val) return '';
+    // หากผู้ใช้ก๊อปปี้โค้ดฝัง <iframe src="..."> มาจาก Canva หรือ Google Slides ให้ดึงเฉพาะ URL ออกมาอัตโนมัติ
+    const iframeMatch = val.match(/src\s*=\s*["']([^"']+)["']/i);
+    if (iframeMatch && iframeMatch[1]) {
+        val = iframeMatch[1].trim();
+    }
+    return val;
+}
+window.normalizeSlideOrCanvaInput = normalizeSlideOrCanvaInput;
+
+function detectMaterialViewerConfig(rawUrl, fileName = '') {
+    const url = normalizeSlideOrCanvaInput(rawUrl);
+    const lowerUrl = url.toLowerCase();
+    const lowerName = (fileName || '').toLowerCase();
+
+    // 1. Canva Presentation / Design
+    if (lowerUrl.includes('canva.com/design/')) {
+        let embedUrl = url;
+        if (!lowerUrl.includes('?embed') && !lowerUrl.includes('&embed')) {
+            // แปลง /edit หรือ /watch หรือ /view ให้เป็น /view?embed
+            embedUrl = url.replace(/\/(edit|watch|view)(\?.*)?$/i, '/view?embed');
+            if (!embedUrl.includes('/view?embed')) {
+                embedUrl = url.split('?')[0].replace(/\/+$/, '') + '/view?embed';
+            }
+        }
+        return {
+            type: 'canva',
+            badge: '🎨 CANVA SLIDE',
+            badgeClass: 'bg-info text-dark',
+            embedUrl,
+            allowEngineSwitch: false
+        };
+    }
+
+    // 2. PowerPoint / Word / Excel (.pptx, .ppt, .docx, .doc, .xlsx, .xls)
+    const isOfficeExt = /\.(pptx|ppt|ppsx|docx|doc|xlsx|xls)(\?|$)/i.test(lowerUrl) ||
+                        /\.(pptx|ppt|ppsx|docx|doc|xlsx|xls)$/i.test(lowerName);
+    if (isOfficeExt) {
+        const isPpt = /\.(pptx|ppt|ppsx)/i.test(lowerUrl) || /\.(pptx|ppt|ppsx)/i.test(lowerName);
+        return {
+            type: 'office',
+            badge: isPpt ? '📊 POWERPOINT WEB' : '📄 OFFICE WEB',
+            badgeClass: 'bg-warning text-dark',
+            embedUrl: `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`,
+            allowEngineSwitch: true
+        };
+    }
+
+    // 3. Google Slides / Docs / Drive
+    if (lowerUrl.includes('docs.google.com/presentation/d/')) {
+        const embedUrl = url.replace(/\/(edit|pub|preview).*$/i, '/embed?start=false&loop=false&delayms=3000');
+        return {
+            type: 'gslides',
+            badge: '📊 GOOGLE SLIDES',
+            badgeClass: 'bg-warning text-dark',
+            embedUrl,
+            allowEngineSwitch: false
+        };
+    }
+    if (lowerUrl.includes('drive.google.com/file/d/')) {
+        const embedUrl = url.replace(/\/(view|edit).*$/i, '/preview');
+        return {
+            type: 'gdrive',
+            badge: '☁️ GOOGLE DRIVE',
+            badgeClass: 'bg-primary text-white',
+            embedUrl,
+            allowEngineSwitch: false
+        };
+    }
+
+    // 4. YouTube
+    const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    if (ytMatch && ytMatch[1]) {
+        return {
+            type: 'youtube',
+            badge: '▶️ YOUTUBE',
+            badgeClass: 'bg-danger text-white',
+            embedUrl: `https://www.youtube.com/embed/${ytMatch[1]}`,
+            allowEngineSwitch: false
+        };
+    }
+
+    // 5. PDF
+    if (/\.pdf(\?|$)/i.test(lowerUrl) || /\.pdf$/i.test(lowerName)) {
+        return {
+            type: 'pdf',
+            badge: '📕 PDF VIEWER',
+            badgeClass: 'bg-danger text-white',
+            embedUrl: url,
+            allowEngineSwitch: true
+        };
+    }
+
+    // 6. Image
+    if (/\.(png|jpg|jpeg|gif|webp|svg)(\?|$)/i.test(lowerUrl) || /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(lowerName)) {
+        return {
+            type: 'image',
+            badge: '🖼️ IMAGE',
+            badgeClass: 'bg-success text-white',
+            embedUrl: url,
+            allowEngineSwitch: false
+        };
+    }
+
+    // Default web / embeddable URL
+    return {
+        type: 'web',
+        badge: '🌐 WEB VIEWER',
+        badgeClass: 'bg-secondary text-white',
+        embedUrl: url,
+        allowEngineSwitch: false
+    };
+}
+
+function openMaterialViewerByUrl(rawUrl, title = 'เอกสารประกอบการเรียน', fileName = '') {
+    const cleanUrl = normalizeSlideOrCanvaInput(rawUrl);
+    if (!cleanUrl) return;
+
+    _currentViewerRawUrl = cleanUrl;
+    _currentViewerTitle = title;
+
+    const cfg = detectMaterialViewerConfig(cleanUrl, fileName);
+
+    const titleEl = document.getElementById('mat-viewer-title');
+    const badgeEl = document.getElementById('mat-viewer-type-badge');
+    const engineSwitch = document.getElementById('mat-viewer-engine-switch');
+    const extBtn = document.getElementById('mat-viewer-external-btn');
+    const loadingEl = document.getElementById('mat-viewer-loading');
+    const iframeEl = document.getElementById('mat-viewer-iframe');
+
+    if (titleEl) titleEl.textContent = title || 'เอกสารประกอบการเรียน';
+    if (badgeEl) {
+        badgeEl.className = `badge rounded-pill px-2.5 py-1 fw-bold ${cfg.badgeClass}`;
+        badgeEl.textContent = cfg.badge;
+    }
+    if (extBtn) extBtn.href = cleanUrl;
+
+    if (engineSwitch) {
+        if (cfg.allowEngineSwitch) {
+            engineSwitch.classList.remove('d-none');
+            document.getElementById('btn-engine-office')?.classList.add('active');
+            document.getElementById('btn-engine-google')?.classList.remove('active');
+        } else {
+            engineSwitch.classList.add('d-none');
+        }
+    }
+
+    if (loadingEl) loadingEl.classList.remove('d-none');
+    if (iframeEl) iframeEl.src = cfg.embedUrl;
+
+    const modalEl = document.getElementById('materialViewerModal');
+    if (modalEl) {
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+        modalEl.addEventListener('hidden.bs.modal', () => {
+            if (iframeEl) iframeEl.src = 'about:blank';
+        }, { once: true });
+    }
+}
+window.openMaterialViewerByUrl = openMaterialViewerByUrl;
+
+function switchMaterialViewerEngine(engine) {
+    if (!_currentViewerRawUrl) return;
+    const iframeEl = document.getElementById('mat-viewer-iframe');
+    const loadingEl = document.getElementById('mat-viewer-loading');
+    const btnOffice = document.getElementById('btn-engine-office');
+    const btnGoogle = document.getElementById('btn-engine-google');
+
+    if (loadingEl) loadingEl.classList.remove('d-none');
+    if (engine === 'google') {
+        btnOffice?.classList.remove('active');
+        btnGoogle?.classList.add('active');
+        if (iframeEl) iframeEl.src = `https://docs.google.com/gview?url=${encodeURIComponent(_currentViewerRawUrl)}&embedded=true`;
+    } else {
+        btnOffice?.classList.add('active');
+        btnGoogle?.classList.remove('active');
+        if (iframeEl) iframeEl.src = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(_currentViewerRawUrl)}`;
+    }
+}
+window.switchMaterialViewerEngine = switchMaterialViewerEngine;
+
+function toggleMaterialViewerFullscreen() {
+    const contentEl = document.getElementById('material-viewer-modal-content') || document.getElementById('mat-viewer-iframe');
+    if (!contentEl) return;
+    if (!document.fullscreenElement) {
+        contentEl.requestFullscreen?.().catch(() => {});
+    } else {
+        document.exitFullscreen?.().catch(() => {});
+    }
+}
+window.toggleMaterialViewerFullscreen = toggleMaterialViewerFullscreen;
+
+function openTeacherMaterialViewer(idx) {
+    const materials = getSharedCourseMaterials();
+    const m = materials[idx];
+    if (!m) return;
+    openMaterialViewerByUrl(m.file_url, m.title, m.file_name);
+}
+window.openTeacherMaterialViewer = openTeacherMaterialViewer;

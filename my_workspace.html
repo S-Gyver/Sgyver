@@ -192,6 +192,16 @@
                         </li>
                         <li>
                             <a class="dropdown-item d-flex align-items-center gap-3 py-2 px-3 rounded-3" href="#"
+                                onclick="openAppInWorkspace('features/education/teacher_drive/teacher_drive.html', 'คลังสื่อการสอนส่วนตัว (Teacher Cloud Drive)', 'app_teacher_drive'); return false;">
+                                <i class="bi bi-cloud-arrow-up-fill text-warning fs-5"></i>
+                                <div>
+                                    <div class="fw-medium text-white small" style="font-size: 0.92rem;">คลังสื่อการสอนส่วนตัว</div>
+                                    <div style="color: #cbd5e1; font-size: 0.8rem;">เก็บไฟล์ Word, Excel, PPT, Canva, รูป</div>
+                                </div>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center gap-3 py-2 px-3 rounded-3" href="#"
                                 onclick="openAppInWorkspace('auth/classroom_manage/classroom_manage.html', 'จัดการห้องเรียน & นักเรียน', 'app_manage'); return false;">
                                 <i class="bi bi-people text-success fs-5"></i>
                                 <div>
@@ -754,6 +764,22 @@
                         <div class="launchpad-content">
                             <div class="launchpad-title">ห้องเรียนของฉัน</div>
                             <div class="launchpad-desc">สแกนเข้าห้อง เช็คชื่อ แจกไฟล์ และสั่งงาน</div>
+                        </div>
+                    </div>
+
+                    <div class="launchpad-app-item" data-required-level="1" draggable="true"
+                        ondragstart="onLaunchpadDragStart(event, 'app_teacher_drive')" onclick="launchTool('app_teacher_drive')"
+                        data-app-name="Teacher Cloud Drive คลังสื่อการสอน เก็บไฟล์ Word Excel PowerPoint Canva รูปภาพ"
+                        title="คลังสื่อการสอนส่วนตัว: เก็บไฟล์สอน Word, Excel, PowerPoint, Canva, รูปภาพ แยกตามบัญชีผู้ใช้และเปิดบนเว็บได้ทันที">
+                        <button type="button" class="launchpad-pin-btn" onclick="togglePinTool(event, 'app_teacher_drive')"
+                            title="ปักหมุดที่ Dock"><i class="bi bi-pin-angle-fill"></i></button>
+                        <span class="launchpad-lock-pill"><i class="bi bi-lock-fill"></i> สมาชิก</span>
+                        <div class="launchpad-icon"
+                            style="background: linear-gradient(145deg, #ec4899, #db2777, #8b5cf6);"><i
+                                class="bi bi-cloud-arrow-up-fill"></i></div>
+                        <div class="launchpad-content">
+                            <div class="launchpad-title">คลังสื่อการสอน</div>
+                            <div class="launchpad-desc">เก็บไฟล์ Word, Excel, PPT, Canva, รูป เปิดบนเว็บทันที</div>
                         </div>
                     </div>
 
@@ -2158,6 +2184,7 @@
             'app_live_studio': { id: 'app_live_studio', title: 'Live Studio', icon: 'bi bi-broadcast-pin', colorClass: 'text-info', type: 'link', url: 'features/education/live_studio/live_studio.html' },
             'app_bank': { id: 'app_bank', title: 'คลังข้อสอบ', icon: 'bi bi-journal-bookmark-fill', colorClass: 'text-warning', type: 'link', url: 'features/education/question_bank/question_bank.html' },
             'app_my_classroom': { id: 'app_my_classroom', title: 'ห้องเรียนของฉัน', icon: 'bi bi-mortarboard-fill', colorClass: 'text-primary', type: 'link', url: 'auth/my_classroom/my_classroom.html' },
+            'app_teacher_drive': { id: 'app_teacher_drive', title: 'คลังสื่อการสอน', icon: 'bi bi-cloud-arrow-up-fill', colorClass: 'text-pink', type: 'link', url: 'features/education/teacher_drive/teacher_drive.html' },
             'app_manage': { id: 'app_manage', title: 'จัดการ นร.', icon: 'bi bi-people-fill', colorClass: 'text-success', type: 'link', url: 'auth/classroom_manage/classroom_manage.html' },
             'app_history': { id: 'app_history', title: 'ประวัติ', icon: 'bi bi-clock-history', colorClass: 'text-info', type: 'link', url: 'auth/history/history.html' },
             'app_profile': { id: 'app_profile', title: 'โปรไฟล์ครู', icon: 'bi bi-person-gear', colorClass: 'text-secondary', type: 'link', url: 'auth/profile/profile.html' },

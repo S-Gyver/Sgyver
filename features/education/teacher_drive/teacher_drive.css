@@ -1,0 +1,115 @@
+body {
+    font-family: 'Kanit', sans-serif;
+    background-color: #f8fafc;
+    color: #0f172a;
+}
+
+.drive-folder-pill {
+    cursor: pointer;
+    transition: all 0.15s ease;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    color: #334155;
+}
+.drive-folder-pill:hover {
+    border-color: #6366f1;
+    background: #eef2ff;
+    color: #4338ca;
+}
+.drive-folder-pill.active {
+    background: linear-gradient(135deg, #4f46e5, #6366f1);
+    color: #ffffff;
+    border-color: transparent;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+}
+
+.drive-type-tab {
+    cursor: pointer;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 0.84rem;
+    font-weight: 600;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #475569;
+    transition: all 0.15s ease;
+}
+.drive-type-tab:hover {
+    background: #f1f5f9;
+}
+.drive-type-tab.active {
+    background: #0f172a;
+    color: #fff;
+    border-color: #0f172a;
+}
+
+.drive-file-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 16px;
+    transition: all 0.18s ease;
+    position: relative;
+}
+.drive-file-card:hover {
+    transform: translateY(-3px);
+    border-color: #cbd5e1;
+    box-shadow: 0 12px 24px -6px rgba(15, 23, 42, 0.08);
+}
+
+.drive-icon-box {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.45rem;
+    flex-shrink: 0;
+}
+
+.icon-ppt { background: #fff7ed; color: #ea580c; border: 1px solid #fed7aa; }
+.icon-word { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+.icon-excel { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+.icon-canva { background: linear-gradient(135deg, #e0f2fe, #f3e8ff); color: #7c3aed; border: 1px solid #ddd6fe; }
+.icon-pdf { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+.icon-image { background: #fdf4ff; color: #c026d3; border: 1px solid #f5d0fe; }
+.icon-video { background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; }
+.icon-other { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
+
+.drive-dropzone {
+    border: 2px dashed #94a3b8;
+    border-radius: 16px;
+    background: #f8fafc;
+    padding: 28px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.drive-dropzone:hover, .drive-dropzone.dragover {
+    border-color: #4f46e5;
+    background: #eef2ff;
+}
+
+.drive-thumb-preview {
+    height: 130px;
+    border-radius: 12px;
+    background: #f1f5f9;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+    border: 1px solid #f1f5f9;
+    cursor: pointer;
+}
+.drive-thumb-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.25s ease;
+}
+.drive-file-card:hover .drive-thumb-preview img {
+    transform: scale(1.04);
+}
+

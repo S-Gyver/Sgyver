@@ -1020,11 +1020,11 @@
                             <div class="btn-group w-100 p-1 bg-light rounded-pill border mb-2" role="group">
                                 <input type="radio" class="btn-check" name="materialSourceType" id="mat-type-file" value="file" checked onchange="toggleMaterialSourceType('file')">
                                 <label class="btn btn-sm rounded-pill fw-bold" for="mat-type-file">
-                                    <i class="bi bi-paperclip me-1"></i>อัปโหลดไฟล์
+                                    <i class="bi bi-file-earmark-slides-fill me-1"></i>อัปโหลดไฟล์ (PowerPoint / PDF)
                                 </label>
                                 <input type="radio" class="btn-check" name="materialSourceType" id="mat-type-link" value="link" onchange="toggleMaterialSourceType('link')">
                                 <label class="btn btn-sm rounded-pill fw-bold" for="mat-type-link">
-                                    <i class="bi bi-link-45deg me-1"></i>แปะลิงก์ (URL)
+                                    <i class="bi bi-easel2-fill me-1"></i>แปะลิงก์ Canva / URL
                                 </label>
                             </div>
 
@@ -1054,9 +1054,9 @@
 
                             <!-- แปะลิงก์ URL -->
                             <div id="section-mat-link" class="d-none">
-                                <input type="url" id="material-url" class="form-control rounded-3 font-mono"
-                                    placeholder="เช่น ลิงก์ Google Drive, Canva, OneDrive, หรือเว็บดาวน์โหลด">
-                                <div class="form-text small">สามารถแปะลิงก์ Google Drive (เปิดแชร์แล้ว) หรือลิงก์ Canva/PDF ได้เลยครับ</div>
+                                <input type="text" id="material-url" class="form-control rounded-3 font-mono"
+                                    placeholder="วางลิงก์ Canva (Share Link), Google Slides, Google Drive หรือโค้ดฝัง <iframe>">
+                                <div class="form-text small">💡 <b>รองรับ Canva & สไลด์ออนไลน์:</b> ก๊อปปี้ลิงก์แชร์จาก Canva (เช่น <code>https://www.canva.com/design/.../view</code>) หรือโค้ด Embed มาวางได้เลย เปิดสไลด์บนเว็บได้ทันที!</div>
                             </div>
                         </div>
 
@@ -2120,6 +2120,52 @@
                             <i class="bi bi-check2-circle me-1"></i>บันทึกรายชื่อเข้าห้อง
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+    <!-- ============================================================== -->
+    <!-- 🖥️ MODAL: เปิดดูสไลด์ PowerPoint / Canva / PDF บนเว็บทันที (In-App Slide Viewer) -->
+    <!-- ============================================================== -->
+    <div class="modal fade" id="materialViewerModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered" style="max-width: 94vw;">
+            <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden" id="material-viewer-modal-content" style="height: 88vh;">
+                <div class="modal-header bg-dark text-white py-2.5 px-3 border-0 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-2 text-truncate" style="max-width: 55%;">
+                        <span class="badge bg-warning text-dark rounded-pill px-2.5 py-1 fw-bold" id="mat-viewer-type-badge">
+                            <i class="bi bi-easel2-fill me-1"></i>SLIDE VIEWER
+                        </span>
+                        <h6 class="modal-title fw-bold m-0 text-white text-truncate" id="mat-viewer-title">กำลังเปิดเอกสาร...</h6>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <!-- ปุ่มสลับตัวแสดงผลสำหรับไฟล์ Office / PDF -->
+                        <div class="btn-group btn-group-sm d-none" id="mat-viewer-engine-switch" role="group">
+                            <button type="button" class="btn btn-outline-light active fw-bold" id="btn-engine-office" onclick="switchMaterialViewerEngine('office')">
+                                <i class="bi bi-microsoft me-1"></i>PowerPoint Web
+                            </button>
+                            <button type="button" class="btn btn-outline-light fw-bold" id="btn-engine-google" onclick="switchMaterialViewerEngine('google')">
+                                <i class="bi bi-google me-1"></i>Google Viewer
+                            </button>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-warning text-dark rounded-pill px-3 fw-bold" onclick="toggleMaterialViewerFullscreen()" title="ขยายเต็มจอสำหรับสอนหน้าห้อง">
+                            <i class="bi bi-arrows-fullscreen me-1"></i>ขยายเต็มจอ
+                        </button>
+                        <a href="#" target="_blank" id="mat-viewer-external-btn" class="btn btn-sm btn-outline-light rounded-pill px-3 fw-bold">
+                            <i class="bi bi-box-arrow-up-right me-1"></i>เปิดแท็บใหม่ / ดาวน์โหลด
+                        </a>
+                        <button type="button" class="btn-close btn-close-white ms-1" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                </div>
+                <div class="modal-body p-0 bg-black position-relative d-flex flex-column flex-grow-1" style="height: calc(88vh - 56px);">
+                    <div id="mat-viewer-loading" class="position-absolute top-50 start-50 translate-middle text-center text-white" style="z-index: 2; pointer-events: none;">
+                        <div class="spinner-border text-warning mb-2" role="status"></div>
+                        <div class="small text-white-50">กำลังโหลดสไลด์บนเว็บ...</div>
+                    </div>
+                    <iframe id="mat-viewer-iframe" src="about:blank" class="w-100 h-100 border-0 flex-grow-1"
+                        allowfullscreen="true" allow="fullscreen; autoplay; clipboard-write"
+                        onload="document.getElementById('mat-viewer-loading')?.classList.add('d-none')"></iframe>
                 </div>
             </div>
         </div>
