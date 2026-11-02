@@ -632,6 +632,10 @@ function renderDriveFiles() {
                         </div>
 
                         <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                            <button type="button" class="btn btn-sm btn-link text-secondary p-1"
+                                    onclick="renameDriveItem('${escapeHtml(item.id)}')" title="เปลี่ยนชื่อไฟล์ (Rename)">
+                                <i class="bi bi-pencil-square"></i>
+                            </button>
                             <button type="button" class="btn btn-sm btn-link p-1 ${item.starred ? 'text-warning' : 'text-muted'}"
                                     onclick="toggleStarDriveItem('${escapeHtml(item.id)}')" title="ติดดาวรายการโปรด">
                                 <i class="bi ${item.starred ? 'bi-star-fill' : 'bi-star'}"></i>
@@ -643,10 +647,16 @@ function renderDriveFiles() {
                         </div>
                     </div>
 
-                    <h6 class="fw-bold text-dark mb-1 text-truncate" title="${escapeHtml(item.title)}"
-                        onclick="openDriveItemViewer('${escapeHtml(item.id)}')" style="cursor:pointer;">
-                        ${escapeHtml(item.title)}
-                    </h6>
+                    <div class="d-flex align-items-center justify-content-between gap-1 mb-1">
+                        <h6 class="fw-bold text-dark mb-0 text-truncate flex-grow-1" title="${escapeHtml(item.title)}"
+                            onclick="openDriveItemViewer('${escapeHtml(item.id)}')" style="cursor:pointer;">
+                            ${escapeHtml(item.title)}
+                        </h6>
+                        <button type="button" class="btn btn-sm btn-link text-muted p-0 opacity-75 hover-opacity-100 flex-shrink-0"
+                                onclick="renameDriveItem('${escapeHtml(item.id)}')" title="เปลี่ยนชื่อ (Rename)">
+                            <i class="bi bi-pencil" style="font-size: 0.8rem;"></i>
+                        </button>
+                    </div>
                     <p class="text-muted small mb-3 flex-grow-1" style="font-size: 0.8rem;">
                         ${escapeHtml(item.description || item.fileName || 'คลิกปุ่มด้านล่างเพื่อเปิดดูบนเว็บทันที')}
                     </p>
@@ -1087,6 +1097,67 @@ async function handleSaveDriveItem(e) {
         showToast('success', 'บันทึกสไลด์สำเร็จ!', `เพิ่ม "${itemTitle}" เข้าคลังสื่อส่วนตัวเรียบร้อย`);
     }
 }
+
+// ✏️ เปลี่ยนชื่อและคำอธิบายสื่อการสอน
+async function renameDriveItem(itemId) {
+    const item = driveState.items.find(i => i.id === itemId);
+    if (!item) return;
+
+    const currentTitle = item.title || item.fileName || '';
+    const currentDesc = item.description || '';
+
+    if (typeof Swal !== 'undefined') {
+        const { value: formValues } = await Swal.fire({
+            title: 'เปลี่ยนชื่อสื่อการสอน',
+            html: `
+                <div class="text-start">
+                    <label class="form-label small fw-bold text-dark mb-1">ชื่อหัวข้อ / สื่อการสอน <span class="text-danger">*</span></label>
+                    <input id="swal-rename-title" class="form-control rounded-3 mb-3" value="${escapeHtml(currentTitle)}" placeholder="ระบุชื่อหัวข้อ...">
+                    <label class="form-label small fw-bold text-muted mb-1">คำอธิบายเพิ่มเติม (ไม่บังคับ)</label>
+                    <input id="swal-rename-desc" class="form-control form-control-sm rounded-3" value="${escapeHtml(currentDesc)}" placeholder="คำอธิบายเพิ่มเติม...">
+                    <div class="form-text small text-muted mt-2"><i class="bi bi-file-earmark me-1"></i>ไฟล์ต้นฉบับ: ${escapeHtml(item.fileName || '')}</div>
+                </div>
+            `,
+            focusConfirm: false,
+            showCancelButton: true,
+            confirmButtonText: '<i class="bi bi-check-lg me-1"></i>บันทึกชื่อใหม่',
+            cancelButtonText: 'ยกเลิก',
+            preConfirm: () => {
+                const t = document.getElementById('swal-rename-title')?.value.trim();
+                const d = document.getElementById('swal-rename-desc')?.value.trim();
+                if (!t) {
+                    Swal.showValidationMessage('กรุณาระบุชื่อสื่อการสอน');
+                    return false;
+                }
+                return { title: t, description: d };
+            }
+        });
+
+        if (formValues) {
+            item.title = formValues.title;
+            item.description = formValues.description;
+            await saveUserDriveData();
+            renderAllDriveUI();
+
+            // หากกำลังเปิดดูใน Viewer ให้เปลี่ยนชื่อตามด้วย
+            if (currentViewingItem && currentViewingItem.id === itemId) {
+                const titleEl = document.getElementById('drive-viewer-title');
+                if (titleEl) titleEl.textContent = formValues.title;
+            }
+
+            showToast('success', 'เปลี่ยนชื่อสำเร็จ!', `เปลี่ยนชื่อเป็น "${formValues.title}" เรียบร้อย`);
+        }
+    } else {
+        const newTitle = prompt('ระบุชื่อสื่อการสอนใหม่:', currentTitle);
+        if (newTitle && newTitle.trim() && newTitle.trim() !== currentTitle) {
+            item.title = newTitle.trim();
+            await saveUserDriveData();
+            renderAllDriveUI();
+            showToast('success', 'เปลี่ยนชื่อสำเร็จ!', `เปลี่ยนชื่อเป็น "${newTitle.trim()}" เรียบร้อย`);
+        }
+    }
+}
+window.renameDriveItem = renameDriveItem;
 
 async function toggleStarDriveItem(itemId) {
     const item = driveState.items.find(i => i.id === itemId);
