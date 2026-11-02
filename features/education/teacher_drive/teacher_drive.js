@@ -525,6 +525,20 @@ function setDriveTypeFilter(type) {
     renderDriveFiles();
 }
 
+// 🎨 แปลงลิงก์ Canva ให้เป็นลิงก์เข้าสู่โหมดแก้ไขใน Canva Editor ทันที
+function getCanvaEditUrl(url) {
+    if (!url) return '';
+    let clean = url.trim();
+    if (clean.includes('canva.com/design/')) {
+        clean = clean.replace(/\/(view\?embed|view|watch)(\?.*)?$/i, '/edit');
+        if (!clean.includes('/edit')) {
+            clean = clean.split('?')[0].replace(/\/+$/, '') + '/edit';
+        }
+    }
+    return clean;
+}
+window.getCanvaEditUrl = getCanvaEditUrl;
+
 // 🔍 ตรวจจับประเภทไฟล์จากชื่อไฟล์หรือ URL
 function detectDriveFileType(url = '', fileName = '') {
     const u = (url || '').toLowerCase();
@@ -605,6 +619,8 @@ function renderDriveFiles() {
         const meta = getFileTypeMeta(item.fileType);
         const folderName = foldersMap[item.folderId || 'default'] || 'ทั่วไป';
         const dateStr = item.created_at ? new Date(item.created_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' }) : '';
+        const isCanva = item.fileType === 'canva' || (item.url && item.url.includes('canva.com'));
+        const canvaEditUrl = isCanva ? getCanvaEditUrl(item.url) : '';
 
         const thumbHtml = item.fileType === 'image' ? `
             <div class="drive-thumb-preview" onclick="openDriveItemViewer('${escapeHtml(item.id)}')">
@@ -666,6 +682,11 @@ function renderDriveFiles() {
                                 onclick="openDriveItemViewer('${escapeHtml(item.id)}')">
                             <i class="bi bi-easel2-fill me-1"></i>เปิดบนเว็บ
                         </button>
+                        ${isCanva ? `
+                        <a href="${escapeHtml(canvaEditUrl)}" target="_blank" class="btn btn-info text-dark btn-sm rounded-pill px-2.5 fw-bold shadow-xs" title="เปิดเข้าไปแก้ไขสไลด์บน Canva (เปิดแท็บใหม่)">
+                            <i class="bi bi-pencil-square me-1"></i>แก้ไขบน Canva
+                        </a>
+                        ` : ''}
                         <button type="button" class="btn btn-outline-success btn-sm rounded-pill px-2.5 fw-bold"
                                 onclick="shareDriveItemToClassroom('${escapeHtml(item.id)}')" title="ส่งไฟล์นี้เข้าห้องเรียนของฉัน">
                             <i class="bi bi-send-check-fill"></i>
@@ -674,9 +695,11 @@ function renderDriveFiles() {
                                 onclick="copyDriveItemUrl('${escapeHtml(item.id)}')" title="คัดลอกลิงก์ไฟล์">
                             <i class="bi bi-link-45deg"></i>
                         </button>
+                        ${!isCanva ? `
                         <a href="${escapeHtml(item.url)}" target="_blank" download class="btn btn-outline-secondary btn-sm rounded-pill px-2.5" title="ดาวน์โหลด / เปิดแท็บใหม่">
                             <i class="bi bi-download"></i>
                         </a>
+                        ` : ''}
                     </div>
                     <div class="text-end text-muted font-mono mt-1" style="font-size: 0.65rem;">${dateStr}</div>
                 </div>
@@ -1098,21 +1121,51 @@ async function handleSaveDriveItem(e) {
     }
 }
 
-// ✏️ เปลี่ยนชื่อและคำอธิบายสื่อการสอน
+// ✏️ เปลี่ยนชื่อและแก้ไขข้อมูลสื่อการสอน / ลิงก์ Canva
 async function renameDriveItem(itemId) {
     const item = driveState.items.find(i => i.id === itemId);
     if (!item) return;
 
     const currentTitle = item.title || item.fileName || '';
     const currentDesc = item.description || '';
+    const currentFolder = item.folderId || 'default';
+    const isCanva = item.fileType === 'canva' || (item.url && item.url.includes('canva.com'));
+    const canvaEditUrl = isCanva ? getCanvaEditUrl(item.url) : '';
+
+    const folderOptions = (driveState.folders || []).map(f =>
+        `<option value="${escapeHtml(f.id)}" ${f.id === currentFolder ? 'selected' : ''}>${escapeHtml(f.name)}</option>`
+    ).join('');
 
     if (typeof Swal !== 'undefined') {
+        const canvaDirectBtn = isCanva ? `
+            <div class="mb-3 p-2.5 rounded-3 bg-info-subtle border border-info-subtle d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <div class="small fw-bold text-dark">
+                    <i class="bi bi-palette-fill text-primary me-1"></i>ต้องการแก้ไขเนื้อหาสไลด์?
+                </div>
+                <a href="${escapeHtml(canvaEditUrl)}" target="_blank" class="btn btn-info text-dark btn-sm rounded-pill px-3 fw-bold">
+                    <i class="bi bi-box-arrow-up-right me-1"></i>เปิดใน Canva Editor
+                </a>
+            </div>
+        ` : '';
+
+        const urlInputHtml = isCanva ? `
+            <label class="form-label small fw-bold text-dark mb-1">ลิงก์ Canva หรือ Embed URL</label>
+            <input id="swal-rename-url" class="form-control form-control-sm rounded-3 mb-3 font-mono" value="${escapeHtml(item.url || '')}" placeholder="https://www.canva.com/design/...">
+        ` : '';
+
         const { value: formValues } = await Swal.fire({
-            title: 'เปลี่ยนชื่อสื่อการสอน',
+            title: isCanva ? 'แก้ไขสไลด์ Canva' : 'แก้ไขข้อมูลสื่อการสอน',
             html: `
                 <div class="text-start">
+                    ${canvaDirectBtn}
                     <label class="form-label small fw-bold text-dark mb-1">ชื่อหัวข้อ / สื่อการสอน <span class="text-danger">*</span></label>
                     <input id="swal-rename-title" class="form-control rounded-3 mb-3" value="${escapeHtml(currentTitle)}" placeholder="ระบุชื่อหัวข้อ...">
+                    
+                    ${urlInputHtml}
+
+                    <label class="form-label small fw-bold text-dark mb-1">ย้ายโฟลเดอร์</label>
+                    <select id="swal-rename-folder" class="form-select form-select-sm rounded-3 mb-3">${folderOptions}</select>
+
                     <label class="form-label small fw-bold text-muted mb-1">คำอธิบายเพิ่มเติม (ไม่บังคับ)</label>
                     <input id="swal-rename-desc" class="form-control form-control-sm rounded-3" value="${escapeHtml(currentDesc)}" placeholder="คำอธิบายเพิ่มเติม...">
                     <div class="form-text small text-muted mt-2"><i class="bi bi-file-earmark me-1"></i>ไฟล์ต้นฉบับ: ${escapeHtml(item.fileName || '')}</div>
@@ -1120,22 +1173,28 @@ async function renameDriveItem(itemId) {
             `,
             focusConfirm: false,
             showCancelButton: true,
-            confirmButtonText: '<i class="bi bi-check-lg me-1"></i>บันทึกชื่อใหม่',
+            confirmButtonText: '<i class="bi bi-check-lg me-1"></i>บันทึกการแก้ไข',
             cancelButtonText: 'ยกเลิก',
             preConfirm: () => {
                 const t = document.getElementById('swal-rename-title')?.value.trim();
                 const d = document.getElementById('swal-rename-desc')?.value.trim();
+                const f = document.getElementById('swal-rename-folder')?.value || 'default';
+                const u = document.getElementById('swal-rename-url')?.value.trim();
                 if (!t) {
                     Swal.showValidationMessage('กรุณาระบุชื่อสื่อการสอน');
                     return false;
                 }
-                return { title: t, description: d };
+                return { title: t, description: d, folderId: f, url: u };
             }
         });
 
         if (formValues) {
             item.title = formValues.title;
             item.description = formValues.description;
+            item.folderId = formValues.folderId;
+            if (isCanva && formValues.url) {
+                item.url = normalizeCanvaOrSlideUrl(formValues.url);
+            }
             await saveUserDriveData();
             renderAllDriveUI();
 
@@ -1145,15 +1204,15 @@ async function renameDriveItem(itemId) {
                 if (titleEl) titleEl.textContent = formValues.title;
             }
 
-            showToast('success', 'เปลี่ยนชื่อสำเร็จ!', `เปลี่ยนชื่อเป็น "${formValues.title}" เรียบร้อย`);
+            showToast('success', 'บันทึกสำเร็จ!', `อัปเดตข้อมูล "${formValues.title}" เรียบร้อยแล้ว`);
         }
     } else {
         const newTitle = prompt('ระบุชื่อสื่อการสอนใหม่:', currentTitle);
-        if (newTitle && newTitle.trim() && newTitle.trim() !== currentTitle) {
+        if (newTitle && newTitle.trim()) {
             item.title = newTitle.trim();
             await saveUserDriveData();
             renderAllDriveUI();
-            showToast('success', 'เปลี่ยนชื่อสำเร็จ!', `เปลี่ยนชื่อเป็น "${newTitle.trim()}" เรียบร้อย`);
+            showToast('success', 'บันทึกสำเร็จ!', `เปลี่ยนชื่อเป็น "${newTitle.trim()}" เรียบร้อย`);
         }
     }
 }
@@ -1229,6 +1288,7 @@ function openDriveItemViewer(itemId) {
         const url = item.url;
         const lower = url.toLowerCase();
 
+        const editBtn = document.getElementById('drive-viewer-edit-btn');
         if (item.fileType === 'canva' || lower.includes('canva.com/design/')) {
             engineGroup?.classList.add('d-none');
             let embedUrl = url;
@@ -1239,7 +1299,24 @@ function openDriveItemViewer(itemId) {
                 }
             }
             if (iframeEl) iframeEl.src = embedUrl;
-        } else if (item.fileType === 'ppt' || item.fileType === 'word' || item.fileType === 'excel') {
+
+            // แสดงปุ่มเปิดแก้ไขบน Canva
+            if (editBtn) {
+                editBtn.href = getCanvaEditUrl(url);
+                editBtn.innerHTML = '<i class="bi bi-pencil-square me-1"></i>เปิดแก้ไขบน Canva';
+                editBtn.classList.remove('d-none');
+            }
+        } else if (lower.includes('docs.google.com/')) {
+            if (editBtn) {
+                editBtn.href = url.replace(/\/(preview|embed|pub).*$/i, '/edit');
+                editBtn.innerHTML = '<i class="bi bi-pencil-square me-1"></i>เปิดแก้ไขเอกสาร';
+                editBtn.classList.remove('d-none');
+            }
+        } else {
+            if (editBtn) editBtn.classList.add('d-none');
+        }
+        
+        if (item.fileType === 'ppt' || item.fileType === 'word' || item.fileType === 'excel') {
             if (lower.includes('docs.google.com/')) {
                 engineGroup?.classList.add('d-none');
                 const embedUrl = url.replace(/\/(edit|pub|preview).*$/i, '/embed');
@@ -1257,7 +1334,7 @@ function openDriveItemViewer(itemId) {
             engineGroup?.classList.add('d-none');
             const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
             if (iframeEl) iframeEl.src = ytMatch ? `https://www.youtube.com/embed/${ytMatch[1]}` : url;
-        } else {
+        } else if (item.fileType !== 'canva' && !lower.includes('canva.com/design/')) {
             engineGroup?.classList.add('d-none');
             if (iframeEl) iframeEl.src = url;
         }
@@ -1269,6 +1346,7 @@ function openDriveItemViewer(itemId) {
         modal.show();
         modalEl.addEventListener('hidden.bs.modal', () => {
             if (iframeEl) iframeEl.src = 'about:blank';
+            document.getElementById('drive-viewer-edit-btn')?.classList.add('d-none');
         }, { once: true });
     }
 }
