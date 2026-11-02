@@ -683,8 +683,8 @@ function renderDriveFiles() {
                             <i class="bi bi-easel2-fill me-1"></i>เปิดบนเว็บ
                         </button>
                         ${isCanva ? `
-                        <a href="${escapeHtml(canvaEditUrl)}" target="_blank" class="btn btn-info text-dark btn-sm rounded-pill px-2.5 fw-bold shadow-xs" title="เปิดเข้าไปแก้ไขสไลด์บน Canva (เปิดแท็บใหม่)">
-                            <i class="bi bi-pencil-square me-1"></i>แก้ไขบน Canva
+                        <a href="${escapeHtml(canvaEditUrl)}" target="_blank" class="btn btn-info text-dark btn-sm rounded-pill px-2.5 shadow-xs" title="เปิดเข้าไปแก้ไขบน Canva (เปิดแท็บใหม่)">
+                            <i class="bi bi-pencil-square"></i>
                         </a>
                         ` : ''}
                         <button type="button" class="btn btn-outline-success btn-sm rounded-pill px-2.5 fw-bold"
