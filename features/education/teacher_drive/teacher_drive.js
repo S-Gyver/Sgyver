@@ -49,31 +49,70 @@ document.addEventListener('DOMContentLoaded', async () => {
     initDropzone();
 });
 
+function isValidUUID(str) {
+    return typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+}
+
+let discoveredOtherDriveItems = [];
+
 async function initTeacherDrive() {
     try {
+        let session = null;
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            if (session && session.user) {
-                currentUserId = session.user.id;
-                currentUserDisplayName = session.user.user_metadata?.nickname ||
-                    session.user.user_metadata?.username ||
-                    session.user.email || 'ครูผู้สอน';
+            try {
+                const res = await supabaseClient.auth.getSession();
+                session = res?.data?.session;
+            } catch (_) {}
 
+            // ตรวจสอบกรณีรันใน iframe บน my_workspace.html
+            if (!session && window.parent && window.parent !== window) {
                 try {
-                    const { data: profile } = await supabaseClient
-                        .from('profiles')
-                        .select('nickname, username, first_name, last_name')
-                        .eq('id', currentUserId)
-                        .maybeSingle();
-                    if (profile) {
-                        currentUserDisplayName = profile.nickname || profile.username || `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || currentUserDisplayName;
+                    if (window.parent.supabaseClient) {
+                        const pRes = await window.parent.supabaseClient.auth.getSession();
+                        session = pRes?.data?.session;
+                    }
+                    if (!session && window.parent.currentWorkspaceUser) {
+                        session = { user: window.parent.currentWorkspaceUser };
                     }
                 } catch (_) {}
-            } else if (sessionStorage.getItem('gyver_admin_session') || localStorage.getItem('gyver_admin_session')) {
-                currentUserId = 'admin_master';
-                currentUserDisplayName = 'ผู้ดูแลระบบ (Admin)';
+            }
+        }
+
+        const adminRaw = sessionStorage.getItem('gyver_admin_session') || localStorage.getItem('gyver_admin_session');
+        let adminObj = null;
+        if (adminRaw) {
+            try { adminObj = JSON.parse(adminRaw); } catch(_) {}
+        }
+
+        if (session && session.user) {
+            currentUserId = session.user.id;
+            currentUserDisplayName = session.user.user_metadata?.nickname ||
+                session.user.user_metadata?.username ||
+                session.user.email || 'ครูผู้สอน';
+
+            try {
+                const { data: profile } = await supabaseClient
+                    .from('profiles')
+                    .select('nickname, username, first_name, last_name')
+                    .eq('id', currentUserId)
+                    .maybeSingle();
+                if (profile) {
+                    currentUserDisplayName = profile.nickname || profile.username || `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || currentUserDisplayName;
+                }
+            } catch (_) {}
+        } else if (adminObj && adminObj.id && isValidUUID(adminObj.id)) {
+            // มี Admin session บันทึกไว้พร้อม UUID จริง
+            currentUserId = adminObj.id;
+            currentUserDisplayName = adminObj.name || adminObj.username || 'ผู้ดูแลระบบ (Admin)';
+        } else if (adminObj) {
+            currentUserId = 'admin_master';
+            currentUserDisplayName = adminObj.name || adminObj.username || 'ผู้ดูแลระบบ (Admin)';
+        } else {
+            // หากอยู่ใน iframe ให้เข้าเป็น guest แทนที่จะ redirect workspace ทั้งหน้า
+            if (window.parent && window.parent !== window) {
+                currentUserId = 'guest_local';
+                currentUserDisplayName = 'ผู้เยี่ยมชม (Guest)';
             } else {
-                // หากยังไม่ได้ล็อกอิน ให้ส่งไปหน้าล็อกอินแล้วกลับมาหน้านี้
                 window.location.href = `../../../auth/login/login.html?redirect=${encodeURIComponent(window.location.href)}`;
                 return;
             }
@@ -88,11 +127,12 @@ async function initTeacherDrive() {
 
     const badgeEl = document.getElementById('drive-user-badge');
     if (badgeEl) {
-        badgeEl.innerHTML = `<i class="bi bi-cloud-check-fill me-1"></i>พื้นที่ส่วนตัวของ: ${escapeHtml(currentUserDisplayName)}`;
+        badgeEl.innerHTML = `<i class="bi bi-person-check-fill me-1"></i>บัญชีปัจจุบัน: ${escapeHtml(currentUserDisplayName)}`;
     }
 
     await loadUserDriveData();
     renderAllDriveUI();
+    await checkAndPromptOtherDrives();
 }
 
 // ☁️ โหลดข้อมูลคลังสื่อส่วนตัวของ User คนนี้จาก Supabase (game_state) + LocalStorage
@@ -108,7 +148,7 @@ async function loadUserDriveData() {
         }
     } catch (_) {}
 
-    if (typeof supabaseClient !== 'undefined' && supabaseClient && currentUserId !== 'guest_local' && currentUserId !== 'admin_master') {
+    if (typeof supabaseClient !== 'undefined' && supabaseClient && isValidUUID(currentUserId)) {
         try {
             const { data, error } = await supabaseClient
                 .from('game_state')
@@ -146,7 +186,7 @@ async function saveUserDriveData() {
         localStorage.setItem(localKey, JSON.stringify(driveState));
     } catch (_) {}
 
-    if (typeof supabaseClient !== 'undefined' && supabaseClient && currentUserId !== 'guest_local' && currentUserId !== 'admin_master') {
+    if (typeof supabaseClient !== 'undefined' && supabaseClient && isValidUUID(currentUserId)) {
         try {
             await supabaseClient
                 .from('game_state')
@@ -161,6 +201,106 @@ async function saveUserDriveData() {
         }
     }
 }
+
+// 🔍 ค้นหาไฟล์จากบัญชีอื่นในระบบ (กรณีผู้ใช้เคยอัปโหลดไว้ด้วยบัญชีอื่น เช่น บัญชี เอส)
+async function checkAndPromptOtherDrives() {
+    const alertContainer = document.getElementById('drive-alert-container');
+    if (!alertContainer) return;
+
+    if (typeof supabaseClient === 'undefined' || !supabaseClient) return;
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('game_state')
+            .select('user_id, value, updated_at')
+            .eq('key', 'teacher_media_drive');
+
+        if (error || !Array.isArray(data) || data.length === 0) return;
+
+        const currentItemIds = new Set((driveState.items || []).map(i => i.id));
+        const currentUrls = new Set((driveState.items || []).map(i => i.url));
+
+        let otherItems = [];
+        data.forEach(row => {
+            if (row.user_id !== currentUserId) {
+                try {
+                    const parsed = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+                    if (parsed && Array.isArray(parsed.items)) {
+                        parsed.items.forEach(it => {
+                            if (!currentItemIds.has(it.id) && !currentUrls.has(it.url)) {
+                                otherItems.push({
+                                    ...it,
+                                    sourceUserId: row.user_id
+                                });
+                            }
+                        });
+                    }
+                } catch (_) {}
+            }
+        });
+
+        discoveredOtherDriveItems = otherItems;
+
+        if (otherItems.length > 0) {
+            const fileSample = otherItems.map(i => i.title || i.fileName).slice(0, 3).join(', ');
+            alertContainer.innerHTML = `
+                <div class="alert alert-warning border-0 shadow-sm rounded-4 p-3 mb-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-2.5">
+                        <div class="rounded-circle p-2 bg-warning-subtle text-warning-emphasis d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                            <i class="bi bi-lightbulb-fill fs-5"></i>
+                        </div>
+                        <div>
+                            <div class="fw-bold text-dark">
+                                ตรวจพบ ${otherItems.length} ไฟล์ที่คุณอาจเคยอัปโหลดไว้ในบัญชีอื่น (เช่น: <span class="text-primary">${escapeHtml(fileSample)}</span>)
+                            </div>
+                            <div class="text-muted small">
+                                ปัจจุบันคุณเข้าสู่ระบบด้วยบัญชี: <strong>${escapeHtml(currentUserDisplayName)}</strong> (คลังสื่อจะแยกเก็บอิสระตามแต่ละบัญชี)
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-primary btn-sm rounded-pill px-3 fw-bold shadow-xs" onclick="importDiscoveredDriveFiles()">
+                            <i class="bi bi-cloud-arrow-down-fill me-1"></i>ดึงไฟล์เข้ามายังบัญชีนี้
+                        </button>
+                        <button type="button" class="btn-close" onclick="document.getElementById('drive-alert-container').innerHTML=''" aria-label="Close"></button>
+                    </div>
+                </div>
+            `;
+        }
+    } catch (e) {
+        console.warn('Check other drives warning:', e);
+    }
+}
+
+async function importDiscoveredDriveFiles() {
+    if (!discoveredOtherDriveItems || discoveredOtherDriveItems.length === 0) return;
+
+    if (!confirm(`ต้องการคัดลอกไฟล์จำนวน ${discoveredOtherDriveItems.length} ไฟล์ เข้ามาในคลังสื่อของบัญชี "${currentUserDisplayName}" หรือไม่?`)) return;
+
+    discoveredOtherDriveItems.forEach(it => {
+        const cloned = { ...it, user_id: currentUserId, folderId: 'default' };
+        delete cloned.sourceUserId;
+        driveState.items.push(cloned);
+    });
+
+    await saveUserDriveData();
+    renderAllDriveUI();
+
+    const alertContainer = document.getElementById('drive-alert-container');
+    if (alertContainer) {
+        alertContainer.innerHTML = `
+            <div class="alert alert-success border-0 shadow-sm rounded-4 p-3 mb-3 d-flex align-items-center justify-content-between">
+                <div><i class="bi bi-check-circle-fill me-2"></i>คัดลอกไฟล์เข้ามายังบัญชี "${escapeHtml(currentUserDisplayName)}" เรียบร้อยแล้ว!</div>
+                <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+            </div>
+        `;
+    }
+
+    if (typeof showToast === 'function') {
+        showToast('success', 'ดึงไฟล์สำเร็จ', `เพิ่มไฟล์ ${discoveredOtherDriveItems.length} ไฟล์ เข้าคลังสื่อแล้ว`);
+    }
+}
+window.importDiscoveredDriveFiles = importDiscoveredDriveFiles;
 
 function renderAllDriveUI() {
     updateDriveStats();
@@ -342,11 +482,16 @@ function renderDriveFiles() {
     });
 
     if (filtered.length === 0) {
+        const isFiltering = activeFolderId !== 'all' || activeTypeFilter !== 'all' || !!q;
         grid.innerHTML = `
             <div class="col-12 text-center py-5 bg-light rounded-4 border border-dashed">
                 <i class="bi bi-cloud-arrow-up-fill display-4 text-primary opacity-50 d-block mb-2"></i>
-                <h5 class="fw-bold text-dark mb-1">ยังไม่มีไฟล์หรือสไลด์ในหมวดหมู่นี้</h5>
-                <p class="text-muted small mb-3">อัปโหลดไฟล์ Word, Excel, PowerPoint, รูปภาพ ขึ้น Cloudinary หรือวางลิงก์ Canva เพื่อเปิดสอนบนเว็บได้ทันที</p>
+                <h5 class="fw-bold text-dark mb-1">${isFiltering ? 'ไม่พบไฟล์ในเงื่อนไขการค้นหานี้' : `ยังไม่มีไฟล์ในคลังสื่อของบัญชีนี้ (${escapeHtml(currentUserDisplayName)})`}</h5>
+                <p class="text-muted small mb-3">
+                    ${isFiltering 
+                        ? 'ลองเปลี่ยนโฟลเดอร์ ล้างช่องค้นหา หรือเลือกหมวดหมู่อื่น' 
+                        : `ระบบคลังสื่อจะแยกเก็บอิสระตามแต่ละบัญชีที่เข้าสู่ระบบ หากคุณเคยอัปโหลดไฟล์ไว้ในบัญชีอื่น (เช่น <strong>เอส / SD</strong>) โปรดสลับเข้าสู่ระบบด้วยบัญชีดังกล่าว หรือกดปุ่มดึงไฟล์จากแถบแจ้งเตือนด้านบน`}
+                </p>
                 <div class="d-flex justify-content-center gap-2 flex-wrap">
                     <button class="btn btn-primary btn-sm rounded-pill px-4 fw-bold shadow-sm" onclick="openAddDriveModal('file')">
                         <i class="bi bi-cloud-plus-fill me-1"></i>อัปโหลดไฟล์ขึ้น Cloudinary
