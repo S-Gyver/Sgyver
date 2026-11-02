@@ -47,6 +47,7 @@ function formatFileSize(bytes) {
 document.addEventListener('DOMContentLoaded', async () => {
     await initTeacherDrive();
     initDropzone();
+    initPageDragAndDrop();
 });
 
 function isValidUUID(str) {
@@ -142,32 +143,69 @@ async function loadUserDriveData() {
         const localRaw = localStorage.getItem(localKey);
         if (localRaw) {
             const parsed = JSON.parse(localRaw);
-            if (parsed && Array.isArray(parsed.items)) {
+            if (parsed && Array.isArray(parsed.items) && parsed.items.length > 0) {
                 driveState = parsed;
             }
         }
     } catch (_) {}
 
-    if (typeof supabaseClient !== 'undefined' && supabaseClient && isValidUUID(currentUserId)) {
-        try {
-            const { data, error } = await supabaseClient
-                .from('game_state')
-                .select('value')
-                .eq('user_id', currentUserId)
-                .eq('key', 'teacher_media_drive')
-                .maybeSingle();
+    if (isValidUUID(currentUserId)) {
+        let loaded = false;
 
-            if (!error && data && data.value) {
-                const cloudParsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
-                if (cloudParsed && Array.isArray(cloudParsed.items)) {
-                    driveState = cloudParsed;
-                    try {
-                        localStorage.setItem(localKey, JSON.stringify(driveState));
-                    } catch (_) {}
+        // 1. ลองดึงผ่าน supabaseClient
+        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('game_state')
+                    .select('value')
+                    .eq('user_id', currentUserId)
+                    .eq('key', 'teacher_media_drive')
+                    .maybeSingle();
+
+                if (!error && data && data.value) {
+                    const cloudParsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+                    if (cloudParsed && Array.isArray(cloudParsed.items)) {
+                        driveState = cloudParsed;
+                        loaded = true;
+                    }
                 }
+            } catch (err) {
+                console.warn('Cloud drive fetch warning (supabaseClient):', err);
             }
-        } catch (err) {
-            console.warn('Cloud drive fetch warning:', err);
+        }
+
+        // 2. Direct REST fallback พร้อม Accept-Profile: public
+        if (!loaded) {
+            try {
+                const sUrl = window.SUPABASE_URL || 'https://igiihteeeprpcxxlldkd.supabase.co';
+                const sKey = window.SUPABASE_KEY || '';
+                const url = `${sUrl}/rest/v1/game_state?user_id=eq.${encodeURIComponent(currentUserId)}&key=eq.teacher_media_drive&select=value`;
+                const res = await fetch(url, {
+                    headers: {
+                        'apikey': sKey,
+                        'Authorization': `Bearer ${sKey}`,
+                        'Accept-Profile': 'public'
+                    }
+                });
+                if (res.ok) {
+                    const list = await res.json();
+                    if (Array.isArray(list) && list.length > 0 && list[0].value) {
+                        const cloudParsed = typeof list[0].value === 'string' ? JSON.parse(list[0].value) : list[0].value;
+                        if (cloudParsed && Array.isArray(cloudParsed.items)) {
+                            driveState = cloudParsed;
+                            loaded = true;
+                        }
+                    }
+                }
+            } catch (err) {
+                console.warn('Direct cloud drive fetch warning:', err);
+            }
+        }
+
+        if (loaded) {
+            try {
+                localStorage.setItem(localKey, JSON.stringify(driveState));
+            } catch (_) {}
         }
     }
 
@@ -186,18 +224,51 @@ async function saveUserDriveData() {
         localStorage.setItem(localKey, JSON.stringify(driveState));
     } catch (_) {}
 
-    if (typeof supabaseClient !== 'undefined' && supabaseClient && isValidUUID(currentUserId)) {
-        try {
-            await supabaseClient
-                .from('game_state')
-                .upsert([{
-                    key: 'teacher_media_drive',
-                    user_id: currentUserId,
-                    value: JSON.stringify(driveState),
-                    updated_at: new Date().toISOString()
-                }], { onConflict: 'key,user_id' });
-        } catch (err) {
-            console.warn('Cloud drive save warning:', err);
+    if (isValidUUID(currentUserId)) {
+        let saved = false;
+
+        // 1. ลองบันทึกผ่าน supabaseClient
+        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+            try {
+                const { error } = await supabaseClient
+                    .from('game_state')
+                    .upsert([{
+                        key: 'teacher_media_drive',
+                        user_id: currentUserId,
+                        value: JSON.stringify(driveState),
+                        updated_at: new Date().toISOString()
+                    }], { onConflict: 'key,user_id' });
+                if (!error) saved = true;
+            } catch (err) {
+                console.warn('Cloud drive save warning (supabaseClient):', err);
+            }
+        }
+
+        // 2. Direct REST fallback พร้อม Content-Profile: public
+        if (!saved) {
+            try {
+                const sUrl = window.SUPABASE_URL || 'https://igiihteeeprpcxxlldkd.supabase.co';
+                const sKey = window.SUPABASE_KEY || '';
+                await fetch(`${sUrl}/rest/v1/game_state?on_conflict=key,user_id`, {
+                    method: 'POST',
+                    headers: {
+                        'apikey': sKey,
+                        'Authorization': `Bearer ${sKey}`,
+                        'Accept-Profile': 'public',
+                        'Content-Profile': 'public',
+                        'Content-Type': 'application/json',
+                        'Prefer': 'resolution=merge-duplicates'
+                    },
+                    body: JSON.stringify([{
+                        key: 'teacher_media_drive',
+                        user_id: currentUserId,
+                        value: JSON.stringify(driveState),
+                        updated_at: new Date().toISOString()
+                    }])
+                });
+            } catch (err) {
+                console.warn('Direct cloud drive save warning:', err);
+            }
         }
     }
 }
@@ -207,15 +278,37 @@ async function checkAndPromptOtherDrives() {
     const alertContainer = document.getElementById('drive-alert-container');
     if (!alertContainer) return;
 
-    if (typeof supabaseClient === 'undefined' || !supabaseClient) return;
-
     try {
-        const { data, error } = await supabaseClient
-            .from('game_state')
-            .select('user_id, value, updated_at')
-            .eq('key', 'teacher_media_drive');
+        let data = null;
 
-        if (error || !Array.isArray(data) || data.length === 0) return;
+        // 1. ลองผ่าน supabaseClient
+        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+            try {
+                const res = await supabaseClient
+                    .from('game_state')
+                    .select('user_id, value, updated_at')
+                    .eq('key', 'teacher_media_drive');
+                if (!res.error && Array.isArray(res.data)) data = res.data;
+            } catch (_) {}
+        }
+
+        // 2. Direct REST fallback
+        if (!data) {
+            try {
+                const sUrl = window.SUPABASE_URL || 'https://igiihteeeprpcxxlldkd.supabase.co';
+                const sKey = window.SUPABASE_KEY || '';
+                const res = await fetch(`${sUrl}/rest/v1/game_state?key=eq.teacher_media_drive&select=user_id,value,updated_at`, {
+                    headers: {
+                        'apikey': sKey,
+                        'Authorization': `Bearer ${sKey}`,
+                        'Accept-Profile': 'public'
+                    }
+                });
+                if (res.ok) data = await res.json();
+            } catch (_) {}
+        }
+
+        if (!Array.isArray(data) || data.length === 0) return;
 
         const currentItemIds = new Set((driveState.items || []).map(i => i.id));
         const currentUrls = new Set((driveState.items || []).map(i => i.url));
@@ -484,17 +577,20 @@ function renderDriveFiles() {
     if (filtered.length === 0) {
         const isFiltering = activeFolderId !== 'all' || activeTypeFilter !== 'all' || !!q;
         grid.innerHTML = `
-            <div class="col-12 text-center py-5 bg-light rounded-4 border border-dashed">
-                <i class="bi bi-cloud-arrow-up-fill display-4 text-primary opacity-50 d-block mb-2"></i>
-                <h5 class="fw-bold text-dark mb-1">${isFiltering ? 'ไม่พบไฟล์ในเงื่อนไขการค้นหานี้' : `ยังไม่มีไฟล์ในคลังสื่อของบัญชีนี้ (${escapeHtml(currentUserDisplayName)})`}</h5>
-                <p class="text-muted small mb-3">
+            <div class="col-12 text-center py-5 rounded-4 drive-empty-dropzone shadow-xs"
+                 ondragover="event.preventDefault(); this.classList.add('dragover');"
+                 ondragleave="this.classList.remove('dragover');"
+                 ondrop="event.preventDefault(); this.classList.remove('dragover'); handleDirectDroppedFiles(event.dataTransfer?.files);">
+                <i class="bi bi-cloud-arrow-up-fill display-3 text-primary opacity-75 d-block mb-2 drop-icon-anim"></i>
+                <h4 class="fw-bold text-dark mb-1">${isFiltering ? 'ไม่พบไฟล์ในเงื่อนไขการค้นหานี้' : `ลากไฟล์มาวางที่นี่เพื่ออัปโหลดทันที`}</h4>
+                <p class="text-muted small mb-3" style="max-width: 620px; margin: 0 auto;">
                     ${isFiltering 
                         ? 'ลองเปลี่ยนโฟลเดอร์ ล้างช่องค้นหา หรือเลือกหมวดหมู่อื่น' 
-                        : `ระบบคลังสื่อจะแยกเก็บอิสระตามแต่ละบัญชีที่เข้าสู่ระบบ หากคุณเคยอัปโหลดไฟล์ไว้ในบัญชีอื่น (เช่น <strong>เอส / SD</strong>) โปรดสลับเข้าสู่ระบบด้วยบัญชีดังกล่าว หรือกดปุ่มดึงไฟล์จากแถบแจ้งเตือนด้านบน`}
+                        : `สามารถลากไฟล์ PowerPoint (.pptx), Word (.docx), Excel (.xlsx), PDF, รูปภาพ หรือวิดีโอ จากเครื่องมาวางในกรอบนี้ได้เลย ระบบจะอัปโหลดขึ้น Cloudinary และเพิ่มเข้าคลังสื่อทันที`}
                 </p>
                 <div class="d-flex justify-content-center gap-2 flex-wrap">
                     <button class="btn btn-primary btn-sm rounded-pill px-4 fw-bold shadow-sm" onclick="openAddDriveModal('file')">
-                        <i class="bi bi-cloud-plus-fill me-1"></i>อัปโหลดไฟล์ขึ้น Cloudinary
+                        <i class="bi bi-cloud-plus-fill me-1"></i>เลือกไฟล์จากเครื่อง
                     </button>
                     <button class="btn btn-info text-dark btn-sm rounded-pill px-4 fw-bold shadow-sm" onclick="openAddDriveModal('canva')">
                         <i class="bi bi-easel2-fill me-1"></i>เพิ่มสไลด์ Canva
@@ -637,6 +733,176 @@ function initDropzone() {
         }
     });
 }
+
+let pageDragCounter = 0;
+
+function initPageDragAndDrop() {
+    const overlay = document.getElementById('drive-fullscreen-dropzone');
+    const folderLabel = document.getElementById('overlay-target-folder');
+
+    // ป้องกันไม่ให้ Browser พยายามเปิดไฟล์เอกสารเองโดยตรง
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        window.addEventListener(eventName, e => {
+            e.preventDefault();
+            e.stopPropagation();
+        }, false);
+    });
+
+    window.addEventListener('dragenter', e => {
+        if (e.dataTransfer && e.dataTransfer.types && Array.from(e.dataTransfer.types).includes('Files')) {
+            pageDragCounter++;
+            if (overlay) {
+                if (folderLabel) {
+                    const currentFolder = driveState.folders.find(f => f.id === activeFolderId);
+                    folderLabel.textContent = currentFolder ? currentFolder.name : 'ทั่วไป';
+                }
+                overlay.classList.add('active');
+            }
+        }
+    });
+
+    window.addEventListener('dragleave', e => {
+        pageDragCounter--;
+        if (pageDragCounter <= 0) {
+            pageDragCounter = 0;
+            if (overlay) {
+                overlay.classList.remove('active');
+            }
+        }
+    });
+
+    window.addEventListener('drop', async e => {
+        pageDragCounter = 0;
+        if (overlay) {
+            overlay.classList.remove('active');
+        }
+
+        const files = e.dataTransfer?.files;
+        if (files && files.length > 0) {
+            await handleDirectDroppedFiles(files);
+        }
+    });
+}
+
+// 🚀 ประมวลผลไฟล์ที่ถูกลากมาวางบนหน้าเว็บโดยตรง
+async function handleDirectDroppedFiles(files) {
+    if (!files || files.length === 0) return;
+
+    const validFiles = [];
+    for (let i = 0; i < files.length; i++) {
+        const f = files[i];
+        if (f.size > 100 * 1024 * 1024) {
+            showToast('error', 'ไฟล์ใหญ่เกินไป', `"${f.name}" มีขนาดเกิน 100 MB`);
+            continue;
+        }
+        validFiles.push(f);
+    }
+    if (validFiles.length === 0) return;
+
+    const targetFolderId = (activeFolderId && activeFolderId !== 'all' && activeFolderId !== 'starred') 
+        ? activeFolderId 
+        : 'default';
+
+    await uploadFilesDirectly(validFiles, targetFolderId);
+}
+window.handleDirectDroppedFiles = handleDirectDroppedFiles;
+
+// ⚡ อัปโหลดไฟล์ขึ้น Cloudinary + บันทึกข้อมูลคลังสื่อทันที พร้อมแถบแสดงความคืบหน้า
+async function uploadFilesDirectly(filesList, targetFolderId = 'default') {
+    if (!filesList || filesList.length === 0) return;
+
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'กำลังอัปโหลดสื่อการสอน...',
+            html: `
+                <div class="p-2 text-center">
+                    <div class="spinner-border text-primary mb-3" role="status"></div>
+                    <div id="swal-upload-file-status" class="fw-bold text-dark mb-2">กำลังเตรียมไฟล์...</div>
+                    <div class="progress" style="height: 10px;">
+                        <div id="swal-upload-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" style="width: 10%"></div>
+                    </div>
+                </div>
+            `,
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            showConfirmButton: false
+        });
+    }
+
+    const statusEl = document.getElementById('swal-upload-file-status');
+    const barEl = document.getElementById('swal-upload-progress-bar');
+
+    try {
+        for (let i = 0; i < filesList.length; i++) {
+            const file = filesList[i];
+            const pct = Math.round(((i + 0.3) / filesList.length) * 100);
+            if (statusEl) statusEl.textContent = `กำลังอัปโหลด (${i + 1}/${filesList.length}): "${file.name}"...`;
+            if (barEl) barEl.style.width = `${pct}%`;
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('upload_preset', CLOUDINARY.uploadPreset);
+            formData.append('folder', `gyver_teacher_drive/${currentUserId}`);
+
+            const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY.cloudName}/auto/upload`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!res.ok) {
+                const errJson = await res.json().catch(() => ({}));
+                throw new Error(errJson.error?.message || `อัปโหลด "${file.name}" ไม่สำเร็จ`);
+            }
+
+            const data = await res.json();
+            const cleanFileName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+            const fType = detectDriveFileType(data.secure_url, file.name);
+
+            driveState.items.unshift({
+                id: 'drv_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+                user_id: currentUserId,
+                folderId: targetFolderId,
+                title: cleanFileName,
+                fileName: file.name,
+                fileSize: formatFileSize(file.size),
+                fileType: fType,
+                url: data.secure_url,
+                cloudinary_public_id: data.public_id || '',
+                description: '',
+                starred: false,
+                created_at: new Date().toISOString()
+            });
+
+            if (barEl) barEl.style.width = `${Math.round(((i + 1) / filesList.length) * 100)}%`;
+        }
+
+        await saveUserDriveData();
+        renderAllDriveUI();
+
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'success',
+                title: 'อัปโหลดสำเร็จ!',
+                text: `เพิ่มไฟล์ ${filesList.length} ไฟล์ เข้าคลังสื่อเรียบร้อยแล้ว`,
+                timer: 2000,
+                showConfirmButton: false
+            });
+        }
+        if (typeof showToast === 'function') {
+            showToast('success', 'อัปโหลดสำเร็จ', `เพิ่ม ${filesList.length} ไฟล์ลงในคลังสื่อแล้ว`);
+        }
+    } catch (err) {
+        console.error('Direct upload error:', err);
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'error',
+                title: 'เกิดข้อผิดพลาดในการอัปโหลด',
+                text: err.message || 'ไม่สามารถอัปโหลดไฟล์ขึ้น Cloudinary ได้'
+            });
+        }
+    }
+}
+window.uploadFilesDirectly = uploadFilesDirectly;
 
 function handleDriveFilesSelected(event) {
     const files = event.target.files;

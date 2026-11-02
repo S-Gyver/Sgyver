@@ -5,5 +5,11 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 window.SUPABASE_URL = SUPABASE_URL;
 window.SUPABASE_KEY = SUPABASE_KEY;
 window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-    db: { schema: 'public' }
+    db: { schema: 'public' },
+    global: {
+        headers: {
+            'Accept-Profile': 'public',
+            'Content-Profile': 'public'
+        }
+    }
 });

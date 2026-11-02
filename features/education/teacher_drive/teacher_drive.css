@@ -113,3 +113,62 @@ body {
     transform: scale(1.04);
 }
 
+/* 🎯 Fullscreen Drag & Drop Overlay */
+.drive-drop-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    background: rgba(15, 23, 42, 0.72);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.drive-drop-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.drop-overlay-box {
+    background: #ffffff;
+    max-width: 560px;
+    width: 90%;
+    transform: scale(0.92);
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.5);
+    border: 3px dashed #6366f1 !important;
+}
+
+.drive-drop-overlay.active .drop-overlay-box {
+    transform: scale(1);
+}
+
+.drop-icon-anim {
+    display: inline-block;
+    animation: bounceUpDown 1.2s infinite ease-in-out;
+}
+
+@keyframes bounceUpDown {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.drive-empty-dropzone {
+    border: 2px dashed #818cf8 !important;
+    background: #ffffff !important;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+.drive-empty-dropzone:hover, .drive-empty-dropzone.dragover {
+    border-color: #4f46e5 !important;
+    background: #eef2ff !important;
+    box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.15);
+    transform: scale(1.008);
+}
+
+
