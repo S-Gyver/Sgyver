@@ -6,6 +6,7 @@ async function logoutProfilePage() {
         }
         sessionStorage.clear();
         localStorage.removeItem('gyver_admin_session');
+        localStorage.removeItem('gyver_workchat_user');
         localStorage.removeItem('cs_bg');
         localStorage.removeItem('cs_custom_bg_name');
         localStorage.removeItem('cs_custom_bg_raw');

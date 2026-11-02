@@ -1649,6 +1649,7 @@
                         if (adminMenu) adminMenu.classList.add('d-none');
                         sessionStorage.removeItem('gyver_admin_session');
                         localStorage.removeItem('gyver_admin_session');
+            localStorage.removeItem('gyver_workchat_user');
                     }
 
                     // ☁️ Initialize Workspace Cloud Sync for this user
@@ -1868,6 +1869,7 @@
             localStorage.removeItem('cs_open_widgets');
             localStorage.removeItem('gyver_dock_items');
             localStorage.removeItem('gyver_admin_session');
+            localStorage.removeItem('gyver_workchat_user');
             sessionStorage.clear();
 
             if (getClient()) {
@@ -2019,6 +2021,7 @@
                                 }
                                 sessionStorage.removeItem('gyver_admin_session');
                                 localStorage.removeItem('gyver_admin_session');
+            localStorage.removeItem('gyver_workchat_user');
 
                                 alertBox.className = 'alert alert-success py-2 small text-center rounded-3';
                                 alertBox.textContent = '🎉 ล็อกอินสำเร็จ!';

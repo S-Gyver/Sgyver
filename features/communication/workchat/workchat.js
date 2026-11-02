@@ -168,7 +168,6 @@ function renderAvatarDisplay(avatar) {
 
 // Starter Data & Purge Registry
 const MOCK_ITEM_IDS = new Set([
-    'general',
     'dm_lilly',
     'dm_rihanna',
     'dm_gregory',
@@ -270,16 +269,29 @@ function unmarkFriendIdDeleted(friendId) {
     unmarkFriendDeleted(friendId);
 }
 
+
+const SYSTEM_GENERAL_GROUP = {
+    id: 'general',
+    name: 'ห้องรวมทีม (General Chat)',
+    isGroup: true,
+    type: 'group',
+    members: ['all'],
+    subtitleDefault: 'ห้องสนทนากลางสำหรับสมาชิกทุกคน',
+    avatarType: 'group',
+    status: 'ห้องแชทกลางสำหรับทุกคน'
+};
+
 const DEFAULT_PROJECTS = [];
 const DEFAULT_FOLDERS = [];
 const DEFAULT_FILES = [];
-const DEFAULT_GROUPS = [];
+const DEFAULT_GROUPS = [SYSTEM_GENERAL_GROUP];
+
 
 const DEFAULT_MESSAGES = [];
 
 // ── 2. INITIALIZATION ───────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
-    syncUserProfileFromGyver();
+document.addEventListener('DOMContentLoaded', async () => {
+    await syncUserProfileFromGyver();
     loadWorkspaceData();
     TEAM_FRIENDS = loadFriendsData();
     saveFriendsData();
@@ -294,21 +306,16 @@ document.addEventListener('DOMContentLoaded', () => {
     renderProjectPills();
     renderExplorer();
 
-    // Auto-select first real friend (e.g. aya) if current chat is invalid or mock
-    if (!CHAT_STATE.activeChatId || MOCK_ITEM_IDS.has(CHAT_STATE.activeChatId) || CHAT_STATE.activeChatId === 'general') {
-        if (TEAM_FRIENDS.length > 0) {
-            CHAT_STATE.activeChatId = TEAM_FRIENDS[0].id;
-            selectChatConversation(TEAM_FRIENDS[0].id);
-        } else if (CHAT_STATE.groups.length > 0) {
-            CHAT_STATE.activeChatId = CHAT_STATE.groups[0].id;
-            selectChatConversation(CHAT_STATE.groups[0].id);
-        } else {
-            CHAT_STATE.activeChatId = null;
-            renderEmptyChatHeader();
-        }
-    } else {
-        selectChatConversation(CHAT_STATE.activeChatId);
+    // Ensure SYSTEM_GENERAL_GROUP is always present in CHAT_STATE.groups
+    if (!CHAT_STATE.groups.some(g => g.id === 'general')) {
+        CHAT_STATE.groups.unshift(SYSTEM_GENERAL_GROUP);
     }
+
+    // Auto-select default conversation (default to general chat)
+    if (!CHAT_STATE.activeChatId || MOCK_ITEM_IDS.has(CHAT_STATE.activeChatId)) {
+        CHAT_STATE.activeChatId = 'general';
+    }
+    selectChatConversation(CHAT_STATE.activeChatId);
 
     renderChatsList();
     renderMessages();
@@ -319,11 +326,10 @@ function renderEmptyChatHeader() {
     const titleEl = document.getElementById('active-chat-name');
     const avatarEl = document.getElementById('active-chat-avatar');
     const statusEl = document.getElementById('active-chat-status');
-    if (titleEl) titleEl.textContent = 'เลือกการสนทนา';
-    if (avatarEl) avatarEl.innerHTML = `<div class="d-flex align-items-center justify-content-center w-100 h-100 bg-light text-muted rounded-circle"><i class="bi bi-chat-dots fs-5"></i></div>`;
-    if (statusEl) statusEl.innerHTML = `<span class="text-muted">เลือกเพื่อนเพื่อเริ่มคุยงาน</span>`;
+    if (titleEl) titleEl.textContent = 'ห้องรวมทีม (General Chat)';
+    if (avatarEl) avatarEl.innerHTML = getIllustratedAvatar('group', 'General Chat');
+    if (statusEl) statusEl.innerHTML = `<button type="button" class="btn btn-sm btn-link p-0 text-primary fw-bold text-decoration-none" onclick="selectChatConversation('general')"><i class="bi bi-chat-dots-fill me-1"></i>เข้าสู่ห้องรวมทีม (General Chat)</button>`;
 }
-
 
 async function syncUserProfileFromGyver() {
     let syncedName = '';
@@ -332,10 +338,64 @@ async function syncUserProfileFromGyver() {
     let userLevel = 1;
     let userRole = 'user';
     let isLoggedIn = false;
+    let currentAuthId = null;
 
-    // Step 1: Sync from Parent Window DOM (when in iframe inside Gyver Workspace)
-    try {
-        if (window.parent && window.parent !== window) {
+    // Step 1: Check Supabase Auth Session FIRST as the primary authority
+    const sb = window.supabaseClient || (window.parent && window.parent.supabaseClient);
+    if (sb && sb.auth) {
+        try {
+            const { data: { session } } = await sb.auth.getSession();
+            if (session && session.user) {
+                const u = session.user;
+                currentAuthId = u.id;
+                isLoggedIn = true;
+
+                // Priority: metadata from registration or login
+                syncedUsername = u.user_metadata?.username || (u.email ? u.email.split('@')[0] : 'user');
+                syncedName = u.user_metadata?.nickname || u.user_metadata?.username || u.user_metadata?.full_name || syncedUsername;
+                syncedAvatar = u.user_metadata?.avatar_url || '';
+                if (u.user_metadata?.role === 'admin') {
+                    userRole = 'admin';
+                    userLevel = 5;
+                }
+
+                // Query database table 'profiles' for live updates
+                try {
+                    const { data: prof } = await sb.from('profiles').select('*').eq('id', u.id).maybeSingle();
+                    if (prof) {
+                        if (prof.username) syncedUsername = prof.username;
+                        if (prof.nickname || prof.full_name || prof.username) {
+                            syncedName = prof.nickname || prof.full_name || prof.username;
+                        }
+                        if (prof.avatar_url) syncedAvatar = prof.avatar_url;
+                        if (prof.level !== undefined && prof.level !== null) {
+                            userLevel = Math.max(1, Number(prof.level) || 1);
+                        }
+                        if (prof.role === 'admin' || (prof.username && prof.username.toLowerCase() === 'admin')) {
+                            userRole = 'admin';
+                            userLevel = Math.max(userLevel, 5);
+                        } else {
+                            userRole = 'user';
+                        }
+                    }
+                } catch (profErr) {
+                    console.warn('[WorkChat] Profile fetch notice:', profErr);
+                }
+
+                // If user is not admin, clear any leftover admin sessions
+                if (userRole !== 'admin') {
+                    sessionStorage.removeItem('gyver_admin_session');
+                    localStorage.removeItem('gyver_admin_session');
+                }
+            }
+        } catch (sbErr) {
+            console.warn('[WorkChat] Supabase session check error:', sbErr);
+        }
+    }
+
+    // Step 2: If in iframe inside Gyver Workspace and no Supabase session yet
+    if (!isLoggedIn && window.parent && window.parent !== window) {
+        try {
             const pDoc = window.parent.document;
             const pNameEl = pDoc.getElementById('nav-user-name');
             const pAvatarEl = pDoc.getElementById('nav-user-avatar');
@@ -349,120 +409,64 @@ async function syncUserProfileFromGyver() {
             if (pAvatarEl && pAvatarEl.src && !pAvatarEl.src.includes('149071.png')) {
                 syncedAvatar = pAvatarEl.src;
             }
-            // Parse level from parent badge (e.g. "Lv.5")
             if (pBadgeEl && pBadgeEl.innerText) {
                 const match = pBadgeEl.innerText.match(/\d+/);
-                if (match) {
-                    userLevel = Math.max(userLevel, parseInt(match[0], 10));
-                }
-            }
-            // Parse level from parent body class (e.g. "is-lv5", "is-lv4")
-            if (pDoc.body) {
-                const match = pDoc.body.className.match(/is-lv(\d+)/);
-                if (match) {
-                    userLevel = Math.max(userLevel, parseInt(match[1], 10));
-                }
+                if (match) userLevel = Math.max(userLevel, parseInt(match[0], 10));
             }
             if (window.parent.currentUserRole === 'admin') {
                 userRole = 'admin';
                 userLevel = Math.max(userLevel, 5);
                 isLoggedIn = true;
             }
-        }
-    } catch (_) {}
-
-    // Step 2: Check localStorage level cached by Workspace
-    try {
-        const storedLv = parseInt(localStorage.getItem('gyver_user_level') || '0', 10);
-        if (storedLv > 0) {
-            userLevel = Math.max(userLevel, storedLv);
-            isLoggedIn = true;
-        }
-    } catch (_) {}
-
-    // Step 3: Check localStorage admin session
-    try {
-        const adminSession = sessionStorage.getItem('gyver_admin_session') || localStorage.getItem('gyver_admin_session');
-        if (adminSession) {
-            const parsed = JSON.parse(adminSession);
-            userRole = 'admin';
-            userLevel = Math.max(userLevel, 5);
-            isLoggedIn = true;
-            if (!syncedName && parsed.name) syncedName = parsed.name;
-        }
-    } catch (_) {}
-
-    // Step 4: Admin name recognition ("เอส", "admin", "sgyver")
-    if (syncedName && (syncedName.includes('เอส') || syncedName.toLowerCase().includes('admin') || syncedName.toLowerCase().includes('s gyver') || syncedName.toLowerCase().includes('sgyver'))) {
-        userLevel = Math.max(userLevel, 5);
-        userRole = 'admin';
-        isLoggedIn = true;
+        } catch (_) {}
     }
 
-    // Step 5: Fallback to localStorage cache
-    try {
-        const saved = localStorage.getItem('gyver_workchat_user');
-        if (saved) {
-            const parsed = JSON.parse(saved);
-            if (!syncedName && parsed.displayName) syncedName = parsed.displayName;
-            if (!syncedAvatar && parsed.avatar) syncedAvatar = parsed.avatar;
-            if (!syncedUsername && parsed.username) syncedUsername = parsed.username;
-            if (parsed.level !== undefined) userLevel = Math.max(userLevel, parsed.level);
-            if (parsed.role && parsed.role === 'admin') userRole = 'admin';
-            if (parsed.isLoggedIn) isLoggedIn = true;
-        }
-    } catch (_) {}
-
-    // Step 6: Check Supabase session
-    const sb = window.supabaseClient || (window.parent && window.parent.supabaseClient);
-    if (sb) {
+    // Step 3: Check cached workchat user only if authenticated previously and no session change
+    if (!isLoggedIn) {
         try {
-            const { data: { session } } = await sb.auth.getSession();
-            if (session && session.user) {
-                const u = session.user;
-                CHAT_STATE.currentUser.id = u.id;
-                syncedUsername = syncedUsername || (u.email ? u.email.split('@')[0] : 'user');
-                syncedName = syncedName || (u.user_metadata?.full_name || u.user_metadata?.nickname || u.user_metadata?.name || syncedUsername);
-                syncedAvatar = syncedAvatar || (u.user_metadata?.avatar_url || '');
-                isLoggedIn = true;
-
-                // Query profile table
-                const { data: prof } = await sb.from('profiles').select('*').eq('id', u.id).maybeSingle();
-                if (prof) {
-                    if (prof.level) userLevel = Math.max(userLevel, Number(prof.level) || 1);
-                    if (prof.role === 'admin' || (prof.username && prof.username.toLowerCase() === 'admin')) {
-                        userRole = 'admin';
-                        userLevel = Math.max(userLevel, 5);
-                    }
-                    if (prof.full_name || prof.nickname) {
-                        syncedName = prof.nickname || prof.full_name;
-                    }
+            const saved = localStorage.getItem('gyver_workchat_user');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (parsed && parsed.displayName && parsed.displayName !== 'เอส (Admin)') {
+                    syncedName = parsed.displayName;
+                    syncedUsername = parsed.username || syncedName.toLowerCase().replace(/\s+/g, '_');
+                    syncedAvatar = parsed.avatar || '';
+                    userLevel = parsed.level || 1;
+                    userRole = parsed.role || 'user';
+                    isLoggedIn = !!parsed.isLoggedIn;
                 }
             }
         } catch (_) {}
     }
 
-    // Default to admin "เอส" if in workspace and user is admin
+    // Step 4: If STILL not logged in (guest / unauthenticated)
     if (!syncedName) {
-        syncedName = 'เอส (Admin)';
-        userLevel = Math.max(userLevel, 5);
-        userRole = 'admin';
+        syncedName = 'ผู้ใช้งาน (Guest)';
+        syncedUsername = 'guest_' + Math.floor(Math.random() * 8999 + 1000);
+        syncedAvatar = 'user_boy';
+        userLevel = 1;
+        userRole = 'user';
+        isLoggedIn = false;
     }
 
+    CHAT_STATE.currentUser.id = currentAuthId || CHAT_STATE.currentUser.id || ('usr_' + syncedUsername);
     CHAT_STATE.currentUser.displayName = syncedName;
     CHAT_STATE.currentUser.username = syncedUsername || syncedName.toLowerCase().replace(/\s+/g, '_');
     CHAT_STATE.currentUser.avatar = syncedAvatar || 'user_boy';
     CHAT_STATE.currentUser.level = userLevel;
     CHAT_STATE.currentUser.role = userRole;
+    CHAT_STATE.currentUser.isLoggedIn = isLoggedIn;
 
+    // Cache current user state
     try {
         localStorage.setItem('gyver_workchat_user', JSON.stringify({
+            userId: CHAT_STATE.currentUser.id,
             displayName: syncedName,
             username: CHAT_STATE.currentUser.username,
             avatar: CHAT_STATE.currentUser.avatar,
             level: userLevel,
             role: userRole,
-            isLoggedIn: true
+            isLoggedIn: isLoggedIn
         }));
     } catch (_) {}
 
@@ -477,31 +481,16 @@ async function syncUserProfileFromGyver() {
     // Refresh friends list for this specific user
     TEAM_FRIENDS = loadFriendsData();
     if (CHAT_STATE.activeChatId && !TEAM_FRIENDS.some(f => f.id === CHAT_STATE.activeChatId) && !CHAT_STATE.groups.some(g => g.id === CHAT_STATE.activeChatId)) {
-        CHAT_STATE.activeChatId = null;
-        renderEmptyChatHeader();
+        CHAT_STATE.activeChatId = 'general';
     }
     renderChatsList();
     renderMessages();
 }
 
 function enforcePermissionGuard(level, role) {
-    // If launched from workspace, or user is admin, or user has level >= 1, do not block
-    const isAllowed = (level >= 1 || role === 'admin' || (window.parent && window.parent !== window));
     const guardOverlay = document.getElementById('workchat-permission-guard');
     if (!guardOverlay) return;
-
-    if (isAllowed) {
-        guardOverlay.classList.add('d-none');
-    } else {
-        guardOverlay.classList.remove('d-none');
-        const nameEl = document.getElementById('guard-current-user-name');
-        const badgeEl = document.getElementById('guard-current-level-badge');
-        if (nameEl) nameEl.textContent = CHAT_STATE.currentUser.displayName || 'ผู้ใช้งาน';
-        if (badgeEl) {
-            badgeEl.className = 'badge bg-secondary font-mono';
-            badgeEl.textContent = `Lv.${level}`;
-        }
-    }
+    guardOverlay.classList.add('d-none');
 }
 
 function updateUserUI() {
@@ -543,6 +532,7 @@ function loadWorkspaceData() {
 
         const savedGroups = localStorage.getItem('sgyver_workchat_groups');
         CHAT_STATE.groups = savedGroups ? JSON.parse(savedGroups).filter(g => g && !MOCK_ITEM_IDS.has(g.id)) : [];
+        if (!CHAT_STATE.groups.some(g => g.id === 'general')) { CHAT_STATE.groups.unshift(SYSTEM_GENERAL_GROUP); }
 
         const savedMessages = localStorage.getItem('sgyver_workchat_messages');
         if (savedMessages) {
@@ -929,6 +919,7 @@ function renderChatsList() {
     const currentFilter = CHAT_STATE.chatFilter || 'all';
 
     // 1. Group Conversations (Built-in + Custom Created)
+    if (!CHAT_STATE.groups.some(g => g.id === 'general')) { CHAT_STATE.groups.unshift(SYSTEM_GENERAL_GROUP); }
     const groupChannels = (CHAT_STATE.groups || []).map(g => ({
         id: g.id,
         name: g.name,
@@ -2213,41 +2204,49 @@ function isMessageInChatRoom(msg, targetChatId) {
 window.isMessageInChatRoom = isMessageInChatRoom;
 
 function selectChatConversation(chatId) {
+    if (!chatId) chatId = 'general';
     CHAT_STATE.activeChatId = chatId;
 
     const titleEl = document.getElementById('active-chat-name');
     const avatarEl = document.getElementById('active-chat-avatar');
     const statusEl = document.getElementById('active-chat-status');
 
-    // 1. Group Conversations
-    const group = (CHAT_STATE.groups || []).find(g => g.id === chatId);
-    // 2. Direct 1-on-1 Friend Conversations (Dynamic for all friends including custom & added ones)
-    const friend = (typeof TEAM_FRIENDS !== 'undefined' ? TEAM_FRIENDS : []).find(f => f.id === chatId);
-
-    if (group) {
-        if (titleEl) titleEl.textContent = group.name;
-        if (avatarEl) avatarEl.innerHTML = getIllustratedAvatar('group', group.name);
-        const memberCount = (group.members && group.members.length) || 1;
-        if (statusEl) statusEl.innerHTML = `<span class="status-dot-green"></span> กลุ่มแชท • สมาชิก ${memberCount} คน`;
-        CHAT_STATE.activeProjectId = 'all';
-    } else if (friend) {
-        if (titleEl) titleEl.textContent = friend.name;
-        if (avatarEl) avatarEl.innerHTML = getIllustratedAvatar(friend.avatarType, friend.name);
-        const isOnline = friend.status === 'online';
-        if (statusEl) {
-            statusEl.innerHTML = isOnline 
-                ? `<span class="status-dot-green"></span> ออนไลน์ • ${escapeHtml(friend.role || 'สมาชิกในระบบ')}`
-                : `<span class="text-muted">●</span> ออฟไลน์ • ${escapeHtml(friend.role || 'สมาชิกในระบบ')}`;
-        }
+    if (chatId === 'general') {
+        if (titleEl) titleEl.textContent = 'ห้องรวมทีม (General Chat)';
+        if (avatarEl) avatarEl.innerHTML = getIllustratedAvatar('group', 'General Chat');
+        if (statusEl) statusEl.innerHTML = `<span class="status-dot-green"></span> กลุ่มแชทกลาง • สมาชิกทุกคนในระบบ`;
         CHAT_STATE.activeProjectId = 'all';
     } else {
-        const project = CHAT_STATE.projects.find(p => p.id === chatId);
-        if (project) {
-            CHAT_STATE.activeProjectId = project.id;
-            CHAT_STATE.selectedTagProjectId = project.id;
-            if (titleEl) titleEl.textContent = project.name;
-            if (avatarEl) avatarEl.innerHTML = getIllustratedAvatar(project.code?.includes('PIM') ? 'lilly' : 'gregory', project.name);
-            if (statusEl) statusEl.innerHTML = `<span class="status-dot-green"></span> โฟลเดอร์โปรเจกต์: ${escapeHtml(project.code || '')}`;
+        // 1. Group Conversations
+        const group = (CHAT_STATE.groups || []).find(g => g.id === chatId);
+        // 2. Direct 1-on-1 Friend Conversations
+        const friend = (typeof TEAM_FRIENDS !== 'undefined' ? TEAM_FRIENDS : []).find(f => f.id === chatId);
+
+        if (group) {
+            if (titleEl) titleEl.textContent = group.name;
+            if (avatarEl) avatarEl.innerHTML = getIllustratedAvatar('group', group.name);
+            const memberCount = (group.members && group.members.length) || 1;
+            if (statusEl) statusEl.innerHTML = `<span class="status-dot-green"></span> กลุ่มแชท • สมาชิก ${memberCount} คน`;
+            CHAT_STATE.activeProjectId = 'all';
+        } else if (friend) {
+            if (titleEl) titleEl.textContent = friend.name;
+            if (avatarEl) avatarEl.innerHTML = getIllustratedAvatar(friend.avatarType, friend.name);
+            const isOnline = friend.status === 'online';
+            if (statusEl) {
+                statusEl.innerHTML = isOnline 
+                    ? `<span class="status-dot-green"></span> ออนไลน์ • ${escapeHtml(friend.role || 'สมาชิกในระบบ')}`
+                    : `<span class="text-muted">●</span> ออฟไลน์ • ${escapeHtml(friend.role || 'สมาชิกในระบบ')}`;
+            }
+            CHAT_STATE.activeProjectId = 'all';
+        } else {
+            const project = CHAT_STATE.projects.find(p => p.id === chatId);
+            if (project) {
+                CHAT_STATE.activeProjectId = project.id;
+                CHAT_STATE.selectedTagProjectId = project.id;
+                if (titleEl) titleEl.textContent = project.name;
+                if (avatarEl) avatarEl.innerHTML = getIllustratedAvatar(project.code?.includes('PIM') ? 'lilly' : 'gregory', project.name);
+                if (statusEl) statusEl.innerHTML = `<span class="status-dot-green"></span> โฟลเดอร์โปรเจกต์: ${escapeHtml(project.code || '')}`;
+            }
         }
     }
 
@@ -2266,12 +2265,13 @@ function selectChatConversation(chatId) {
     renderMessages();
     scrollMessagesToBottom();
 
-    // Mobile: Switch view to chat
+    // Mobile: Switch view to chat conversation screen
     if (window.innerWidth <= 768) {
         document.body.classList.add('mobile-view-chat');
     }
 }
 window.selectChatConversation = selectChatConversation;
+
 
 // ── 5. CHAT MESSAGING ENGINE (MODERN BUBBLES) ───────────────────────────────
 function renderMessages() {

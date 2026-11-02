@@ -2750,3 +2750,31 @@ body.drive-open .drive-pane {
         max-width: 230px;
     }
 }
+
+/* INPUT_BAR_PINNED_FIX */
+.chat-area-input-bar {
+    position: sticky !important;
+    bottom: 0 !important;
+    z-index: 120 !important;
+    flex-shrink: 0 !important;
+    background: #ffffff !important;
+}
+
+@media (max-width: 768px) {
+    .chat-area-input-bar {
+        position: sticky !important;
+        bottom: 0 !important;
+        z-index: 120 !important;
+        flex-shrink: 0 !important;
+        padding-bottom: calc(8px + env(safe-area-inset-bottom, 8px)) !important;
+    }
+    .chat-input-capsule {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+    }
+    .input-capsule-textarea {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        width: 100% !important;
+    }
+}

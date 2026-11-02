@@ -59,6 +59,7 @@ async function checkExistingSession() {
             // ถ้าไม่ใช่ Admin เคลียร์ session admin ตกค้าง
             sessionStorage.removeItem('gyver_admin_session');
             localStorage.removeItem('gyver_admin_session');
+            localStorage.removeItem('gyver_workchat_user');
 
             const redirectUrl = redirectParam || sessionStorage.getItem('gyver_redirect_target') || '../../my_workspace.html';
             sessionStorage.removeItem('gyver_redirect_target');
@@ -263,7 +264,8 @@ document.getElementById('form-login').addEventListener('submit', async function 
 
         // เคลียร์ session admin ตกค้าง
         sessionStorage.removeItem('gyver_admin_session');
-        localStorage.removeItem('gyver_admin_session');
+            localStorage.removeItem('gyver_admin_session');
+            localStorage.removeItem('gyver_workchat_user');
 
         showAlert('🎉 ล็อกอินสำเร็จ! กำลังนำคุณเข้าสู่ระบบ...', 'success');
 
