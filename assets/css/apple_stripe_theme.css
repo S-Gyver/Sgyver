@@ -1,0 +1,205 @@
+/* ==========================================================================
+   Gyver Studio – Modern Clean Design System (Apple / Stripe Aesthetic)
+   Ultra-clean light surfaces, refined typography, smooth gradients & soft shadows
+   Mobile-first & completely responsive
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Kanit:wght@300;400;500;600;700&display=swap');
+
+:root {
+    /* 🎨 Color Tokens */
+    --apple-bg: #f8fafc;
+    --apple-surface: #ffffff;
+    --apple-surface-hover: #f1f5f9;
+    --apple-border: rgba(226, 232, 240, 0.9);
+    --apple-border-subtle: rgba(241, 245, 249, 0.95);
+    
+    /* Brand Accent: Stripe Indigo & Royal Blue */
+    --apple-primary: #4f46e5;
+    --apple-primary-hover: #4338ca;
+    --apple-primary-light: #eef2ff;
+    --apple-gradient-primary: linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #3b82f6 100%);
+    --apple-gradient-warm: linear-gradient(135deg, #f59e0b 0%, #ec4899 100%);
+    --apple-gradient-emerald: linear-gradient(135deg, #10b981 0%, #059669 100%);
+
+    /* Typography */
+    --apple-text-main: #0f172a;       /* Slate 900 */
+    --apple-text-body: #334155;       /* Slate 700 */
+    --apple-text-muted: #64748b;      /* Slate 500 */
+    --apple-text-subtle: #94a3b8;     /* Slate 400 */
+
+    /* Apple / Stripe Soft Shadows */
+    --apple-shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+    --apple-shadow-sm: 0 2px 6px -1px rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.03);
+    --apple-shadow-md: 0 8px 20px -3px rgba(0, 0, 0, 0.06), 0 3px 6px -2px rgba(0, 0, 0, 0.03);
+    --apple-shadow-lg: 0 16px 36px -4px rgba(15, 23, 42, 0.08), 0 6px 12px -3px rgba(15, 23, 42, 0.03);
+    --apple-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04), 0 8px 24px -4px rgba(15, 23, 42, 0.06);
+    --apple-shadow-card-hover: 0 12px 32px -4px rgba(79, 70, 229, 0.12), 0 4px 12px -2px rgba(15, 23, 42, 0.04);
+
+    /* Radii */
+    --apple-radius-sm: 10px;
+    --apple-radius-md: 14px;
+    --apple-radius-lg: 20px;
+    --apple-radius-xl: 26px;
+    --apple-radius-full: 9999px;
+}
+
+/* Base Body Styling */
+body.apple-theme {
+    font-family: 'Plus Jakarta Sans', 'Kanit', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: var(--apple-bg);
+    color: var(--apple-text-main);
+    letter-spacing: -0.01em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* 🖼️ Apple Frosted Glass Topbar / Navbar */
+.apple-navbar {
+    background: rgba(255, 255, 255, 0.86) !important;
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid var(--apple-border) !important;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.03);
+    position: sticky;
+    top: 0;
+    z-index: 1030;
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* 🃏 Stripe-Style Clean Elevated Cards */
+.apple-card {
+    background: var(--apple-surface);
+    border: 1px solid var(--apple-border);
+    border-radius: var(--apple-radius-lg);
+    box-shadow: var(--apple-shadow-card);
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+                border-color 0.22s ease;
+    overflow: hidden;
+    position: relative;
+}
+.apple-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--apple-shadow-card-hover);
+    border-color: rgba(99, 102, 241, 0.4);
+}
+
+/* 🔘 Tactile Apple Buttons */
+.apple-btn-primary {
+    background: var(--apple-gradient-primary);
+    color: #ffffff !important;
+    border: none;
+    border-radius: var(--apple-radius-full);
+    padding: 0.55rem 1.35rem;
+    font-weight: 600;
+    font-size: 0.88rem;
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.28);
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    text-decoration: none !important;
+    cursor: pointer;
+}
+.apple-btn-primary:hover {
+    transform: translateY(-1.5px);
+    box-shadow: 0 6px 20px rgba(79, 70, 229, 0.38);
+    color: #ffffff !important;
+}
+.apple-btn-primary:active {
+    transform: translateY(0.5px);
+}
+
+.apple-btn-secondary {
+    background: var(--apple-surface);
+    color: var(--apple-text-body) !important;
+    border: 1px solid var(--apple-border);
+    border-radius: var(--apple-radius-full);
+    padding: 0.52rem 1.25rem;
+    font-weight: 600;
+    font-size: 0.88rem;
+    box-shadow: var(--apple-shadow-xs);
+    transition: all 0.18s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    text-decoration: none !important;
+    cursor: pointer;
+}
+.apple-btn-secondary:hover {
+    background: var(--apple-surface-hover);
+    color: var(--apple-text-main) !important;
+    border-color: #cbd5e1;
+    transform: translateY(-1px);
+}
+
+/* 🏷️ Refined Rounded Pills & Badges */
+.apple-pill-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.85rem;
+    border-radius: var(--apple-radius-full);
+    font-size: 0.76rem;
+    font-weight: 600;
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    transition: all 0.15s ease;
+    user-select: none;
+}
+.apple-pill-tag.active {
+    background: var(--apple-primary);
+    color: #ffffff;
+    border-color: transparent;
+    box-shadow: 0 3px 10px rgba(79, 70, 229, 0.25);
+}
+
+/* 📊 Stat / Metric Widgets */
+.apple-metric-card {
+    background: var(--apple-surface);
+    border: 1px solid var(--apple-border);
+    border-radius: var(--apple-radius-md);
+    padding: 1.1rem 1.25rem;
+    box-shadow: var(--apple-shadow-xs);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: all 0.2s ease;
+}
+.apple-metric-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--apple-shadow-sm);
+    border-color: #cbd5e1;
+}
+.apple-metric-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    flex-shrink: 0;
+}
+
+/* 📱 Responsive Mobile Tuning */
+@media (max-width: 767.98px) {
+    .apple-card {
+        border-radius: 16px;
+        padding: 14px;
+    }
+    .apple-navbar .container,
+    .apple-navbar .container-fluid {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+    .apple-btn-primary,
+    .apple-btn-secondary {
+        padding: 0.45rem 1rem;
+        font-size: 0.82rem;
+    }
+}

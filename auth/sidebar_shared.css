@@ -1,18 +1,65 @@
-/* Sidebar Shared Navigation Style */
+/* ==============================================================================
+   Gyver Studio – Modern Clean Account Navigation (Apple / Stripe Aesthetic)
+   ============================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Kanit:wght@300;400;500;600;700&display=swap');
+
+body {
+    font-family: 'Plus Jakarta Sans', 'Kanit', sans-serif !important;
+    background-color: #f8fafc !important;
+    color: #0f172a !important;
+}
+
+.apple-navbar {
+    background: rgba(255, 255, 255, 0.88) !important;
+    backdrop-filter: blur(20px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.03) !important;
+}
+
 .sidebar-menu .nav-link {
     color: #475569;
-    font-weight: 500;
-    padding: 0.75rem 1rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 0.7rem 1.1rem;
     border-radius: 12px;
-    transition: all 0.2s ease;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
 }
+
 .sidebar-menu .nav-link:hover {
     background-color: #f1f5f9;
-    color: #0d6efd;
+    color: #4f46e5;
+    transform: translateX(2px);
 }
+
 .sidebar-menu .nav-link.active {
-    background-color: #0d6efd !important;
+    background: linear-gradient(135deg, #4f46e5, #6366f1) !important;
     color: #ffffff !important;
-    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.25);
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3) !important;
+}
+
+.card {
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03), 0 8px 24px -4px rgba(15, 23, 42, 0.05) !important;
+    border-radius: 18px !important;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #4f46e5, #4338ca) !important;
+    border-color: transparent !important;
+    border-radius: 9999px !important;
+    padding: 0.55rem 1.35rem !important;
+    font-weight: 600 !important;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.28) !important;
+    transition: all 0.2s ease !important;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1.5px) !important;
+    box-shadow: 0 6px 18px rgba(79, 70, 229, 0.38) !important;
 }

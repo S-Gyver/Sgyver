@@ -18,10 +18,13 @@
     <script src="../../../assets/js/toast_shared.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
+    <!-- Apple Stripe Design System -->
+    <link rel="stylesheet" href="../../../assets/css/apple_stripe_theme.css">
+
     <!-- Quotation CSS -->
     <link rel="stylesheet" href="quotation.css">
 </head>
-<body>
+<body class="apple-theme">
 
     <!-- Ambient Glows -->
     <div class="bg-glow-container">
@@ -87,6 +90,16 @@
     <!-- ══════════════════════════════════════════════════════════════
          1. SPLIT VIEW: EDITOR & LIVE A4 PREVIEW
          ══════════════════════════════════════════════════════════════ -->
+    <!-- Mobile View Switcher (Visible only on < 992px) -->
+    <div class="qt-mobile-switch-bar d-lg-none" id="qt-mobile-switch-bar">
+        <button class="qt-mob-switch-btn active" id="mob-btn-editor" onclick="setMobilePane('editor')">
+            <i class="bi bi-pencil-square"></i> แก้ไขแบบฟอร์ม
+        </button>
+        <button class="qt-mob-switch-btn" id="mob-btn-preview" onclick="setMobilePane('preview')">
+            <i class="bi bi-file-earmark-text"></i> ดูตัวอย่าง A4 (Live Preview)
+        </button>
+    </div>
+
     <main class="qt-studio-container" id="editor-layout">
 
         <!-- ── LEFT PANE: FORM EDITOR ── -->

@@ -20,22 +20,29 @@
     <!-- Canvas Confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
+    <!-- Apple Stripe Design System -->
+    <link rel="stylesheet" href="../../../assets/css/apple_stripe_theme.css">
+
     <!-- Quotation CSS -->
     <link rel="stylesheet" href="quotation.css">
 
     <style>
         .client-page-bg {
-            background-color: #0f172a;
+            background-color: var(--apple-bg, #f8fafc);
+            color: var(--apple-text-main, #0f172a);
             min-height: 100vh;
             padding-bottom: 60px;
+            font-family: 'Plus Jakarta Sans', 'Kanit', sans-serif;
         }
         .client-action-bar {
             position: sticky;
             top: 0;
             z-index: 100;
-            background: rgba(15, 23, 42, 0.9);
-            backdrop-filter: blur(16px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border-bottom: 1px solid #e2e8f0;
+            box-shadow: 0 1px 4px rgba(15, 23, 42, 0.03);
             padding: 12px 24px;
             display: flex;
             align-items: center;
@@ -44,8 +51,8 @@
         }
         .signature-canvas-wrapper {
             background: #fff;
-            border: 2px dashed #94a3b8;
-            border-radius: 8px;
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
             position: relative;
             touch-action: none;
         }
@@ -65,30 +72,48 @@
             font-size: 0.9rem;
             user-select: none;
         }
+        @media (max-width: 768px) {
+            .client-action-bar {
+                flex-direction: column;
+                align-items: flex-start;
+                padding: 10px 14px;
+                gap: 10px;
+            }
+            .client-action-bar > div:last-child {
+                width: 100%;
+                justify-content: flex-start;
+                flex-wrap: wrap;
+            }
+        }
     </style>
 </head>
-<body class="client-page-bg">
+<body class="client-page-bg apple-theme">
 
-    <!-- Action Bar for Customer -->
+    <!-- Action Bar for Customer (Modern Apple Style) -->
     <div class="client-action-bar no-print">
         <div class="d-flex align-items-center gap-3">
             <div class="d-flex align-items-center gap-2">
-                <span class="fs-4">🤖</span>
-                <span class="fw-bold text-white fs-6">S-GYVER QUOTATION</span>
+                <div style="width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, #4f46e5, #6366f1); display: flex; align-items: center; justify-content: center; color: white; font-size: 1.1rem; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);">
+                    <i class="bi bi-file-earmark-check-fill"></i>
+                </div>
+                <div>
+                    <span class="fw-bold text-dark fs-6 d-block" style="line-height: 1.2;">S-GYVER CLIENT PORTAL</span>
+                    <small class="text-secondary" style="font-size: 0.72rem;">ระบบตรวจสอบ & อนุมัติเอกสารการค้า</small>
+                </div>
             </div>
             <span class="badge-status badge-draft" id="client-badge-status">
                 ● กำลังโหลด...
             </span>
         </div>
         <div class="d-flex align-items-center gap-2">
-            <button type="button" class="btn btn-outline-light btn-sm px-3" onclick="window.print()">
-                <i class="bi bi-printer me-1"></i> พิมพ์ / บันทึก PDF
+            <button type="button" class="apple-btn-secondary" onclick="window.print()">
+                <i class="bi bi-printer me-1"></i> พิมพ์ / PDF
             </button>
-            <button type="button" class="btn btn-sm px-3 text-white fw-bold" style="background:#06C755;border-color:#06C755;" onclick="shareToLine()" title="แชร์เอกสารเข้า LINE">
+            <button type="button" class="btn-cyber btn-cyber-line" onclick="shareToLine()" title="แชร์เอกสารเข้า LINE">
                 <i class="bi bi-line me-1"></i> แชร์เข้า LINE
             </button>
-            <button type="button" class="btn btn-success btn-sm px-3 fw-bold" id="btn-open-sign-modal" onclick="openSignatureModal()">
-                <i class="bi bi-pen-fill me-1"></i> เซ็นอนุมัติใบเสนอราคานี้
+            <button type="button" class="apple-btn-primary" id="btn-open-sign-modal" onclick="openSignatureModal()">
+                <i class="bi bi-pen-fill me-1"></i> เซ็นอนุมัติเอกสารนี้
             </button>
         </div>
     </div>

@@ -2,25 +2,34 @@
    🏫 Gyver My Classroom - Modern Interactive Hub CSS
    ==================================================== */
 
+@import url('../../assets/css/apple_stripe_theme.css');
+
 .font-mono {
     font-family: 'Fira Code', monospace;
 }
 
-/* Hub Classroom Cards */
+body {
+    font-family: 'Plus Jakarta Sans', 'Kanit', sans-serif !important;
+    background-color: #f8fafc !important;
+    color: #0f172a;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Hub Classroom Cards (Stripe Elevated Style) */
 .hub-classroom-card {
     background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 20px;
+    border: 1px solid rgba(226, 232, 240, 0.85);
+    border-radius: 22px;
     padding: 24px;
     transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03), 0 8px 24px -4px rgba(15, 23, 42, 0.05);
     position: relative;
     overflow: hidden;
 }
 .hub-classroom-card:hover {
     transform: translateY(-4px);
-    border-color: #6366f1;
-    box-shadow: 0 16px 32px rgba(99, 102, 241, 0.12);
+    border-color: rgba(99, 102, 241, 0.4);
+    box-shadow: 0 16px 36px -4px rgba(79, 70, 229, 0.12), 0 4px 12px -2px rgba(15, 23, 42, 0.04);
 }
 .hub-classroom-card::before {
     content: '';
@@ -28,9 +37,9 @@
     top: 0;
     left: 0;
     right: 0;
-    height: 5px;
+    height: 4px;
     background: linear-gradient(90deg, #4f46e5, #06b6d4);
-    opacity: 0.8;
+    opacity: 0.9;
 }
 
 /* Hub Section Chips */

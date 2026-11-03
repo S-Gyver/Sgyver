@@ -2715,3 +2715,27 @@ function clearAllProfilesOfType() {
         showToast('info', 'ลบทั้งหมดแล้ว', `ลบรายการ${label}ทั้งหมดเรียบร้อย`, 2000);
     }
 }
+
+/**
+ * 📱 Mobile View Switcher (Toggles between Form Editor and Live A4 Preview on < 992px)
+ */
+function setMobilePane(pane) {
+    const editor = document.getElementById('editor-pane');
+    const preview = document.getElementById('preview-pane');
+    const btnEdit = document.getElementById('mob-btn-editor');
+    const btnPrev = document.getElementById('mob-btn-preview');
+    if (pane === 'preview') {
+        editor?.classList.add('d-none-mobile');
+        preview?.classList.remove('d-none-mobile');
+        btnEdit?.classList.remove('active');
+        btnPrev?.classList.add('active');
+        setTimeout(() => {
+            if (typeof fitZoomToPreviewPane === 'function') fitZoomToPreviewPane();
+        }, 60);
+    } else {
+        editor?.classList.remove('d-none-mobile');
+        preview?.classList.add('d-none-mobile');
+        btnEdit?.classList.add('active');
+        btnPrev?.classList.remove('active');
+    }
+}

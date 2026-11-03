@@ -1,99 +1,118 @@
+/* ==========================================================================
+   Teacher Cloud Drive – Apple / Stripe Modern Clean Theme
+   Refined white/light surfaces, smooth pastel pills, responsive grid
+   ========================================================================== */
+
+@import url('../../../assets/css/apple_stripe_theme.css');
+
 body {
-    font-family: 'Kanit', sans-serif;
+    font-family: 'Plus Jakarta Sans', 'Kanit', sans-serif;
     background-color: #f8fafc;
     color: #0f172a;
+    -webkit-font-smoothing: antialiased;
 }
 
+/* 🖼️ Navbar Styling */
+.navbar {
+    background: rgba(255, 255, 255, 0.88) !important;
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid rgba(226, 232, 240, 0.8) !important;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.03);
+}
+
+/* 📁 Folder Filter Pills (Apple Style) */
 .drive-folder-pill {
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     border: 1px solid #e2e8f0;
     background: #ffffff;
-    color: #334155;
+    color: #475569;
+    font-weight: 500;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
 }
 .drive-folder-pill:hover {
-    border-color: #6366f1;
-    background: #eef2ff;
+    border-color: #818cf8;
+    background: #f8fafc;
     color: #4338ca;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.08);
 }
 .drive-folder-pill.active {
-    background: linear-gradient(135deg, #4f46e5, #6366f1);
+    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
     color: #ffffff;
     border-color: transparent;
-    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+    font-weight: 600;
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.28);
 }
 
+/* 🏷️ Type Filter Tabs */
 .drive-type-tab {
     cursor: pointer;
-    padding: 6px 14px;
+    padding: 6px 16px;
     border-radius: 999px;
-    font-size: 0.84rem;
+    font-size: 0.82rem;
     font-weight: 600;
     border: 1px solid #e2e8f0;
-    background: #fff;
-    color: #475569;
-    transition: all 0.15s ease;
+    background: #ffffff;
+    color: #64748b;
+    transition: all 0.18s ease;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
 }
 .drive-type-tab:hover {
     background: #f1f5f9;
+    color: #0f172a;
+    border-color: #cbd5e1;
 }
 .drive-type-tab.active {
     background: #0f172a;
-    color: #fff;
+    color: #ffffff;
     border-color: #0f172a;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
 }
 
+/* 🃏 Stripe / Apple Style Drive File Cards */
 .drive-file-card {
     background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 16px;
-    padding: 16px;
-    transition: all 0.18s ease;
+    border: 1px solid rgba(226, 232, 240, 0.85);
+    border-radius: 20px;
+    padding: 1.15rem;
+    transition: all 0.24s cubic-bezier(0.16, 1, 0.3, 1);
     position: relative;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03), 0 8px 24px -4px rgba(15, 23, 42, 0.05);
 }
 .drive-file-card:hover {
-    transform: translateY(-3px);
-    border-color: #cbd5e1;
-    box-shadow: 0 12px 24px -6px rgba(15, 23, 42, 0.08);
+    transform: translateY(-4px);
+    border-color: rgba(99, 102, 241, 0.4);
+    box-shadow: 0 16px 36px -4px rgba(79, 70, 229, 0.12), 0 4px 12px -2px rgba(15, 23, 42, 0.04);
 }
 
+/* 🎨 File Type Icons with Soft Pastel Glows */
 .drive-icon-box {
-    width: 48px;
-    height: 48px;
+    width: 46px;
+    height: 46px;
     border-radius: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.45rem;
+    font-size: 1.4rem;
     flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
-.icon-ppt { background: #fff7ed; color: #ea580c; border: 1px solid #fed7aa; }
-.icon-word { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
-.icon-excel { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
-.icon-canva { background: linear-gradient(135deg, #e0f2fe, #f3e8ff); color: #7c3aed; border: 1px solid #ddd6fe; }
-.icon-pdf { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
-.icon-image { background: #fdf4ff; color: #c026d3; border: 1px solid #f5d0fe; }
-.icon-video { background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; }
-.icon-other { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
+.icon-ppt { background: #fff7ed; color: #ea580c; border: 1px solid #ffedd5; }
+.icon-word { background: #eff6ff; color: #2563eb; border: 1px solid #dbeafe; }
+.icon-excel { background: #f0fdf4; color: #16a34a; border: 1px solid #dcfce7; }
+.icon-canva { background: linear-gradient(135deg, #e0f2fe, #f3e8ff); color: #7c3aed; border: 1px solid #e9d5ff; }
+.icon-pdf { background: #fef2f2; color: #dc2626; border: 1px solid #fee2e2; }
+.icon-image { background: #fdf4ff; color: #c026d3; border: 1px solid #fae8ff; }
+.icon-video { background: #fff1f2; color: #e11d48; border: 1px solid #ffe4e6; }
+.icon-other { background: #f8fafc; color: #64748b; border: 1px solid #f1f5f9; }
 
-.drive-dropzone {
-    border: 2px dashed #94a3b8;
-    border-radius: 16px;
-    background: #f8fafc;
-    padding: 28px 20px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-.drive-dropzone:hover, .drive-dropzone.dragover {
-    border-color: #4f46e5;
-    background: #eef2ff;
-}
-
+/* 🖼️ Thumbnail Preview in Card */
 .drive-thumb-preview {
     height: 130px;
-    border-radius: 12px;
+    border-radius: 14px;
     background: #f1f5f9;
     overflow: hidden;
     display: flex;
@@ -107,10 +126,26 @@ body {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.25s ease;
+    transition: transform 0.28s ease;
 }
 .drive-file-card:hover .drive-thumb-preview img {
-    transform: scale(1.04);
+    transform: scale(1.05);
+}
+
+/* 📥 Empty State & Dropzone */
+.drive-empty-dropzone {
+    border: 2px dashed #cbd5e1 !important;
+    background: #ffffff !important;
+    border-radius: 24px;
+    transition: all 0.22s ease;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
+}
+.drive-empty-dropzone:hover, .drive-empty-dropzone.dragover {
+    border-color: #6366f1 !important;
+    background: #eef2ff !important;
+    box-shadow: 0 12px 30px -5px rgba(79, 70, 229, 0.14);
+    transform: scale(1.008);
 }
 
 /* 🎯 Fullscreen Drag & Drop Overlay */
@@ -119,8 +154,8 @@ body {
     inset: 0;
     z-index: 99999;
     background: rgba(15, 23, 42, 0.72);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -128,47 +163,47 @@ body {
     opacity: 0;
     transition: opacity 0.2s ease;
 }
-
 .drive-drop-overlay.active {
     opacity: 1;
     pointer-events: auto;
 }
-
 .drop-overlay-box {
     background: #ffffff;
-    max-width: 560px;
+    max-width: 540px;
     width: 90%;
+    border-radius: 28px;
     transform: scale(0.92);
     transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.35);
     border: 3px dashed #6366f1 !important;
 }
-
 .drive-drop-overlay.active .drop-overlay-box {
     transform: scale(1);
 }
-
 .drop-icon-anim {
     display: inline-block;
     animation: bounceUpDown 1.2s infinite ease-in-out;
 }
-
 @keyframes bounceUpDown {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-10px); }
 }
 
-.drive-empty-dropzone {
-    border: 2px dashed #818cf8 !important;
-    background: #ffffff !important;
-    transition: all 0.2s ease;
-    cursor: pointer;
+/* 📱 Mobile Responsiveness */
+@media (max-width: 767.98px) {
+    .drive-file-card {
+        padding: 14px;
+        border-radius: 16px;
+    }
+    .drive-type-tab {
+        padding: 5px 12px;
+        font-size: 0.78rem;
+    }
+    .navbar .container-fluid {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+    .drive-thumb-preview {
+        height: 110px;
+    }
 }
-.drive-empty-dropzone:hover, .drive-empty-dropzone.dragover {
-    border-color: #4f46e5 !important;
-    background: #eef2ff !important;
-    box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.15);
-    transform: scale(1.008);
-}
-
-

@@ -1,28 +1,28 @@
 /* ==============================================================================
    🚀 S-GYVER QUOTATION STUDIO - STYLESHEET
-   Design: Hybrid Cyber Studio + Professional Thai A4 Document
+   Design: Modern Clean Apple / Stripe Aesthetic + Professional Thai A4 Document
    ============================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800&family=Sarabun:wght@300;400;500;600;700&family=Fira+Code:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Kanit:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&family=Fira+Code:wght@500;600;700&display=swap');
 
 :root {
-    --brand-primary: #4361ee;
-    --brand-accent:  #f72585;
-    --brand-cyan:    #4cc9f0;
+    --brand-primary: #4f46e5;
+    --brand-accent:  #6366f1;
+    --brand-cyan:    #0284c7;
     --brand-emerald: #10b981;
     --brand-amber:   #f59e0b;
     --brand-crimson: #ef4444;
 
-    --bg-dark:       #0b0f19;
-    --bg-card:       #111827;
-    --bg-card-hover: #1f2937;
-    --bg-surface:    #161e2e;
-    --border-color:  rgba(255, 255, 255, 0.1);
-    --border-highlight: rgba(67, 97, 238, 0.4);
+    --bg-dark:       #f8fafc;
+    --bg-card:       #ffffff;
+    --bg-card-hover: #f1f5f9;
+    --bg-surface:    #ffffff;
+    --border-color:  #e2e8f0;
+    --border-highlight: rgba(79, 70, 229, 0.3);
 
-    --text-primary:  #f3f4f6;
-    --text-secondary:#9ca3af;
-    --text-muted:    #6b7280;
+    --text-primary:  #0f172a;
+    --text-secondary:#475569;
+    --text-muted:    #94a3b8;
 
     --a4-width:      210mm;
     --a4-height:     297mm;
@@ -35,14 +35,15 @@
 }
 
 body {
-    font-family: 'Kanit', sans-serif;
+    font-family: 'Plus Jakarta Sans', 'Kanit', sans-serif;
     background-color: var(--bg-dark);
     color: var(--text-primary);
     min-height: 100vh;
     overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
 }
 
-/* Background Atmosphere Glows */
+/* Background Atmosphere Glows (Soft subtle pastels) */
 .bg-glow-container {
     position: fixed;
     inset: 0;
@@ -52,40 +53,43 @@ body {
 }
 .bg-glow-1 {
     position: absolute;
-    width: 600px;
-    height: 600px;
+    width: 650px;
+    height: 650px;
     border-radius: 50%;
     top: -200px;
     left: -100px;
-    background: radial-gradient(circle, rgba(67, 97, 238, 0.15) 0%, transparent 70%);
-    filter: blur(60px);
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 70%);
+    filter: blur(80px);
 }
 .bg-glow-2 {
     position: absolute;
-    width: 500px;
-    height: 500px;
+    width: 550px;
+    height: 550px;
     border-radius: 50%;
     bottom: -150px;
     right: -100px;
-    background: radial-gradient(circle, rgba(247, 37, 133, 0.12) 0%, transparent 70%);
-    filter: blur(60px);
+    background: radial-gradient(circle, rgba(14, 165, 233, 0.07) 0%, transparent 70%);
+    filter: blur(80px);
 }
 
 /* ══════════════════════════════════════════════════════════════
-   TOP APP BAR
+   TOP APP BAR (Apple Frosted Glass)
    ══════════════════════════════════════════════════════════════ */
 .qt-topbar {
     position: sticky;
     top: 0;
     z-index: 100;
-    height: 64px;
-    background: rgba(11, 15, 25, 0.85);
-    backdrop-filter: blur(16px);
+    min-height: 64px;
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
     border-bottom: 1px solid var(--border-color);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 1.5rem;
+    padding: 0.6rem 1.5rem;
+    gap: 1rem;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.03);
 }
 
 .qt-brand {
@@ -98,122 +102,165 @@ body {
 .qt-brand-icon {
     width: 40px;
     height: 40px;
-    border-radius: 10px;
-    background: linear-gradient(135deg, var(--brand-primary), var(--brand-accent));
+    border-radius: 12px;
+    background: linear-gradient(135deg, #4f46e5, #6366f1);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.25rem;
     color: #fff;
-    box-shadow: 0 0 15px rgba(67, 97, 238, 0.4);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
 }
 .qt-brand-text h1 {
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     font-weight: 700;
     margin: 0;
     line-height: 1.2;
-    letter-spacing: 0.5px;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
 }
 .qt-brand-text span {
-    font-size: 0.75rem;
+    font-size: 0.74rem;
     color: var(--brand-cyan);
-    font-weight: 500;
+    font-weight: 600;
 }
 
 .qt-topbar-tabs {
     display: flex;
-    background: rgba(255, 255, 255, 0.05);
+    background: #f1f5f9;
     padding: 4px;
-    border-radius: 10px;
+    border-radius: 9999px;
     border: 1px solid var(--border-color);
     gap: 4px;
 }
 .qt-tab-btn {
     padding: 6px 16px;
-    border-radius: 7px;
+    border-radius: 9999px;
     border: none;
     background: transparent;
     color: var(--text-secondary);
-    font-family: 'Kanit', sans-serif;
-    font-size: 0.88rem;
-    font-weight: 500;
+    font-family: 'Plus Jakarta Sans', 'Kanit', sans-serif;
+    font-size: 0.86rem;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     display: flex;
     align-items: center;
     gap: 6px;
 }
 .qt-tab-btn:hover {
-    color: #fff;
-    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.6);
 }
 .qt-tab-btn.active {
-    background: var(--brand-primary);
-    color: #fff;
-    box-shadow: 0 2px 8px rgba(67, 97, 238, 0.4);
+    background: #ffffff;
+    color: var(--brand-primary);
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
 }
 
 .qt-topbar-actions {
     display: flex;
     align-items: center;
     gap: 8px;
+    flex-wrap: wrap;
 }
 
+/* Apple & Stripe Style Tactile Buttons */
 .btn-cyber {
-    padding: 8px 16px;
-    border-radius: 8px;
-    font-family: 'Kanit', sans-serif;
-    font-size: 0.88rem;
+    padding: 7px 15px;
+    border-radius: 9999px;
+    font-family: 'Plus Jakarta Sans', 'Kanit', sans-serif;
+    font-size: 0.84rem;
     font-weight: 600;
     border: 1px solid transparent;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     display: inline-flex;
     align-items: center;
     gap: 6px;
     text-decoration: none;
 }
 .btn-cyber-primary {
-    background: linear-gradient(135deg, #4361ee, #3a0ca3);
-    color: #fff;
-    border-color: rgba(67, 97, 238, 0.5);
-    box-shadow: 0 4px 14px rgba(67, 97, 238, 0.35);
+    background: linear-gradient(135deg, #4f46e5, #4338ca);
+    color: #fff !important;
+    border-color: transparent;
+    box-shadow: 0 3px 12px rgba(79, 70, 229, 0.32);
 }
 .btn-cyber-primary:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(67, 97, 238, 0.5);
-    color: #fff;
+    transform: translateY(-1.5px);
+    box-shadow: 0 6px 18px rgba(79, 70, 229, 0.42);
+    color: #fff !important;
 }
 .btn-cyber-outline {
-    background: rgba(255, 255, 255, 0.05);
+    background: #ffffff;
     color: var(--text-primary);
     border-color: var(--border-color);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 .btn-cyber-outline:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
-    border-color: rgba(255, 255, 255, 0.25);
+    background: #f8fafc;
+    color: var(--brand-primary);
+    border-color: #cbd5e1;
+    transform: translateY(-1px);
 }
 .btn-cyber-success {
     background: linear-gradient(135deg, #10b981, #059669);
-    color: #fff;
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    color: #fff !important;
+    box-shadow: 0 3px 12px rgba(16, 185, 129, 0.3);
 }
 .btn-cyber-success:hover {
-    color: #fff;
-    box-shadow: 0 6px 18px rgba(16, 185, 129, 0.45);
+    color: #fff !important;
+    transform: translateY(-1.5px);
+    box-shadow: 0 6px 18px rgba(16, 185, 129, 0.4);
 }
 .btn-cyber-line {
     background: linear-gradient(135deg, #06C755, #00B900);
-    color: #fff;
-    border-color: rgba(6, 199, 85, 0.4);
-    box-shadow: 0 4px 12px rgba(6, 199, 85, 0.35);
+    color: #fff !important;
+    border-color: transparent;
+    box-shadow: 0 3px 12px rgba(6, 199, 85, 0.32);
 }
 .btn-cyber-line:hover {
     background: linear-gradient(135deg, #05b34c, #009e00);
-    transform: translateY(-1px);
-    box-shadow: 0 6px 18px rgba(6, 199, 85, 0.55);
-    color: #fff;
+    transform: translateY(-1.5px);
+    box-shadow: 0 6px 18px rgba(6, 199, 85, 0.45);
+    color: #fff !important;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MOBILE VIEW SWITCH BAR (< 992px)
+   ══════════════════════════════════════════════════════════════ */
+.qt-mobile-switch-bar {
+    display: flex;
+    background: #ffffff;
+    padding: 8px 1rem;
+    border-bottom: 1px solid var(--border-color);
+    gap: 8px;
+    position: sticky;
+    top: 64px;
+    z-index: 90;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+}
+.qt-mob-switch-btn {
+    flex: 1;
+    padding: 8px 12px;
+    border-radius: 9999px;
+    border: 1px solid var(--border-color);
+    background: #f8fafc;
+    color: var(--text-secondary);
+    font-size: 0.86rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+.qt-mob-switch-btn.active {
+    background: #4f46e5;
+    color: #ffffff;
+    border-color: #4f46e5;
+    box-shadow: 0 3px 10px rgba(79, 70, 229, 0.28);
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -227,37 +274,38 @@ body {
     overflow: hidden;
 }
 
-/* Left Editor Panel (Takes majority of screen for comfortable editing) */
+/* Left Editor Panel */
 .qt-editor-pane {
     flex: 1;
-    min-width: 540px;
+    min-width: 520px;
     height: 100%;
     overflow-y: auto;
-    padding: 1.25rem 1.5rem;
+    padding: 1.5rem 1.8rem;
     border-right: 1px solid var(--border-color);
-    background: rgba(17, 24, 39, 0.5);
+    background: #f8fafc;
 }
 .qt-editor-pane::-webkit-scrollbar {
     width: 6px;
 }
 .qt-editor-pane::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
+    background: #cbd5e1;
     border-radius: 4px;
 }
 
-/* Right Preview Panel (Narrowed down as requested) */
+/* Right Preview Panel */
 .qt-preview-pane {
     width: 38%;
     min-width: 360px;
     max-width: 42%;
     height: 100%;
-    background: #080c14;
+    background: #eef2f6;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
     align-items: center;
     padding: 1rem 0.5rem 3rem 0.5rem;
     position: relative;
+    border-left: 1px solid var(--border-color);
 }
 .qt-preview-toolbar {
     position: sticky;
@@ -266,35 +314,39 @@ body {
     display: flex;
     align-items: center;
     gap: 12px;
-    background: rgba(17, 24, 39, 0.85);
-    backdrop-filter: blur(12px);
-    padding: 8px 16px;
-    border-radius: 30px;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    padding: 8px 18px;
+    border-radius: 9999px;
     border: 1px solid var(--border-color);
     margin-bottom: 1.5rem;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
 }
 .qt-zoom-indicator {
     font-family: 'Fira Code', monospace;
     font-size: 0.85rem;
-    color: var(--brand-cyan);
+    color: var(--brand-primary);
+    font-weight: 700;
     min-width: 48px;
     text-align: center;
 }
 
 /* ══════════════════════════════════════════════════════════════
-   EDITOR CARDS & FORMS
+   EDITOR CARDS & FORMS (Apple Clean White Elevation)
    ══════════════════════════════════════════════════════════════ */
 .qt-card {
-    background: var(--bg-card);
+    background: #ffffff;
     border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 1.25rem;
+    border-radius: 16px;
+    padding: 1.35rem 1.5rem;
     margin-bottom: 1.25rem;
-    transition: border-color 0.2s;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 8px 24px -4px rgba(15, 23, 42, 0.05);
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, border-color 0.2s ease;
 }
 .qt-card:hover {
-    border-color: rgba(255, 255, 255, 0.18);
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.08);
 }
 .qt-card-header {
     display: flex;
@@ -302,51 +354,54 @@ body {
     justify-content: space-between;
     margin-bottom: 1rem;
     padding-bottom: 0.75rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid #f1f5f9;
 }
 .qt-card-title {
     font-size: 1rem;
-    font-weight: 600;
+    font-weight: 700;
     color: var(--text-primary);
     display: flex;
     align-items: center;
     gap: 8px;
+    letter-spacing: -0.01em;
 }
 .qt-card-title i {
-    color: var(--brand-cyan);
-    font-size: 1.1rem;
+    color: var(--brand-primary);
+    font-size: 1.15rem;
 }
 
 .qt-form-group {
-    margin-bottom: 0.85rem;
+    margin-bottom: 0.95rem;
 }
 .qt-form-label {
     display: block;
     font-size: 0.82rem;
-    font-weight: 500;
+    font-weight: 600;
     color: var(--text-secondary);
-    margin-bottom: 4px;
+    margin-bottom: 5px;
 }
 .qt-form-input, .qt-form-select, .qt-form-textarea {
     width: 100%;
-    padding: 8px 12px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    color: #fff;
-    font-family: 'Kanit', sans-serif;
+    padding: 9px 13px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    color: #0f172a;
+    font-family: 'Plus Jakarta Sans', 'Kanit', sans-serif;
     font-size: 0.9rem;
-    transition: all 0.2s;
+    font-weight: 500;
+    transition: all 0.2s ease;
     outline: none;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 .qt-form-input:focus, .qt-form-select:focus, .qt-form-textarea:focus {
     border-color: var(--brand-primary);
-    box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.25);
-    background: rgba(255, 255, 255, 0.07);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+    background: #ffffff;
 }
 .qt-form-select option {
-    background: #1f2937;
-    color: #fff;
+    background: #ffffff;
+    color: #0f172a;
 }
 
 /* ── Remove Browser Default Number Input Spinners (Up/Down Buttons) ── */
@@ -374,28 +429,31 @@ input[type="number"],
     gap: 10px;
 }
 
-/* Quick Catalog Pill Buttons */
+/* Quick Catalog Pill Buttons (Apple Stripe Soft Indigo Pills) */
 .catalog-pills {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 7px;
     margin-bottom: 12px;
 }
 .catalog-pill {
-    padding: 4px 10px;
-    border-radius: 20px;
-    background: rgba(67, 97, 238, 0.12);
-    border: 1px solid rgba(67, 97, 238, 0.3);
-    color: #a5b4fc;
-    font-size: 0.78rem;
-    font-weight: 500;
+    padding: 5px 12px;
+    border-radius: 9999px;
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+    color: #4338ca;
+    font-size: 0.79rem;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
 }
 .catalog-pill:hover {
     background: var(--brand-primary);
     color: #fff;
-    transform: translateY(-1px);
+    border-color: var(--brand-primary);
+    transform: translateY(-1.5px);
+    box-shadow: 0 3px 8px rgba(79, 70, 229, 0.28);
 }
 
 /* Items Table in Editor */
@@ -403,34 +461,46 @@ input[type="number"],
     width: 100%;
     min-width: 540px;
     border-collapse: separate;
-    border-spacing: 0 6px;
+    border-spacing: 0 8px;
 }
 .editor-items-table th {
     font-size: 0.8rem;
     color: var(--text-secondary);
-    font-weight: 600;
+    font-weight: 700;
     padding: 6px 8px;
     white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 .editor-item-row {
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 8px;
-    transition: background 0.2s;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
 }
 .editor-item-row:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: #f8fafc;
+    border-color: #cbd5e1;
 }
 .editor-item-row td {
-    padding: 6px 6px;
+    padding: 8px 8px;
     vertical-align: top;
 }
 
 /* Compact, well-fitted inputs inside item row */
 .editor-items-table .qt-form-input {
     height: 40px;
-    padding: 6px 8px;
+    padding: 6px 10px;
     font-size: 0.92rem;
     box-sizing: border-box;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    color: #0f172a;
+}
+.editor-items-table .qt-form-input:focus {
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15);
 }
 
 .editor-items-table .item-qty-input {
@@ -449,24 +519,26 @@ input[type="number"],
 .editor-items-table .item-price-input {
     text-align: right !important;
     padding-left: 8px !important;
-    padding-right: 12px !important; /* Generous right padding so '0' and all digits are completely visible */
+    padding-right: 12px !important;
     font-size: 0.95rem;
     font-weight: 600;
     font-family: 'Fira Code', 'Kanit', monospace !important;
     letter-spacing: 0.5px;
 }
 .btn-delete-row {
-    background: transparent;
-    border: none;
-    color: var(--brand-crimson);
+    background: #fee2e2;
+    border: 1px solid #fecaca;
+    color: #dc2626;
     cursor: pointer;
-    font-size: 1rem;
-    padding: 4px 8px;
-    border-radius: 6px;
-    transition: background 0.15s;
+    font-size: 0.95rem;
+    padding: 6px 10px;
+    border-radius: 8px;
+    transition: all 0.15s ease;
 }
 .btn-delete-row:hover {
-    background: rgba(239, 68, 68, 0.15);
+    background: #ef4444;
+    color: #ffffff;
+    transform: scale(1.05);
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -1595,7 +1667,7 @@ input[type="number"],
 }
 .profile-manager-item-name {
     font-weight: 600;
-    color: #f8fafc;
+    color: #0f172a;
     font-size: 0.9rem;
     white-space: nowrap;
     overflow: hidden;
@@ -1607,6 +1679,236 @@ input[type="number"],
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   LINE MODAL & PROFILE DIALOGS (Apple Clean Light Styling)
+   ══════════════════════════════════════════════════════════════ */
+.line-modal-backdrop {
+    background: rgba(15, 23, 42, 0.45) !important;
+    backdrop-filter: blur(8px);
+}
+.line-modal-card {
+    background: #ffffff !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 20px !important;
+    box-shadow: 0 20px 45px -10px rgba(15, 23, 42, 0.18) !important;
+    color: var(--text-primary) !important;
+}
+.line-modal-header {
+    border-bottom: 1px solid #f1f5f9 !important;
+}
+.line-modal-title {
+    color: var(--text-primary) !important;
+    font-weight: 700 !important;
+}
+.line-modal-footer {
+    border-top: 1px solid #f1f5f9 !important;
+}
+.line-format-tabs {
+    background: #f1f5f9 !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 9999px !important;
+    padding: 4px !important;
+}
+.line-format-tab {
+    border-radius: 9999px !important;
+    color: var(--text-secondary) !important;
+}
+.line-format-tab.active {
+    background: #ffffff !important;
+    color: #10b981 !important;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06) !important;
+}
+.line-image-preview-wrapper {
+    background: #f8fafc !important;
+    border: 1.5px dashed #cbd5e1 !important;
+}
+.line-pdf-card {
+    background: #f8fafc !important;
+    border: 1px solid #fecaca !important;
+}
+.btn-close-cyber {
+    background: #f1f5f9 !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #64748b !important;
+    border-radius: 50% !important;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-close-cyber:hover {
+    background: #fee2e2 !important;
+    color: #ef4444 !important;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   LIST DASHBOARD (Modern Clean Stripe Cards & Table)
+   ══════════════════════════════════════════════════════════════ */
+.qt-list-container {
+    padding: 2rem 2.5rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    min-height: calc(100vh - 64px);
+    background: var(--bg-dark);
+}
+.stats-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+}
+.stat-card {
+    background: #ffffff !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 16px !important;
+    padding: 1.25rem 1.5rem !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px -4px rgba(15, 23, 42, 0.05) !important;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px -4px rgba(79, 70, 229, 0.12) !important;
+}
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+}
+.stat-icon.primary { background: #eef2ff; color: #4f46e5; }
+.stat-icon.cyan { background: #e0f2fe; color: #0284c7; }
+.stat-icon.emerald { background: #dcfce7; color: #16a34a; }
+.stat-icon.amber { background: #fef3c7; color: #d97706; }
+.stat-info h4 {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+.stat-value {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    font-family: 'Plus Jakarta Sans', 'Kanit', sans-serif;
+}
+.table-glass {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px -4px rgba(15, 23, 42, 0.05);
+}
+.table-glass th {
+    background: #f8fafc;
+    color: var(--text-secondary);
+    font-weight: 700;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+.table-glass td {
+    padding: 14px 16px;
+    border-bottom: 1px solid #f1f5f9;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    vertical-align: middle;
+}
+.table-glass tr:last-child td {
+    border-bottom: none;
+}
+.table-glass tr:hover td {
+    background: #f8fafc;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   📱 FULL RESPONSIVE MOBILE BREAKPOINTS (< 992px & < 576px)
+   ══════════════════════════════════════════════════════════════ */
+@media (max-width: 991px) {
+    .qt-topbar {
+        padding: 0.5rem 1rem;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .qt-topbar-actions {
+        width: 100%;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        justify-content: flex-start;
+        -webkit-overflow-scrolling: touch;
+    }
+    .qt-studio-container {
+        flex-direction: column;
+        height: auto;
+        min-height: calc(100vh - 110px);
+        overflow: visible;
+    }
+    .qt-editor-pane {
+        min-width: 100%;
+        width: 100%;
+        height: auto;
+        padding: 1rem;
+        border-right: none;
+        overflow-y: visible;
+    }
+    .qt-preview-pane {
+        min-width: 100%;
+        width: 100%;
+        max-width: 100%;
+        height: auto;
+        border-left: none;
+        overflow-y: visible;
+        padding: 1rem 0.5rem 2rem 0.5rem;
+    }
+    .qt-editor-pane.d-none-mobile {
+        display: none !important;
+    }
+    .qt-preview-pane.d-none-mobile {
+        display: none !important;
+    }
+    .a4-wrapper {
+        transform: scale(0.68) !important;
+        transform-origin: top center;
+    }
+    .qt-list-container {
+        padding: 1rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .qt-brand-text h1 {
+        font-size: 0.9rem;
+    }
+    .qt-form-row, .qt-form-row-3 {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    .editor-items-table {
+        min-width: 480px;
+    }
+    .a4-wrapper {
+        transform: scale(0.52) !important;
+        transform-origin: top center;
+    }
+    .btn-cyber {
+        padding: 6px 12px;
+        font-size: 0.78rem;
+    }
 }
 
 
