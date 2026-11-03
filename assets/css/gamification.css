@@ -1,0 +1,153 @@
+/* ==========================================================================
+   Gyver Studio – Gamification & Badges Stylesheet
+   Levels, XP Progress Bars, Badges, and Class Leaderboards
+   ========================================================================== */
+
+:root {
+    --game-gold: #f59e0b;
+    --game-silver: #94a3b8;
+    --game-bronze: #d97706;
+    --game-purple: #8b5cf6;
+    --game-blue: #3b82f6;
+    --game-green: #10b981;
+}
+
+/* Gamification Hero Banner in Student View */
+.gamification-hero {
+    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%);
+    border-radius: 20px;
+    padding: 1.25rem 1.5rem;
+    color: #ffffff;
+    box-shadow: 0 10px 25px -5px rgba(67, 56, 202, 0.35);
+    margin-bottom: 1.25rem;
+    position: relative;
+    overflow: hidden;
+}
+.gamification-hero::after {
+    content: '';
+    position: absolute;
+    right: -20px;
+    top: -20px;
+    width: 140px;
+    height: 140px;
+    background: radial-gradient(circle, rgba(245, 158, 11, 0.25) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+/* Level Badge & XP */
+.game-level-badge {
+    background: linear-gradient(135deg, #f59e0b, #ef4444);
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 800;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 0 2px 10px rgba(245, 158, 11, 0.4);
+}
+
+.game-xp-bar-wrap {
+    height: 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.15);
+    overflow: hidden;
+    position: relative;
+}
+.game-xp-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #38bdf8, #818cf8, #f43f5e);
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Badges Showcase Grid */
+.game-badges-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 0.85rem;
+}
+
+.game-badge-item {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    padding: 0.5rem 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition: transform 0.2s, box-shadow 0.2s;
+    user-select: none;
+}
+.game-badge-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+.game-badge-item.is-locked {
+    opacity: 0.4;
+    filter: grayscale(1);
+    border-style: dashed;
+}
+.game-badge-icon {
+    font-size: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Leaderboard Row */
+.leaderboard-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    margin-bottom: 0.5rem;
+    transition: all 0.2s ease;
+}
+.leaderboard-card:hover {
+    transform: translateX(4px);
+    border-color: #3b82f6;
+    box-shadow: 0 4px 14px rgba(59, 130, 246, 0.08);
+}
+.leaderboard-rank {
+    width: 30px;
+    font-weight: 800;
+    font-size: 1.1rem;
+    text-align: center;
+    flex-shrink: 0;
+}
+.leaderboard-rank.rank-1 { color: #f59e0b; }
+.leaderboard-rank.rank-2 { color: #94a3b8; }
+.leaderboard-rank.rank-3 { color: #d97706; }
+
+.leaderboard-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+.leaderboard-info {
+    flex: 1;
+    min-width: 0;
+}
+.leaderboard-name {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #0f172a;
+    line-height: 1.2;
+}
+.leaderboard-score {
+    font-weight: 800;
+    font-size: 1.05rem;
+    color: #4338ca;
+    text-align: right;
+    flex-shrink: 0;
+}

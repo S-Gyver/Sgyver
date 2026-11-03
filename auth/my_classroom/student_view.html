@@ -13,12 +13,16 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="../../assets/css/index.css">
     <link rel="stylesheet" href="../../assets/css/toast_shared.css">
+    <link rel="stylesheet" href="../../assets/css/notification_center.css">
+    <link rel="stylesheet" href="../../assets/css/gamification.css">
     <link rel="stylesheet" href="my_classroom.css">
 
     <!-- Supabase Client & Shared Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../../assets/js/supabaseClient.js"></script>
     <script src="../../assets/js/toast_shared.js"></script>
+    <script src="../../assets/js/notification_center.js"></script>
+    <script src="../../assets/js/gamification.js"></script>
 </head>
 <body class="bg-light min-vh-100 d-flex flex-column">
 
@@ -81,6 +85,9 @@
             </div>
         </div>
 
+        <!-- 🏆 Gamification Hero Banner (Level, XP, Badges) -->
+        <div id="student-gamification-banner"></div>
+
         <!-- แท็บสำหรับนักเรียน -->
         <div class="card border-0 shadow-sm rounded-4 p-0 bg-white overflow-hidden">
             <div class="card-header bg-white border-bottom p-2 px-3">
@@ -103,6 +110,11 @@
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="tab-student-grade-btn" data-bs-toggle="pill" data-bs-target="#tab-student-grade" type="button" role="tab">
                             <i class="bi bi-award-fill me-1"></i> 4. คะแนน & เกรดของฉัน
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-student-lead-btn" data-bs-toggle="pill" data-bs-target="#tab-student-lead" type="button" role="tab">
+                            <i class="bi bi-trophy-fill me-1 text-warning"></i> 5. กระดานผู้นำ
                         </button>
                     </li>
                 </ul>
@@ -162,6 +174,16 @@
                         </div>
                         <div id="student-grade-summary-box">
                             <div class="text-center py-5 text-muted">กำลังโหลดข้อมูลคะแนน...</div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 5: กระดานผู้นำ & แต้มสะสม -->
+                    <div class="tab-pane fade" id="tab-student-lead" role="tabpanel">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold text-dark m-0"><i class="bi bi-trophy-fill text-warning me-2"></i>อันดับคะแนนและเลเวลในห้องเรียน (Leaderboard)</h5>
+                        </div>
+                        <div id="student-leaderboard-list">
+                            <div class="text-center py-5 text-muted">กำลังโหลดอันดับ...</div>
                         </div>
                     </div>
 

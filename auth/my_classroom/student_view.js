@@ -948,7 +948,15 @@ function renderStudentGrades() {
                 </button>
             </div>
         `;
+        if (window.GyverGamification) {
+            window.GyverGamification.renderLeaderboard('student-leaderboard-list', currentClassroom);
+        }
         return;
+    }
+
+    if (window.GyverGamification) {
+        window.GyverGamification.renderBanner('student-gamification-banner', me, currentClassroom);
+        window.GyverGamification.renderLeaderboard('student-leaderboard-list', currentClassroom);
     }
 
     const sKey = me.user_id || me.name;

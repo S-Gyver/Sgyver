@@ -691,6 +691,10 @@ function renderDriveFiles() {
                                 onclick="openQuickShareModal('${escapeHtml(item.id)}')" title="แชร์ไฟล์นี้ (ส่งเข้าห้องเรียน หรือ WorkChat)">
                             <i class="bi bi-send-check-fill"></i>
                         </button>
+                        <button type="button" class="btn btn-outline-warning btn-sm rounded-pill px-2.5 fw-bold"
+                                onclick="openAIGeneratorModal('${escapeHtml(item.id)}')" title="ให้ Gyver AI ช่วยออกข้อสอบ / สรุปเนื้อหา">
+                            <i class="bi bi-stars"></i>
+                        </button>
                         <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-2.5"
                                 onclick="copyDriveItemUrl('${escapeHtml(item.id)}')" title="คัดลอกลิงก์ไฟล์">
                             <i class="bi bi-link-45deg"></i>
@@ -1652,5 +1656,17 @@ async function shareDriveItemToClassroom(itemId) {
     }
 }
 window.shareDriveItemToClassroom = shareDriveItemToClassroom;
+
+// 🤖 เปิดหน้าต่าง Gyver AI Assistant สำหรับสไลด์/ไฟล์นี้
+function openAIGeneratorModal(itemId) {
+    const item = driveState.items.find(i => i.id === itemId);
+    if (!item) return;
+    if (window.GyverAI) {
+        window.GyverAI.openModal(item);
+    } else {
+        showToast('info', 'กำลังโหลด AI', 'ระบบกำลังเตรียมพร้อม Gyver AI Assistant...');
+    }
+}
+window.openAIGeneratorModal = openAIGeneratorModal;
 
 
