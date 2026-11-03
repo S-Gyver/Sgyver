@@ -1,49 +1,49 @@
 /* ==========================================================================
-   Teacher Cloud Drive – Apple / Stripe Modern Clean Theme
-   Refined white/light surfaces, smooth pastel pills, responsive grid
+   Teacher Cloud Drive – Apple / Linear Modern Dark Theme
+   Deep dark surfaces, glowing pastel folder pills, responsive grid
    ========================================================================== */
 
 @import url('../../../assets/css/apple_stripe_theme.css');
 
 body {
-    font-family: 'Plus Jakarta Sans', 'Kanit', sans-serif;
-    background-color: #f8fafc;
-    color: #0f172a;
+    font-family: 'Plus Jakarta Sans', 'Kanit', sans-serif !important;
+    background-color: #090d16 !important;
+    color: #f8fafc !important;
     -webkit-font-smoothing: antialiased;
 }
 
-/* 🖼️ Navbar Styling */
+/* 🖼️ Dark Navbar Styling */
 .navbar {
-    background: rgba(255, 255, 255, 0.88) !important;
+    background: rgba(11, 15, 25, 0.88) !important;
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border-bottom: 1px solid rgba(226, 232, 240, 0.8) !important;
-    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.03);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
-/* 📁 Folder Filter Pills (Apple Style) */
+/* 📁 Folder Filter Pills (Dark Apple Style) */
 .drive-folder-pill {
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    border: 1px solid #e2e8f0;
-    background: #ffffff;
-    color: #475569;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: #161e2e;
+    color: #cbd5e1;
     font-weight: 500;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 .drive-folder-pill:hover {
-    border-color: #818cf8;
-    background: #f8fafc;
-    color: #4338ca;
+    border-color: rgba(99, 102, 241, 0.45);
+    background: #1e293b;
+    color: #818cf8;
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.08);
+    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.2);
 }
 .drive-folder-pill.active {
     background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
     color: #ffffff;
     border-color: transparent;
     font-weight: 600;
-    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.28);
+    box-shadow: 0 4px 16px rgba(79, 70, 229, 0.45);
 }
 
 /* 🏷️ Type Filter Tabs */
@@ -53,41 +53,42 @@ body {
     border-radius: 999px;
     font-size: 0.82rem;
     font-weight: 600;
-    border: 1px solid #e2e8f0;
-    background: #ffffff;
-    color: #64748b;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: #161e2e;
+    color: #94a3b8;
     transition: all 0.18s ease;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 .drive-type-tab:hover {
-    background: #f1f5f9;
-    color: #0f172a;
-    border-color: #cbd5e1;
+    background: #1e293b;
+    color: #f8fafc;
+    border-color: rgba(255, 255, 255, 0.16);
 }
 .drive-type-tab.active {
-    background: #0f172a;
+    background: linear-gradient(135deg, #4f46e5, #6366f1);
     color: #ffffff;
-    border-color: #0f172a;
-    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+    border-color: transparent;
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
 }
 
-/* 🃏 Stripe / Apple Style Drive File Cards */
+/* 🃏 Dark Apple Style Drive File Cards */
 .drive-file-card {
-    background: #ffffff;
-    border: 1px solid rgba(226, 232, 240, 0.85);
+    background: #111827;
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 20px;
     padding: 1.15rem;
     transition: all 0.24s cubic-bezier(0.16, 1, 0.3, 1);
     position: relative;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03), 0 8px 24px -4px rgba(15, 23, 42, 0.05);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    color: #f8fafc;
 }
 .drive-file-card:hover {
     transform: translateY(-4px);
-    border-color: rgba(99, 102, 241, 0.4);
-    box-shadow: 0 16px 36px -4px rgba(79, 70, 229, 0.12), 0 4px 12px -2px rgba(15, 23, 42, 0.04);
+    border-color: rgba(99, 102, 241, 0.45);
+    box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(99, 102, 241, 0.3);
 }
 
-/* 🎨 File Type Icons with Soft Pastel Glows */
+/* 🎨 File Type Icons with Soft Glows */
 .drive-icon-box {
     width: 46px;
     height: 46px;
@@ -97,29 +98,29 @@ body {
     justify-content: center;
     font-size: 1.4rem;
     flex-shrink: 0;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-.icon-ppt { background: #fff7ed; color: #ea580c; border: 1px solid #ffedd5; }
-.icon-word { background: #eff6ff; color: #2563eb; border: 1px solid #dbeafe; }
-.icon-excel { background: #f0fdf4; color: #16a34a; border: 1px solid #dcfce7; }
-.icon-canva { background: linear-gradient(135deg, #e0f2fe, #f3e8ff); color: #7c3aed; border: 1px solid #e9d5ff; }
-.icon-pdf { background: #fef2f2; color: #dc2626; border: 1px solid #fee2e2; }
-.icon-image { background: #fdf4ff; color: #c026d3; border: 1px solid #fae8ff; }
-.icon-video { background: #fff1f2; color: #e11d48; border: 1px solid #ffe4e6; }
-.icon-other { background: #f8fafc; color: #64748b; border: 1px solid #f1f5f9; }
+.icon-ppt { background: rgba(234, 88, 12, 0.15); color: #fb923c; border: 1px solid rgba(234, 88, 12, 0.3); }
+.icon-word { background: rgba(37, 99, 235, 0.15); color: #60a5fa; border: 1px solid rgba(37, 99, 235, 0.3); }
+.icon-excel { background: rgba(22, 163, 74, 0.15); color: #4ade80; border: 1px solid rgba(22, 163, 74, 0.3); }
+.icon-canva { background: rgba(124, 58, 237, 0.15); color: #c084fc; border: 1px solid rgba(124, 58, 237, 0.3); }
+.icon-pdf { background: rgba(220, 38, 38, 0.15); color: #f87171; border: 1px solid rgba(220, 38, 38, 0.3); }
+.icon-image { background: rgba(192, 38, 211, 0.15); color: #e879f9; border: 1px solid rgba(192, 38, 211, 0.3); }
+.icon-video { background: rgba(225, 29, 72, 0.15); color: #fb7185; border: 1px solid rgba(225, 29, 72, 0.3); }
+.icon-other { background: rgba(100, 116, 139, 0.15); color: #94a3b8; border: 1px solid rgba(100, 116, 139, 0.3); }
 
 /* 🖼️ Thumbnail Preview in Card */
 .drive-thumb-preview {
     height: 130px;
     border-radius: 14px;
-    background: #f1f5f9;
+    background: #0b0f19;
     overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
     margin-bottom: 12px;
-    border: 1px solid #f1f5f9;
+    border: 1px solid rgba(255, 255, 255, 0.06);
     cursor: pointer;
 }
 .drive-thumb-preview img {
@@ -134,17 +135,17 @@ body {
 
 /* 📥 Empty State & Dropzone */
 .drive-empty-dropzone {
-    border: 2px dashed #cbd5e1 !important;
-    background: #ffffff !important;
+    border: 2px dashed rgba(255, 255, 255, 0.16) !important;
+    background: #111827 !important;
     border-radius: 24px;
     transition: all 0.22s ease;
     cursor: pointer;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 .drive-empty-dropzone:hover, .drive-empty-dropzone.dragover {
     border-color: #6366f1 !important;
-    background: #eef2ff !important;
-    box-shadow: 0 12px 30px -5px rgba(79, 70, 229, 0.14);
+    background: #161e2e !important;
+    box-shadow: 0 12px 30px -5px rgba(99, 102, 241, 0.3);
     transform: scale(1.008);
 }
 
@@ -153,9 +154,9 @@ body {
     position: fixed;
     inset: 0;
     z-index: 99999;
-    background: rgba(15, 23, 42, 0.72);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: rgba(9, 13, 22, 0.85);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -168,14 +169,15 @@ body {
     pointer-events: auto;
 }
 .drop-overlay-box {
-    background: #ffffff;
+    background: #111827;
     max-width: 540px;
     width: 90%;
     border-radius: 28px;
     transform: scale(0.92);
     transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7);
     border: 3px dashed #6366f1 !important;
+    color: #f8fafc;
 }
 .drive-drop-overlay.active .drop-overlay-box {
     transform: scale(1);

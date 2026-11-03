@@ -1,14 +1,15 @@
 /* ==============================================================================
-   Gyver Studio – Modern Clean Login & Auth (Apple / Stripe Aesthetic)
+   Gyver Studio – Modern Dark Login & Auth (Linear / Apple Pro Dark Aesthetic)
    ============================================================================== */
 
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Kanit:wght@300;400;500;600;700&display=swap');
 
 :root {
-    --apple-primary: #4f46e5;
-    --apple-primary-hover: #4338ca;
-    --apple-bg: #f8fafc;
-    --apple-border: #e2e8f0;
+    --apple-primary: #6366f1;
+    --apple-primary-hover: #4f46e5;
+    --apple-bg: #090d16;
+    --apple-surface: #111827;
+    --apple-border: rgba(255, 255, 255, 0.08);
 }
 
 * {
@@ -18,9 +19,9 @@
 body {
     background-color: var(--apple-bg);
     background-image: 
-        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.08) 0px, transparent 50%),
-        radial-gradient(at 100% 100%, rgba(14, 165, 233, 0.08) 0px, transparent 50%);
-    color: #0f172a;
+        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(56, 189, 248, 0.1) 0px, transparent 50%);
+    color: #f8fafc;
     font-family: 'Plus Jakarta Sans', 'Kanit', -apple-system, BlinkMacSystemFont, sans-serif;
     min-height: 100vh;
     display: flex;
@@ -31,14 +32,15 @@ body {
 }
 
 .auth-card {
-    background-color: #ffffff;
+    background-color: var(--apple-surface);
     border: 1px solid var(--apple-border);
     border-radius: 24px;
     width: 100%;
     max-width: 440px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.03), 0 16px 40px -8px rgba(15, 23, 42, 0.09);
+    box-shadow: 0 4px 25px rgba(0,0,0,0.5), 0 20px 50px -10px rgba(0, 0, 0, 0.7);
     position: relative;
     overflow: hidden;
+    color: #f8fafc;
 }
 
 .auth-card::before {
@@ -48,7 +50,7 @@ body {
     left: 0;
     right: 0;
     height: 4px;
-    background: linear-gradient(90deg, #4f46e5, #6366f1, #06b6d4);
+    background: linear-gradient(90deg, #4f46e5, #6366f1, #38bdf8);
 }
 
 .auth-brand-icon {
@@ -61,19 +63,19 @@ body {
     justify-content: center;
     color: #ffffff;
     font-size: 1.75rem;
-    box-shadow: 0 8px 20px rgba(79, 70, 229, 0.28);
+    box-shadow: 0 8px 24px rgba(79, 70, 229, 0.4);
     margin-bottom: 0.85rem;
 }
 
 .nav-pills {
-    background: #f1f5f9 !important;
-    border: 1px solid #e2e8f0;
+    background: rgba(30, 41, 59, 0.6) !important;
+    border: 1px solid var(--apple-border);
     padding: 4px !important;
     border-radius: 9999px !important;
 }
 
 .nav-pills .nav-link {
-    color: #64748b;
+    color: #94a3b8;
     font-weight: 600;
     font-size: 0.88rem;
     border-radius: 9999px;
@@ -82,56 +84,57 @@ body {
 }
 
 .nav-pills .nav-link:hover {
-    color: #0f172a;
+    color: #f8fafc;
 }
 
 .nav-pills .nav-link.active {
-    background: #ffffff !important;
-    color: #4f46e5 !important;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+    background: #1e293b !important;
+    color: #818cf8 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .form-floating > .form-control {
-    background-color: #ffffff !important;
-    border: 1px solid #cbd5e1 !important;
-    color: #0f172a !important;
+    background-color: #1e293b !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    color: #f8fafc !important;
     border-radius: 12px;
     font-size: 0.92rem;
     transition: all 0.2s ease;
 }
 
 .form-floating > .form-control:focus {
-    border-color: #4f46e5 !important;
-    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15) !important;
-    background-color: #ffffff !important;
+    border-color: #6366f1 !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25) !important;
+    background-color: #1e293b !important;
+    color: #ffffff !important;
 }
 
 .form-floating label {
-    color: #64748b;
+    color: #94a3b8;
     font-size: 0.85rem;
 }
 
 .form-floating > .form-control:focus ~ label,
 .form-floating > .form-control:not(:placeholder-shown) ~ label {
-    color: #4f46e5 !important;
+    color: #818cf8 !important;
 }
 
 .btn-auth-submit {
-    background: linear-gradient(135deg, #4f46e5, #4338ca);
+    background: linear-gradient(135deg, #4f46e5, #6366f1);
     color: #ffffff !important;
     border: none;
     border-radius: 9999px;
     padding: 0.75rem 1.5rem;
     font-weight: 600;
     font-size: 0.95rem;
-    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.32);
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     cursor: pointer;
 }
 
 .btn-auth-submit:hover {
     transform: translateY(-1.5px);
-    box-shadow: 0 6px 20px rgba(79, 70, 229, 0.42);
+    box-shadow: 0 6px 22px rgba(99, 102, 241, 0.5);
     color: #ffffff !important;
 }
 

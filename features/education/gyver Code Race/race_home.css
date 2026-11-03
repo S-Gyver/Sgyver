@@ -5,15 +5,15 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Kanit:wght@300;400;500;600;700;800&family=Fira+Code:wght@500;600;700&display=swap');
 
 :root {
-    --apple-bg: #f8fafc;
-    --apple-surface: #ffffff;
-    --apple-border: #e2e8f0;
-    --apple-primary: #4f46e5;
+    --apple-bg: #090d16;
+    --apple-surface: #111827;
+    --apple-border: rgba(255, 255, 255, 0.08);
+    --apple-primary: #6366f1;
 }
 
 body.race-home-bg {
     background-color: var(--apple-bg);
-    color: #0f172a;
+    color: #f8fafc;
     font-family: 'Plus Jakarta Sans', 'Kanit', sans-serif;
     overflow-x: hidden;
     position: relative;
@@ -25,16 +25,16 @@ body.race-home-bg {
 .fw-black { font-weight: 800; }
 .fw-extrabold { font-weight: 700; }
 
-.text-subtle { color: #64748b; }
-.text-cyan { color: #4f46e5; }
+.text-subtle { color: #94a3b8; }
+.text-cyan { color: #818cf8; }
 
 /* 🌌 Background Effects */
 .bg-cyber-grid {
     position: absolute;
     inset: 0;
     background-image: 
-        linear-gradient(to right, rgba(79, 70, 229, 0.03) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(79, 70, 229, 0.03) 1px, transparent 1px);
+        linear-gradient(to right, rgba(99, 102, 241, 0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(99, 102, 241, 0.05) 1px, transparent 1px);
     background-size: 36px 36px;
     z-index: 1;
     pointer-events: none;
@@ -46,7 +46,7 @@ body.race-home-bg {
     height: 500px;
     border-radius: 50%;
     filter: blur(120px);
-    opacity: 0.12;
+    opacity: 0.15;
     z-index: 0;
     pointer-events: none;
 }
@@ -56,23 +56,24 @@ body.race-home-bg {
 
 /* 🏆 Header & Badges */
 .brand-badge {
-    background: #fef3c7;
-    border: 1px solid #fde68a;
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid rgba(245, 158, 11, 0.3);
     padding: 6px 10px;
     border-radius: 12px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    color: #fbbf24;
 }
 
 .brand-title {
     letter-spacing: -0.01em;
-    color: #0f172a !important;
+    color: #f8fafc !important;
     font-weight: 800;
 }
 
 .bg-live-badge {
-    background: #eef2ff;
-    border: 1px solid #c7d2fe;
-    color: #4338ca !important;
+    background: rgba(99, 102, 241, 0.15);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    color: #818cf8 !important;
     font-size: 0.8rem;
     letter-spacing: 0.5px;
     font-weight: 700;
@@ -88,7 +89,7 @@ body.race-home-bg {
 }
 
 .text-cyber-gradient {
-    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #06b6d4 100%);
+    background: linear-gradient(135deg, #818cf8 0%, #6366f1 50%, #38bdf8 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
@@ -97,28 +98,28 @@ body.race-home-bg {
 .max-w-900 { max-width: 900px; }
 
 .cyber-role-card {
-    background: #ffffff !important;
+    background: #111827 !important;
     border: 1px solid var(--apple-border) !important;
     border-radius: 24px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 8px 24px -4px rgba(15, 23, 42, 0.05);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
     transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, border-color 0.25s ease;
-    color: #0f172a !important;
+    color: #f8fafc !important;
 }
 
 .cyber-role-card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 14px 32px -4px rgba(15, 23, 42, 0.1);
-    border-color: #cbd5e1 !important;
+    box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.65);
+    border-color: rgba(99, 102, 241, 0.4) !important;
 }
 
 .teacher-card:hover { 
-    border-color: rgba(245, 158, 11, 0.4) !important; 
-    box-shadow: 0 14px 32px -4px rgba(245, 158, 11, 0.15) !important;
+    border-color: rgba(245, 158, 11, 0.45) !important; 
+    box-shadow: 0 16px 36px -4px rgba(245, 158, 11, 0.25) !important;
 }
 
 .student-card:hover { 
-    border-color: rgba(79, 70, 229, 0.4) !important; 
-    box-shadow: 0 14px 32px -4px rgba(79, 70, 229, 0.15) !important;
+    border-color: rgba(99, 102, 241, 0.5) !important; 
+    box-shadow: 0 16px 36px -4px rgba(99, 102, 241, 0.3) !important;
 }
 
 /* 🌟 Icon Box */
@@ -132,17 +133,17 @@ body.race-home-bg {
 }
 
 .bg-warning-glow {
-    background: #fef3c7;
-    border: 1px solid #fde68a;
-    box-shadow: 0 4px 14px rgba(245, 158, 11, 0.18);
-    color: #d97706;
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    box-shadow: 0 4px 14px rgba(245, 158, 11, 0.2);
+    color: #fbbf24;
 }
 
 .bg-cyan-glow {
-    background: #eef2ff;
-    border: 1px solid #c7d2fe;
-    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.18);
-    color: #4f46e5;
+    background: rgba(99, 102, 241, 0.15);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.2);
+    color: #818cf8;
 }
 
 /* 🔘 Buttons & Inputs */

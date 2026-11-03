@@ -4,26 +4,26 @@
    ══════════════════════════════════════════════════════════════ */
 
 :root {
-    --bg-page: #f8fafc;
-    --bg-white: #ffffff;
-    --bg-subtle: #f1f5f9;
-    --bg-hover: #e2e8f0;
+    --bg-page: #090d16;
+    --bg-white: #111827;
+    --bg-subtle: #161e2e;
+    --bg-hover: #1e293b;
     
-    --border-light: #f1f5f9;
-    --border-subtle: #e2e8f0;
+    --border-light: rgba(255, 255, 255, 0.08);
+    --border-subtle: rgba(255, 255, 255, 0.1);
 
-    --primary-blue: #3b82f6;
-    --primary-blue-hover: #2563eb;
-    --primary-blue-light: #eff6ff;
+    --primary-blue: #6366f1;
+    --primary-blue-hover: #4f46e5;
+    --primary-blue-light: rgba(99, 102, 241, 0.15);
 
-    --bubble-incoming: #475569;
-    --bubble-incoming-text: #ffffff;
-    --bubble-outgoing: #3b82f6;
+    --bubble-incoming: #1e293b;
+    --bubble-incoming-text: #f8fafc;
+    --bubble-outgoing: #4f46e5;
     --bubble-outgoing-text: #ffffff;
 
-    --text-dark: #0f172a;
-    --text-muted: #64748b;
-    --text-light: #94a3b8;
+    --text-dark: #f8fafc;
+    --text-muted: #94a3b8;
+    --text-light: #64748b;
     
     --accent-amber: #f59e0b;
     --accent-green: #10b981;

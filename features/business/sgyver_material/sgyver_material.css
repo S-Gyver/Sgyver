@@ -4,32 +4,32 @@
    ============================================================================== */
 
 :root {
-    /* 🍏 Apple iOS System Colors */
-    --ios-bg: #f2f2f7;                   /* System Grouped Background */
-    --ios-surface: #ffffff;              /* Pure Card / Inset Background */
-    --ios-surface-glass: rgba(255, 255, 255, 0.82);
-    --ios-surface-secondary: #f9f9fb;
-    --ios-surface-tertiary: #f2f2f7;
+    /* 🍏 Apple iOS System Colors (Dark Mode) */
+    --ios-bg: #000000;                   /* System Grouped Background OLED Dark */
+    --ios-surface: #1c1c1e;              /* Dark Card / Inset Background */
+    --ios-surface-glass: rgba(28, 28, 30, 0.88);
+    --ios-surface-secondary: #2c2c2e;
+    --ios-surface-tertiary: #3a3a3c;
     
     /* 🎨 iOS System Palette */
-    --ios-blue: #007aff;                 /* System Blue */
-    --ios-blue-light: rgba(0, 122, 255, 0.12);
-    --ios-blue-hover: #0066d6;
-    --ios-green: #34c759;                /* System Green */
-    --ios-green-light: rgba(52, 199, 89, 0.12);
-    --ios-orange: #ff9500;               /* System Orange */
-    --ios-orange-light: rgba(255, 149, 0, 0.12);
-    --ios-red: #ff3b30;                  /* System Red */
-    --ios-red-light: rgba(255, 59, 48, 0.12);
-    --ios-purple: #af52de;
-    --ios-teal: #30b0c7;
+    --ios-blue: #0a84ff;                 /* iOS Dark System Blue */
+    --ios-blue-light: rgba(10, 132, 255, 0.18);
+    --ios-blue-hover: #409cff;
+    --ios-green: #30d158;                /* iOS Dark Green */
+    --ios-green-light: rgba(48, 209, 88, 0.18);
+    --ios-orange: #ff9f0a;               /* iOS Dark Orange */
+    --ios-orange-light: rgba(255, 159, 10, 0.18);
+    --ios-red: #ff453a;                  /* iOS Dark Red */
+    --ios-red-light: rgba(255, 69, 58, 0.18);
+    --ios-purple: #bf5af2;
+    --ios-teal: #64d2ff;
     
     /* 🖋️ iOS Typography & Label Colors */
-    --ios-label: #1c1c1e;                /* Primary Label */
-    --ios-label-secondary: rgba(60, 60, 67, 0.75);
-    --ios-label-tertiary: rgba(60, 60, 67, 0.45);
-    --ios-separator: rgba(60, 60, 67, 0.12);
-    --ios-border-card: rgba(0, 0, 0, 0.05);
+    --ios-label: #ffffff;                /* Primary Label */
+    --ios-label-secondary: rgba(235, 235, 245, 0.75);
+    --ios-label-tertiary: rgba(235, 235, 245, 0.45);
+    --ios-separator: rgba(84, 84, 88, 0.35);
+    --ios-border-card: rgba(255, 255, 255, 0.08);
     
     /* 🪟 iOS Shadows & Radii */
     --ios-shadow-subtle: 0 2px 8px rgba(0, 0, 0, 0.04);

@@ -1081,22 +1081,22 @@ body.in-app-view #cs-widget-canvas {
 #teacherMenuDrawer {
     width: 440px !important;
     max-width: 92vw !important;
-    background: rgba(255, 255, 255, 0.96) !important;
+    background: rgba(11, 15, 25, 0.96) !important;
     backdrop-filter: blur(28px) saturate(180%) !important;
     -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
-    border-right: 1px solid #e2e8f0 !important;
-    box-shadow: 20px 0 50px rgba(15, 23, 42, 0.12) !important;
-    color: #0f172a;
+    border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 20px 0 50px rgba(0, 0, 0, 0.6) !important;
+    color: #f8fafc;
 }
 
 #teacherMenuDrawer .offcanvas-header {
     padding: 1rem 1.25rem;
-    border-bottom: 1px solid #f1f5f9 !important;
-    background: #ffffff;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    background: #090d16;
 }
 
 #teacherMenuDrawer .offcanvas-title {
-    color: #0f172a !important;
+    color: #f8fafc !important;
     font-weight: 700;
     font-size: 1.05rem;
     letter-spacing: -0.01em;
@@ -1106,8 +1106,8 @@ body.in-app-view #cs-widget-canvas {
 .launchpad-view-toggle {
     display: inline-flex;
     align-items: center;
-    background: #f1f5f9;
-    border: 1px solid #e2e8f0;
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 999px;
     padding: 3px;
     gap: 2px;
@@ -1116,7 +1116,7 @@ body.in-app-view #cs-widget-canvas {
 .launchpad-view-btn {
     border: none;
     background: transparent;
-    color: #64748b;
+    color: #94a3b8;
     padding: 4px 9px;
     border-radius: 999px;
     font-size: 0.85rem;
@@ -1128,13 +1128,13 @@ body.in-app-view #cs-widget-canvas {
 }
 
 .launchpad-view-btn:hover {
-    color: #0f172a;
+    color: #f8fafc;
 }
 
 .launchpad-view-btn.active {
     background: linear-gradient(135deg, #4f46e5, #6366f1);
     color: #ffffff;
-    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.45);
 }
 
 /* Instant Search Box */
@@ -1148,28 +1148,29 @@ body.in-app-view #cs-widget-canvas {
     left: 13px;
     top: 50%;
     transform: translateY(-50%);
-    color: #4f46e5;
+    color: #818cf8;
     font-size: 0.95rem;
     pointer-events: none;
 }
 
 .launchpad-search-input {
     width: 100%;
-    background: #ffffff;
-    border: 1px solid #cbd5e1;
+    background: #1e293b;
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 14px;
     padding: 0.52rem 0.9rem 0.52rem 2.35rem;
-    color: #0f172a;
+    color: #f8fafc;
     font-size: 0.86rem;
     outline: none;
     transition: all 0.2s ease;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .launchpad-search-input:focus {
-    background: #ffffff;
-    border-color: #4f46e5;
-    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+    background: #1e293b;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+    color: #ffffff;
 }
 
 .launchpad-search-input::placeholder {
@@ -1190,10 +1191,10 @@ body.in-app-view #cs-widget-canvas {
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: #4f46e5;
+    color: #818cf8;
     margin-bottom: 0.75rem;
     padding-bottom: 0.35rem;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 /* 🍎 1. GRID MODE (Apple Launchpad Style) */
@@ -1217,7 +1218,7 @@ body.in-app-view #cs-widget-canvas {
 }
 
 .drawer-view-grid .launchpad-app-item:hover {
-    background: #f1f5f9;
+    background: rgba(255, 255, 255, 0.06);
     transform: translateY(-4px);
 }
 
@@ -1233,9 +1234,9 @@ body.in-app-view #cs-widget-canvas {
     overflow: hidden;
     font-size: 1.95rem;
     color: #ffffff;
-    box-shadow: 0 8px 20px -3px rgba(15, 23, 42, 0.18),
+    box-shadow: 0 8px 20px -3px rgba(0, 0, 0, 0.45),
                 inset 0 1.5px 1.5px rgba(255, 255, 255, 0.55),
-                inset 0 -1.5px 2px rgba(0, 0, 0, 0.15);
+                inset 0 -1.5px 2px rgba(0, 0, 0, 0.25);
     transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
     flex-shrink: 0;
 }
@@ -1255,8 +1256,8 @@ body.in-app-view #cs-widget-canvas {
 
 .drawer-view-grid .launchpad-app-item:hover .launchpad-icon {
     transform: scale(1.08);
-    box-shadow: 0 14px 28px -2px rgba(15, 23, 42, 0.24),
-                0 0 20px rgba(79, 70, 229, 0.25),
+    box-shadow: 0 14px 28px -2px rgba(0, 0, 0, 0.6),
+                0 0 20px rgba(99, 102, 241, 0.35),
                 inset 0 1.5px 2px rgba(255, 255, 255, 0.8);
 }
 
@@ -1272,7 +1273,7 @@ body.in-app-view #cs-widget-canvas {
 .drawer-view-grid .launchpad-title {
     font-size: 0.81rem;
     font-weight: 600;
-    color: #0f172a;
+    color: #f8fafc;
     text-align: center;
     line-height: 1.25;
     max-width: 104px;
@@ -1286,7 +1287,7 @@ body.in-app-view #cs-widget-canvas {
 }
 
 .drawer-view-grid .launchpad-app-item:hover .launchpad-title {
-    color: #4f46e5;
+    color: #818cf8;
     font-weight: 700;
 }
 
@@ -1308,19 +1309,19 @@ body.in-app-view #cs-widget-canvas {
     gap: 0.9rem;
     padding: 0.85rem 1rem;
     border-radius: 14px;
-    color: #0f172a;
+    color: #f8fafc;
     text-decoration: none !important;
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    background: #161e2e;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
     transition: all 0.2s ease;
 }
 
 .drawer-view-list .launchpad-app-item:hover {
-    background: #f8fafc;
-    border-color: #cbd5e1;
+    background: #1e293b;
+    border-color: rgba(99, 102, 241, 0.4);
     transform: translateX(4px);
-    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
 .drawer-view-list .launchpad-icon {
@@ -1333,7 +1334,7 @@ body.in-app-view #cs-widget-canvas {
     font-size: 1.35rem;
     color: #ffffff;
     flex-shrink: 0;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .drawer-view-list .launchpad-content {
@@ -1343,7 +1344,7 @@ body.in-app-view #cs-widget-canvas {
 
 .drawer-view-list .launchpad-title {
     font-weight: 700;
-    color: #0f172a;
+    color: #f8fafc;
     font-size: 0.95rem;
     display: flex;
     align-items: center;
@@ -1352,7 +1353,7 @@ body.in-app-view #cs-widget-canvas {
 
 .drawer-view-list .launchpad-desc {
     display: block;
-    color: #64748b;
+    color: #94a3b8;
     font-size: 0.82rem;
     line-height: 1.4;
     margin-top: 2px;

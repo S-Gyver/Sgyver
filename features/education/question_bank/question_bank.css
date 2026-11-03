@@ -1,20 +1,20 @@
 /* ====================================================
-   Gyver Question Bank – Modern Clean Apple / Stripe Theme
+   Gyver Question Bank – Modern Dark Apple Pro / Linear Theme
    ==================================================== */
 
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Kanit:wght@300;400;500;600;700&family=Fira+Code:wght@500;600;700&display=swap');
 
 :root {
-    --brand-primary: #4f46e5;
-    --brand-primary-hover: #4338ca;
-    --apple-bg: #f8fafc;
-    --apple-surface: #ffffff;
-    --apple-border: #e2e8f0;
+    --brand-primary: #6366f1;
+    --brand-primary-hover: #4f46e5;
+    --apple-bg: #090d16;
+    --apple-surface: #111827;
+    --apple-border: rgba(255, 255, 255, 0.08);
 }
 
 body {
     background-color: var(--apple-bg) !important;
-    color: #0f172a !important;
+    color: #f8fafc !important;
     font-family: 'Plus Jakarta Sans', 'Kanit', sans-serif !important;
     min-height: 100vh;
     position: relative;
@@ -29,8 +29,8 @@ body {
 .bg-cyber-grid {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background-image: linear-gradient(rgba(79, 70, 229, 0.03) 1px, transparent 1px),
-                      linear-gradient(90deg, rgba(79, 70, 229, 0.03) 1px, transparent 1px);
+    background-image: linear-gradient(rgba(99, 102, 241, 0.05) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(99, 102, 241, 0.05) 1px, transparent 1px);
     background-size: 32px 32px;
     z-index: -1;
     pointer-events: none;
@@ -49,21 +49,22 @@ body {
 .glow-top { top: -80px; left: -80px; background: #6366f1; }
 .glow-bottom { bottom: -80px; right: -80px; background: #0ea5e9; }
 
-/* Elevated Modern Cards */
+/* Elevated Modern Dark Cards */
 .cyber-card {
-    background: #ffffff !important;
+    background: #111827 !important;
     border: 1px solid var(--apple-border) !important;
     border-radius: 20px !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 8px 24px -4px rgba(15, 23, 42, 0.05) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45) !important;
     padding: 22px;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+    color: #f8fafc !important;
 }
 
-.border-cyan { border-color: rgba(79, 70, 229, 0.25) !important; }
+.border-cyan { border-color: rgba(99, 102, 241, 0.3) !important; }
 .border-warning-soft { border-color: rgba(245, 158, 11, 0.3) !important; }
-.text-cyan { color: #4f46e5 !important; }
-.text-cyan-glow { color: #4f46e5; font-weight: 700; }
-.text-subtle { color: #64748b !important; }
+.text-cyan { color: #818cf8 !important; }
+.text-cyan-glow { color: #818cf8; font-weight: 700; }
+.text-subtle { color: #94a3b8 !important; }
 
 /* Buttons */
 .btn-cyan-glow {
@@ -73,29 +74,30 @@ body {
     border-radius: 9999px;
     border: none;
     padding: 8px 20px;
-    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.28);
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .btn-cyan-glow:hover {
     background: linear-gradient(135deg, #4338ca 0%, #4f46e5 100%) !important;
     color: #ffffff !important;
     transform: translateY(-1.5px);
-    box-shadow: 0 6px 18px rgba(79, 70, 229, 0.38);
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
 }
 
 /* Quiz Card Flashcard */
 .quiz-card-modern {
-    background: #ffffff;
+    background: #111827;
     border: 1px solid var(--apple-border);
     border-radius: 16px;
     padding: 20px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03), 0 4px 16px rgba(15, 23, 42, 0.04);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    color: #f8fafc;
 }
 .quiz-card-modern:hover {
-    border-color: #cbd5e1;
+    border-color: rgba(99, 102, 241, 0.45);
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(79, 70, 229, 0.08);
+    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.2);
 }
 
 /* Choice Pills */
@@ -109,32 +111,32 @@ body {
     transition: all 0.15s ease;
 }
 .choice-pill-normal {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    color: #334155;
+    background: #161e2e;
+    border: 1px solid var(--apple-border);
+    color: #cbd5e1;
 }
 .choice-pill-correct {
-    background: #ecfdf5;
+    background: rgba(16, 185, 129, 0.15);
     border: 1.5px solid #10b981;
-    color: #047857;
+    color: #34d399;
     font-weight: 600;
-    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
 }
 
 /* Question Search */
 .search-quiz-wrapper {
-    background: #ffffff;
-    border: 1px solid #cbd5e1;
+    background: #1e293b;
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 9999px;
     padding: 8px 18px;
     display: flex;
     align-items: center;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 .search-quiz-wrapper input {
     background: transparent;
     border: none;
-    color: #0f172a;
+    color: #f8fafc;
     outline: none;
     width: 100%;
     font-size: 0.92rem;
@@ -143,24 +145,24 @@ body {
     color: #94a3b8;
 }
 
-/* Form Controls Clean Light */
+/* Form Controls Clean Dark */
 .form-control, .form-select {
-    background-color: #ffffff !important;
-    border: 1px solid #cbd5e1 !important;
-    color: #0f172a !important;
+    background-color: #1e293b !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    color: #f8fafc !important;
     border-radius: 12px;
     font-size: 0.92rem;
 }
 .form-control:focus, .form-select:focus {
-    border-color: #4f46e5 !important;
-    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15) !important;
+    border-color: #6366f1 !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25) !important;
 }
 
 /* Launcher Banner */
 .launcher-banner {
-    background: linear-gradient(135deg, #eef2ff 0%, #f0fdf4 100%);
-    border: 1px solid #c7d2fe;
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.18) 0%, rgba(16, 185, 129, 0.15) 100%);
+    border: 1px solid rgba(99, 102, 241, 0.3);
     border-radius: 16px;
     padding: 18px;
-    color: #0f172a;
+    color: #f8fafc;
 }

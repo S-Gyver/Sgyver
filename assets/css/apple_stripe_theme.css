@@ -1,40 +1,42 @@
 /* ==========================================================================
-   Gyver Studio – Modern Clean Design System (Apple / Stripe Aesthetic)
-   Ultra-clean light surfaces, refined typography, smooth gradients & soft shadows
+   Gyver Studio – Master Dark Design System (Linear / Apple Pro Dark Aesthetic)
+   Deep dark surfaces, glowing borders, crisp typography, tactile neon pills
    Mobile-first & completely responsive
    ========================================================================== */
 
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Kanit:wght@300;400;500;600;700&display=swap');
 
 :root {
-    /* 🎨 Color Tokens */
-    --apple-bg: #f8fafc;
-    --apple-surface: #ffffff;
-    --apple-surface-hover: #f1f5f9;
-    --apple-border: rgba(226, 232, 240, 0.9);
-    --apple-border-subtle: rgba(241, 245, 249, 0.95);
+    /* 🎨 Dark Color Tokens */
+    --apple-bg: #090d16;
+    --apple-surface: #111827;
+    --apple-surface-hover: #1e293b;
+    --apple-surface-card: #131c2e;
+    --apple-border: rgba(255, 255, 255, 0.08);
+    --apple-border-subtle: rgba(255, 255, 255, 0.05);
+    --apple-border-hover: rgba(99, 102, 241, 0.45);
     
-    /* Brand Accent: Stripe Indigo & Royal Blue */
-    --apple-primary: #4f46e5;
-    --apple-primary-hover: #4338ca;
-    --apple-primary-light: #eef2ff;
-    --apple-gradient-primary: linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #3b82f6 100%);
+    /* Brand Accent: Indigo Glow & Cyan */
+    --apple-primary: #6366f1;
+    --apple-primary-hover: #4f46e5;
+    --apple-primary-light: rgba(99, 102, 241, 0.15);
+    --apple-gradient-primary: linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #38bdf8 100%);
     --apple-gradient-warm: linear-gradient(135deg, #f59e0b 0%, #ec4899 100%);
     --apple-gradient-emerald: linear-gradient(135deg, #10b981 0%, #059669 100%);
 
     /* Typography */
-    --apple-text-main: #0f172a;       /* Slate 900 */
-    --apple-text-body: #334155;       /* Slate 700 */
-    --apple-text-muted: #64748b;      /* Slate 500 */
-    --apple-text-subtle: #94a3b8;     /* Slate 400 */
+    --apple-text-main: #f8fafc;       /* Slate 50 */
+    --apple-text-body: #cbd5e1;       /* Slate 300 */
+    --apple-text-muted: #94a3b8;      /* Slate 400 */
+    --apple-text-subtle: #64748b;     /* Slate 500 */
 
-    /* Apple / Stripe Soft Shadows */
-    --apple-shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
-    --apple-shadow-sm: 0 2px 6px -1px rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.03);
-    --apple-shadow-md: 0 8px 20px -3px rgba(0, 0, 0, 0.06), 0 3px 6px -2px rgba(0, 0, 0, 0.03);
-    --apple-shadow-lg: 0 16px 36px -4px rgba(15, 23, 42, 0.08), 0 6px 12px -3px rgba(15, 23, 42, 0.03);
-    --apple-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04), 0 8px 24px -4px rgba(15, 23, 42, 0.06);
-    --apple-shadow-card-hover: 0 12px 32px -4px rgba(79, 70, 229, 0.12), 0 4px 12px -2px rgba(15, 23, 42, 0.04);
+    /* Dark Mode Elevated Shadows */
+    --apple-shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --apple-shadow-sm: 0 2px 8px -1px rgba(0, 0, 0, 0.4);
+    --apple-shadow-md: 0 8px 24px -3px rgba(0, 0, 0, 0.5);
+    --apple-shadow-lg: 0 16px 40px -4px rgba(0, 0, 0, 0.65);
+    --apple-shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.06);
+    --apple-shadow-card-hover: 0 16px 36px -4px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(99, 102, 241, 0.4);
 
     /* Radii */
     --apple-radius-sm: 10px;
@@ -46,31 +48,40 @@
 
 /* Base Body Styling */
 body.apple-theme {
-    font-family: 'Plus Jakarta Sans', 'Kanit', -apple-system, BlinkMacSystemFont, sans-serif;
-    background-color: var(--apple-bg);
-    color: var(--apple-text-main);
+    font-family: 'Plus Jakarta Sans', 'Kanit', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    background-color: var(--apple-bg) !important;
+    color: var(--apple-text-main) !important;
     letter-spacing: -0.01em;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
 
-/* 🖼️ Apple Frosted Glass Topbar / Navbar */
+/* 🖼️ Dark Frosted Glass Topbar / Navbar */
 .apple-navbar {
-    background: rgba(255, 255, 255, 0.86) !important;
+    background: rgba(11, 15, 25, 0.88) !important;
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
     border-bottom: 1px solid var(--apple-border) !important;
-    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
     position: sticky;
     top: 0;
     z-index: 1030;
     transition: background 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* 🃏 Stripe-Style Clean Elevated Cards */
+.apple-navbar .navbar-brand,
+.apple-navbar .nav-link {
+    color: var(--apple-text-main) !important;
+}
+
+.apple-navbar .nav-link:hover {
+    color: #818cf8 !important;
+}
+
+/* 🃏 Dark Elevated Cards */
 .apple-card {
-    background: var(--apple-surface);
-    border: 1px solid var(--apple-border);
+    background: var(--apple-surface) !important;
+    border: 1px solid var(--apple-border) !important;
     border-radius: var(--apple-radius-lg);
     box-shadow: var(--apple-shadow-card);
     transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
@@ -78,11 +89,12 @@ body.apple-theme {
                 border-color 0.22s ease;
     overflow: hidden;
     position: relative;
+    color: var(--apple-text-main) !important;
 }
 .apple-card:hover {
     transform: translateY(-3px);
     box-shadow: var(--apple-shadow-card-hover);
-    border-color: rgba(99, 102, 241, 0.4);
+    border-color: var(--apple-border-hover) !important;
 }
 
 /* 🔘 Tactile Apple Buttons */
@@ -94,7 +106,7 @@ body.apple-theme {
     padding: 0.55rem 1.35rem;
     font-weight: 600;
     font-size: 0.88rem;
-    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.28);
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
     transition: transform 0.18s ease, box-shadow 0.18s ease;
     display: inline-flex;
     align-items: center;
@@ -105,7 +117,7 @@ body.apple-theme {
 }
 .apple-btn-primary:hover {
     transform: translateY(-1.5px);
-    box-shadow: 0 6px 20px rgba(79, 70, 229, 0.38);
+    box-shadow: 0 6px 22px rgba(99, 102, 241, 0.5);
     color: #ffffff !important;
 }
 .apple-btn-primary:active {
@@ -113,7 +125,7 @@ body.apple-theme {
 }
 
 .apple-btn-secondary {
-    background: var(--apple-surface);
+    background: rgba(30, 41, 59, 0.7);
     color: var(--apple-text-body) !important;
     border: 1px solid var(--apple-border);
     border-radius: var(--apple-radius-full);
@@ -132,7 +144,7 @@ body.apple-theme {
 .apple-btn-secondary:hover {
     background: var(--apple-surface-hover);
     color: var(--apple-text-main) !important;
-    border-color: #cbd5e1;
+    border-color: rgba(255, 255, 255, 0.2);
     transform: translateY(-1px);
 }
 
@@ -145,17 +157,22 @@ body.apple-theme {
     border-radius: var(--apple-radius-full);
     font-size: 0.76rem;
     font-weight: 600;
-    background: #f1f5f9;
-    color: #475569;
-    border: 1px solid #e2e8f0;
+    background: rgba(30, 41, 59, 0.7);
+    color: #cbd5e1;
+    border: 1px solid var(--apple-border);
     transition: all 0.15s ease;
     user-select: none;
 }
+.apple-pill-tag:hover {
+    background: rgba(51, 65, 85, 0.8);
+    color: #ffffff;
+    border-color: rgba(99, 102, 241, 0.4);
+}
 .apple-pill-tag.active {
-    background: var(--apple-primary);
+    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
     color: #ffffff;
     border-color: transparent;
-    box-shadow: 0 3px 10px rgba(79, 70, 229, 0.25);
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
 }
 
 /* 📊 Stat / Metric Widgets */
@@ -169,11 +186,12 @@ body.apple-theme {
     align-items: center;
     gap: 1rem;
     transition: all 0.2s ease;
+    color: var(--apple-text-main);
 }
 .apple-metric-card:hover {
     transform: translateY(-2px);
     box-shadow: var(--apple-shadow-sm);
-    border-color: #cbd5e1;
+    border-color: var(--apple-border-hover);
 }
 .apple-metric-icon {
     width: 48px;
@@ -184,6 +202,110 @@ body.apple-theme {
     justify-content: center;
     font-size: 1.4rem;
     flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Global Bootstrap Dark Mode Overrides for apple-theme pages
+   ========================================================================== */
+body.apple-theme .bg-white {
+    background-color: var(--apple-surface) !important;
+}
+body.apple-theme .bg-light {
+    background-color: #0b0f19 !important;
+}
+body.apple-theme .text-dark {
+    color: var(--apple-text-main) !important;
+}
+body.apple-theme .text-secondary,
+body.apple-theme .text-muted {
+    color: var(--apple-text-muted) !important;
+}
+body.apple-theme .border,
+body.apple-theme .border-bottom,
+body.apple-theme .border-top,
+body.apple-theme .border-end,
+body.apple-theme .border-start {
+    border-color: var(--apple-border) !important;
+}
+body.apple-theme .card {
+    background-color: var(--apple-surface) !important;
+    border-color: var(--apple-border) !important;
+    color: var(--apple-text-main) !important;
+    box-shadow: var(--apple-shadow-card) !important;
+}
+body.apple-theme .modal-content {
+    background-color: var(--apple-surface) !important;
+    color: var(--apple-text-main) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7) !important;
+}
+body.apple-theme .modal-header,
+body.apple-theme .modal-footer {
+    border-color: var(--apple-border) !important;
+}
+body.apple-theme .form-control,
+body.apple-theme .form-select {
+    background-color: #1e293b !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    color: var(--apple-text-main) !important;
+}
+body.apple-theme .form-control:focus,
+body.apple-theme .form-select:focus {
+    background-color: #1e293b !important;
+    border-color: var(--apple-primary) !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25) !important;
+    color: #ffffff !important;
+}
+body.apple-theme .form-control::placeholder {
+    color: #64748b !important;
+}
+body.apple-theme .form-select option {
+    background-color: #1e293b;
+    color: var(--apple-text-main);
+}
+body.apple-theme .dropdown-menu {
+    background-color: #1e293b !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    color: var(--apple-text-main) !important;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55) !important;
+}
+body.apple-theme .dropdown-item {
+    color: var(--apple-text-body) !important;
+}
+body.apple-theme .dropdown-item:hover {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    color: #ffffff !important;
+}
+body.apple-theme .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+body.apple-theme .btn-light {
+    background-color: #1e293b !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    color: var(--apple-text-main) !important;
+}
+body.apple-theme .btn-light:hover {
+    background-color: #334155 !important;
+    color: #ffffff !important;
+}
+body.apple-theme .table {
+    color: var(--apple-text-body) !important;
+    border-color: var(--apple-border) !important;
+}
+body.apple-theme .table th {
+    background-color: #161e2e !important;
+    color: var(--apple-text-main) !important;
+    border-color: var(--apple-border) !important;
+}
+body.apple-theme .table td {
+    background-color: transparent !important;
+    color: var(--apple-text-body) !important;
+    border-color: rgba(255, 255, 255, 0.05) !important;
+}
+body.apple-theme .list-group-item {
+    background-color: var(--apple-surface) !important;
+    border-color: var(--apple-border) !important;
+    color: var(--apple-text-body) !important;
 }
 
 /* 📱 Responsive Mobile Tuning */
