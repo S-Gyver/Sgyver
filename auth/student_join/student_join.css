@@ -1,21 +1,31 @@
+/* ==============================================================================
+   Gyver Studio – Student Join (Apple / Stripe Aesthetic)
+   ============================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Kanit:wght@300;400;500;600;700&display=swap');
+
 body { 
-    font-family: 'Kanit', sans-serif; 
-    background-color: #f1f5f9; 
+    font-family: 'Plus Jakarta Sans', 'Kanit', sans-serif; 
+    background-color: #f8fafc; 
+    background-image: 
+        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.08) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(14, 165, 233, 0.08) 0px, transparent 50%);
     min-height: 100vh; 
     display: flex; 
     align-items: center; 
     justify-content: center; 
     padding: 20px; 
+    -webkit-font-smoothing: antialiased;
 }
 
 .join-card { 
-    max-width: 460px; 
+    max-width: 480px; 
     width: 100%; 
     border-radius: 24px; 
-    border: none; 
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08); 
+    border: 1px solid #e2e8f0; 
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03), 0 16px 40px -8px rgba(15, 23, 42, 0.08); 
     background: #ffffff; 
-    padding: 32px 24px; 
+    padding: 36px 28px; 
     text-align: center; 
 }
 
@@ -25,15 +35,31 @@ body {
 }
 
 .avatar-preview-img {
-    width: 84px;
-    height: 84px;
+    width: 88px;
+    height: 88px;
     object-fit: cover;
     border-radius: 50%;
-    border: 3px solid #3b82f6;
-    background-color: #eff6ff;
-    transition: transform 0.2s ease;
+    border: 3px solid #4f46e5;
+    background-color: #eef2ff;
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.2);
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .avatar-preview-img:hover {
-    transform: scale(1.04);
+    transform: scale(1.06);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #4f46e5, #4338ca) !important;
+    border: none !important;
+    border-radius: 9999px !important;
+    padding: 0.65rem 1.5rem !important;
+    font-weight: 600 !important;
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.28) !important;
+    transition: all 0.2s ease !important;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1.5px) !important;
+    box-shadow: 0 6px 20px rgba(79, 70, 229, 0.38) !important;
 }

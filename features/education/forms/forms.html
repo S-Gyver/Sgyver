@@ -13,9 +13,10 @@
     <!-- Supabase SDK & Custom CSS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../../../assets/js/supabaseClient.js"></script>
+    <link rel="stylesheet" href="../../../assets/css/apple_stripe_theme.css">
     <link rel="stylesheet" href="forms.css">
 </head>
-<body class="py-3 py-md-4">
+<body class="py-3 py-md-4 apple-theme">
 
     <!-- Ambient Cyber Background -->
     <div class="bg-cyber-grid"></div>
@@ -27,23 +28,23 @@
         <!-- Header Bar -->
         <header id="main-header-bar" class="cyber-card mb-4 border-purple d-flex flex-wrap justify-content-between align-items-center gap-3">
             <div class="d-flex align-items-center gap-3">
-                <div id="header-icon-box" class="bg-dark border border-purple rounded-3 p-2 d-inline-flex justify-content-center align-items-center" style="width: 46px; height: 46px;">
-                    <i id="header-icon" class="bi bi-ui-checks text-purple fs-3"></i>
+                <div id="header-icon-box" class="rounded-3 p-2 d-inline-flex justify-content-center align-items-center shadow-sm" style="width: 46px; height: 46px; background: #eef2ff; color: #4f46e5; border: 1px solid #c7d2fe;">
+                    <i id="header-icon" class="bi bi-ui-checks fs-3"></i>
                 </div>
                 <div>
-                    <h2 id="header-title" class="text-white fw-bold m-0 font-kanit fs-3 d-flex align-items-center gap-2">
+                    <h2 id="header-title" class="text-dark fw-bold m-0 font-kanit fs-3 d-flex align-items-center gap-2">
                         Gyver Forms
-                        <span id="header-badge" class="badge bg-purple-subtle text-purple border border-purple fs-6">v1.0</span>
+                        <span id="header-badge" class="badge bg-primary-subtle text-primary border border-primary-subtle fs-6">v1.0</span>
                     </h2>
                     <p id="header-desc" class="text-subtle small m-0 font-mono">ระบบสร้างแบบสอบถามและแบบประเมินออนไลน์</p>
                 </div>
             </div>
             
             <div class="d-flex align-items-center gap-2 flex-wrap ms-auto font-kanit">
-                <a href="forms.html" id="btn-header-list" class="btn btn-outline-purple btn-sm fw-bold px-3 py-2 rounded-3 text-purple border-purple">
+                <a href="forms.html" id="btn-header-list" class="btn btn-outline-purple btn-sm fw-bold px-3 py-2 rounded-pill text-purple">
                     <i class="bi bi-collection-fill me-1"></i>รายการแบบฟอร์ม
                 </a>
-                <a href="../../../my_workspace.html" class="btn btn-outline-secondary btn-sm fw-bold px-3 py-2 rounded-3 text-white">
+                <a href="../../../my_workspace.html" class="apple-btn-secondary">
                     <i class="bi bi-house-door-fill me-1"></i>หน้าหลัก
                 </a>
             </div>
@@ -55,7 +56,7 @@
         <div id="view-list-container">
             <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
                 <div>
-                    <h4 id="list-heading-text" class="fw-bold text-white mb-1"><i class="bi bi-folder-fill text-purple me-2"></i>รายการแบบสอบถามของคุณ</h4>
+                    <h4 id="list-heading-text" class="fw-bold text-dark mb-1"><i class="bi bi-folder-fill text-purple me-2"></i>รายการแบบสอบถามของคุณ</h4>
                     <p id="list-subheading-text" class="text-subtle small m-0">จัดการฟอร์มที่คุณสร้างไว้ ส่งลิงก์ และเรียกดูสรุปผลการตอบ</p>
                 </div>
                 <button id="btn-create-form-action" class="btn btn-purple-glow px-4 py-2" onclick="createNewForm()">

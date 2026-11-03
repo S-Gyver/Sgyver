@@ -10,12 +10,15 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
+    <!-- Apple Stripe Design System -->
+    <link rel="stylesheet" href="../../../assets/css/apple_stripe_theme.css">
+
     <style>
-        /* 🤍 ธีม Minimal Light Mode */
+        /* 🤍 ธีม Minimal Light Mode (Apple / Stripe Aesthetic) */
         body {
-            background-color: #f6f8fb !important;
-            color: #2d3748 !important;
-            font-family: 'Kanit', sans-serif !important;
+            background-color: var(--apple-bg, #f8fafc) !important;
+            color: #0f172a !important;
+            font-family: 'Plus Jakarta Sans', 'Kanit', sans-serif !important;
             min-height: 100vh;
         }
 
@@ -32,8 +35,8 @@
             width: 100%; 
             height: 100%; 
             border-radius: 50%; 
-            border: 6px solid #222; 
-            box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+            border: 6px solid #0f172a; 
+            box-shadow: 0 16px 36px -4px rgba(15, 23, 42, 0.16);
         }
 
         /* หัวลูกศรชี้ไดนามิก */
@@ -68,27 +71,27 @@
             animation: pointerTickHop 0.08s ease-out;
         }
 
-        /* ปุ่มหมุนวงล้อ */
+        /* ปุ่มหมุนวงล้อ Apple Primary Pill */
         #spin-btn {
-            background: #1a202c !important;
+            background: linear-gradient(135deg, #4f46e5, #6366f1) !important;
             color: #ffffff !important;
             border: none !important;
-            border-radius: 14px !important;
-            padding: 14px 45px !important;
-            font-weight: 600 !important;
+            border-radius: 9999px !important;
+            padding: 14px 48px !important;
+            font-weight: 700 !important;
             font-size: 1.25rem !important;
-            box-shadow: 0 4px 14px 0 rgba(26, 32, 44, 0.2) !important;
-            transition: all 0.2s ease-in-out !important;
+            box-shadow: 0 8px 24px rgba(79, 70, 229, 0.35) !important;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
         }
 
         #spin-btn:hover {
-            background: #2d3748 !important;
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px 0 rgba(26, 32, 44, 0.3) !important;
+            box-shadow: 0 12px 30px rgba(79, 70, 229, 0.45) !important;
+            color: #ffffff !important;
         }
 
         #spin-btn:active {
-            transform: translateY(0);
+            transform: translateY(0.5px);
         }
 
         /* ตู้คอนเทนเนอร์ฝั่งขวา */
@@ -96,27 +99,28 @@
             background: #ffffff !important;
             border: 1px solid #e2e8f0 !important;
             border-radius: 20px !important;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05) !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03), 0 8px 24px -4px rgba(15, 23, 42, 0.05) !important;
         }
 
         .input-box {
-            background-color: #f7fafc !important;
-            border: 1px solid #e2e8f0 !important;
-            color: #2d3748 !important;
-            border-radius: 12px;
+            background-color: #f8fafc !important;
+            border: 1px solid #cbd5e1 !important;
+            color: #0f172a !important;
+            border-radius: 14px;
             padding: 15px;
             font-size: 1.05rem;
             resize: none;
+            transition: all 0.2s ease;
         }
 
         .input-box:focus {
             background-color: #ffffff !important;
-            border-color: #3182ce !important;
-            box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.15) !important;
+            border-color: #4f46e5 !important;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15) !important;
         }
     </style>
 </head>
-<body class="d-flex flex-column py-4">
+<body class="d-flex flex-column py-4 apple-theme">
 
     <!-- Header -->
     <div class="container mb-3">
@@ -125,10 +129,10 @@
                 <i class="bi bi-disc-fill text-primary"></i> Gyver Wheel Lucky Draw (Instant)
             </h1>
             <div class="d-flex align-items-center gap-2">
-                <button id="sound-toggle-btn" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold" onclick="toggleSound()">
+                <button id="sound-toggle-btn" class="apple-btn-secondary btn-sm" onclick="toggleSound()">
                     <i class="bi bi-volume-up-fill me-1" id="sound-icon"></i><span id="sound-label">เปิดเสียง</span>
                 </button>
-                <a href="../../../my_workspace.html" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                <a href="../../../my_workspace.html" class="apple-btn-secondary btn-sm">
                     <i class="bi bi-house-door me-1"></i>กลับหน้าหลัก
                 </a>
             </div>

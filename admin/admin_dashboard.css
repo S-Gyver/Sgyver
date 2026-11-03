@@ -5,29 +5,29 @@
 @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Kanit:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap');
 
 :root {
-    --bg-base: #060911;
-    --bg-surface: #0b1120;
-    --bg-card: rgba(15, 23, 42, 0.72);
-    --bg-card-hover: rgba(22, 33, 58, 0.85);
-    --bg-glass: rgba(15, 23, 42, 0.65);
+    --bg-base: #f8fafc;
+    --bg-surface: #ffffff;
+    --bg-card: #ffffff;
+    --bg-card-hover: #f1f5f9;
+    --bg-glass: rgba(255, 255, 255, 0.9);
     
-    --border-subtle: rgba(255, 255, 255, 0.08);
-    --border-glow: rgba(56, 189, 248, 0.25);
+    --border-subtle: #e2e8f0;
+    --border-glow: rgba(79, 70, 229, 0.25);
     --border-danger-glow: rgba(244, 63, 94, 0.35);
 
-    --text-main: #f8fafc;
-    --text-muted: #94a3b8;
-    --text-subtle: #64748b;
+    --text-main: #0f172a;
+    --text-muted: #475569;
+    --text-subtle: #94a3b8;
 
     /* Accent Palette */
-    --neon-cyan: #00f2fe;
-    --neon-blue: #38bdf8;
+    --neon-cyan: #4f46e5;
+    --neon-blue: #0284c7;
     --neon-rose: #f43f5e;
     --neon-emerald: #10b981;
     --neon-amber: #f59e0b;
-    --neon-purple: #a855f7;
+    --neon-purple: #6366f1;
 
-    --font-sans: 'Kanit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-sans: 'Plus Jakarta Sans', 'Kanit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-mono: 'Fira Code', 'SF Mono', Consolas, monospace;
     --font-heading: 'Outfit', 'Kanit', sans-serif;
 }
@@ -49,12 +49,11 @@
 body.cyber-body {
     background-color: var(--bg-base) !important;
     background-image: 
-        radial-gradient(circle at 10% 20%, rgba(244, 63, 94, 0.07) 0%, transparent 40%),
-        radial-gradient(circle at 90% 10%, rgba(0, 242, 254, 0.08) 0%, transparent 40%),
-        radial-gradient(circle at 50% 80%, rgba(168, 85, 247, 0.06) 0%, transparent 50%),
-        linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
-    background-size: 100% 100%, 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+        radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.05) 0%, transparent 40%),
+        radial-gradient(circle at 90% 10%, rgba(14, 165, 233, 0.06) 0%, transparent 40%),
+        linear-gradient(rgba(79, 70, 229, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(79, 70, 229, 0.02) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 36px 36px, 36px 36px;
     background-attachment: fixed;
     color: var(--text-main) !important;
     font-family: var(--font-sans);
@@ -62,6 +61,7 @@ body.cyber-body {
     margin: 0;
     padding: 0;
     overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
 }
 
 /* Scrollbar Customization */
@@ -70,15 +70,14 @@ body.cyber-body {
     height: 8px;
 }
 ::-webkit-scrollbar-track {
-    background: #060911;
+    background: #f1f5f9;
 }
 ::-webkit-scrollbar-thumb {
-    background: #1e293b;
+    background: #cbd5e1;
     border-radius: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 ::-webkit-scrollbar-thumb:hover {
-    background: #334155;
+    background: #94a3b8;
 }
 
 /* Monospace Utilities */
@@ -95,11 +94,9 @@ body.cyber-body {
    ============================================================================== */
 .cyber-card {
     background: var(--bg-card);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--border-subtle);
-    border-radius: 16px;
-    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.03);
+    border-radius: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 8px 24px -4px rgba(15, 23, 42, 0.05);
     transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     position: relative;
     overflow: hidden;

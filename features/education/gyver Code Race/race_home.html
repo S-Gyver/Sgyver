@@ -18,10 +18,12 @@
     <!-- 📌 html5-qrcode SDK สำหรับเปิดกล้องสแกน QR Code -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
+    <!-- Apple Stripe Design System -->
+    <link rel="stylesheet" href="../../../assets/css/apple_stripe_theme.css">
     <link rel="stylesheet" href="race_home.css">
 </head>
 
-<body class="race-home-bg d-flex flex-column min-vh-100">
+<body class="race-home-bg d-flex flex-column min-vh-100 apple-theme">
 
     <!-- Background Animated Grid / Glow Background Elements -->
     <div class="bg-glow-blur glow-1"></div>
@@ -35,11 +37,11 @@
                 <div class="brand-badge me-1">
                     <i class="bi bi-flag-fill text-warning fs-5"></i>
                 </div>
-                <span class="fs-4 fw-black text-white font-mono brand-title">Gyver Code Race</span>
+                <span class="fs-4 fw-black text-dark font-mono brand-title">Gyver Code Race</span>
                 <span class="badge bg-warning-subtle text-warning border border-warning-subtle font-mono px-2 py-1 ms-1 d-none d-sm-inline-block" style="font-size: 0.72rem; letter-spacing: 0.5px;">PRO ARENA</span>
             </div>
 
-            <a href="../../../my_workspace.html" class="btn btn-outline-light btn-cyber-sm rounded-pill font-mono">
+            <a href="../../../my_workspace.html" class="apple-btn-secondary btn-sm font-mono">
                 <i class="bi bi-house-door-fill me-1"></i>กลับหน้าหลัก Workspace
             </a>
         </div>
@@ -53,7 +55,7 @@
             <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-live-badge border border-primary-subtle text-cyan font-mono mb-2 shadow-sm animate-pulse-glow">
                 <span class="live-dot"></span> LIVE CODING & TYPING ARENA
             </div>
-            <h1 class="display-5 fw-black text-white mb-2 text-uppercase hero-title">
+            <h1 class="display-5 fw-black text-dark mb-2 text-uppercase hero-title">
                 ประลองความเร็วและการเขียนโค้ด <span class="text-cyber-gradient">REALTIME</span>
             </h1>
             <p class="text-subtle font-kanit fs-6 mx-auto mb-0" style="max-width: 640px;">
@@ -71,17 +73,17 @@
                         <div class="role-icon-box bg-warning-glow mx-auto mb-3">
                             <i class="bi bi-broadcast text-warning fs-1"></i>
                         </div>
-                        <h3 class="fw-bold text-white mb-2 font-kanit">สำหรับคุณครู</h3>
+                        <h3 class="fw-bold text-dark mb-2 font-kanit">สำหรับคุณครู</h3>
                         <p class="text-subtle small font-kanit mb-4">
                             สร้างห้องแข่งขัน (Lobby), เลือกโหมดแข่งเดี่ยว/กลุ่ม, ฉายขึ้นจอโปรเจกเตอร์ พร้อมส่องดูโค้ดนักเรียนแบบ Realtime
                         </p>
                     </div>
 
                     <div class="mt-auto d-flex flex-column gap-2">
-                        <a href="teacher/teacher_lobby.html" class="btn btn-warning btn-cyber-lg w-100 fw-extrabold shadow-lg">
+                        <a href="teacher/teacher_lobby.html" class="btn btn-warning btn-cyber-lg w-100 fw-extrabold shadow-sm">
                             <i class="bi bi-plus-circle-fill me-2"></i>สร้างห้องแข่งขัน (Create Lobby)
                         </a>
-                        <a href="teacher/projector_race.html" target="_blank" class="btn btn-outline-warning btn-cyber-md w-100 font-mono">
+                        <a href="teacher/projector_race.html" target="_blank" class="apple-btn-secondary w-100 font-mono py-2">
                             <i class="bi bi-display me-2"></i>เปิดจอโปรเจกเตอร์ (Projector Arena)
                         </a>
                     </div>
@@ -93,9 +95,9 @@
                 <div class="cyber-role-card student-card h-100 p-4 d-flex flex-column justify-content-between text-center">
                     <div>
                         <div class="role-icon-box bg-cyan-glow mx-auto mb-3">
-                            <i class="bi bi-controller text-cyan fs-1"></i>
+                            <i class="bi bi-controller text-primary fs-1"></i>
                         </div>
-                        <h3 class="fw-bold text-white mb-2 font-kanit">สำหรับนักเรียน</h3>
+                        <h3 class="fw-bold text-dark mb-2 font-kanit">สำหรับนักเรียน</h3>
                         <p class="text-subtle small font-kanit mb-4">
                             เข้าร่วมห้องแข่งขันผ่านรหัสห้องเรียน 4 หลัก หรือเปิดกล้องสแกน QR Code จากจอของคุณครู
                         </p>
@@ -104,15 +106,15 @@
                     <!-- Input Code & QR Scan -->
                     <div class="mt-auto d-flex flex-column gap-2">
                         <form id="join-room-form" onsubmit="handleJoinRoom(event)" class="m-0">
-                            <div class="input-group input-group-cyber">
-                                <input type="text" id="room-code-input" class="form-control bg-dark text-white text-center font-mono fw-bold fs-5 border-secondary" placeholder="กรอกรหัสห้อง (เช่น 1202)" maxlength="8" required autocomplete="off">
+                            <div class="input-group input-group-cyber shadow-sm">
+                                <input type="text" id="room-code-input" class="form-control text-dark text-center font-mono fw-bold fs-5" placeholder="กรอกรหัสห้อง (เช่น 1202)" maxlength="8" required autocomplete="off">
                                 <button type="submit" class="btn btn-cyan fw-extrabold px-4">
                                     JOIN <i class="bi bi-arrow-right-short ms-1"></i>
                                 </button>
                             </div>
                         </form>
 
-                        <button type="button" onclick="openQRCamera()" class="btn btn-outline-info w-100 btn-cyber-md font-mono">
+                        <button type="button" onclick="openQRCamera()" class="apple-btn-secondary w-100 font-mono py-2">
                             <i class="bi bi-qr-code-scan me-2"></i>สแกน QR Code (เปิดกล้อง)
                         </button>
                     </div>
