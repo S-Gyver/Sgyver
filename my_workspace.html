@@ -17,12 +17,14 @@
 
     <!-- Classroom Screen Custom Glassmorphism Styles -->
     <link rel="stylesheet" href="assets/css/classroom_screen.css">
+    <link rel="stylesheet" href="assets/css/notification_center.css">
 
     <!-- Supabase SDK & Supabase Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="assets/js/supabaseClient.js"></script>
     <script src="assets/js/utils.js"></script>
     <script src="assets/js/system_broadcast.js"></script>
+    <script src="assets/js/notification_center.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
     <!-- PWA Settings for Mobile Installation -->
@@ -145,6 +147,9 @@
                 <i class="bi bi-phone-arrow-down-fill text-warning"></i>
                 <span class="d-none d-sm-inline">ติดตั้งแอป</span>
             </button>
+
+            <!-- 🔔 Notification Bell Slot -->
+            <div id="gyver-notification-slot" class="d-inline-flex align-items-center me-1"></div>
 
             <!-- 🔑 Level 0: Login Button -->
             <button class="cs-btn-text" id="auth-login-btn" onclick="openLoginModal()">

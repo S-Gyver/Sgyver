@@ -1,0 +1,291 @@
+/* ==========================================================================
+   Gyver Studio – Notification Center Stylesheet
+   Sleek, non-intrusive notification bell & flyout panel for all pages
+   ========================================================================== */
+
+:root {
+    --notif-primary: #3b82f6;
+    --notif-accent: #f43f5e;
+    --notif-bg: #0f172a;
+    --notif-card-bg: rgba(30, 41, 59, 0.95);
+    --notif-border: rgba(255, 255, 255, 0.1);
+    --notif-text: #f8fafc;
+    --notif-text-muted: #94a3b8;
+    --notif-z: 10050;
+}
+
+/* Floating Bell Button (when not mounted in a slot) */
+.gyver-notif-bell-floating {
+    position: fixed;
+    top: 14px;
+    right: 18px;
+    z-index: var(--notif-z);
+}
+
+/* Bell Button styling */
+.gyver-notif-bell-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    color: #475569;
+    font-size: 1.15rem;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none;
+    padding: 0;
+}
+.gyver-notif-bell-btn:hover {
+    background: #f8fafc;
+    color: #2563eb;
+    transform: scale(1.06);
+    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.18);
+}
+.gyver-notif-bell-btn:active {
+    transform: scale(0.96);
+}
+
+/* Unread Badge */
+.gyver-notif-badge {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #ef4444, #f43f5e);
+    color: #ffffff;
+    font-size: 0.68rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #ffffff;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
+    animation: notifPulse 2.5s infinite;
+}
+
+@keyframes notifPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.12); }
+}
+
+@keyframes bellWiggle {
+    0%, 100% { transform: rotate(0); }
+    20%, 60% { transform: rotate(14deg); }
+    40%, 80% { transform: rotate(-14deg); }
+}
+.gyver-notif-wiggle {
+    animation: bellWiggle 0.6s ease-in-out;
+}
+
+/* Notification Dropdown Panel */
+#gyver-notif-panel {
+    position: fixed;
+    top: 60px;
+    right: 18px;
+    width: 360px;
+    max-width: calc(100vw - 32px);
+    max-height: 80vh;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.14), 0 0 1px rgba(0, 0, 0, 0.1);
+    z-index: var(--notif-z);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    font-family: 'Kanit', -apple-system, BlinkMacSystemFont, sans-serif;
+    transform-origin: top right;
+    transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(0.92) translateY(-8px);
+}
+#gyver-notif-panel.is-open {
+    opacity: 1;
+    visibility: visible;
+    transform: scale(1) translateY(0);
+}
+
+/* Panel Header */
+.gyver-notif-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #ffffff;
+}
+.gyver-notif-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.gyver-notif-title .icon-bell {
+    color: #f59e0b;
+}
+.gyver-notif-mark-read-btn {
+    background: transparent;
+    border: none;
+    color: #2563eb;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: background 0.15s;
+}
+.gyver-notif-mark-read-btn:hover {
+    background: #eff6ff;
+}
+
+/* Filter Tabs */
+.gyver-notif-tabs {
+    display: flex;
+    padding: 6px 12px;
+    gap: 6px;
+    background: #f8fafc;
+    border-bottom: 1px solid #f1f5f9;
+}
+.gyver-notif-tab {
+    flex: 1;
+    padding: 4px 6px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+}
+.gyver-notif-tab:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+}
+.gyver-notif-tab.active {
+    background: #ffffff;
+    color: #2563eb;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+/* Notification List */
+.gyver-notif-list {
+    flex: 1;
+    overflow-y: auto;
+    max-height: 400px;
+    padding: 4px 0;
+}
+.gyver-notif-list::-webkit-scrollbar {
+    width: 5px;
+}
+.gyver-notif-list::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+/* Notification Item */
+.gyver-notif-item {
+    padding: 10px 14px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    border-bottom: 1px solid #f8fafc;
+    cursor: pointer;
+    transition: background 0.15s;
+    position: relative;
+    text-decoration: none !important;
+}
+.gyver-notif-item:hover {
+    background: #f8fafc;
+}
+.gyver-notif-item.is-unread {
+    background: #f0fdf4;
+}
+.gyver-notif-item.is-unread::before {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #10b981;
+}
+
+.gyver-notif-icon-box {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+.gyver-notif-content {
+    flex: 1;
+    min-width: 0;
+}
+.gyver-notif-item-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #0f172a;
+    line-height: 1.3;
+    margin-bottom: 2px;
+}
+.gyver-notif-item-desc {
+    font-size: 0.76rem;
+    color: #64748b;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.gyver-notif-item-time {
+    font-size: 0.68rem;
+    color: #94a3b8;
+    margin-top: 4px;
+}
+
+/* Empty State */
+.gyver-notif-empty {
+    padding: 30px 20px;
+    text-align: center;
+    color: #94a3b8;
+}
+.gyver-notif-empty i {
+    font-size: 2.2rem;
+    margin-bottom: 8px;
+    display: block;
+    color: #cbd5e1;
+}
+
+/* Panel Backdrop for mobile */
+#gyver-notif-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    z-index: calc(var(--notif-z) - 1);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+#gyver-notif-backdrop.is-open {
+    opacity: 1;
+    pointer-events: auto;
+}

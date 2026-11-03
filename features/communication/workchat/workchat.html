@@ -26,9 +26,11 @@
 
     <!-- Shared Modules -->
     <link rel="stylesheet" href="../../../assets/css/toast_shared.css">
+    <link rel="stylesheet" href="../../../assets/css/notification_center.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../../../assets/js/supabaseClient.js"></script>
     <script src="../../../assets/js/toast_shared.js"></script>
+    <script src="../../../assets/js/notification_center.js"></script>
 
     <!-- Modern WorkChat Stylesheet -->
     <link rel="stylesheet" href="workchat.css?v=4.2">
@@ -79,6 +81,11 @@
                     <button type="button" class="rail-nav-item" id="rail-tab-vault" onclick="switchRailTab('vault')" title="คลังไฟล์โปรเจกต์ (Files & Vault)">
                         <i class="bi bi-folder-fill text-warning"></i>
                         <span class="rail-label">คลังไฟล์</span>
+                    </button>
+                    <!-- Global Notification Bell Item -->
+                    <button type="button" class="rail-nav-item position-relative" onclick="window.GyverNotifications && window.GyverNotifications.open()" title="การแจ้งเตือน (Notifications)">
+                        <i class="bi bi-bell-fill text-info"></i>
+                        <span class="rail-label">แจ้งเตือน</span>
                     </button>
                 </nav>
             </div>

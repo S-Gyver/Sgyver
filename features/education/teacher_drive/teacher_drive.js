@@ -688,7 +688,7 @@ function renderDriveFiles() {
                         </a>
                         ` : ''}
                         <button type="button" class="btn btn-outline-success btn-sm rounded-pill px-2.5 fw-bold"
-                                onclick="shareDriveItemToClassroom('${escapeHtml(item.id)}')" title="ส่งไฟล์นี้เข้าห้องเรียนของฉัน">
+                                onclick="openQuickShareModal('${escapeHtml(item.id)}')" title="แชร์ไฟล์นี้ (ส่งเข้าห้องเรียน หรือ WorkChat)">
                             <i class="bi bi-send-check-fill"></i>
                         </button>
                         <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-2.5"
@@ -1381,8 +1381,187 @@ function toggleDriveViewerFullscreen() {
 }
 
 // =============================================================================
-// 📤 ส่งไฟล์จากคลังสื่อส่วนตัวเข้า "ห้องเรียนของฉัน" (My Classroom) ในคลิกเดียว
+// 📤 ส่งไฟล์จากคลังสื่อส่วนตัวข้ามระบบในคลิกเดียว (WorkChat หรือ My Classroom)
 // =============================================================================
+async function openQuickShareModal(itemId) {
+    const item = driveState.items.find(i => i.id === itemId);
+    if (!item) return;
+
+    await Swal.fire({
+        title: 'แชร์สื่อการสอนข้ามระบบ',
+        html: `
+            <div class="text-start">
+                <div class="p-2.5 rounded-3 bg-light mb-3 border d-flex align-items-center gap-2.5">
+                    <div class="rounded-3 p-2 text-white bg-primary shadow-xs">
+                        <i class="bi bi-file-earmark-slides-fill fs-5"></i>
+                    </div>
+                    <div class="text-truncate">
+                        <div class="fw-bold text-dark text-truncate" style="font-size:0.95rem;">${escapeHtml(item.title)}</div>
+                        <div class="text-muted small" style="font-size:0.75rem;">${escapeHtml(item.fileName || item.fileType || 'สื่อการสอน')}</div>
+                    </div>
+                </div>
+                <p class="text-muted small mb-2 fw-bold">เลือกปลายทางที่ต้องการส่ง:</p>
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-outline-success p-3 rounded-4 text-start d-flex align-items-center gap-3 border shadow-xs" onclick="Swal.close(); setTimeout(()=>shareDriveItemToClassroom('${escapeHtml(item.id)}'), 100);">
+                        <div class="rounded-circle bg-success-subtle text-success d-flex align-items-center justify-content-center" style="width: 44px; height: 44px; font-size: 1.3rem;">
+                            <i class="bi bi-mortarboard-fill"></i>
+                        </div>
+                        <div>
+                            <div class="fw-bold text-dark">🏫 ส่งเข้า "ห้องเรียนของฉัน" (My Classroom)</div>
+                            <div class="text-muted small" style="font-size: 0.78rem;">ส่งเข้าแท็บเอกสาร & สื่อการสอนของห้องเรียน เพื่อให้นักเรียนเปิดดู</div>
+                        </div>
+                    </button>
+                    <button type="button" class="btn btn-outline-info p-3 rounded-4 text-start d-flex align-items-center gap-3 border shadow-xs" onclick="Swal.close(); setTimeout(()=>shareDriveItemToWorkChat('${escapeHtml(item.id)}'), 100);">
+                        <div class="rounded-circle bg-info-subtle text-info d-flex align-items-center justify-content-center" style="width: 44px; height: 44px; font-size: 1.3rem;">
+                            <i class="bi bi-chat-dots-fill"></i>
+                        </div>
+                        <div>
+                            <div class="fw-bold text-dark">💬 ส่งเข้า "WorkChat" (แชททีม)</div>
+                            <div class="text-muted small" style="font-size: 0.78rem;">แชร์การ์ดสไลด์พร้อมลิงก์เข้าห้องแชทกลาง หรือแชททีมงานทันที</div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        `,
+        showConfirmButton: false,
+        showCancelButton: true,
+        cancelButtonText: 'ปิด'
+    });
+}
+window.openQuickShareModal = openQuickShareModal;
+
+// 💬 ส่งสไลด์/ไฟล์เข้า WorkChat ในคลิกเดียว
+async function shareDriveItemToWorkChat(itemId) {
+    const item = driveState.items.find(i => i.id === itemId);
+    if (!item) return;
+
+    const { value: note } = await Swal.fire({
+        title: 'แชร์เข้า WorkChat',
+        html: `
+            <div class="text-start">
+                <p class="text-muted small mb-2">ส่ง <b>"${escapeHtml(item.title)}"</b> ไปยังห้องแชทกลาง (General):</p>
+                <div class="mb-2">
+                    <label class="form-label small fw-bold">ข้อความเพิ่มเติม (ไม่บังคับ):</label>
+                    <textarea id="swal-workchat-note" class="form-control rounded-3" rows="2" placeholder="เช่น สไลด์ประกอบการสอนประจำสัปดาห์นี้ครับ..."></textarea>
+                </div>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: '<i class="bi bi-send-fill me-1"></i> ส่งเข้า WorkChat',
+        cancelButtonText: 'ยกเลิก',
+        preConfirm: () => document.getElementById('swal-workchat-note')?.value || ''
+    });
+
+    if (note === undefined) return;
+
+    try {
+        const userDisplay = (document.getElementById('drive-user-badge')?.innerText || 'คุณครู').replace('บัญชี:', '').trim();
+        const messageText = note ? `📁 แชร์สื่อการสอน: "${item.title}"\n💬 ${note}\n🔗 ลิงก์เปิดดู: ${item.url}` : `📁 แชร์สื่อการสอน: "${item.title}"\n🔗 ลิงก์เปิดดู: ${item.url}`;
+
+        const newMsg = {
+            id: 'msg_share_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+            chat_id: 'general',
+            legacy_chat_id: 'general',
+            recipient_username: null,
+            recipient_name: null,
+            recipient_id: null,
+            sender_username: 'teacher',
+            sender_name: userDisplay,
+            avatar: 'user_boy',
+            message_text: messageText,
+            project_id: null,
+            folder_id: null,
+            file_data: {
+                name: item.title,
+                url: item.url,
+                type: item.fileType || 'presentation'
+            },
+            created_at: new Date().toISOString()
+        };
+
+        // 1. Save locally for WorkChat
+        try {
+            const raw = localStorage.getItem('sgyver_workchat_messages');
+            const msgs = raw ? JSON.parse(raw) : [];
+            msgs.push(newMsg);
+            localStorage.setItem('sgyver_workchat_messages', JSON.stringify(msgs.slice(-200)));
+        } catch (_) {}
+
+        // 2. Sync to Supabase lobbies WORKCHAT
+        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+            try {
+                const { data: cloudStore } = await supabaseClient
+                    .from('lobbies')
+                    .select('quiz_settings')
+                    .eq('room_code', 'WORKCHAT')
+                    .maybeSingle();
+
+                let msgs = [];
+                if (cloudStore && cloudStore.quiz_settings && Array.isArray(cloudStore.quiz_settings.messages)) {
+                    msgs = cloudStore.quiz_settings.messages;
+                }
+                msgs.push(newMsg);
+
+                await supabaseClient
+                    .from('lobbies')
+                    .update({
+                        quiz_settings: {
+                            ...(cloudStore?.quiz_settings || {}),
+                            messages: msgs.slice(-200),
+                            updated_at: new Date().toISOString()
+                        }
+                    })
+                    .eq('room_code', 'WORKCHAT');
+
+                // Broadcast on realtime channel
+                const channel = supabaseClient.channel('public:workchat_channel');
+                channel.send({
+                    type: 'broadcast',
+                    event: 'new_message',
+                    payload: newMsg
+                });
+            } catch (err) {
+                console.warn('[WorkChat Share Cloud Sync Notice]', err);
+            }
+        }
+
+        // 3. Add to Gyver Notification Center
+        if (window.GyverNotifications) {
+            window.GyverNotifications.add({
+                id: 'notif_wc_' + newMsg.id,
+                title: userDisplay + ' แชร์สื่อการสอนเข้า WorkChat',
+                desc: item.title,
+                type: 'chat',
+                icon: 'bi-chat-dots-fill',
+                iconBg: 'rgba(6, 182, 212, 0.15)',
+                iconColor: '#0891b2',
+                url: '../../communication/workchat/workchat.html',
+                created_at: newMsg.created_at
+            });
+        }
+
+        // 4. Success dialog with button to open WorkChat
+        Swal.fire({
+            icon: 'success',
+            title: 'แชร์เข้า WorkChat เรียบร้อย!',
+            text: `ส่ง "${item.title}" เข้าห้องแชทกลาง (General) เรียบร้อยแล้ว`,
+            showCancelButton: true,
+            confirmButtonText: '<i class="bi bi-chat-dots-fill me-1"></i> เปิดดูใน WorkChat ทันที',
+            cancelButtonText: 'ปิด'
+        }).then(res => {
+            if (res.isConfirmed) {
+                window.location.href = '../../communication/workchat/workchat.html';
+            }
+        });
+
+    } catch (e) {
+        console.error('Share to WorkChat error:', e);
+        showToast('error', 'ส่งไม่สำเร็จ', e.message || 'เกิดข้อผิดพลาด');
+    }
+}
+window.shareDriveItemToWorkChat = shareDriveItemToWorkChat;
+
+// 🏫 ส่งสื่อการสอนเข้า "ห้องเรียนของฉัน" (My Classroom)
 async function shareDriveItemToClassroom(itemId) {
     const item = driveState.items.find(i => i.id === itemId);
     if (!item || typeof supabaseClient === 'undefined' || !supabaseClient) return;
@@ -1438,10 +1617,40 @@ async function shareDriveItemToClassroom(itemId) {
             .eq('id', targetRoom.id);
 
         if (error) throw error;
-        showToast('success', 'ส่งเข้าห้องเรียนแล้ว!', `ส่ง "${item.title}" เข้าห้อง "${targetRoom.class_name}" เรียบร้อยแล้ว`);
+
+        // Add to Notification Center
+        if (window.GyverNotifications) {
+            window.GyverNotifications.add({
+                id: 'notif_mat_' + Date.now(),
+                title: 'ส่งสื่อการสอนเข้าห้องเรียน',
+                desc: `เพิ่ม "${item.title}" เข้าห้อง "${targetRoom.class_name}" เรียบร้อยแล้ว`,
+                type: 'edu',
+                icon: 'bi-mortarboard-fill',
+                iconBg: 'rgba(16, 185, 129, 0.15)',
+                iconColor: '#059669',
+                url: '../../../auth/my_classroom/my_classroom.html',
+                created_at: new Date().toISOString()
+            });
+        }
+
+        Swal.fire({
+            icon: 'success',
+            title: 'ส่งเข้าห้องเรียนแล้ว!',
+            text: `ส่ง "${item.title}" เข้าห้อง "${targetRoom.class_name}" เรียบร้อยแล้ว`,
+            showCancelButton: true,
+            confirmButtonText: '<i class="bi bi-mortarboard-fill me-1"></i> ไปที่ห้องเรียนทันที',
+            cancelButtonText: 'ปิด'
+        }).then(res => {
+            if (res.isConfirmed) {
+                window.location.href = '../../../auth/my_classroom/my_classroom.html';
+            }
+        });
+
     } catch (err) {
         console.error('Share to classroom error:', err);
         showToast('error', 'ส่งไม่สำเร็จ', err.message || 'เกิดข้อผิดพลาด');
     }
 }
+window.shareDriveItemToClassroom = shareDriveItemToClassroom;
+
 
