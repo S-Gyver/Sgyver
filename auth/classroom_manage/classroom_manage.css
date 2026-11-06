@@ -9,24 +9,25 @@
 
 /* Classroom Hub Card */
 .classroom-card {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
+    background: #161e2e;
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 16px;
     padding: 20px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+    color: #f8fafc;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
     transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 .classroom-card:hover {
     transform: translateY(-3px);
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
-    border-color: #cbd5e1;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
+    border-color: rgba(99, 102, 241, 0.45);
 }
 
 /* Room Code Pill */
 .room-code-badge {
-    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-    color: #15803d;
-    border: 1px solid #86efac;
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.35);
     font-weight: 700;
     font-family: 'Fira Code', monospace;
     font-size: 0.85rem;
@@ -42,7 +43,7 @@
     background: transparent;
     border: none;
     padding: 0;
-    color: #15803d;
+    color: #34d399;
     cursor: pointer;
     font-size: 0.95rem;
     line-height: 1;
@@ -58,7 +59,7 @@
     font-weight: 600;
     padding: 8px 16px;
     border-radius: 10px;
-    color: #64748b;
+    color: #94a3b8;
     border: 1px solid transparent;
 }
 .student-add-tab.active {
@@ -72,7 +73,7 @@
     transition: background-color 0.15s ease;
 }
 .student-row:hover {
-    background-color: #f8fafc;
+    background-color: rgba(255, 255, 255, 0.04);
 }
 
 .student-avatar-img {
@@ -80,19 +81,19 @@
     height: 38px;
     border-radius: 50%;
     object-fit: cover;
-    border: 2px solid #e2e8f0;
+    border: 2px solid rgba(255, 255, 255, 0.14);
     cursor: pointer;
     transition: transform 0.2s ease, border-color 0.2s ease;
 }
 .student-avatar-img:hover {
     transform: scale(1.1);
-    border-color: #4f46e5;
+    border-color: #6366f1;
 }
 
 /* Search Box */
 .search-wrapper-student {
-    background: #f1f5f9;
-    border: 1px solid #e2e8f0;
+    background: #161e2e;
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 10px;
     padding: 6px 14px;
     display: flex;
@@ -104,4 +105,5 @@
     outline: none;
     font-size: 0.9rem;
     width: 100%;
+    color: #f8fafc;
 }

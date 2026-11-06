@@ -220,6 +220,34 @@ body.apple-theme .text-secondary,
 body.apple-theme .text-muted {
     color: var(--apple-text-muted) !important;
 }
+body.apple-theme .bg-warning.text-dark,
+body.apple-theme .btn-warning.text-dark,
+body.apple-theme .btn-warning,
+body.apple-theme .bg-info.text-dark,
+body.apple-theme .btn-info.text-dark,
+body.apple-theme .a4-sheet .text-dark {
+    color: #0f172a !important;
+}
+body.apple-theme .input-group-text,
+body.apple-theme .input-group-text.bg-light,
+body.apple-theme .input-group-text.bg-white {
+    background-color: #161e2e !important;
+    border-color: rgba(255, 255, 255, 0.14) !important;
+    color: #cbd5e1 !important;
+}
+body.apple-theme .alert-light {
+    background-color: #161e2e !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    color: var(--apple-text-main) !important;
+}
+body.apple-theme .leaderboard-card {
+    background-color: var(--apple-surface) !important;
+    border-color: var(--apple-border) !important;
+    color: var(--apple-text-main) !important;
+}
+body.apple-theme .leaderboard-name {
+    color: var(--apple-text-main) !important;
+}
 body.apple-theme .border,
 body.apple-theme .border-bottom,
 body.apple-theme .border-top,

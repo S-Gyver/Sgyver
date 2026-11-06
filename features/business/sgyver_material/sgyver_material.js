@@ -808,7 +808,15 @@ function initSupabaseConnection() {
             AppState.supabaseClient = window.supabaseClient;
             updateSupabaseStatus(true, 'Supabase Connected');
         } else if (window.supabase && window.SUPABASE_URL && window.SUPABASE_KEY) {
-            AppState.supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_KEY);
+            AppState.supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_KEY, {
+                db: { schema: 'public' },
+                global: {
+                    headers: {
+                        'Accept-Profile': 'public',
+                        'Content-Profile': 'public'
+                    }
+                }
+            });
             updateSupabaseStatus(true, 'Supabase Connected');
         } else {
             updateSupabaseStatus(false, 'Local Mode (Supabase Standby)');
@@ -830,6 +838,38 @@ function updateSupabaseStatus(isOnline, text) {
 }
 
 // 3. Load App Data (Supabase Remote First -> LocalStorage -> Default)
+function mergeCatalogPreservingShops(remoteCategories, localCategories) {
+    if (!Array.isArray(remoteCategories) || !Array.isArray(localCategories)) return false;
+    let merged = false;
+
+    remoteCategories.forEach(rCat => {
+        const lCat = localCategories.find(c => c.id === rCat.id || c.name === rCat.name);
+        if (!lCat) return;
+
+        if ((!rCat.defaultShop || !rCat.defaultShop.trim()) && lCat.defaultShop && lCat.defaultShop.trim()) {
+            rCat.defaultShop = lCat.defaultShop.trim();
+            merged = true;
+        }
+
+        if (Array.isArray(rCat.items) && Array.isArray(lCat.items)) {
+            rCat.items.forEach(rItem => {
+                const lItem = lCat.items.find(i => i.id === rItem.id || (i.size && i.size === rItem.size && (i.name || '') === (rItem.name || '')));
+                if (!lItem) return;
+                if ((!rItem.shop || !rItem.shop.trim()) && lItem.shop && lItem.shop.trim()) {
+                    rItem.shop = lItem.shop.trim();
+                    merged = true;
+                }
+                if ((!rItem.name || !rItem.name.trim()) && lItem.name && lItem.name.trim()) {
+                    rItem.name = lItem.name.trim();
+                    merged = true;
+                }
+            });
+        }
+    });
+
+    return merged;
+}
+
 function loadAppDataLocalFirst() {
     try {
         const storedCustomGroups = localStorage.getItem('sgyver_custom_groups');
@@ -848,11 +888,11 @@ function loadAppDataLocalFirst() {
             const parsed = JSON.parse(stored);
             if (Array.isArray(parsed) && parsed.length > 0) {
                 AppState.categories = parsed;
-                const updated = ensureInitialData(AppState.categories);
+                ensureInitialData(AppState.categories);
                 sortAllCategoriesItems();
-                if (updated) {
-                    saveAppData();
-                }
+                // Do NOT call syncCategoriesToSupabase() here before syncFromSupabase() finishes,
+                // otherwise a browser with an older localStorage cache would overwrite Supabase!
+                localStorage.setItem('sgyver_material_data', JSON.stringify(AppState.categories));
                 updateShopSuggestionsAndFilter();
                 renderCategories();
                 selectCategory(AppState.selectedCategoryId || 'HMR');
@@ -880,6 +920,12 @@ async function syncFromSupabase(isManual = false) {
             showToast('info', 'กำลังดึงข้อมูล...', 'กำลังดึงข้อมูลล่าสุดจาก Supabase', 1500);
         }
 
+        let localBeforeSync = [];
+        try {
+            const rawLocal = localStorage.getItem('sgyver_material_data');
+            if (rawLocal) localBeforeSync = JSON.parse(rawLocal);
+        } catch (_) {}
+
         const { data, error } = await AppState.supabaseClient
             .from('sgyver_materials')
             .select('*')
@@ -887,12 +933,14 @@ async function syncFromSupabase(isManual = false) {
             .maybeSingle();
 
         if (data && Array.isArray(data.data) && data.data.length > 0 && !error) {
-            AppState.categories = data.data;
-            const updated = ensureInitialData(AppState.categories);
+            const remoteCatalog = data.data;
+            const mergedShops = mergeCatalogPreservingShops(remoteCatalog, localBeforeSync);
+            const updatedInit = ensureInitialData(remoteCatalog);
+            AppState.categories = remoteCatalog;
             sortAllCategoriesItems();
             localStorage.setItem('sgyver_material_data', JSON.stringify(AppState.categories));
-            if (updated) {
-                syncCategoriesToSupabase();
+            if (updatedInit || mergedShops) {
+                await syncCategoriesToSupabase();
             }
             updateShopSuggestionsAndFilter();
             renderCategories();
@@ -921,8 +969,10 @@ function subscribeToSupabaseRealtime() {
             .channel('sgyver_materials_realtime')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'sgyver_materials' }, (payload) => {
                 if (payload.new && Array.isArray(payload.new.data)) {
-                    AppState.categories = payload.new.data;
-                    ensureInitialData(AppState.categories);
+                    const incoming = payload.new.data;
+                    mergeCatalogPreservingShops(incoming, AppState.categories);
+                    ensureInitialData(incoming);
+                    AppState.categories = incoming;
                     localStorage.setItem('sgyver_material_data', JSON.stringify(AppState.categories));
                     updateShopSuggestionsAndFilter();
                     renderCategories();
@@ -971,14 +1021,16 @@ function getShopColorObj(shopName) {
     return SHOP_COLOR_PALETTE[idx];
 }
 
-function renderShopBadge(shopName) {
+function renderShopBadge(shopName, itemId = '') {
+    const clickAttr = itemId ? `onclick="openQuickEditModal('${escapeHtml(itemId)}', true)" style="cursor: pointer;"` : '';
     if (!shopName || !shopName.trim()) {
-        return `<span class="item-shop-badge empty" title="ยังไม่ระบุร้านขาย">-</span>`;
+        return `<span class="item-shop-badge empty" ${clickAttr} title="คลิกเพื่อระบุร้านขาย">+ ระบุร้าน</span>`;
     }
     const clean = shopName.trim();
     const color = getShopColorObj(clean);
-    const style = `background: ${color.bg}; color: ${color.text}; border-color: ${color.border};`;
-    return `<span class="item-shop-badge" style="${style}" title="ร้าน: ${escapeHtml(clean)}"><i class="bi bi-shop"></i> ${escapeHtml(clean)}</span>`;
+    const style = `background: ${color.bg}; color: ${color.text}; border-color: ${color.border};${itemId ? ' cursor: pointer;' : ''}`;
+    const clickHandler = itemId ? `onclick="openQuickEditModal('${escapeHtml(itemId)}', true)"` : '';
+    return `<span class="item-shop-badge" style="${style}" ${clickHandler} title="ร้าน: ${escapeHtml(clean)} (คลิกเพื่อเปลี่ยนร้าน)"><i class="bi bi-shop"></i> ${escapeHtml(clean)}</span>`;
 }
 
 function updateShopSuggestionsAndFilter() {
@@ -1031,10 +1083,10 @@ function saveAppData() {
 }
 
 async function syncCategoriesToSupabase() {
-    if (!AppState.supabaseClient) return;
+    if (!AppState.supabaseClient) return false;
     try {
         // Upsert into Supabase materials store
-        await AppState.supabaseClient
+        const { error } = await AppState.supabaseClient
             .from('sgyver_materials')
             .upsert([
                 {
@@ -1043,8 +1095,20 @@ async function syncCategoriesToSupabase() {
                     updated_at: new Date().toISOString()
                 }
             ], { onConflict: 'id' });
+
+        if (error) {
+            console.error('Supabase upsert error:', error);
+            updateSupabaseStatus(false, 'Supabase Save Error');
+            if (typeof showToast === 'function') {
+                showToast('error', 'บันทึกขึ้น Supabase ไม่สำเร็จ', error.message || 'ตรวจสอบการเชื่อมต่อหรือสิทธิ์ตาราง');
+            }
+            return false;
+        }
+        updateSupabaseStatus(true, 'Supabase Synced');
+        return true;
     } catch (err) {
-        // Soft fail without blocking local UI
+        console.error('Supabase sync exception:', err);
+        return false;
     }
 }
 
@@ -1254,7 +1318,7 @@ function renderItemsList() {
                     `}
                 </td>
                 <td>
-                    ${renderShopBadge(displayShop)}
+                    ${renderShopBadge(displayShop, item.id)}
                 </td>
                 <td style="text-align: right;">
                     <div class="item-price-wrapper" style="justify-content: flex-end;">
@@ -1389,7 +1453,7 @@ function handleItemCheckboxToggle(itemId, isChecked) {
 // ─────────────────────────────────────────────────────────────
 // QUICK EDIT PRICE, SIZE & SHOP MODAL
 // ─────────────────────────────────────────────────────────────
-function openQuickEditModal(itemId) {
+function openQuickEditModal(itemId, focusShop = false) {
     const cat = AppState.categories.find(c => c.id === AppState.selectedCategoryId);
     if (!cat) return;
     const item = cat.items.find(i => i.id === itemId);
@@ -1399,13 +1463,19 @@ function openQuickEditModal(itemId) {
     document.getElementById('editMaterialName').value = cat.name;
     document.getElementById('editItemName').value = item.name || '';
     document.getElementById('editSizeText').value = item.size || '';
-    document.getElementById('editShopInput').value = item.shop || cat.defaultShop || '';
+    const shopInput = document.getElementById('editShopInput');
+    shopInput.value = item.shop || cat.defaultShop || '';
+    const applyAllCheckbox = document.getElementById('applyShopToAllCategoryCheckbox');
+    if (applyAllCheckbox) applyAllCheckbox.checked = false;
     const priceInput = document.getElementById('editPriceInput');
     priceInput.value = item.price;
 
     openModal('quickEditModalOverlay');
     setTimeout(() => {
-        if (!item.name && cat.id.toLowerCase().includes('frame')) {
+        if (focusShop && shopInput) {
+            shopInput.focus();
+            shopInput.select();
+        } else if (!item.name && cat.id.toLowerCase().includes('frame')) {
             document.getElementById('editItemName').focus();
         } else {
             priceInput.focus();
@@ -1419,6 +1489,7 @@ function confirmSaveQuickPrice() {
     const newNameVal = (document.getElementById('editItemName').value || '').trim();
     const newSizeVal = (document.getElementById('editSizeText').value || '').trim();
     const newShopVal = (document.getElementById('editShopInput').value || '').trim();
+    const applyShopToAll = Boolean(document.getElementById('applyShopToAllCategoryCheckbox')?.checked);
 
     if (isNaN(newPriceVal) || newPriceVal < 0) {
         if (typeof showToast === 'function') {
@@ -1443,6 +1514,16 @@ function confirmSaveQuickPrice() {
     item.price = newPriceVal;
     item.size = newSizeVal;
     item.shop = newShopVal;
+
+    if (applyShopToAll) {
+        cat.defaultShop = newShopVal;
+        cat.items.forEach(it => {
+            it.shop = newShopVal;
+            const ord = AppState.orderList.find(o => o.id === it.id);
+            if (ord) ord.shop = newShopVal;
+        });
+    }
+
     cat.items.sort((a, b) => compareWoodItemSpecs(a, b, true));
 
     // Update if in orderList too
@@ -1453,6 +1534,8 @@ function confirmSaveQuickPrice() {
         orderItem.price = newPriceVal;
         orderItem.shop = newShopVal;
         orderItem.total = newPriceVal * orderItem.quantity;
+    }
+    if (orderItem || applyShopToAll) {
         renderOrderTable();
     }
 
@@ -1463,7 +1546,10 @@ function confirmSaveQuickPrice() {
 
     if (typeof showToast === 'function') {
         const itemLabel = newNameVal ? `[${newNameVal}] ${newSizeVal}` : newSizeVal;
-        showToast('success', 'อัปเดตข้อมูลสำเร็จ', `${cat.name} ${itemLabel}: ${formatMoney(newPriceVal)} ฿ ${newShopVal ? `(${newShopVal})` : ''}`);
+        const shopMsg = applyShopToAll
+            ? `(ตั้งร้าน "${newShopVal || '-'}" ให้ทั้งหมวด ${cat.name} แล้ว)`
+            : (newShopVal ? `(${newShopVal})` : '');
+        showToast('success', 'อัปเดตข้อมูลสำเร็จ', `${cat.name} ${itemLabel}: ${formatMoney(newPriceVal)} ฿ ${shopMsg}`);
     }
 }
 

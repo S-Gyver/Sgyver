@@ -1668,11 +1668,20 @@ input[type="number"],
 }
 .profile-manager-item-name {
     font-weight: 600;
-    color: #0f172a;
+    color: #f8fafc;
     font-size: 0.9rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+.a4-sheet .text-dark {
+    color: #111827 !important;
+}
+.a4-sheet .text-secondary {
+    color: #4b5563 !important;
+}
+.a4-sheet .text-muted {
+    color: #6b7280 !important;
 }
 .profile-manager-item-sub {
     font-size: 0.77rem;

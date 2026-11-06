@@ -307,6 +307,10 @@
                 <div class="form-group">
                     <label><i class="bi bi-shop" style="color: var(--ios-orange);"></i> ร้านขาย / แหล่งซื้อ (Shop / Supplier)</label>
                     <input type="text" id="editShopInput" list="shopSuggestionsList" class="form-input" placeholder="เช่น ร้านบางโพ, ไทวัสดุ, สยามไม้อัด (เว้นว่างได้)">
+                    <label style="display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 0.8rem; font-weight: 500; color: var(--ios-label-secondary); cursor: pointer;">
+                        <input type="checkbox" id="applyShopToAllCategoryCheckbox" style="width: 15px; height: 15px; accent-color: var(--ios-blue); cursor: pointer;">
+                        <span>ตั้งชื่อร้านนี้ให้กับทุกขนาดในหมวดนี้ด้วย (ใช้ทั้งหมวด)</span>
+                    </label>
                 </div>
                 <div class="form-group">
                     <label>ราคาต่อหน่วย / แผ่น (บาท) <span style="color: red;">*</span></label>
@@ -503,6 +507,8 @@
                 <button class="btn-classic" onclick="closeModal('orderHistoryModalOverlay')">ปิด</button>
             </div>
         </div>
+    </div>
+
     <!-- 6. Modal: คัดลอกส่ง LINE แยกทีละร้าน (Shop Line Copy) -->
     <div class="classic-modal-overlay" id="shopLineModalOverlay">
         <div class="classic-modal" style="width: 650px;">

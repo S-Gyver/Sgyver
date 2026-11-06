@@ -245,7 +245,8 @@ body {
     transition: all 0.15s ease;
 }
 .att-btn:hover {
-    background: #f1f5f9;
+    background: #334155;
+    color: #ffffff;
 }
 .att-btn.active-present {
     background: #22c55e !important;
@@ -274,48 +275,52 @@ body {
 
 /* Materials & Assignment Cards */
 .material-card, .assignment-card {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
+    background: #111827;
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 16px;
     padding: 18px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    color: #f8fafc;
     transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 .material-card:hover, .assignment-card:hover {
     transform: translateY(-3px);
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
-    border-color: #cbd5e1;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
+    border-color: rgba(99, 102, 241, 0.45);
 }
 
 .category-badge-slide {
-    background: #e0e7ff;
-    color: #4338ca;
-    border: 1px solid #c7d2fe;
+    background: rgba(99, 102, 241, 0.18);
+    color: #a5b4fc;
+    border: 1px solid rgba(99, 102, 241, 0.35);
 }
 .category-badge-worksheet {
-    background: #fef3c7;
-    color: #b45309;
-    border: 1px solid #fde68a;
+    background: rgba(245, 158, 11, 0.18);
+    color: #fcd34d;
+    border: 1px solid rgba(245, 158, 11, 0.35);
 }
 .category-badge-link {
-    background: #e0f2fe;
-    color: #0369a1;
-    border: 1px solid #bae6fd;
+    background: rgba(14, 165, 233, 0.18);
+    color: #7dd3fc;
+    border: 1px solid rgba(14, 165, 233, 0.35);
 }
 .category-badge-other {
-    background: #f1f5f9;
-    color: #475569;
-    border: 1px solid #cbd5e1;
+    background: #1e293b;
+    color: #cbd5e1;
+    border: 1px solid rgba(255, 255, 255, 0.14);
 }
 
 /* Tool Launcher Cards */
 .tool-launcher-card {
-    background: #ffffff;
+    background: #111827;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    color: #f8fafc;
     transition: all 0.2s ease;
 }
 .tool-launcher-card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
+    border-color: rgba(99, 102, 241, 0.45) !important;
 }
 
 /* Projector Fullscreen Modal */
@@ -396,10 +401,10 @@ body {
    📊 Gradebook & ปพ.5 Styles
    ==================================================== */
 .gradebook-table-container {
-    border: 1px solid #e2e8f0;
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 16px;
-    background: #ffffff;
-    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.03);
+    background: #111827;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
     overflow: auto;
     max-height: 680px;
     position: relative;
@@ -410,16 +415,17 @@ body {
     font-size: 0.88rem;
     border-collapse: separate;
     border-spacing: 0;
+    color: #f8fafc;
 }
 
 .gradebook-table thead th {
-    background: #f8fafc;
-    color: #334155;
+    background: #161e2e;
+    color: #f8fafc;
     font-weight: 700;
     text-align: center;
     vertical-align: middle;
-    border-bottom: 2px solid #cbd5e1;
-    border-right: 1px solid #e2e8f0;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.14);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
     padding: 10px 8px;
     position: sticky;
     top: 0;
@@ -428,7 +434,7 @@ body {
 }
 
 .gradebook-table thead tr:first-child th {
-    background: #f1f5f9;
+    background: #1e293b;
     font-size: 0.82rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -492,15 +498,16 @@ body {
 
 .gradebook-table tbody td {
     vertical-align: middle;
-    border-bottom: 1px solid #f1f5f9;
-    border-right: 1px solid #f1f5f9;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
     padding: 6px 8px;
-    background: #ffffff;
+    background: #111827;
+    color: #f8fafc;
     transition: background 0.15s ease;
 }
 
 .gradebook-table tbody tr:hover td {
-    background: #f8fafc;
+    background: #161e2e;
 }
 
 /* Sticky Student Columns */
@@ -508,31 +515,33 @@ body {
     position: sticky;
     left: 0;
     z-index: 5;
-    background: #ffffff;
+    background: #111827 !important;
+    color: #f8fafc;
     width: 48px;
     min-width: 48px;
     text-align: center;
-    border-right: 1px solid #e2e8f0;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
 }
 .gradebook-table thead th.sticky-no {
     z-index: 15;
-    background: #f8fafc;
+    background: #161e2e !important;
 }
 
 .gradebook-table .sticky-name {
     position: sticky;
     left: 48px;
     z-index: 5;
-    background: #ffffff;
+    background: #111827 !important;
+    color: #f8fafc;
     min-width: 170px;
     max-width: 220px;
-    border-right: 2px solid #cbd5e1;
-    box-shadow: 4px 0 8px rgba(0, 0, 0, 0.02);
+    border-right: 2px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 4px 0 8px rgba(0, 0, 0, 0.25);
 }
 .gradebook-table thead th.sticky-name {
     z-index: 15;
-    background: #f8fafc;
-    box-shadow: 4px 0 8px rgba(0, 0, 0, 0.02);
+    background: #161e2e !important;
+    box-shadow: 4px 0 8px rgba(0, 0, 0, 0.25);
 }
 
 /* Gradebook Inputs */
@@ -544,18 +553,19 @@ body {
     font-family: 'Fira Code', monospace;
     font-size: 0.95rem;
     border-radius: 8px;
-    border: 1px solid #cbd5e1;
-    background: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: #1e293b;
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    color: #1e293b;
+    color: #f8fafc;
     margin: 0 auto;
     display: block;
 }
 
 .grade-input:focus {
     border-color: #6366f1;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
-    background: #eef2ff;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3);
+    background: #0f172a;
+    color: #ffffff;
     outline: none;
     transform: scale(1.04);
 }
@@ -602,14 +612,14 @@ body {
     font-size: 0.8rem;
     font-weight: 600;
     border-radius: 6px;
-    border: 1px solid #cbd5e1;
-    background-color: #f8fafc;
-    color: #334155;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background-color: #1e293b;
+    color: #f8fafc;
     cursor: pointer;
 }
 .grade-select:focus {
     outline: none;
-    border-color: #4f46e5;
+    border-color: #6366f1;
 }
 
 /* Print View Modal for ปพ.5 */
@@ -640,10 +650,11 @@ body {
    🏫 Section Cards & Switcher Bar
    ==================================================== */
 .section-card {
-    border: 1.5px solid #e2e8f0;
+    border: 1.5px solid rgba(255, 255, 255, 0.1);
     border-radius: 14px;
     padding: 10px 16px;
-    background: #ffffff;
+    background: #161e2e;
+    color: #f8fafc;
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     min-width: 175px;
@@ -652,12 +663,12 @@ body {
 .section-card:hover {
     border-color: #6366f1;
     transform: translateY(-2px);
-    box-shadow: 0 6px 18px rgba(99, 102, 241, 0.12);
+    box-shadow: 0 6px 18px rgba(99, 102, 241, 0.2);
 }
 .section-card.active {
-    border-color: #4f46e5;
-    background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
-    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.18);
+    border-color: #6366f1;
+    background: rgba(79, 70, 229, 0.22);
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
 }
 
 /* ====================================================
@@ -667,17 +678,20 @@ body {
     font-family: 'Kanit', sans-serif !important;
     border-radius: 24px !important;
     padding: 24px !important;
-    background: #ffffff !important;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
-    border: 1px solid rgba(226, 232, 240, 0.8) !important;
+    background: #111827 !important;
+    color: #f8fafc !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.65) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
 }
 .gyver-swal-popup .swal2-title {
     padding: 0 !important;
     margin-bottom: 8px !important;
+    color: #f8fafc !important;
 }
 .gyver-swal-popup .swal2-html-container {
     margin: 0 !important;
     padding: 0 !important;
+    color: #cbd5e1 !important;
 }
 .gyver-swal-popup .swal2-actions {
     margin-top: 18px !important;
@@ -688,12 +702,12 @@ body {
    🔄 Hub Role Switcher Tabs (สอน vs เรียน)
    ==================================================== */
 .hub-role-tab-group {
-    background: #f1f5f9;
+    background: #161e2e;
     padding: 5px;
     border-radius: 9999px;
     display: inline-flex;
     gap: 6px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 .hub-role-tab-btn {
     border: none;
@@ -702,7 +716,7 @@ body {
     border-radius: 9999px;
     font-size: 0.95rem;
     font-weight: 600;
-    color: #64748b;
+    color: #94a3b8;
     transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     display: inline-flex;
     align-items: center;
@@ -710,15 +724,16 @@ body {
     text-decoration: none;
 }
 .hub-role-tab-btn:hover {
-    color: #0f172a;
+    color: #f8fafc;
 }
 .hub-role-tab-btn.active {
-    background: #ffffff;
-    color: #4f46e5;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    background: #4f46e5;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
 }
 .hub-role-tab-btn.active.enrolled-active {
-    color: #059669;
+    background: #059669;
+    color: #ffffff;
 }
 
 /* Enrolled Classroom Card Top Bar Gradient */
@@ -734,8 +749,9 @@ body {
    📁 Dropzone & File Preview (Cloudinary File Upload)
    ==================================================== */
 .gyver-dropzone {
-    border: 2px dashed #cbd5e1;
-    background: #f8fafc;
+    border: 2px dashed rgba(255, 255, 255, 0.18);
+    background: #161e2e;
+    color: #f8fafc;
     border-radius: 16px;
     padding: 24px 16px;
     text-align: center;
@@ -744,18 +760,19 @@ body {
 }
 .gyver-dropzone:hover, .gyver-dropzone.dragover {
     border-color: #6366f1;
-    background: #f0f4ff;
+    background: #1e293b;
     transform: scale(1.01);
 }
 .file-preview-card {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
+    background: #111827;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #f8fafc;
     border-radius: 14px;
     padding: 12px 16px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 .file-badge-cloudinary {
     display: inline-flex;

@@ -4,26 +4,28 @@
    ══════════════════════════════════════════════════════════════ */
 
 :root {
-    --bg-page: #090d16;
-    --bg-white: #111827;
-    --bg-subtle: #161e2e;
-    --bg-hover: #1e293b;
+    --bg-page: #f8fafc;
+    --bg-white: #ffffff;
+    --bg-subtle: #f1f5f9;
+    --bg-hover: #e2e8f0;
     
-    --border-light: rgba(255, 255, 255, 0.08);
-    --border-subtle: rgba(255, 255, 255, 0.1);
+    --border-light: #e2e8f0;
+    --border-subtle: #cbd5e1;
+    --border-medium: #cbd5e1;
 
-    --primary-blue: #6366f1;
-    --primary-blue-hover: #4f46e5;
-    --primary-blue-light: rgba(99, 102, 241, 0.15);
+    --primary-blue: #4f46e5;
+    --primary-blue-hover: #4338ca;
+    --primary-blue-light: #eef2ff;
 
-    --bubble-incoming: #1e293b;
-    --bubble-incoming-text: #f8fafc;
+    --bubble-incoming: #f1f5f9;
+    --bubble-incoming-text: #0f172a;
     --bubble-outgoing: #4f46e5;
     --bubble-outgoing-text: #ffffff;
 
-    --text-dark: #f8fafc;
-    --text-muted: #94a3b8;
-    --text-light: #64748b;
+    --text-dark: #0f172a;
+    --text-body: #334155;
+    --text-muted: #64748b;
+    --text-light: #94a3b8;
     
     --accent-amber: #f59e0b;
     --accent-green: #10b981;
@@ -31,6 +33,48 @@
     --radius-pill: 9999px;
     --radius-bubble: 20px;
     --radius-card: 16px;
+}
+
+/* Override global body.apple-theme dark utilities so WorkChat's clean light Messenger UI stays readable */
+body.apple-theme {
+    background-color: var(--bg-white) !important;
+    color: var(--text-dark) !important;
+}
+body.apple-theme .text-dark {
+    color: #0f172a !important;
+}
+body.apple-theme .text-secondary {
+    color: #334155 !important;
+}
+body.apple-theme .text-muted {
+    color: #64748b !important;
+}
+body.apple-theme .bg-white {
+    background-color: #ffffff !important;
+}
+body.apple-theme .bg-light {
+    background-color: #f8fafc !important;
+}
+body.apple-theme .modal-content.modal-modern {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border: 1px solid #e2e8f0 !important;
+}
+body.apple-theme .form-control-modern,
+body.apple-theme .form-control,
+body.apple-theme .form-select {
+    background-color: #f8fafc !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+}
+body.apple-theme .form-control-modern:focus,
+body.apple-theme .form-control:focus,
+body.apple-theme .form-select:focus {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+}
+body.apple-theme .btn-close {
+    filter: none !important;
 }
 
 * {

@@ -4,38 +4,44 @@
    ============================================================================== */
 
 :root {
-    /* 🍏 Apple iOS System Colors (Dark Mode) */
-    --ios-bg: #000000;                   /* System Grouped Background OLED Dark */
-    --ios-surface: #1c1c1e;              /* Dark Card / Inset Background */
-    --ios-surface-glass: rgba(28, 28, 30, 0.88);
-    --ios-surface-secondary: #2c2c2e;
-    --ios-surface-tertiary: #3a3a3c;
+    /* 🍏 Apple iOS System Colors (Dark Frame + Crisp Light Cards) */
+    --ios-bg: #090d16;                   /* System Grouped Background Dark */
+    --ios-surface: #ffffff;              /* Crisp Card / Inset Background */
+    --ios-surface-glass: rgba(15, 23, 42, 0.92);
+    --ios-surface-secondary: #f8fafc;
+    --ios-surface-tertiary: #f1f5f9;
     
     /* 🎨 iOS System Palette */
-    --ios-blue: #0a84ff;                 /* iOS Dark System Blue */
-    --ios-blue-light: rgba(10, 132, 255, 0.18);
-    --ios-blue-hover: #409cff;
-    --ios-green: #30d158;                /* iOS Dark Green */
-    --ios-green-light: rgba(48, 209, 88, 0.18);
-    --ios-orange: #ff9f0a;               /* iOS Dark Orange */
-    --ios-orange-light: rgba(255, 159, 10, 0.18);
-    --ios-red: #ff453a;                  /* iOS Dark Red */
-    --ios-red-light: rgba(255, 69, 58, 0.18);
-    --ios-purple: #bf5af2;
-    --ios-teal: #64d2ff;
+    --ios-blue: #007aff;                 /* iOS System Blue */
+    --ios-blue-light: rgba(0, 122, 255, 0.14);
+    --ios-blue-hover: #0062cc;
+    --ios-green: #28cd41;                /* iOS Green */
+    --ios-green-light: rgba(40, 205, 65, 0.16);
+    --ios-orange: #ff9500;               /* iOS Orange */
+    --ios-orange-light: rgba(255, 149, 0, 0.16);
+    --ios-red: #ff3b30;                  /* iOS Red */
+    --ios-red-light: rgba(255, 59, 48, 0.15);
+    --ios-purple: #af52de;
+    --ios-teal: #0284c7;
     
-    /* 🖋️ iOS Typography & Label Colors */
-    --ios-label: #ffffff;                /* Primary Label */
-    --ios-label-secondary: rgba(235, 235, 245, 0.75);
-    --ios-label-tertiary: rgba(235, 235, 245, 0.45);
-    --ios-separator: rgba(84, 84, 88, 0.35);
-    --ios-border-card: rgba(255, 255, 255, 0.08);
+    /* 🖋️ High-Contrast Typography & Label Colors (On White Cards) */
+    --ios-label: #0f172a;                /* Primary Label (Deep Slate) */
+    --ios-label-secondary: #334155;      /* Secondary Label (Slate 700) */
+    --ios-label-tertiary: #64748b;       /* Tertiary / Placeholder (Slate 500) */
+    --ios-separator: #e2e8f0;            /* Crisp Divider Line */
+    --ios-border-card: rgba(255, 255, 255, 0.14);
+
+    /* Shared Legacy Variable Aliases (Used in HTML & JS) */
+    --text-muted: #475569;
+    --text-secondary: #334155;
+    --brand-primary: #007aff;
+    --border-color: #cbd5e1;
     
     /* 🪟 iOS Shadows & Radii */
-    --ios-shadow-subtle: 0 2px 8px rgba(0, 0, 0, 0.04);
-    --ios-shadow-card: 0 4px 18px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
-    --ios-shadow-floating: 0 12px 30px -4px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06);
-    --ios-shadow-modal: 0 24px 48px -12px rgba(0, 0, 0, 0.18), 0 8px 16px -4px rgba(0, 0, 0, 0.08);
+    --ios-shadow-subtle: 0 2px 8px rgba(0, 0, 0, 0.06);
+    --ios-shadow-card: 0 4px 18px -2px rgba(0, 0, 0, 0.25), 0 2px 6px -1px rgba(0, 0, 0, 0.12);
+    --ios-shadow-floating: 0 12px 30px -4px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(0, 0, 0, 0.12);
+    --ios-shadow-modal: 0 24px 48px -12px rgba(0, 0, 0, 0.35), 0 8px 16px -4px rgba(0, 0, 0, 0.18);
 
     --radius-pill: 9999px;
     --radius-squircle: 20px;
@@ -76,7 +82,7 @@ body {
     background: var(--ios-surface-glass);
     backdrop-filter: blur(24px) saturate(180%);
     -webkit-backdrop-filter: blur(24px) saturate(180%);
-    border-bottom: 0.5px solid var(--ios-separator);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     padding: 10px 18px;
     display: flex;
     align-items: center;
@@ -84,7 +90,7 @@ body {
     position: sticky;
     top: 0;
     z-index: 100;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
 
 .header-left {
@@ -98,13 +104,13 @@ body {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    background: rgba(142, 142, 147, 0.12);
-    border: 0.5px solid rgba(0, 0, 0, 0.04);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.14);
     padding: 6px 14px;
     border-radius: var(--radius-pill);
     font-size: 0.88rem;
     font-weight: 600;
-    color: var(--ios-label);
+    color: #ffffff;
     transition: all 0.2s ease;
 }
 
@@ -148,20 +154,20 @@ body {
     font-weight: 800;
     letter-spacing: -0.6px;
     margin: 0;
-    color: #000000;
+    color: #ffffff;
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
 .header-title i {
-    color: var(--ios-orange);
+    color: #fbbf24;
     font-size: 1.35rem;
 }
 
 .header-subtitle {
     font-size: 0.75rem;
-    color: var(--ios-label-secondary);
+    color: #cbd5e1;
     font-weight: 500;
     margin-top: 1px;
     letter-spacing: -0.1px;
@@ -182,46 +188,62 @@ body {
     font-size: 0.85rem;
     font-weight: 600;
     font-family: inherit;
-    border: none;
+    border: 1px solid rgba(0, 122, 255, 0.22);
     border-radius: var(--radius-pill);
-    background: rgba(142, 142, 147, 0.14);
-    color: var(--ios-blue);
+    background: rgba(0, 122, 255, 0.1);
+    color: #0062cc;
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1);
     box-shadow: none;
     letter-spacing: -0.2px;
 }
 
+.app-header .btn-classic {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #f8fafc;
+}
+
+.app-header .btn-classic:hover {
+    background: rgba(56, 189, 248, 0.22);
+    border-color: rgba(56, 189, 248, 0.45);
+    color: #ffffff;
+}
+
 .btn-classic:hover {
-    background: rgba(0, 122, 255, 0.14);
+    background: rgba(0, 122, 255, 0.18);
     color: var(--ios-blue-hover);
     transform: translateY(-1px);
 }
 
 .btn-classic:active {
-    background: rgba(0, 122, 255, 0.22);
+    background: rgba(0, 122, 255, 0.24);
     transform: scale(0.96);
 }
 
 .btn-classic.btn-primary-classic {
     background: var(--ios-blue);
+    border-color: var(--ios-blue);
     color: #ffffff;
     box-shadow: 0 3px 10px rgba(0, 122, 255, 0.28);
 }
 
 .btn-classic.btn-primary-classic:hover {
     background: var(--ios-blue-hover);
+    color: #ffffff;
     box-shadow: 0 4px 14px rgba(0, 122, 255, 0.38);
 }
 
 .btn-classic.btn-line-classic {
     background: #06c755;
+    border-color: #06c755;
     color: #ffffff;
     box-shadow: 0 3px 10px rgba(6, 199, 85, 0.25);
 }
 
 .btn-classic.btn-line-classic:hover {
     background: #05b44c;
+    color: #ffffff;
     box-shadow: 0 4px 14px rgba(6, 199, 85, 0.35);
 }
 
@@ -234,18 +256,21 @@ body {
     font-weight: 600;
     padding: 5px 10px;
     border-radius: var(--radius-pill);
-    background: rgba(142, 142, 147, 0.12);
-    color: var(--ios-label-secondary);
+    background: rgba(255, 255, 255, 0.1);
+    color: #e2e8f0;
+    border: 1px solid rgba(255, 255, 255, 0.14);
 }
 
 .status-indicator.online {
-    background: var(--ios-green-light);
-    color: #248a3d;
+    background: rgba(48, 209, 88, 0.2);
+    color: #4ade80;
+    border: 1px solid rgba(74, 222, 128, 0.35);
 }
 
 .status-indicator.cloud {
-    background: var(--ios-blue-light);
-    color: #0056b3;
+    background: rgba(10, 132, 255, 0.22);
+    color: #60a5fa;
+    border: 1px solid rgba(96, 165, 250, 0.35);
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -262,6 +287,23 @@ body {
     min-height: 0;
     overflow: hidden;
     box-sizing: border-box;
+}
+
+/* Ensure dark readable text on all white card surfaces despite body.apple-theme */
+.app-pane,
+.image-preview-card,
+.order-summary-card,
+.classic-modal,
+.ios-mobile-segmented-bar,
+.ios-mobile-floating-bar {
+    color: var(--ios-label) !important;
+}
+
+body.apple-theme .app-pane .text-muted,
+body.apple-theme .app-pane .text-secondary,
+body.apple-theme .classic-modal .text-muted,
+body.apple-theme .classic-modal .text-secondary {
+    color: #475569 !important;
 }
 
 /* iOS Card Panes (Rounded Squircles with Soft Shadows) */
@@ -281,7 +323,7 @@ body {
 
 .pane-header {
     background: #ffffff;
-    border-bottom: 0.5px solid var(--ios-separator);
+    border-bottom: 1px solid var(--ios-separator);
     padding: 12px 16px;
     display: flex;
     align-items: center;
@@ -293,7 +335,7 @@ body {
     font-size: 0.98rem;
     font-weight: 700;
     letter-spacing: -0.3px;
-    color: var(--ios-label);
+    color: #0f172a;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -301,10 +343,10 @@ body {
 }
 
 .pane-badge {
-    background: rgba(142, 142, 147, 0.12);
-    color: var(--ios-label-secondary);
+    background: #e2e8f0;
+    color: #1e293b;
     font-size: 0.74rem;
-    font-weight: 600;
+    font-weight: 700;
     padding: 2px 9px;
     border-radius: var(--radius-pill);
 }
@@ -383,11 +425,11 @@ body {
 
 .category-count {
     font-size: 0.74rem;
-    background: rgba(142, 142, 147, 0.14);
-    color: var(--ios-label-secondary);
+    background: #e2e8f0;
+    color: #334155;
     padding: 2px 8px;
     border-radius: var(--radius-pill);
-    font-weight: 600;
+    font-weight: 700;
 }
 
 .category-footer {
@@ -531,8 +573,8 @@ body {
     font-size: 0.74rem;
     font-weight: 700;
     border-radius: var(--radius-pill);
-    background: rgba(142, 142, 147, 0.14);
-    color: var(--ios-label-secondary);
+    background: #e2e8f0;
+    color: #334155;
     line-height: 1;
     white-space: nowrap;
     flex-shrink: 0;
@@ -600,10 +642,11 @@ body {
     gap: 4px;
     padding: 6px 12px;
     border-radius: var(--radius-pill);
-    border: 1px solid var(--ios-separator);
+    border: 1px solid #cbd5e1;
     font-size: 0.85rem;
     font-weight: 600;
-    background: #ffffff;
+    color: #1e293b;
+    background: #f8fafc;
     transition: all 0.15s ease;
 }
 
@@ -647,17 +690,22 @@ body {
     padding: 7px 12px;
     font-size: 0.88rem;
     font-family: inherit;
-    border: none;
+    border: 1px solid #cbd5e1;
     border-radius: var(--radius-sm);
-    background: rgba(142, 142, 147, 0.12);
-    color: var(--ios-label);
+    background: #f8fafc;
+    color: #0f172a;
     outline: none;
     transition: all 0.2s ease;
 }
 
+.search-input::placeholder {
+    color: #64748b;
+}
+
 .search-input:focus {
-    background: rgba(142, 142, 147, 0.18);
-    box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2);
+    background: #ffffff;
+    border-color: var(--ios-blue);
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.18);
 }
 
 .shop-filter-select {
@@ -727,14 +775,14 @@ body {
 }
 
 .classic-table th {
-    background: #fcfcfd;
-    color: var(--ios-label-secondary);
+    background: #f8fafc;
+    color: #334155;
     font-size: 0.78rem;
-    font-weight: 600;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.4px;
     padding: 9px 12px;
-    border-bottom: 0.5px solid var(--ios-separator);
+    border-bottom: 1px solid #cbd5e1;
     position: sticky;
     top: 0;
     z-index: 2;
@@ -743,7 +791,8 @@ body {
 
 .classic-table td {
     padding: 9px 12px;
-    border-bottom: 0.5px solid var(--ios-separator);
+    border-bottom: 1px solid var(--ios-separator);
+    color: #0f172a;
     vertical-align: middle;
 }
 
@@ -780,8 +829,9 @@ body {
     font-size: 0.75rem;
     font-weight: 700;
     border-radius: var(--radius-sm);
-    background: rgba(142, 142, 147, 0.12);
-    color: var(--ios-label);
+    background: #e2e8f0;
+    color: #1e293b;
+    border: 1px solid #cbd5e1;
     letter-spacing: -0.2px;
 }
 
@@ -867,11 +917,18 @@ body {
 }
 
 .item-shop-badge.empty {
-    background: rgba(142, 142, 147, 0.08);
-    color: var(--ios-label-tertiary);
-    border: none;
-    padding: 2px 6px;
-    font-weight: normal;
+    background: #f1f5f9;
+    color: #64748b;
+    border: 1px dashed #cbd5e1;
+    padding: 2px 8px;
+    font-weight: 600;
+    transition: all 0.15s ease;
+}
+
+.item-shop-badge.empty:hover {
+    background: rgba(0, 122, 255, 0.08);
+    color: var(--ios-blue);
+    border-color: var(--ios-blue);
 }
 
 /* Modal 6: Shop Line Grouped Cards */
@@ -948,10 +1005,10 @@ body {
     height: 30px;
     padding: 0;
     font-size: 0.95rem;
-    background: rgba(142, 142, 147, 0.12);
-    border: none;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
     border-radius: 50%;
-    color: var(--ios-label-secondary);
+    color: #334155;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
@@ -1240,14 +1297,14 @@ body {
 }
 
 .order-table th {
-    background: #fcfcfd;
-    color: var(--ios-label-secondary);
+    background: #f8fafc;
+    color: #334155;
     font-size: 0.78rem;
-    font-weight: 600;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.4px;
     padding: 10px 12px;
-    border-bottom: 0.5px solid var(--ios-separator);
+    border-bottom: 1px solid #cbd5e1;
     position: sticky;
     top: 0;
     z-index: 2;
@@ -1256,7 +1313,8 @@ body {
 
 .order-table td {
     padding: 8px 12px;
-    border-bottom: 0.5px solid var(--ios-separator);
+    border-bottom: 1px solid var(--ios-separator);
+    color: #0f172a;
     vertical-align: middle;
 }
 
@@ -1524,17 +1582,22 @@ body {
     padding: 10px 14px;
     font-size: 0.92rem;
     font-family: inherit;
-    border: none;
+    border: 1px solid #cbd5e1;
     border-radius: var(--radius-item);
-    background: var(--ios-bg);
-    color: var(--ios-label);
+    background: #f8fafc;
+    color: #0f172a;
     outline: none;
     transition: all 0.2s ease;
 }
 
+.form-input::placeholder {
+    color: #64748b;
+}
+
 .form-input:focus {
     background: #ffffff;
-    box-shadow: 0 0 0 2px var(--ios-blue);
+    border-color: var(--ios-blue);
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.18);
 }
 
 .classic-modal-footer {
