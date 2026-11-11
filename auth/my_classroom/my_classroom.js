@@ -197,15 +197,52 @@ async function loadClassrooms() {
     if (!currentUserId) return;
 
     // 1. ดึงห้องเรียนที่ฉันสอน (ครู)
-    const { data: classrooms, error } = await supabaseClient
+    let { data: classrooms, error } = await supabaseClient
         .from('classrooms')
         .select('*')
         .eq('teacher_id', currentUserId)
         .order('created_at', { ascending: false });
 
-    if (error) {
-        console.error("Fetch teaching classrooms error:", error.message);
-        showToast('error', 'โหลดห้องเรียนไม่สำเร็จ', error.message);
+    if (!error && Array.isArray(classrooms) && classrooms.length > 0) {
+        try {
+            localStorage.setItem('gyver_cached_classrooms_list', JSON.stringify(classrooms));
+        } catch (_) {}
+    } else if (error) {
+        console.warn("Fetch teaching classrooms fallback to localStorage:", error.message);
+        try {
+            const cachedRaw = localStorage.getItem('gyver_cached_classrooms_list');
+            if (cachedRaw) {
+                classrooms = JSON.parse(cachedRaw) || [];
+            } else {
+                // Reconstruct from existing gyver_gradebook_<id> keys in localStorage if available
+                const reconstructed = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const k = localStorage.key(i);
+                    if (k && k.startsWith('gyver_gradebook_')) {
+                        const cid = k.replace('gyver_gradebook_', '');
+                        const gb = JSON.parse(localStorage.getItem(k) || 'null');
+                        if (gb && gb.config) {
+                            const cfg = gb.config;
+                            const sCode = cfg.subject_code ? `${cfg.subject_code} ` : '';
+                            const sName = cfg.subject_name || 'รายวิชา';
+                            const gLv = cfg.grade_level || '4';
+                            const rSec = cfg.room_section || '1';
+                            reconstructed.push({
+                                id: cid,
+                                teacher_id: currentUserId,
+                                class_name: `${sCode}${sName} (ม.${gLv}/${rSec})`,
+                                room_code: cid.slice(0, 6).toUpperCase(),
+                                students: [],
+                                gradebook: gb
+                            });
+                        }
+                    }
+                }
+                classrooms = reconstructed;
+            }
+        } catch (_) {
+            classrooms = [];
+        }
     }
 
     cachedTeachingClassrooms = (classrooms || []).map(enrichClassroom);
@@ -722,7 +759,12 @@ async function handleCreateSection(e) {
             students: []
         };
 
-        const { data, error } = await supabaseClient.from('classrooms').insert([basePayload]).select();
+        let { data, error } = await supabaseClient.from('classrooms').insert([basePayload]).select();
+        if (error || !data || !data[0]) {
+            console.warn('Supabase insert classroom fallback to local:', error?.message);
+            data = [{ id: 'local_' + Date.now(), created_at: new Date().toISOString(), ...basePayload }];
+            error = null;
+        }
         if (!error && data && data[0]) {
             const rawClass = data[0];
 
@@ -755,6 +797,7 @@ async function handleCreateSection(e) {
             });
 
             cachedClassrooms.unshift(newClass);
+            try { localStorage.setItem('gyver_cached_classrooms_list', JSON.stringify(cachedClassrooms)); } catch (_) {}
             bootstrap.Modal.getInstance(document.getElementById('addSectionModal'))?.hide();
             document.getElementById('form-add-section')?.reset();
             showToast('success', 'เพิ่มห้องเรียนสำเร็จ!', `เพิ่มห้อง "${cleanSection}" เรียบร้อยแล้ว`);
@@ -1042,7 +1085,12 @@ async function handleCreateClassroom(e) {
             students: []
         };
 
-        const { data, error } = await supabaseClient.from('classrooms').insert([basePayload]).select();
+        let { data, error } = await supabaseClient.from('classrooms').insert([basePayload]).select();
+        if (error || !data || !data[0]) {
+            console.warn('Supabase insert classroom fallback to local:', error?.message);
+            data = [{ id: 'local_' + Date.now(), created_at: new Date().toISOString(), ...basePayload }];
+            error = null;
+        }
         if (!error && data && data[0]) {
             const rawClass = data[0];
 
@@ -1074,6 +1122,7 @@ async function handleCreateClassroom(e) {
             bootstrap.Modal.getInstance(document.getElementById('addClassModal'))?.hide();
 
             cachedClassrooms.unshift(newClass);
+            try { localStorage.setItem('gyver_cached_classrooms_list', JSON.stringify(cachedClassrooms)); } catch (_) {}
             renderHubClassrooms(cachedClassrooms);
 
             // นำครูเข้าสู่ห้องเรียนใหม่ทันที

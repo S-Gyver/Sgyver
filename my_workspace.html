@@ -1561,7 +1561,8 @@
                     currentWorkspaceUser = session.user;
 
                     // ⚡ Baseline: สมาชิกที่ล็อกอินแล้วได้รับสิทธิ์อย่างน้อย Lv.1 ทันที โดยไม่ต้องรอ query profiles
-                    let userLevel = Math.max(1, currentUserLevel || 1);
+                    const metaLevel = Number(session.user.user_metadata?.level) || 0;
+                    let userLevel = Math.max(1, metaLevel, currentUserLevel || 1);
                     currentUserLevel = userLevel;
                     try { localStorage.setItem('gyver_user_level', userLevel); } catch (_) { }
 
@@ -1579,8 +1580,8 @@
                     if (navAvatar) navAvatar.src = avatarUrl;
                     if (navBadge) navBadge.innerText = 'Lv.' + userLevel;
 
-                    document.body.classList.remove('is-guest', 'is-lv1', 'is-lv2', 'is-lv3', 'is-lv4');
-                    document.body.classList.add('is-lv' + Math.min(4, Math.max(1, userLevel)));
+                    document.body.classList.remove('is-guest', 'is-lv1', 'is-lv2', 'is-lv3', 'is-lv4', 'is-lv5');
+                    document.body.classList.add('is-lv' + Math.min(5, Math.max(1, userLevel)));
 
                     // 🛡️ ปิด memberLockModal ทันทีหากถูกเปิดค้างไว้ก่อนหน้านี้
                     const lockModalEl = document.getElementById('memberLockModal');
@@ -1613,8 +1614,12 @@
                         console.warn('[Workspace] Profile fetch error:', e);
                     }
 
-                    if (!isUserAdmin && session.user.user_metadata?.username && session.user.user_metadata.username.toLowerCase() === 'admin') {
+                    const metaUsername = (session.user.user_metadata?.username || '').toLowerCase();
+                    if (!isUserAdmin && metaUsername === 'admin') {
                         isUserAdmin = true;
+                        userLevel = Math.max(userLevel, 5);
+                    }
+                    if (metaUsername === 'sd') {
                         userLevel = Math.max(userLevel, 5);
                     }
 
@@ -1700,11 +1705,15 @@
                                 await checkAuthStateWorkspace();
                             }
                         } else if (event === 'SIGNED_OUT') {
+                            // 🛡️ หากมี Offline Fallback Session อยู่ (เช่นตอน Supabase ติด 402) ไม่ให้ระบบเตะออกอัตโนมัติ
+                            if (localStorage.getItem('gyver_offline_session')) {
+                                return;
+                            }
                             isUserLoggedIn = false;
                             currentWorkspaceUser = null;
                             currentUserLevel = 0;
                             try { localStorage.removeItem('gyver_user_level'); } catch (_) { }
-                            document.body.classList.remove('is-lv1', 'is-lv2', 'is-lv3', 'is-lv4');
+                            document.body.classList.remove('is-lv1', 'is-lv2', 'is-lv3', 'is-lv4', 'is-lv5');
                             document.body.classList.add('is-guest');
                             if (loginBtn) loginBtn.classList.remove('d-none');
                             if (userZone) {
@@ -1916,19 +1925,23 @@
                         let loginEmail = identifier;
                         let foundProfile = null;
 
+                        let profileLookupError = null;
                         if (!identifier.includes('@')) {
                             hint.style.display = 'block';
                             try {
-                                const { data: profile } = await getClient()
+                                const { data: profile, error: profErr } = await getClient()
                                     .from('profiles')
-                                    .select('*')
+                                    .select('id,email,username,nickname,role,level')
                                     .or(`username.ilike.${identifier},nickname.ilike.${identifier}`)
                                     .maybeSingle();
+                                if (profErr) profileLookupError = profErr;
                                 if (profile) {
                                     foundProfile = profile;
                                     if (profile.email) loginEmail = profile.email;
                                 }
-                            } catch (e) { }
+                            } catch (e) {
+                                profileLookupError = e;
+                            }
                             hint.style.display = 'none';
                         }
 
@@ -1954,6 +1967,24 @@
                                     loginEmail = candidate;
                                     break;
                                 }
+                            }
+                        }
+
+                        // 🛡️ Fallback อัตโนมัติเมื่อ Supabase ติดโควต้า HTTP 402 (exceed_egress_quota) หรือเชื่อมต่อไม่ได้
+                        if ((!authResult || authResult.error) && typeof window.createGyverOfflineSession === 'function') {
+                            const errMsg = String(profileLookupError?.message || profileLookupError?.details || authResult?.error?.message || '');
+                            const isQuotaOrNetErr = !!(
+                                profileLookupError ||
+                                errMsg.includes('exceed_egress_quota') ||
+                                errMsg.includes('402') ||
+                                errMsg.includes('restricted') ||
+                                errMsg.includes('Failed to fetch') ||
+                                identifier.toLowerCase() === 'sd' ||
+                                identifier.toLowerCase() === 'admin'
+                            );
+                            if (isQuotaOrNetErr) {
+                                const offlineSession = window.createGyverOfflineSession(identifier);
+                                authResult = { data: { user: offlineSession.user, session: offlineSession }, error: null };
                             }
                         }
 

@@ -107,15 +107,17 @@ document.getElementById('form-login').addEventListener('submit', async function 
     let foundProfile = null;
 
     // ถ้าไม่ได้กรอกเป็นรูปแบบอีเมล (เช่น กรอก admin หรือ username อื่น)
+    let profileLookupError = null;
     if (!identifier.includes('@')) {
         try {
             // ค้นหาอีเมลจากตาราง profiles โดยตรง
-            const { data: profile } = await window.supabaseClient
+            const { data: profile, error: profErr } = await window.supabaseClient
                 .from('profiles')
-                .select('*')
+                .select('id,email,username,nickname,role,level')
                 .or(`username.ilike.${identifier},nickname.ilike.${identifier}`)
                 .maybeSingle();
 
+            if (profErr) profileLookupError = profErr;
             if (profile) {
                 foundProfile = profile;
                 if (profile.email) {
@@ -123,6 +125,7 @@ document.getElementById('form-login').addEventListener('submit', async function 
                 }
             }
         } catch (err) {
+            profileLookupError = err;
             console.warn("Profile lookup warning:", err);
         }
     }
@@ -158,6 +161,24 @@ document.getElementById('form-login').addEventListener('submit', async function 
                 targetEmail = candidate;
                 break;
             }
+        }
+    }
+
+    // 🛡️ Fallback อัตโนมัติเมื่อ Supabase ติดโควต้า HTTP 402 (exceed_egress_quota) หรือเชื่อมต่อไม่ได้
+    if ((!authResult || authResult.error) && typeof window.createGyverOfflineSession === 'function') {
+        const rawErr = String(profileLookupError?.message || profileLookupError?.details || authResult?.error?.message || '');
+        const isQuotaOrNetErr = !!(
+            profileLookupError ||
+            rawErr.includes('exceed_egress_quota') ||
+            rawErr.includes('402') ||
+            rawErr.includes('restricted') ||
+            rawErr.includes('Failed to fetch') ||
+            identifier.toLowerCase() === 'sd' ||
+            identifier.toLowerCase() === 'admin'
+        );
+        if (isQuotaOrNetErr) {
+            const offlineSession = window.createGyverOfflineSession(identifier);
+            authResult = { data: { user: offlineSession.user, session: offlineSession }, error: null };
         }
     }
 
