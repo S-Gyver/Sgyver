@@ -848,7 +848,7 @@ async function loadProductsList() {
                 .from('product_labels')
                 .select('*')
                 .order('created_at', { ascending: false })
-                .limit(1000);
+                .limit(300);
 
             if (!error && Array.isArray(data)) {
                 supabaseProducts = data;
@@ -1128,7 +1128,7 @@ async function handleSaveProduct(event) {
         let { data, error } = await AppState.supabaseClient
             .from('product_labels')
             .upsert(payload, { onConflict: 'sku' })
-            .select();
+            .select('id, sku');
 
         if (error) {
             // Fallback for existing database without extended columns
@@ -1147,7 +1147,7 @@ async function handleSaveProduct(event) {
             const fallbackRes = await AppState.supabaseClient
                 .from('product_labels')
                 .upsert(basicPayload, { onConflict: 'sku' })
-                .select();
+                .select('id, sku');
             if (fallbackRes.error) throw fallbackRes.error;
             data = fallbackRes.data;
         }

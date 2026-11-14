@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 try {
                     const { data: dbProf } = await supabaseClient
                         .from('profiles')
-                        .select('*')
+                        .select('id, username, nickname, email, role, level')
                         .eq('id', user.id)
                         .maybeSingle();
                     if (dbProf) {
@@ -112,7 +112,8 @@ async function loadAdminDashboardData() {
             // 1. ดึงข้อมูลผู้ใช้จากตาราง profiles
             let { data: users, error: userErr } = await supabaseClient
                 .from('profiles')
-                .select('*');
+                .select('id, username, nickname, email, role, level, created_at')
+                .limit(300);
 
             if (userErr) {
                 console.warn("Profiles fetch warning:", userErr.message);
@@ -121,7 +122,7 @@ async function loadAdminDashboardData() {
             let rawUsers = users || [];
 
             // 2. ดึงข้อมูลห้องเรียน class_rooms
-            let { data: classRooms } = await supabaseClient.from('classrooms').select('*');
+            let { data: classRooms } = await supabaseClient.from('classrooms').select('id, class_name, room_code, teacher_id, students, created_at').limit(200);
             allClassRooms = (classRooms || []).map(c => ({
                 ...c,
                 players: Array.isArray(c.players) ? c.players : (Array.isArray(c.students) ? c.students : []),
@@ -130,10 +131,10 @@ async function loadAdminDashboardData() {
             }));
 
             // 3. ดึงข้อมูล Lobbies กำลังเปิด
-            let { data: lobbies } = await supabaseClient.from('lobbies').select('*');
+            let { data: lobbies } = await supabaseClient.from('lobbies').select('room_code, game_mode, status, players, created_at').limit(100);
 
             // 4. ดึงโจทย์คำถามทั้งหมด
-            let { data: problems } = await supabaseClient.from('game_problems').select('*');
+            let { data: problems } = await supabaseClient.from('game_problems').select('id, title, category, level, question').limit(200);
             allProblems = problems || [];
 
             // Fallback: กรณีตาราง profiles ยังไม่มีข้อมูล
@@ -854,7 +855,7 @@ async function loadSystemConfigData() {
         if (!supabaseClient) return;
         const { data, error } = await supabaseClient
             .from('gyver_forms')
-            .select('*')
+            .select('id, schema')
             .eq('id', 'SYS_GLOBAL_CONFIG')
             .maybeSingle();
 

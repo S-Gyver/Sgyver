@@ -113,8 +113,8 @@ document.getElementById('form-login').addEventListener('submit', async function 
             // ค้นหาอีเมลจากตาราง profiles โดยตรง
             const { data: profile, error: profErr } = await window.supabaseClient
                 .from('profiles')
-                .select('id,email,username,nickname,role,level')
                 .or(`username.ilike.${identifier},nickname.ilike.${identifier}`)
+                .limit(1)
                 .maybeSingle();
 
             if (profErr) profileLookupError = profErr;
@@ -213,7 +213,7 @@ document.getElementById('form-login').addEventListener('submit', async function 
     try {
         const { data: dbProf } = await window.supabaseClient
             .from('profiles')
-            .select('*')
+            .select('id, email, username, nickname, role, level')
             .eq('id', user.id)
             .maybeSingle();
         if (dbProf) {

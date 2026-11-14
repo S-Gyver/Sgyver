@@ -11,7 +11,7 @@ async function loadSidebarUserData() {
         if (session && session.user) {
             const { data: profile } = await supabaseClient
                 .from('profiles')
-                .select('*')
+                .select('id, username, nickname, level, avatar_url')
                 .eq('id', session.user.id)
                 .maybeSingle();
 

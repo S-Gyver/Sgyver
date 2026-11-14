@@ -81,7 +81,7 @@ async function loadUserProfile(userId) {
     try {
         const { data: profile, error } = await window.supabaseClient
             .from('profiles')
-            .select('*')
+            .select('id, email, username, nickname, role, level, avatar_url')
             .eq('id', userId)
             .maybeSingle();
 
@@ -269,8 +269,9 @@ async function handlePopupLoginSubmit(e) {
         try {
             const { data: prof } = await window.supabaseClient
                 .from('profiles')
-                .select('*')
+                .select('id, email, username, nickname, role, level')
                 .or(`username.ilike.${targetEmail},nickname.ilike.${targetEmail}`)
+                .limit(1)
                 .maybeSingle();
 
             if (prof) {
@@ -337,7 +338,7 @@ async function handlePopupLoginSubmit(e) {
             let isUserAdmin = false;
 
             try {
-                const { data: prof } = await window.supabaseClient.from('profiles').select('*').eq('id', user.id).maybeSingle();
+                const { data: prof } = await window.supabaseClient.from('profiles').select('id, email, username, nickname, role, level, avatar_url').eq('id', user.id).maybeSingle();
                 if (prof) {
                     foundProfile = prof;
                     if (prof.role === 'admin' || (prof.username && prof.username.toLowerCase() === 'admin')) {

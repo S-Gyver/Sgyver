@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ====================================================
  * 🏫 Gyver My Classroom (ห้องเรียนของฉัน) - Main Logic
  * ====================================================
@@ -199,7 +199,7 @@ async function loadClassrooms() {
     // 1. ดึงห้องเรียนที่ฉันสอน (ครู)
     let { data: classrooms, error } = await supabaseClient
         .from('classrooms')
-        .select('*')
+        .select('id, class_name, room_code, teacher_id, students, created_at')
         .eq('teacher_id', currentUserId)
         .order('created_at', { ascending: false });
 
@@ -252,8 +252,9 @@ async function loadClassrooms() {
     try {
         const { data: allRooms, error: allErr } = await supabaseClient
             .from('classrooms')
-            .select('*')
-            .order('created_at', { ascending: false });
+            .select('id, class_name, room_code, teacher_id, students, created_at')
+            .order('created_at', { ascending: false })
+            .limit(100);
 
         if (!allErr && Array.isArray(allRooms)) {
             const enrolled = allRooms.filter(c => {
@@ -1221,6 +1222,16 @@ function quickAddSectionFromHub(classId) {
     if (!target) return;
     activeClassroom = target;
     activeClassroomId = target.id;
+
+    // On-demand load full classroom data (materials, assignments, gradebook) if not loaded yet
+    if (!activeClassroom.materials && !activeClassroom.assignments && supabaseClient) {
+        supabaseClient.from('classrooms').select('id, materials, assignments, gradebook, attendance_logs').eq('id', activeClassroomId).maybeSingle().then(({data}) => {
+            if (data && activeClassroom && activeClassroom.id === target.id) {
+                Object.assign(activeClassroom, data);
+                renderAllTabs();
+            }
+        }).catch(err => console.warn('Load full room err:', err));
+    }
     openAddSectionModal();
 }
 
@@ -1235,6 +1246,16 @@ function quickOpenQRModal(classId) {
     if (!target) return;
     activeClassroom = target;
     activeClassroomId = target.id;
+
+    // On-demand load full classroom data (materials, assignments, gradebook) if not loaded yet
+    if (!activeClassroom.materials && !activeClassroom.assignments && supabaseClient) {
+        supabaseClient.from('classrooms').select('id, materials, assignments, gradebook, attendance_logs').eq('id', activeClassroomId).maybeSingle().then(({data}) => {
+            if (data && activeClassroom && activeClassroom.id === target.id) {
+                Object.assign(activeClassroom, data);
+                renderAllTabs();
+            }
+        }).catch(err => console.warn('Load full room err:', err));
+    }
     openProjectorMode();
 }
 
@@ -1247,6 +1268,16 @@ function enterClassroom(classId) {
 
     activeClassroom = target;
     activeClassroomId = target.id;
+
+    // On-demand load full classroom data (materials, assignments, gradebook) if not loaded yet
+    if (!activeClassroom.materials && !activeClassroom.assignments && supabaseClient) {
+        supabaseClient.from('classrooms').select('id, materials, assignments, gradebook, attendance_logs').eq('id', activeClassroomId).maybeSingle().then(({data}) => {
+            if (data && activeClassroom && activeClassroom.id === target.id) {
+                Object.assign(activeClassroom, data);
+                renderAllTabs();
+            }
+        }).catch(err => console.warn('Load full room err:', err));
+    }
 
     // จำห้องเรียนล่าสุดไว้ใน localStorage เพื่อไม่ให้หลุดออกไปหน้า Hub เวลารีเฟรชเบราว์เซอร์
     try {
@@ -2273,7 +2304,7 @@ function openAttendanceQrModal() {
                 return;
             }
             await pollLatestAttendanceFromCloud();
-        }, 2500);
+        }, 6000); // 6s polling while modal is open
 
         modalEl.addEventListener('hidden.bs.modal', () => {
             clearInterval(_attQrPollTimer);
@@ -4040,8 +4071,9 @@ async function openAssignQuizModal(fromAddModal = false, isEditingQuiz = false) 
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
             const { data, error } = await supabaseClient
                 .from('gyver_quizzes')
-                .select('*')
-                .order('created_at', { ascending: false });
+                .select('id, title, description, schema, created_at')
+                .order('created_at', { ascending: false })
+                .limit(50);
             if (!error && Array.isArray(data)) {
                 cachedQuizzesForModal = data.map(item => ({
                     id: item.id,

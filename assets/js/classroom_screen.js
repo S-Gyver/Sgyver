@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ====================================================
  * 🚀 Gyver Studio - Classroom Screen Engine (JavaScript)
  * ClassroomScreen.com Inspired Interactive Widgets
@@ -574,7 +574,7 @@ function clearAllWidgets() {
 let _saveWidgetsTimer = null;
 function debouncedSaveWidgetsState() {
     clearTimeout(_saveWidgetsTimer);
-    _saveWidgetsTimer = setTimeout(saveOpenWidgetsState, 300);
+    _saveWidgetsTimer = setTimeout(saveOpenWidgetsState, 1000); // 1s debounce to prevent spamming
 }
 
 function saveOpenWidgetsState() {
@@ -2111,7 +2111,7 @@ async function populateClassroomsDropdown(id, isManualRefresh = false) {
                 if (session?.user) {
                     const { data, error } = await window.supabaseClient
                         .from('classrooms')
-                        .select('*')
+                        .select('id, class_name, room_code, teacher_id, students, created_at')
                         .eq('teacher_id', session.user.id)
                         .order('created_at', { ascending: false });
 
@@ -2773,7 +2773,7 @@ async function populateWheelClassrooms(id, isManualRefresh = false) {
                     if (session?.user) {
                         const { data } = await window.supabaseClient
                             .from('classrooms')
-                            .select('*')
+                            .select('id, class_name, room_code, teacher_id, students, created_at')
                             .eq('teacher_id', session.user.id)
                             .order('created_at', { ascending: false });
                         if (Array.isArray(data) && data.length > 0) classrooms = data;
@@ -3271,7 +3271,7 @@ async function populateGroupClassrooms(id, isManualRefresh = false) {
                     if (session?.user) {
                         const { data } = await window.supabaseClient
                             .from('classrooms')
-                            .select('*')
+                            .select('id, class_name, room_code, teacher_id, students, created_at')
                             .eq('teacher_id', session.user.id)
                             .order('created_at', { ascending: false });
                         if (Array.isArray(data) && data.length > 0) classrooms = data;

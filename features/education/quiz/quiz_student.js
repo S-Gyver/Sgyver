@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ====================================================
  * 🎯 Gyver Quiz - Student Live Exam Controller
  * ====================================================
@@ -553,7 +553,7 @@ function listenForExamStart() {
                 handleStudentKicked();
             }
         }
-    }, 1500);
+    }, 8000); // 8s interval (Realtime handles instant updates)
 }
 
 /**
@@ -1190,7 +1190,7 @@ async function submitLiveExamAnswers() {
 
     const questions = assignedVariant?.questions || [];
 
-    questions.forEach(q => {
+    for (const q of questions) {
         const qPts = Number(q.points) || 10;
         totalPoints += qPts;
 
@@ -1204,7 +1204,19 @@ async function submitLiveExamAnswers() {
             const givenArr = Array.isArray(given) ? given : [];
             isCorrect = (correctArr.length === givenArr.length && correctArr.every(v => givenArr.includes(v)));
         } else if (q.type === 'text') {
-            isCorrect = (given && q.correctAnswer && given.trim().toLowerCase() === q.correctAnswer.trim().toLowerCase());
+            if (window.GyverQuizEvaluator) {
+                const evalRes = await window.GyverQuizEvaluator.evaluateTextAnswer(given, q.correctAnswer, {
+                    questionTitle: q.title,
+                    minSimilarity: 0.70,
+                    useAI: true
+                });
+                isCorrect = evalRes.isCorrect;
+                if (evalRes.isCorrect && evalRes.reason) {
+                    q.dynamicExplanation = q.explanation ? `${q.explanation} (${evalRes.reason})` : `${evalRes.reason}`;
+                }
+            } else {
+                isCorrect = (given && q.correctAnswer && given.trim().toLowerCase() === q.correctAnswer.trim().toLowerCase());
+            }
         } else if (q.type === 'code') {
             const studentCode = given || '';
             let codePassed = false;
@@ -1228,10 +1240,10 @@ async function submitLiveExamAnswers() {
             ptsEarned: ptsEarned,
             givenAnswer: given,
             correctAnswer: q.correctAnswer,
-            explanation: q.explanation,
+            explanation: q.dynamicExplanation || q.explanation,
             isCorrect: isCorrect
         });
-    });
+    }
 
     const percent = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
     const passTarget = currentLobby?.quiz_settings?.passingScore ?? 70;

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ====================================================
  * ☁️ Gyver Workspace - Cloud Synchronization Engine
  * Syncs Wallpaper, Dock Layout, Open Widgets & Title across devices via Supabase
@@ -247,7 +247,7 @@
             pos: localStorage.getItem('cs_bg_pos') || 'center center',
             mode: localStorage.getItem('cs_bg_fit_mode') || 'ambient',
             name: localStorage.getItem('cs_custom_bg_name') || '',
-            raw: localStorage.getItem('cs_custom_bg_raw') || ''
+            raw: '' // Excluded raw base64 to protect Egress
         };
         if (wp.bg) {
             rows.push({
@@ -344,7 +344,7 @@
             pos: localStorage.getItem('cs_bg_pos') || 'center center',
             mode: localStorage.getItem('cs_bg_fit_mode') || 'ambient',
             name: localStorage.getItem('cs_custom_bg_name') || '',
-            raw: localStorage.getItem('cs_custom_bg_raw') || ''
+            raw: '' // Excluded raw base64 to protect Egress
         }), 600);
     }
 

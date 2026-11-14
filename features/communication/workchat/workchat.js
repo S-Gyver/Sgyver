@@ -607,7 +607,7 @@ function syncWorkchatToCloud() {
                 .from('lobbies')
                 .update(payload)
                 .eq('room_code', 'WORKCHAT')
-                .select();
+                .select('room_code');
 
             if (updErr || !updData || updData.length === 0) {
                 // If row didn't exist yet, insert it
@@ -618,12 +618,16 @@ function syncWorkchatToCloud() {
         } catch (err) {
             console.warn('Sync cloud store notice:', err);
         }
-    }, 300);
+    }, 1200); // 1.2s debounce to avoid rapid API bursts
 }
 window.syncWorkchatToCloud = syncWorkchatToCloud;
 
-async function fetchCloudStore() {
+let _lastCloudStoreFetch = 0;
+async function fetchCloudStore(force = false) {
     if (!window.supabaseClient) return;
+    const now = Date.now();
+    if (!force && (now - _lastCloudStoreFetch) < 15000) return;
+    _lastCloudStoreFetch = now;
     try {
         const { data: cloudStore } = await window.supabaseClient
             .from('lobbies')
@@ -651,8 +655,10 @@ window.addEventListener('focus', () => {
 // Periodic lightweight sync heartbeat every 5 seconds (ensures mobile syncs even if carrier drops WebSocket)
 if (!window._workchatSyncInterval) {
     window._workchatSyncInterval = setInterval(() => {
-        fetchCloudStore();
-    }, 5000);
+        if (typeof document !== 'undefined' && !document.hidden) {
+            fetchCloudStore();
+        }
+    }, 45000);
 }
 
 function mergeCloudStore(cloudSettings, isInitialLoad = false) {

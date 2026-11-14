@@ -1595,7 +1595,7 @@
                     try {
                         const { data: prof, error: profErr } = await client
                             .from('profiles')
-                            .select('*')
+                            .select('id, email, username, nickname, role, level, avatar_url')
                             .eq('id', session.user.id)
                             .maybeSingle();
 
@@ -1931,8 +1931,8 @@
                             try {
                                 const { data: profile, error: profErr } = await getClient()
                                     .from('profiles')
-                                    .select('id,email,username,nickname,role,level')
                                     .or(`username.ilike.${identifier},nickname.ilike.${identifier}`)
+                                    .limit(1)
                                     .maybeSingle();
                                 if (profErr) profileLookupError = profErr;
                                 if (profile) {
@@ -2012,7 +2012,7 @@
                             let isUserAdmin = false;
 
                             try {
-                                const { data: prof } = await getClient().from('profiles').select('*').eq('id', user.id).maybeSingle();
+                                const { data: prof } = await getClient().from('profiles').select('id, email, username, nickname, role, level, avatar_url').eq('id', user.id).maybeSingle();
                                 if (prof) {
                                     foundProfile = prof;
                                     if (prof.role === 'admin' || (prof.username && prof.username.toLowerCase() === 'admin')) {

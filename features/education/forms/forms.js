@@ -88,8 +88,9 @@ async function initDataStorage() {
         try {
             const { data, error } = await window.supabaseClient
                 .from('gyver_forms')
-                .select('*')
-                .order('created_at', { ascending: false });
+                .select('id, title, description, schema, created_at, updated_at')
+                .order('created_at', { ascending: false })
+                .limit(50);
 
             if (error) {
                 isSupabaseTableAvailable = false;

@@ -24,7 +24,7 @@ async function loadClassroomList() {
 
     const { data: classrooms, error } = await supabaseClient
         .from('classrooms')
-        .select('*')
+        .select('id, class_name, room_code, students, created_at')
         .eq('teacher_id', currentUserId)
         .order('created_at', { ascending: false });
 
@@ -135,7 +135,7 @@ async function deleteClassroom(classId, encodedName) {
 async function openManageStudentsModal(classId) {
     const { data: classroom } = await supabaseClient
         .from('classrooms')
-        .select('*')
+        .select('id, class_name, room_code, students')
         .eq('id', classId)
         .single();
 

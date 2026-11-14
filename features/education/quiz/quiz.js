@@ -98,8 +98,9 @@ async function initQuizStorage() {
         try {
             const { data, error } = await window.supabaseClient
                 .from('gyver_quizzes')
-                .select('*')
-                .order('created_at', { ascending: false });
+                .select('id, title, description, schema, created_at, updated_at')
+                .order('created_at', { ascending: false })
+                .limit(50);
 
             if (error) {
                 isSupabaseTableAvailable = false;
@@ -1460,7 +1461,7 @@ async function confirmSubmitQuiz() {
 
 let isQuizSubmitting = false;
 
-function autoSubmitQuiz() {
+async function autoSubmitQuiz() {
     if (isQuizSubmitting) return;
     isQuizSubmitting = true;
 
@@ -1482,7 +1483,7 @@ function autoSubmitQuiz() {
 
     const questionsToGrade = (activeExamQuestions && activeExamQuestions.length > 0) ? activeExamQuestions : (currentQuiz.questions || []);
 
-    questionsToGrade.forEach(q => {
+    for (const q of questionsToGrade) {
         const qPts = (q.points !== undefined && !isNaN(Number(q.points))) ? Number(q.points) : 1;
         totalPoints += qPts;
 
@@ -1496,7 +1497,19 @@ function autoSubmitQuiz() {
             const givenArr = Array.isArray(given) ? given : [];
             isCorrect = (correctArr.length === givenArr.length && correctArr.every(v => givenArr.includes(v)));
         } else if (q.type === 'text') {
-            isCorrect = (given && q.correctAnswer && given.trim().toLowerCase() === q.correctAnswer.trim().toLowerCase());
+            if (window.GyverQuizEvaluator) {
+                const evalRes = await window.GyverQuizEvaluator.evaluateTextAnswer(given, q.correctAnswer, {
+                    questionTitle: q.title,
+                    minSimilarity: 0.70,
+                    useAI: true
+                });
+                isCorrect = evalRes.isCorrect;
+                if (evalRes.isCorrect && evalRes.reason) {
+                    q.dynamicExplanation = q.explanation ? `${q.explanation} (${evalRes.reason})` : `${evalRes.reason}`;
+                }
+            } else {
+                isCorrect = (given && q.correctAnswer && given.trim().toLowerCase() === q.correctAnswer.trim().toLowerCase());
+            }
         } else if (q.type === 'code') {
             const studentCode = given || '';
             let codePassed = false;
@@ -1521,10 +1534,10 @@ function autoSubmitQuiz() {
             ptsEarned: ptsEarned,
             givenAnswer: given,
             correctAnswer: q.correctAnswer,
-            explanation: q.explanation,
+            explanation: q.dynamicExplanation || q.explanation,
             isCorrect: isCorrect
         });
-    });
+    }
 
     const percent = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
     const passTarget = currentQuiz.settings?.passingScore ?? 70;
@@ -1584,7 +1597,7 @@ async function syncQuizResponseToSupabase(record) {
         if (classId && assignId && window.supabaseClient) {
             const { data: cData } = await window.supabaseClient
                 .from('classrooms')
-                .select('*')
+                .select('id, assignments')
                 .eq('id', classId)
                 .single();
 
@@ -2871,7 +2884,7 @@ async function loadQBData() {
     let subjectsObj = {};
     if (window.supabaseClient && isSupabaseTableAvailable) {
         try {
-            const { data } = await window.supabaseClient.from('quiz_subjects').select('*');
+            const { data } = await window.supabaseClient.from('quiz_subjects').select('id, name, code, created_at').limit(50);
             if (data && data.length > 0) {
                 data.forEach(s => {
                     if (s.subject_key && Array.isArray(s.questions) && s.questions.length > 0) {
@@ -3536,3 +3549,39 @@ window.unlockExamByTeacherPin = unlockExamByTeacherPin;
 window.openAiPromptModal = openAiPromptModal;
 window.updateGeneratedAiPrompt = updateGeneratedAiPrompt;
 window.copyAiPromptToClipboard = copyAiPromptToClipboard;
+
+async function testTeacherAnswer(qId) {
+    const q = (currentQuiz.questions || []).find(item => item.id === qId);
+    if (!q) return;
+    const testInput = document.getElementById(`test-input-${qId}`)?.value || '';
+    const resultBox = document.getElementById(`test-result-${qId}`);
+    if (!resultBox) return;
+
+    if (!testInput.trim()) {
+        resultBox.className = 'mt-2 small text-warning';
+        resultBox.innerHTML = '<i class="bi bi-exclamation-circle me-1"></i>กรุณาพิมพ์ข้อความทดสอบ';
+        resultBox.classList.remove('d-none');
+        return;
+    }
+
+    resultBox.className = 'mt-2 small text-info';
+    resultBox.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>กำลังตรวจคำตอบ...';
+    resultBox.classList.remove('d-none');
+
+    if (window.GyverQuizEvaluator) {
+        const res = await window.GyverQuizEvaluator.evaluateTextAnswer(testInput, q.correctAnswer || '', {
+            questionTitle: q.title || 'คำถาม',
+            minSimilarity: 0.70,
+            useAI: true
+        });
+
+        if (res.isCorrect) {
+            resultBox.className = 'mt-2 small text-success fw-bold';
+            resultBox.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i>ตรวจผ่าน! (${escapeHtml(res.reason)}) [วิธีตรวจ: ${res.method}]`;
+        } else {
+            resultBox.className = 'mt-2 small text-danger fw-bold';
+            resultBox.innerHTML = `<i class="bi bi-x-circle-fill me-1"></i>ตรวจไม่ผ่าน (${escapeHtml(res.reason)})`;
+        }
+    }
+}
+window.testTeacherAnswer = testTeacherAnswer;

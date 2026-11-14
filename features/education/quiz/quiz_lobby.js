@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ====================================================
  * 🎯 Gyver Quiz - Live Lobby Teacher Controller
  * ====================================================
@@ -542,7 +542,7 @@ function setupLobbyRealtime() {
         }
     }
 
-    // 2. Polling Fallback every 1.5 seconds for rock-solid sync
+    // 2. Polling Fallback every 10 seconds for bandwidth-friendly sync (Realtime handles instant updates)
     pollTimerInterval = setInterval(async () => {
         if (window.supabaseClient) {
             try {
@@ -564,7 +564,7 @@ function setupLobbyRealtime() {
         if (local) {
             handleLobbyUpdate(local);
         }
-    }, 1500);
+    }, 10000);
 }
 
 function handleLobbyUpdate(updatedLobby) {
