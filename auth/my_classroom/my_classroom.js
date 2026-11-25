@@ -252,15 +252,10 @@ async function loadClassrooms() {
     try {
         const { data: allRooms, error: allErr } = await supabaseClient
             .from('classrooms')
-<<<<<<< HEAD
-            .select('id, class_name, room_code, teacher_id, students, created_at')
-            .order('created_at', { ascending: false })
-            .limit(100);
-=======
             .select('id, teacher_id, class_name, room_code, students, created_at')
             .neq('teacher_id', currentUserId)
-            .order('created_at', { ascending: false });
->>>>>>> e70b106 (chore(supabase): migrate to new Supabase project, remove WorkChat, and optimize egress)
+            .order('created_at', { ascending: false })
+            .limit(100);
 
         if (!allErr && Array.isArray(allRooms)) {
             const enrolled = allRooms.filter(c => {
