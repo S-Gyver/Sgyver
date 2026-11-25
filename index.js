@@ -290,37 +290,8 @@ async function handlePopupLoginSubmit(e) {
             });
         }
 
-        if ((!authResult || authResult.error) && (emailInput.toLowerCase() === 'admin' || emailInput.toLowerCase() === 'sd')) {
-            const cleanUser = emailInput.toLowerCase();
-            const adminCandidates = [
-                `${cleanUser}.sgyver@gmail.com`,
-                `sgyver.${cleanUser}.acct@gmail.com`,
-                'admin@gyver.local',
-                'admin@admin.com',
-                'admin@gmail.com',
-                'admin@sgyver.com',
-                'admin@gyver.com'
-            ];
-            for (const candidate of adminCandidates) {
-                if (candidate === targetEmail) continue;
-                const testAuth = await window.supabaseClient.auth.signInWithPassword({
-                    email: candidate,
-                    password: password
-                });
-                if (!testAuth.error && testAuth.data?.user) {
-                    authResult = testAuth;
-                    targetEmail = candidate;
-                    break;
-                }
-            }
-            if ((!authResult || authResult.error) && typeof window.createGyverOfflineSession === 'function') {
-                const offlineSession = window.createGyverOfflineSession(emailInput);
-                authResult = { data: { user: offlineSession.user, session: offlineSession }, error: null };
-            }
-        }
-
         if (!authResult) {
-            setAlert(alertBox, 'alert-danger', `❌ ไม่พบบัญชีผู้ใช้สำหรับ Username "${emailInput}" กรุณาใช้อีเมลแทนครับ`);
+            setAlert(alertBox, 'alert-danger', `❌ ไม่พบบัญชีผู้ใช้สำหรับ Username "${emailInput}" กรุณาสมัครสมาชิกก่อนครับ`);
             submitBtn.disabled = false;
             submitBtn.innerHTML = `<i class="bi bi-box-arrow-in-right me-1"></i>ลงชื่อเข้าใช้งาน`;
             return;
@@ -470,19 +441,6 @@ async function handlePopupRegisterSubmit(e) {
             submitBtn.disabled = false;
             submitBtn.innerHTML = `<i class="bi bi-person-plus me-1"></i>ยืนยันการสมัครสมาชิก`;
         } else {
-            if (data.user) {
-                try {
-                    await window.supabaseClient.from('profiles').upsert([{
-                        id: data.user.id,
-                        username: username,
-                        nickname: username,
-                        email: email,
-                        avatar_url: avatarUrl,
-                        level: 1
-                    }]);
-                } catch (err) { }
-            }
-
             if (data.user && data.session === null) {
                 setAlert(alertBox, 'alert-warning', '✉️ สมัครเรียบร้อย! กรุณาเช็กอีเมลเพื่อกดยืนยันตัวตนก่อนล็อกอินครับ');
             } else {

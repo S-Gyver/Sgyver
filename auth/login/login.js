@@ -140,41 +140,14 @@ document.getElementById('form-login').addEventListener('submit', async function 
         });
     }
 
-    // กรณีถ้ายังล็อกอินไม่สำเร็จ และระบุ username เป็น "admin" ให้ลองอีเมลแอดมินมาตรฐานของระบบ
-    if ((!authResult || authResult.error) && identifier.toLowerCase() === 'admin') {
-        const adminCandidates = [
-            'admin@gyver.local',
-            'admin@admin.com',
-            'admin@gmail.com',
-            'admin@sgyver.com',
-            'admin@gyver.com'
-        ];
-
-        for (const candidate of adminCandidates) {
-            if (candidate === targetEmail) continue; // ข้ามตัวที่ลองไปแล้ว
-            const testAuth = await window.supabaseClient.auth.signInWithPassword({
-                email: candidate,
-                password: password,
-            });
-            if (!testAuth.error && testAuth.data?.user) {
-                authResult = testAuth;
-                targetEmail = candidate;
-                break;
-            }
-        }
-    }
-
-    // 🛡️ Fallback อัตโนมัติเมื่อ Supabase ติดโควต้า HTTP 402 (exceed_egress_quota) หรือเชื่อมต่อไม่ได้
+    // 🛡️ Fallback อัตโนมัติเฉพาะเมื่อ Supabase ติดโควต้า HTTP 402 (exceed_egress_quota) หรือเชื่อมต่อไม่ได้จริงๆ
     if ((!authResult || authResult.error) && typeof window.createGyverOfflineSession === 'function') {
         const rawErr = String(profileLookupError?.message || profileLookupError?.details || authResult?.error?.message || '');
         const isQuotaOrNetErr = !!(
-            profileLookupError ||
             rawErr.includes('exceed_egress_quota') ||
             rawErr.includes('402') ||
             rawErr.includes('restricted') ||
-            rawErr.includes('Failed to fetch') ||
-            identifier.toLowerCase() === 'sd' ||
-            identifier.toLowerCase() === 'admin'
+            rawErr.includes('Failed to fetch')
         );
         if (isQuotaOrNetErr) {
             const offlineSession = window.createGyverOfflineSession(identifier);
@@ -185,7 +158,7 @@ document.getElementById('form-login').addEventListener('submit', async function 
     // หากยังไม่สำเร็จ และไม่มี targetEmail ที่เป็นอีเมล
     if (!authResult) {
         authResult = {
-            error: { message: `ไม่พบบัญชีผู้ใช้งาน "${identifier}" ในระบบ กรุณาใช้อีเมลในการเข้าสู่ระบบครับ` }
+            error: { message: `ไม่พบบัญชีผู้ใช้งาน "${identifier}" ในระบบ กรุณาสมัครสมาชิกก่อนครับ` }
         };
     }
 
@@ -337,18 +310,6 @@ document.getElementById('form-register').addEventListener('submit', async functi
         btnSubmit.disabled = false;
         btnSubmit.innerHTML = `<i class="bi bi-person-plus me-2"></i>ยืนยันการสมัครสมาชิก`;
     } else {
-        if (data.user) {
-            try {
-                await window.supabaseClient.from('profiles').upsert([{
-                    id: data.user.id,
-                    username: username,
-                    nickname: username,
-                    email: email,
-                    avatar_url: avatarDefault
-                }]);
-            } catch (err) { }
-        }
-
         if (data.user && data.session === null) {
             showAlert('✉️ สมัครสมาชิกเรียบร้อย! กรุณาเช็กกล่องข้อความในอีเมลของคุณเพื่อกดยืนยันตัวตนก่อนล็อกอินครับ', 'warning');
         } else {

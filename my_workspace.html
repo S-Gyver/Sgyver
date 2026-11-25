@@ -1923,37 +1923,14 @@
                             authResult = await getClient().auth.signInWithPassword({ email: loginEmail, password });
                         }
 
-                        // ถ้ายังล็อกอินไม่สำเร็จ และระบุ username เป็น "admin" ให้ลองอีเมลแอดมินมาตรฐาน
-                        if ((!authResult || authResult.error) && identifier.toLowerCase() === 'admin') {
-                            const adminCandidates = [
-                                'admin@gyver.local',
-                                'admin@admin.com',
-                                'admin@gmail.com',
-                                'admin@sgyver.com',
-                                'admin@gyver.com'
-                            ];
-                            for (const candidate of adminCandidates) {
-                                if (candidate === loginEmail) continue;
-                                const testAuth = await getClient().auth.signInWithPassword({ email: candidate, password });
-                                if (!testAuth.error && testAuth.data?.user) {
-                                    authResult = testAuth;
-                                    loginEmail = candidate;
-                                    break;
-                                }
-                            }
-                        }
-
-                        // 🛡️ Fallback อัตโนมัติเมื่อ Supabase ติดโควต้า HTTP 402 (exceed_egress_quota) หรือเชื่อมต่อไม่ได้
+                        // 🛡️ Fallback อัตโนมัติเฉพาะเมื่อ Supabase ติดโควต้า HTTP 402 (exceed_egress_quota) หรือเชื่อมต่อไม่ได้จริงๆ
                         if ((!authResult || authResult.error) && typeof window.createGyverOfflineSession === 'function') {
                             const errMsg = String(profileLookupError?.message || profileLookupError?.details || authResult?.error?.message || '');
                             const isQuotaOrNetErr = !!(
-                                profileLookupError ||
                                 errMsg.includes('exceed_egress_quota') ||
                                 errMsg.includes('402') ||
                                 errMsg.includes('restricted') ||
-                                errMsg.includes('Failed to fetch') ||
-                                identifier.toLowerCase() === 'sd' ||
-                                identifier.toLowerCase() === 'admin'
+                                errMsg.includes('Failed to fetch')
                             );
                             if (isQuotaOrNetErr) {
                                 const offlineSession = window.createGyverOfflineSession(identifier);
@@ -1963,7 +1940,7 @@
 
                         if (!authResult) {
                             alertBox.className = 'alert alert-danger py-2 small text-center rounded-3';
-                            alertBox.textContent = '❌ ไม่พบ Username นี้ในระบบ กรุณาใช้อีเมลแทนครับ';
+                            alertBox.textContent = '❌ ไม่พบ Username นี้ในระบบ กรุณาสมัครสมาชิกก่อนครับ';
                             resetBtn(); return;
                         }
 
@@ -2080,9 +2057,6 @@
                             btn.disabled = false;
                             btn.innerHTML = '<i class="bi bi-person-plus me-2"></i>ยืนยันการสมัครสมาชิก';
                         } else {
-                            if (data.user) {
-                                try { await getClient().from('profiles').upsert([{ id: data.user.id, username, nickname: username, avatar_url: avatarDefault }]); } catch (_) { }
-                            }
                             alertBox.className = 'alert alert-success py-2 small text-center rounded-3';
                             alertBox.textContent = '🎉 สมัครสมาชิกเรียบร้อยแล้ว!';
                             setTimeout(() => { location.reload(); }, 1200);
