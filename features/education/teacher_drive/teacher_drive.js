@@ -177,7 +177,7 @@ async function loadUserDriveData() {
         // 2. Direct REST fallback พร้อม Accept-Profile: public
         if (!loaded) {
             try {
-                const sUrl = window.SUPABASE_URL || 'https://igiihteeeprpcxxlldkd.supabase.co';
+                const sUrl = window.SUPABASE_URL || 'https://vcqosaykxxsrknfqbcbf.supabase.co';
                 const sKey = window.SUPABASE_KEY || '';
                 const url = `${sUrl}/rest/v1/game_state?user_id=eq.${encodeURIComponent(currentUserId)}&key=eq.teacher_media_drive&select=value`;
                 const res = await fetch(url, {
@@ -247,7 +247,7 @@ async function saveUserDriveData() {
         // 2. Direct REST fallback พร้อม Content-Profile: public
         if (!saved) {
             try {
-                const sUrl = window.SUPABASE_URL || 'https://igiihteeeprpcxxlldkd.supabase.co';
+                const sUrl = window.SUPABASE_URL || 'https://vcqosaykxxsrknfqbcbf.supabase.co';
                 const sKey = window.SUPABASE_KEY || '';
                 await fetch(`${sUrl}/rest/v1/game_state?on_conflict=key,user_id`, {
                     method: 'POST',
@@ -273,10 +273,11 @@ async function saveUserDriveData() {
     }
 }
 
-// 🔍 ค้นหาไฟล์จากบัญชีอื่นในระบบ (กรณีผู้ใช้เคยอัปโหลดไว้ด้วยบัญชีอื่น เช่น บัญชี เอส)
+// 🔍 ค้นหาไฟล์จากบัญชีอื่นในระบบ (เช็กเฉพาะเมื่อคลังสื่อของบัญชีปัจจุบันยังว่างอยู่ เพื่อประหยัด Supabase Egress)
 async function checkAndPromptOtherDrives() {
     const alertContainer = document.getElementById('drive-alert-container');
     if (!alertContainer) return;
+    if (Array.isArray(driveState.items) && driveState.items.length > 0) return;
 
     try {
         let data = null;
@@ -295,7 +296,7 @@ async function checkAndPromptOtherDrives() {
         // 2. Direct REST fallback
         if (!data) {
             try {
-                const sUrl = window.SUPABASE_URL || 'https://igiihteeeprpcxxlldkd.supabase.co';
+                const sUrl = window.SUPABASE_URL || 'https://vcqosaykxxsrknfqbcbf.supabase.co';
                 const sKey = window.SUPABASE_KEY || '';
                 const res = await fetch(`${sUrl}/rest/v1/game_state?key=eq.teacher_media_drive&select=user_id,value,updated_at`, {
                     headers: {
@@ -1385,52 +1386,10 @@ function toggleDriveViewerFullscreen() {
 }
 
 // =============================================================================
-// 📤 ส่งไฟล์จากคลังสื่อส่วนตัวข้ามระบบในคลิกเดียว (WorkChat หรือ My Classroom)
+// 📤 ส่งไฟล์จากคลังสื่อส่วนตัวเข้า "ห้องเรียนของฉัน" (My Classroom) ในคลิกเดียว
 // =============================================================================
 async function openQuickShareModal(itemId) {
-    const item = driveState.items.find(i => i.id === itemId);
-    if (!item) return;
-
-    await Swal.fire({
-        title: 'แชร์สื่อการสอนข้ามระบบ',
-        html: `
-            <div class="text-start">
-                <div class="p-2.5 rounded-3 bg-light mb-3 border d-flex align-items-center gap-2.5">
-                    <div class="rounded-3 p-2 text-white bg-primary shadow-xs">
-                        <i class="bi bi-file-earmark-slides-fill fs-5"></i>
-                    </div>
-                    <div class="text-truncate">
-                        <div class="fw-bold text-dark text-truncate" style="font-size:0.95rem;">${escapeHtml(item.title)}</div>
-                        <div class="text-muted small" style="font-size:0.75rem;">${escapeHtml(item.fileName || item.fileType || 'สื่อการสอน')}</div>
-                    </div>
-                </div>
-                <p class="text-muted small mb-2 fw-bold">เลือกปลายทางที่ต้องการส่ง:</p>
-                <div class="d-grid gap-2">
-                    <button type="button" class="btn btn-outline-success p-3 rounded-4 text-start d-flex align-items-center gap-3 border shadow-xs" onclick="Swal.close(); setTimeout(()=>shareDriveItemToClassroom('${escapeHtml(item.id)}'), 100);">
-                        <div class="rounded-circle bg-success-subtle text-success d-flex align-items-center justify-content-center" style="width: 44px; height: 44px; font-size: 1.3rem;">
-                            <i class="bi bi-mortarboard-fill"></i>
-                        </div>
-                        <div>
-                            <div class="fw-bold text-dark">🏫 ส่งเข้า "ห้องเรียนของฉัน" (My Classroom)</div>
-                            <div class="text-muted small" style="font-size: 0.78rem;">ส่งเข้าแท็บเอกสาร & สื่อการสอนของห้องเรียน เพื่อให้นักเรียนเปิดดู</div>
-                        </div>
-                    </button>
-                    <button type="button" class="btn btn-outline-info p-3 rounded-4 text-start d-flex align-items-center gap-3 border shadow-xs" onclick="Swal.close(); setTimeout(()=>shareDriveItemToWorkChat('${escapeHtml(item.id)}'), 100);">
-                        <div class="rounded-circle bg-info-subtle text-info d-flex align-items-center justify-content-center" style="width: 44px; height: 44px; font-size: 1.3rem;">
-                            <i class="bi bi-chat-dots-fill"></i>
-                        </div>
-                        <div>
-                            <div class="fw-bold text-dark">💬 ส่งเข้า "WorkChat" (แชททีม)</div>
-                            <div class="text-muted small" style="font-size: 0.78rem;">แชร์การ์ดสไลด์พร้อมลิงก์เข้าห้องแชทกลาง หรือแชททีมงานทันที</div>
-                        </div>
-                    </button>
-                </div>
-            </div>
-        `,
-        showConfirmButton: false,
-        showCancelButton: true,
-        cancelButtonText: 'ปิด'
-    });
+    return shareDriveItemToClassroom(itemId);
 }
 window.openQuickShareModal = openQuickShareModal;
 

@@ -10,6 +10,17 @@
         const client = window.supabaseClient || window._supabase;
         if (!client) return null;
 
+        // 1. ใช้แคชใน sessionStorage ก่อนหากอายุไม่เกิน 5 นาที (ช่วยลด Egress ของ Supabase)
+        try {
+            const cached = sessionStorage.getItem(CONFIG_CACHE_KEY);
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                if (parsed && parsed.time && (Date.now() - parsed.time < 5 * 60 * 1000)) {
+                    return parsed.data;
+                }
+            }
+        } catch (_) {}
+
         try {
             // ดึงข้อมูลการตั้งค่าส่วนกลางจาก Supabase
             const { data, error } = await client
@@ -18,8 +29,8 @@
                 .eq('id', 'SYS_GLOBAL_CONFIG')
                 .maybeSingle();
 
-            if (!error && data && data.schema) {
-                const config = data.schema;
+            if (!error) {
+                const config = data ? data.schema : null;
                 try {
                     sessionStorage.setItem(CONFIG_CACHE_KEY, JSON.stringify({
                         data: config,
@@ -31,15 +42,6 @@
         } catch (e) {
             console.warn("System config fetch warning:", e);
         }
-
-        // ดึงจากแคชสำรอง
-        try {
-            const cached = sessionStorage.getItem(CONFIG_CACHE_KEY);
-            if (cached) {
-                const parsed = JSON.parse(cached);
-                return parsed.data;
-            }
-        } catch (_) {}
 
         return null;
     }

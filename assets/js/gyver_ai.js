@@ -240,9 +240,6 @@
                                             <button type="button" class="btn btn-outline-info btn-sm rounded-pill px-3 fw-bold" onclick="GyverAI.saveToQuestionBank()">
                                                 <i class="bi bi-box-arrow-in-down me-1"></i> บันทึกเข้าคลังข้อสอบ
                                             </button>
-                                            <button type="button" class="btn btn-outline-success btn-sm rounded-pill px-3 fw-bold" onclick="GyverAI.shareQuizToWorkChat()">
-                                                <i class="bi bi-send-check-fill me-1"></i> ส่งเข้า WorkChat
-                                            </button>
                                         </div>
                                     </div>
                                 </div>

@@ -7,8 +7,8 @@
 console.log('📦 [S-Gyver] Shopee Warehouse Sync Content Script Loaded');
 
 const SGYVER_CONFIG = {
-    supabaseUrl: 'https://igiihteeeprpcxxlldkd.supabase.co',
-    supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnaWlodGVlZXBycGN4eGxsZGtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5ODkwNzksImV4cCI6MjEwMDU2NTA3OX0.fr8_ZAYKQ3D-JgEtAWGJnNvKjoUmYxs1T7tjzzsEltw',
+    supabaseUrl: 'https://vcqosaykxxsrknfqbcbf.supabase.co',
+    supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZjcW9zYXlreHhzcmtuZnFiY2JmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU1NTI4MjUsImV4cCI6MjExMTEyODgyNX0.xnmZ3T5KyLo8mZY7n0ejtw-gusjoVAaS9v8j3uRBuZA',
     defaultRack: 'A-01'
 };
 

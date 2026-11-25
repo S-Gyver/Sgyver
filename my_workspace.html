@@ -35,7 +35,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="S-Gyver">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
-    <link rel="apple-touch-icon" href="features/communication/workchat/icon.svg">
+    <link rel="apple-touch-icon" href="favicon.svg">
 
     <style>
         /* Drawer styles are loaded from assets/css/classroom_screen.css */
@@ -865,37 +865,10 @@
                 </div>
             </div>
 
-            <!-- 💬 6. สื่อสารทีม & คลังโปรเจกต์ (Team WorkChat & Drive) -->
+            <!-- 🛒 6. ค้าขายออนไลน์ & E-Commerce (Exclusive Lv.5 - เจ้าของระบบใช้คนเดียว) -->
             <div class="launchpad-category">
                 <div class="launchpad-category-title d-flex align-items-center">
-                    <span>💬 6. สื่อสารทีม & คลังโปรเจกต์ (Team WorkChat & Drive)</span>
-                    <span
-                        class="badge bg-danger-subtle text-danger border border-danger-subtle ms-2 launchpad-vip-badge launchpad-lv4-badge"
-                        style="font-size: 0.68rem; display: none;"><i class="bi bi-star-fill me-1"></i>VIP Lv.4</span>
-                </div>
-                <div class="launchpad-grid">
-                    <div class="launchpad-app-item" data-required-level="4" draggable="true"
-                        ondragstart="onLaunchpadDragStart(event, 'app_workchat')" onclick="launchTool('app_workchat')"
-                        data-app-name="WorkChat & Project Drive แชทคุยงาน ส่งไฟล์ แยกโฟลเดอร์โปรเจกต์ย่อย"
-                        title="WorkChat: แชทคุยงานแบบเรียลไทม์ พร้อมตู้เก็บไฟล์แยกโฟลเดอร์โปรเจกต์และโฟลเดอร์ย่อย (ลากไปวางที่ Dock หรือคลิกเปิด)">
-                        <button type="button" class="launchpad-pin-btn" onclick="togglePinTool(event, 'app_workchat')"
-                            title="ปักหมุดที่ Dock"><i class="bi bi-pin-angle-fill"></i></button>
-                        <span class="launchpad-lock-pill pill-vip pill-lv4"><i class="bi bi-star-fill"></i> VIP Lv.4</span>
-                        <div class="launchpad-icon"
-                            style="background: linear-gradient(145deg, #06b6d4, #0891b2, #0e7490);"><i
-                                class="bi bi-chat-square-text-fill"></i></div>
-                        <div class="launchpad-content">
-                            <div class="launchpad-title">WorkChat & Projects</div>
-                            <div class="launchpad-desc">แชทคุยงาน ส่งไฟล์ แยกโฟลเดอร์โปรเจกต์และโฟลเดอร์ย่อย (VIP Lv.4)</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 🛒 7. ค้าขายออนไลน์ & E-Commerce (Exclusive Lv.5 - เจ้าของระบบใช้คนเดียว) -->
-            <div class="launchpad-category">
-                <div class="launchpad-category-title d-flex align-items-center">
-                    <span>🛒 7. ค้าขายออนไลน์ & E-Commerce (Exclusive Lv.5)</span>
+                    <span>🛒 6. ค้าขายออนไลน์ & E-Commerce (Exclusive Lv.5)</span>
                     <span
                         class="badge bg-danger-subtle text-danger border border-danger-subtle ms-2 launchpad-vip-badge launchpad-lv5-badge"
                         style="font-size: 0.68rem; display: none;"><i class="bi bi-shield-lock-fill me-1"></i>Exclusive Lv.5</span>
@@ -2228,7 +2201,6 @@
             'app_history': { id: 'app_history', title: 'ประวัติ', icon: 'bi bi-clock-history', colorClass: 'text-info', type: 'link', url: 'auth/history/history.html' },
             'app_profile': { id: 'app_profile', title: 'โปรไฟล์ครู', icon: 'bi bi-person-gear', colorClass: 'text-secondary', type: 'link', url: 'auth/profile/profile.html' },
             'app_quotation': { id: 'app_quotation', title: 'ใบเสนอราคา', icon: 'bi bi-receipt-cutoff', colorClass: 'text-primary', type: 'link', url: 'features/business/quotation/quotation.html' },
-            'app_workchat': { id: 'app_workchat', title: 'WorkChat & Projects', icon: 'bi bi-chat-square-text-fill', colorClass: 'text-info', type: 'link', url: 'features/communication/workchat/workchat.html' },
             'app_shopee_orders': { id: 'app_shopee_orders', title: 'Shopee Orders', icon: 'bi bi-box-seam-fill', colorClass: 'text-warning', type: 'link', url: 'features/business/shopee_orders/shopee_orders.html' },
             'app_product_labels': { id: 'app_product_labels', title: 'พิมพ์ฉลากเสื้อผ้า', icon: 'bi bi-upc-scan', colorClass: 'text-info', type: 'link', url: 'features/business/product_labels/label_printer.html' },
             'app_garment_inventory': { id: 'app_garment_inventory', title: 'คลังสินค้า', icon: 'bi bi-boxes', colorClass: 'text-success', type: 'link', url: 'features/business/inventory/inventory.html' },

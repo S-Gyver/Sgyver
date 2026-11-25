@@ -32,8 +32,8 @@ function initSupabase() {
         InventoryApp.supabaseUrl = window.SUPABASE_URL;
         InventoryApp.supabaseKey = window.SUPABASE_KEY;
     } else {
-        InventoryApp.supabaseUrl = 'https://igiihteeeprpcxxlldkd.supabase.co';
-        InventoryApp.supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnaWlodGVlZXBycGN4eGxsZGtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5ODkwNzksImV4cCI6MjEwMDU2NTA3OX0.fr8_ZAYKQ3D-JgEtAWGJnNvKjoUmYxs1T7tjzzsEltw';
+        InventoryApp.supabaseUrl = 'https://vcqosaykxxsrknfqbcbf.supabase.co';
+        InventoryApp.supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZjcW9zYXlreHhzcmtuZnFiY2JmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU1NTI4MjUsImV4cCI6MjExMTEyODgyNX0.xnmZ3T5KyLo8mZY7n0ejtw-gusjoVAaS9v8j3uRBuZA';
     }
 
     try {
@@ -7247,8 +7247,8 @@ async function safeSupabaseUpsert(data) {
     const list = Array.isArray(data) ? data : (data ? [data] : []);
     if (list.length === 0) return { error: null };
 
-    const sbUrl = InventoryApp.supabaseUrl || 'https://igiihteeeprpcxxlldkd.supabase.co';
-    const sbKey = InventoryApp.supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnaWlodGVlZXBycGN4eGxsZGtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5ODkwNzksImV4cCI6MjEwMDU2NTA3OX0.fr8_ZAYKQ3D-JgEtAWGJnNvKjoUmYxs1T7tjzzsEltw';
+    const sbUrl = InventoryApp.supabaseUrl || 'https://vcqosaykxxsrknfqbcbf.supabase.co';
+    const sbKey = InventoryApp.supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZjcW9zYXlreHhzcmtuZnFiY2JmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU1NTI4MjUsImV4cCI6MjExMTEyODgyNX0.xnmZ3T5KyLo8mZY7n0ejtw-gusjoVAaS9v8j3uRBuZA';
 
     const buildCleanRows = (allowedCols) => {
         return list.map(item => {
@@ -9106,10 +9106,10 @@ function getShopeeBookmarkletCode() {
         'const clipJson=JSON.stringify(batchPayload,null,2);' +
         'try{await navigator.clipboard.writeText(clipJson);}' +
         'catch(err){const t=document.createElement("textarea");t.value=clipJson;document.body.appendChild(t);t.select();document.execCommand("copy");document.body.removeChild(t);}' +
-        'const sbKey="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnaWlodGVlZXBycGN4eGxsZGtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5ODkwNzksImV4cCI6MjEwMDU2NTA3OX0.fr8_ZAYKQ3D-JgEtAWGJnNvKjoUmYxs1T7tjzzsEltw";' +
+        'const sbKey="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZjcW9zYXlreHhzcmtuZnFiY2JmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU1NTI4MjUsImV4cCI6MjExMTEyODgyNX0.xnmZ3T5KyLo8mZY7n0ejtw-gusjoVAaS9v8j3uRBuZA";' +
         'const pSku="SHP-"+(itemid||Date.now());' +
         'const pRows=(variants&&variants.length>0)?variants.map(function(v,idx){return {sku:pSku+"-"+String(idx+1).padStart(2,"0"),parent_sku:pSku,name:title,variant:v.name||("ตัวเลือก "+(idx+1)),price:v.price||(d&&d.price?d.price/100000:0),stock_quantity:v.stock||10,min_stock_alert:5,warehouse_location:"A-01",image_url:v.image_url||(images[0]||null),images:images,product_url:window.location.href,item_id:itemid||null,product_type:(categories&&categories.length>0)?categories.join(" > "):"สินค้า Shopee"};}):[{sku:pSku,parent_sku:pSku,name:title,variant:"มาตรฐาน",price:(d&&d.price?d.price/100000:0),stock_quantity:10,min_stock_alert:5,warehouse_location:"A-01",image_url:images[0]||null,images:images,product_url:window.location.href,item_id:itemid||null,product_type:(categories&&categories.length>0)?categories.join(" > "):"สินค้า Shopee"}];' +
-        'fetch("https://igiihteeeprpcxxlldkd.supabase.co/rest/v1/product_labels?on_conflict=sku",{method:"POST",headers:{"apikey":sbKey,"Authorization":"Bearer "+sbKey,"Content-Type":"application/json","Accept-Profile":"public","Content-Profile":"public","Prefer":"resolution=merge-duplicates"},body:JSON.stringify(pRows)}).then(function(r){if(r.ok){const el=document.getElementById("sgyver-sb-badge");if(el){el.innerHTML="☁️ ซิงค์ลง Supabase Cloud เรียบร้อยแล้ว 100%!";el.style.color="#a7f3d0";}}}).catch(function(e){console.warn(e);});' +
+        'fetch("https://vcqosaykxxsrknfqbcbf.supabase.co/rest/v1/product_labels?on_conflict=sku",{method:"POST",headers:{"apikey":sbKey,"Authorization":"Bearer "+sbKey,"Content-Type":"application/json","Accept-Profile":"public","Content-Profile":"public","Prefer":"resolution=merge-duplicates"},body:JSON.stringify(pRows)}).then(function(r){if(r.ok){const el=document.getElementById("sgyver-sb-badge");if(el){el.innerHTML="☁️ ซิงค์ลง Supabase Cloud เรียบร้อยแล้ว 100%!";el.style.color="#a7f3d0";}}}).catch(function(e){console.warn(e);});' +
         'b.style.background="linear-gradient(135deg,#059669,#047857)";b.style.color="#fff";b.style.padding="16px 20px";' +
         'b.innerHTML=\'<div style="display:flex;align-items:center;justify-content:space-between;"><div style="font-weight:bold;font-size:14px;display:flex;align-items:center;gap:6px;">🛒 สินค้าเข้าตะกร้าแล้ว (สะสม \'+ basket.length +\' สินค้า)!</div><button onclick="this.closest(\\\'#sgyver-shopee-toast\\\').remove()" style="background:transparent;border:none;color:#fff;font-size:16px;cursor:pointer;opacity:0.8;">✕</button></div>\' +' +
         '\'<div style="font-size:12px;margin-top:6px;background:rgba(0,0,0,0.22);padding:8px 10px;border-radius:10px;">\' +' +

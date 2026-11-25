@@ -305,34 +305,7 @@
         if (!client) return;
 
         try {
-            // 1. Sync WorkChat shared messages
-            const { data: lobbiesData } = await client
-                .from('lobbies')
-                .select('quiz_settings')
-                .eq('room_code', 'WORKCHAT')
-                .maybeSingle();
-
-            if (lobbiesData && lobbiesData.quiz_settings && lobbiesData.quiz_settings.messages) {
-                const msgs = lobbiesData.quiz_settings.messages.slice(-10);
-                msgs.forEach(m => {
-                    if (m.file_data || (m.message_text && m.message_text.includes('แชร์สื่อการสอน'))) {
-                        const notifId = 'notif_wc_' + m.id;
-                        addNotification({
-                            id: notifId,
-                            title: (m.sender_name || 'คุณครู') + ' แชร์สื่อการสอน',
-                            desc: m.file_data?.name || m.message_text || 'มีไฟล์แนบใหม่ใน WorkChat',
-                            type: 'chat',
-                            icon: 'bi-chat-dots-fill',
-                            iconBg: 'rgba(6, 182, 212, 0.15)',
-                            iconColor: '#0891b2',
-                            url: ROOT + 'features/communication/workchat/workchat.html',
-                            created_at: m.created_at
-                        });
-                    }
-                });
-            }
-
-            // 2. Sync System Announcements
+            // Sync System Announcements
             const { data: sysData } = await client
                 .from('gyver_forms')
                 .select('schema')
@@ -364,29 +337,13 @@
 
         try {
             client.channel('public:gyver_global_notifications')
-                .on('broadcast', { event: 'new_message' }, payload => {
-                    const m = payload.payload;
-                    if (m) {
-                        addNotification({
-                            id: 'notif_wc_' + m.id,
-                            title: (m.sender_name || 'เพื่อนร่วมงาน') + ' ส่งข้อความใน WorkChat',
-                            desc: m.message_text || (m.file_data ? 'แชร์ไฟล์: ' + m.file_data.name : 'มีข้อความใหม่'),
-                            type: 'chat',
-                            icon: 'bi-chat-dots-fill',
-                            iconBg: 'rgba(6, 182, 212, 0.15)',
-                            iconColor: '#0891b2',
-                            url: ROOT + 'features/communication/workchat/workchat.html',
-                            created_at: m.created_at || new Date().toISOString()
-                        });
-                    }
-                })
                 .on('broadcast', { event: 'share_drive_item' }, payload => {
                     const it = payload.payload;
                     if (it) {
                         addNotification({
                             id: 'notif_drive_' + it.id + '_' + Date.now(),
                             title: 'แชร์สื่อการสอนใหม่',
-                            desc: `"${it.title}" ถูกส่งเข้าห้องเรียน/WorkChat`,
+                            desc: `"${it.title}" ถูกส่งเข้าห้องเรียนแล้ว`,
                             type: 'edu',
                             icon: 'bi-file-earmark-slides-fill',
                             iconBg: 'rgba(16, 185, 129, 0.15)',

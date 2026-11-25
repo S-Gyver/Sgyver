@@ -1,9 +1,19 @@
-const SUPABASE_URL = 'https://igiihteeeprpcxxlldkd.supabase.co'; 
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnaWlodGVlZXBycGN4eGxsZGtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5ODkwNzksImV4cCI6MjEwMDU2NTA3OX0.fr8_ZAYKQ3D-JgEtAWGJnNvKjoUmYxs1T7tjzzsEltw';       
+const SUPABASE_URL = 'https://vcqosaykxxsrknfqbcbf.supabase.co'; 
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZjcW9zYXlreHhzcmtuZnFiY2JmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU1NTI4MjUsImV4cCI6MjExMTEyODgyNX0.xnmZ3T5KyLo8mZY7n0ejtw-gusjoVAaS9v8j3uRBuZA';       
 
 // ประกาศเป็นตัวแปร window เพื่อให้ทุกไฟล์ดึงไปใช้ได้ทันที
 window.SUPABASE_URL = SUPABASE_URL;
 window.SUPABASE_KEY = SUPABASE_KEY;
+
+// ล้างค่า URL/Key ของโปรเจกต์เก่าที่อาจค้างใน localStorage ของผู้ใช้
+try {
+    const savedSbUrl = localStorage.getItem('sgyver_label_sb_url');
+    if (savedSbUrl && savedSbUrl.includes('igiihteeeprpcxxlldkd')) {
+        localStorage.removeItem('sgyver_label_sb_url');
+        localStorage.removeItem('sgyver_label_sb_key');
+    }
+} catch (_) {}
+
 window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
     db: { schema: 'public' },
     global: {
